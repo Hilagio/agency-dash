@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { BUCKET_LABELS } from "@/lib/engine/types";
-import { AlertCircle, CheckCircle, TrendingDown, ArrowRight, RefreshCw, Loader2, Zap } from "lucide-react";
+import { Zap, RefreshCw, Loader2, ChevronRight, Plus } from "lucide-react";
 import { AccountImporter } from "@/components/AccountImporter";
 
 type ConstraintBucket = "MEASUREMENT" | "TRAFFIC" | "CONVERSION" | "FUNNEL" | "ECONOMICS";
@@ -38,10 +38,56 @@ function minScore(snap: Snapshot): number {
   );
 }
 
-function overallHealth(score: number): { label: string; color: string; icon: React.ReactNode } {
-  if (score >= 70) return { label: "Healthy", color: "text-green-600", icon: <CheckCircle className="h-4 w-4" /> };
-  if (score >= 50) return { label: "At Risk", color: "text-yellow-600", icon: <TrendingDown className="h-4 w-4" /> };
-  return { label: "Critical", color: "text-red-600", icon: <AlertCircle className="h-4 w-4" /> };
+const BUCKET_COLOR: Record<ConstraintBucket, string> = {
+  MEASUREMENT: "#c084fc",
+  TRAFFIC:     "#60a5fa",
+  CONVERSION:  "#fb923c",
+  FUNNEL:      "#fbbf24",
+  ECONOMICS:   "#4ade80",
+};
+
+const BUCKET_BG: Record<ConstraintBucket, string> = {
+  MEASUREMENT: "rgba(192, 132, 252, 0.12)",
+  TRAFFIC:     "rgba(96, 165, 250, 0.12)",
+  CONVERSION:  "rgba(251, 146, 60, 0.12)",
+  FUNNEL:      "rgba(251, 191, 36, 0.12)",
+  ECONOMICS:   "rgba(74, 222, 128, 0.12)",
+};
+
+function scoreColor(s: number): string {
+  if (s >= 80) return "#4ade80";
+  if (s >= 60) return "#fbbf24";
+  if (s >= 40) return "#fb923c";
+  return "#f87171";
+}
+
+function healthLabel(s: number): { label: string; color: string } {
+  if (s >= 70) return { label: "Healthy",  color: "#4ade80" };
+  if (s >= 50) return { label: "At Risk",  color: "#fbbf24" };
+  return             { label: "Critical",  color: "#f87171" };
+}
+
+const BUCKETS: ConstraintBucket[] = ["MEASUREMENT", "TRAFFIC", "CONVERSION", "FUNNEL", "ECONOMICS"];
+
+function MiniScoreBar({ score, active }: { score: number; active: boolean }) {
+  return (
+    <div style={{ flex: 1 }}>
+      <div style={{
+        height: 3,
+        borderRadius: 2,
+        background: "#1e1e1e",
+        overflow: "hidden",
+      }}>
+        <div style={{
+          height: "100%",
+          width: `${score}%`,
+          borderRadius: 2,
+          background: active ? scoreColor(score) : "#333",
+          transition: "width 0.5s ease",
+        }} />
+      </div>
+    </div>
+  );
 }
 
 export default function HomePage() {
@@ -49,7 +95,11 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [scoring, setScoring] = useState<string | null>(null);
   const [scoringAll, setScoringAll] = useState(false);
-  const [scoreAllResult, setScoreAllResult] = useState<{ succeeded: string[]; failed: { name: string; error: string }[] } | null>(null);
+  const [showImporter, setShowImporter] = useState(false);
+  const [scoreAllResult, setScoreAllResult] = useState<{
+    succeeded: string[];
+    failed: { name: string; error: string }[];
+  } | null>(null);
 
   const loadAccounts = useCallback(async () => {
     setLoading(true);
@@ -63,7 +113,8 @@ export default function HomePage() {
 
   useEffect(() => { loadAccounts(); }, [loadAccounts]);
 
-  const runScore = async (accountId: string) => {
+  const runScore = async (accountId: string, e: React.MouseEvent) => {
+    e.preventDefault();
     setScoring(accountId);
     try {
       await fetch(`/api/accounts/${accountId}/snapshot?source=google-ads`, { method: "POST" });
@@ -88,183 +139,312 @@ export default function HomePage() {
     }
   };
 
+  // Sort by priority: lowest minScore first (most critical at top)
+  const sorted = [...accounts].sort((a, b) => {
+    const sa = a.snapshots?.[0] ? minScore(a.snapshots[0]) : 100;
+    const sb = b.snapshots?.[0] ? minScore(b.snapshots[0]) : 100;
+    return sa - sb;
+  });
+
+  const withSnaps = accounts.filter((a) => a.snapshots?.[0]);
+  const critical  = withSnaps.filter((a) => minScore(a.snapshots[0]) < 50).length;
+  const atRisk    = withSnaps.filter((a) => { const s = minScore(a.snapshots[0]); return s >= 50 && s < 70; }).length;
+  const healthy   = withSnaps.filter((a) => minScore(a.snapshots[0]) >= 70).length;
+
   return (
-    <div className="min-h-screen">
-      <header className="border-b border-gray-200 bg-white">
-        <div className="mx-auto max-w-5xl px-6 py-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-xl font-bold text-gray-900">Constraint Optimizer</h1>
-              <p className="text-sm text-gray-500">Fix the right thing first.</p>
-            </div>
-            <div className="flex items-center gap-3">
-              {accounts.length > 1 && (
-                <button
-                  onClick={runScoreAll}
-                  disabled={scoringAll || !!scoring}
-                  className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-                >
-                  {scoringAll ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5" />}
-                  {scoringAll ? "Scoring all…" : "Score all accounts"}
-                </button>
-              )}
-              <div className="flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700">
-                <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
-                {accounts.length} accounts
-              </div>
-            </div>
-          </div>
+    <div style={{ minHeight: "100vh", background: "#0a0a0a", color: "#f0f0f0" }}>
+
+      {/* Header */}
+      <header style={{
+        borderBottom: "1px solid #1a1a1a",
+        padding: "0 32px",
+        height: 60,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        position: "sticky",
+        top: 0,
+        background: "rgba(10,10,10,0.9)",
+        backdropFilter: "blur(12px)",
+        zIndex: 10,
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{
+            width: 28, height: 28, borderRadius: 8,
+            background: "linear-gradient(135deg, #3b82f6, #8b5cf6)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 13, fontWeight: 700, color: "#fff",
+          }}>C</div>
+          <span style={{ fontWeight: 600, fontSize: 15, letterSpacing: "-0.3px" }}>
+            Constraint Optimizer
+          </span>
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <button
+            onClick={() => setShowImporter(!showImporter)}
+            style={{
+              display: "flex", alignItems: "center", gap: 6,
+              background: "#1a1a1a", border: "1px solid #2a2a2a",
+              borderRadius: 8, color: "#aaa", fontSize: 13, fontWeight: 500,
+              padding: "7px 14px", cursor: "pointer",
+            }}
+          >
+            <Plus size={14} />
+            Add accounts
+          </button>
+
+          {accounts.length > 1 && (
+            <button
+              onClick={runScoreAll}
+              disabled={scoringAll || !!scoring}
+              style={{
+                display: "flex", alignItems: "center", gap: 6,
+                background: scoringAll ? "#1a1a1a" : "#1d4ed8",
+                border: "1px solid " + (scoringAll ? "#2a2a2a" : "#2563eb"),
+                borderRadius: 8, color: scoringAll ? "#666" : "#fff",
+                fontSize: 13, fontWeight: 500,
+                padding: "7px 14px", cursor: scoringAll ? "not-allowed" : "pointer",
+                opacity: scoringAll || !!scoring ? 0.6 : 1,
+                transition: "all 0.15s",
+              }}
+            >
+              {scoringAll
+                ? <><Loader2 size={13} className="animate-spin" /> Scoring…</>
+                : <><Zap size={13} /> Score all</>}
+            </button>
+          )}
         </div>
       </header>
 
-      <main className="mx-auto max-w-5xl px-6 py-8">
-        {scoreAllResult && (
-          <div className={`mb-4 rounded-xl border p-3 text-sm ${scoreAllResult.failed.length > 0 ? "border-yellow-200 bg-yellow-50" : "border-green-200 bg-green-50"}`}>
-            <span className="font-medium">
-              {scoreAllResult.succeeded.length} scored
-              {scoreAllResult.failed.length > 0 && `, ${scoreAllResult.failed.length} failed`}.
-            </span>
-            {scoreAllResult.failed.length > 0 && (
-              <ul className="mt-1 list-disc pl-4 text-xs text-red-600">
-                {scoreAllResult.failed.map((f) => (
-                  <li key={f.name}>{f.name}: {f.error}</li>
-                ))}
-              </ul>
-            )}
+      <main style={{ maxWidth: 900, margin: "0 auto", padding: "40px 24px" }}>
+
+        {/* Importer panel */}
+        {showImporter && (
+          <div style={{ marginBottom: 28 }}>
+            <AccountImporter onImported={() => { loadAccounts(); setShowImporter(false); }} />
           </div>
         )}
 
-        <div className="mb-6 rounded-xl border border-blue-100 bg-blue-50 p-4">
-          <p className="text-sm text-blue-800">
-            <strong>Core principle:</strong> Every account has one governing constraint.
-            Fix it before touching anything else. Sequence: Measurement → Traffic → Conversion → Funnel → Economics.
-          </p>
-        </div>
-
-        {/* MCC account importer */}
-        <div className="mb-6">
-          <AccountImporter onImported={loadAccounts} />
-        </div>
-
-        {loading ? (
-          <div className="flex items-center justify-center gap-2 py-16 text-gray-400">
-            <Loader2 className="h-5 w-5 animate-spin" />
-            Loading accounts…
+        {/* Score all result banner */}
+        {scoreAllResult && (
+          <div style={{
+            background: scoreAllResult.failed.length > 0 ? "rgba(251,191,36,0.08)" : "rgba(74,222,128,0.08)",
+            border: "1px solid " + (scoreAllResult.failed.length > 0 ? "rgba(251,191,36,0.2)" : "rgba(74,222,128,0.2)"),
+            borderRadius: 10, padding: "12px 16px", marginBottom: 20,
+            fontSize: 13,
+            color: scoreAllResult.failed.length > 0 ? "#fbbf24" : "#4ade80",
+          }}>
+            {scoreAllResult.succeeded.length} accounts scored successfully
+            {scoreAllResult.failed.length > 0 && ` · ${scoreAllResult.failed.length} failed: ${scoreAllResult.failed.map(f => f.name).join(", ")}`}
           </div>
-        ) : accounts.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-gray-200 p-12 text-center">
-            <p className="text-gray-500">No accounts yet.</p>
-            <p className="mt-1 text-sm text-gray-400">
-              Import from your MCC above, or run{" "}
-              <code className="rounded bg-gray-100 px-1 text-xs">npm run db:seed</code> for demo data.
+        )}
+
+        {/* Portfolio summary */}
+        {withSnaps.length > 0 && (
+          <div style={{
+            display: "grid", gridTemplateColumns: "repeat(4, 1fr)",
+            gap: 12, marginBottom: 32,
+          }}>
+            {[
+              { label: "Total accounts", value: accounts.length, color: "#888" },
+              { label: "Critical",  value: critical,  color: "#f87171" },
+              { label: "At Risk",   value: atRisk,    color: "#fbbf24" },
+              { label: "Healthy",   value: healthy,   color: "#4ade80" },
+            ].map((stat) => (
+              <div key={stat.label} style={{
+                background: "#111", border: "1px solid #1e1e1e", borderRadius: 12,
+                padding: "16px 20px",
+              }}>
+                <div style={{ fontSize: 28, fontWeight: 700, color: stat.color, letterSpacing: "-1px" }}>
+                  {stat.value}
+                </div>
+                <div style={{ fontSize: 12, color: "#555", marginTop: 2 }}>{stat.label}</div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Section label */}
+        {accounts.length > 0 && (
+          <div style={{
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+            marginBottom: 12,
+          }}>
+            <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.8px", textTransform: "uppercase", color: "#444" }}>
+              Priority ranking
+            </span>
+            <span style={{ fontSize: 11, color: "#444" }}>
+              Most critical first
+            </span>
+          </div>
+        )}
+
+        {/* Account list */}
+        {loading ? (
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, padding: "80px 0", color: "#444" }}>
+            <Loader2 size={18} className="animate-spin" />
+            <span style={{ fontSize: 14 }}>Loading accounts…</span>
+          </div>
+        ) : sorted.length === 0 ? (
+          <div style={{
+            border: "1px dashed #222", borderRadius: 16,
+            padding: "60px 32px", textAlign: "center",
+          }}>
+            <p style={{ color: "#555", fontSize: 14 }}>No accounts yet.</p>
+            <p style={{ color: "#333", fontSize: 13, marginTop: 6 }}>
+              Click <strong style={{ color: "#666" }}>Add accounts</strong> above to import from your MCC.
             </p>
           </div>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2">
-            {accounts.map((account) => {
+          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            {sorted.map((account, idx) => {
               const snap = account.snapshots?.[0];
               const bucket = snap?.governingConstraint as ConstraintBucket | undefined;
-              const min = snap ? minScore(snap) : 100;
-              const health = overallHealth(min);
+              const minS   = snap ? minScore(snap) : null;
+              const health = minS !== null ? healthLabel(minS) : null;
               const isScoring = scoring === account.id;
 
               return (
-                <div key={account.id} className="rounded-xl border border-gray-100 bg-white shadow-sm">
-                  <Link
-                    href={`/accounts/${account.id}`}
-                    className="group block p-5 hover:bg-gray-50 rounded-t-xl transition-colors"
+                <Link
+                  key={account.id}
+                  href={`/accounts/${account.id}`}
+                  style={{ textDecoration: "none" }}
+                >
+                  <div style={{
+                    background: "#111",
+                    border: "1px solid #1a1a1a",
+                    borderRadius: 14,
+                    padding: "18px 20px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 20,
+                    cursor: "pointer",
+                    transition: "border-color 0.15s, background 0.15s",
+                  }}
+                  onMouseEnter={e => {
+                    (e.currentTarget as HTMLDivElement).style.borderColor = "#2a2a2a";
+                    (e.currentTarget as HTMLDivElement).style.background = "#141414";
+                  }}
+                  onMouseLeave={e => {
+                    (e.currentTarget as HTMLDivElement).style.borderColor = "#1a1a1a";
+                    (e.currentTarget as HTMLDivElement).style.background = "#111";
+                  }}
                   >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <h2 className="font-semibold text-gray-900 group-hover:text-blue-700">
-                          {account.name}
-                        </h2>
-                        <p className="text-xs text-gray-400 mt-0.5">
-                          {account.googleAdsId} · {account.industry ?? "General"} · {account.currency}
-                        </p>
-                      </div>
-                      <ArrowRight className="h-4 w-4 flex-shrink-0 text-gray-300 group-hover:text-blue-500 mt-1" />
+                    {/* Priority rank */}
+                    <div style={{
+                      width: 32, height: 32, flexShrink: 0,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      borderRadius: 8,
+                      background: minS !== null && minS < 50 ? "rgba(248,113,113,0.1)" : "#1a1a1a",
+                      border: "1px solid " + (minS !== null && minS < 50 ? "rgba(248,113,113,0.2)" : "#222"),
+                      fontSize: 13, fontWeight: 700,
+                      color: minS !== null && minS < 50 ? "#f87171" : "#444",
+                    }}>
+                      {idx + 1}
                     </div>
 
-                    {snap ? (
-                      <>
+                    {/* Account info */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 2 }}>
+                        <span style={{
+                          fontSize: 14, fontWeight: 600, color: "#e8e8e8",
+                          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                        }}>
+                          {account.name}
+                        </span>
                         {bucket && (
-                          <div className="mt-4 flex items-center gap-2">
-                            <span className={`h-2 w-2 rounded-full ${
-                              bucket === "MEASUREMENT" ? "bg-purple-500" :
-                              bucket === "TRAFFIC"     ? "bg-blue-500"   :
-                              bucket === "CONVERSION"  ? "bg-orange-500" :
-                              bucket === "FUNNEL"      ? "bg-yellow-500" : "bg-green-600"
-                            }`} />
-                            <span className="text-xs font-medium text-gray-700">
-                              Constraint: {BUCKET_LABELS[bucket]}
-                            </span>
-                          </div>
+                          <span style={{
+                            fontSize: 10, fontWeight: 600, letterSpacing: "0.5px",
+                            textTransform: "uppercase",
+                            background: BUCKET_BG[bucket],
+                            color: BUCKET_COLOR[bucket],
+                            padding: "2px 8px", borderRadius: 20,
+                            flexShrink: 0,
+                          }}>
+                            {BUCKET_LABELS[bucket]}
+                          </span>
                         )}
+                      </div>
+                      <div style={{ fontSize: 11, color: "#444" }}>
+                        {account.googleAdsId}
+                        {account.industry ? ` · ${account.industry}` : ""}
+                      </div>
 
-                        <p className="mt-1 text-xs text-gray-500 line-clamp-2">
-                          {snap.constraintReason}
-                        </p>
-
-                        <div className="mt-4 space-y-1.5">
-                          {(
-                            [
-                              ["MEASUREMENT", snap.scoreMeasurement],
-                              ["TRAFFIC",     snap.scoreTraffic],
-                              ["CONVERSION",  snap.scoreConversion],
-                              ["FUNNEL",      snap.scoreFunnel],
-                              ["ECONOMICS",   snap.scoreEconomics],
-                            ] as [ConstraintBucket, number][]
-                          ).map(([b, score]) => (
-                            <div key={b} className="flex items-center gap-2">
-                              <span className="w-20 flex-shrink-0 text-xs text-gray-400 truncate">
-                                {BUCKET_LABELS[b]}
-                              </span>
-                              <div className="flex-1 h-1 rounded-full bg-gray-100">
-                                <div
-                                  className={`h-full rounded-full ${
-                                    score >= 80 ? "bg-green-400" :
-                                    score >= 60 ? "bg-yellow-400" :
-                                    score >= 40 ? "bg-orange-400" : "bg-red-500"
-                                  }`}
-                                  style={{ width: `${score}%` }}
-                                />
+                      {/* 5 bucket mini bars */}
+                      {snap ? (
+                        <div style={{ display: "flex", gap: 4, marginTop: 10, alignItems: "center" }}>
+                          {BUCKETS.map((b) => {
+                            const score = {
+                              MEASUREMENT: snap.scoreMeasurement,
+                              TRAFFIC:     snap.scoreTraffic,
+                              CONVERSION:  snap.scoreConversion,
+                              FUNNEL:      snap.scoreFunnel,
+                              ECONOMICS:   snap.scoreEconomics,
+                            }[b];
+                            const isGov = snap.governingConstraint === b;
+                            return (
+                              <div key={b} style={{ flex: 1 }}>
+                                <div style={{
+                                  fontSize: 9, color: isGov ? BUCKET_COLOR[b] : "#333",
+                                  marginBottom: 3, fontWeight: isGov ? 700 : 400,
+                                  letterSpacing: "0.3px",
+                                }}>
+                                  {b.slice(0, 3)}
+                                </div>
+                                <div style={{ height: 3, background: "#1e1e1e", borderRadius: 2, overflow: "hidden" }}>
+                                  <div style={{
+                                    height: "100%", width: `${score}%`,
+                                    background: isGov ? scoreColor(score) : "#2a2a2a",
+                                    borderRadius: 2,
+                                  }} />
+                                </div>
+                                <div style={{
+                                  fontSize: 9, color: isGov ? scoreColor(score) : "#333",
+                                  marginTop: 2, fontWeight: isGov ? 700 : 400,
+                                }}>
+                                  {score}
+                                </div>
                               </div>
-                              <span className="w-6 flex-shrink-0 text-right text-xs tabular-nums text-gray-500">
-                                {score}
-                              </span>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
-
-                        <div className={`mt-3 flex items-center gap-1 text-xs font-medium ${health.color}`}>
-                          {health.icon}
-                          {health.label}
-                        </div>
-                      </>
-                    ) : (
-                      <p className="mt-3 text-xs text-gray-400 italic">
-                        No score yet — run scoring below
-                      </p>
-                    )}
-                  </Link>
-
-                  {/* Score action — outside the Link */}
-                  <div className="border-t border-gray-50 px-5 py-3">
-                    <button
-                      onClick={() => runScore(account.id)}
-                      disabled={isScoring}
-                      className="flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-blue-700 disabled:opacity-50"
-                    >
-                      {isScoring ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
                       ) : (
-                        <RefreshCw className="h-3.5 w-3.5" />
+                        <div style={{ fontSize: 11, color: "#333", marginTop: 8, fontStyle: "italic" }}>
+                          Not scored yet
+                        </div>
                       )}
-                      {isScoring ? "Scoring from Google Ads…" : "Score from Google Ads"}
-                    </button>
+                    </div>
+
+                    {/* Right side */}
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 10, flexShrink: 0 }}>
+                      {health && (
+                        <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                          <div style={{ width: 6, height: 6, borderRadius: "50%", background: health.color }} />
+                          <span style={{ fontSize: 12, fontWeight: 500, color: health.color }}>{health.label}</span>
+                        </div>
+                      )}
+
+                      <button
+                        onClick={(e) => runScore(account.id, e)}
+                        disabled={isScoring}
+                        style={{
+                          display: "flex", alignItems: "center", gap: 5,
+                          background: "transparent", border: "1px solid #222",
+                          borderRadius: 6, color: "#555", fontSize: 11, fontWeight: 500,
+                          padding: "4px 10px", cursor: isScoring ? "not-allowed" : "pointer",
+                          opacity: isScoring ? 0.5 : 1,
+                        }}
+                      >
+                        {isScoring
+                          ? <><Loader2 size={10} className="animate-spin" /> Scoring…</>
+                          : <><RefreshCw size={10} /> Rescore</>}
+                      </button>
+                    </div>
+
+                    <ChevronRight size={16} style={{ color: "#2a2a2a", flexShrink: 0 }} />
                   </div>
-                </div>
+                </Link>
               );
             })}
           </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Search, Plus, CheckCircle, Loader2, RefreshCw } from "lucide-react";
+import { Search, Plus, CheckCircle, Loader2, RefreshCw, X } from "lucide-react";
 
 interface GoogleAdsAccount {
   googleAdsId: string;
@@ -16,13 +16,13 @@ interface Props {
 }
 
 export function AccountImporter({ onImported }: Props) {
-  const [open, setOpen] = useState(false);
   const [accounts, setAccounts] = useState<GoogleAdsAccount[]>([]);
   const [loading, setLoading] = useState(false);
   const [importing, setImporting] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [authRequired, setAuthRequired] = useState(false);
+  const [loaded, setLoaded] = useState(false);
 
   const fetchAccounts = async () => {
     setLoading(true);
@@ -31,28 +31,18 @@ export function AccountImporter({ onImported }: Props) {
     try {
       const res = await fetch("/api/google-ads/accounts");
       const data = await res.json();
-
       if (!res.ok) {
-        if (data.authUrl) {
-          setAuthRequired(true);
-          setError("Google Ads authentication required.");
-        } else {
-          setError(data.error ?? "Failed to fetch accounts");
-        }
+        if (data.authUrl) { setAuthRequired(true); setError("Authentication required."); }
+        else setError(data.error ?? "Failed to fetch accounts");
         return;
       }
-
       setAccounts(data);
+      setLoaded(true);
     } catch {
-      setError("Network error — check that the dev server is running");
+      setError("Network error");
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleOpen = () => {
-    setOpen(true);
-    fetchAccounts();
   };
 
   const importAccount = async (account: GoogleAdsAccount) => {
@@ -69,9 +59,7 @@ export function AccountImporter({ onImported }: Props) {
       });
       if (res.ok) {
         setAccounts((prev) =>
-          prev.map((a) =>
-            a.googleAdsId === account.googleAdsId ? { ...a, imported: true } : a
-          )
+          prev.map((a) => a.googleAdsId === account.googleAdsId ? { ...a, imported: true } : a)
         );
         onImported();
       }
@@ -85,108 +73,149 @@ export function AccountImporter({ onImported }: Props) {
     a.googleAdsId.includes(search)
   );
 
-  if (!open) {
-    return (
-      <button
-        onClick={handleOpen}
-        className="flex items-center gap-2 rounded-xl border border-dashed border-blue-300 bg-blue-50 px-4 py-3 text-sm font-medium text-blue-700 hover:border-blue-400 hover:bg-blue-100 transition-colors"
-      >
-        <Plus className="h-4 w-4" />
-        Import accounts from Google Ads MCC
-      </button>
-    );
-  }
-
   return (
-    <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
-      <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
-        <h3 className="font-semibold text-gray-900 text-sm">Import from MCC</h3>
-        <div className="flex items-center gap-2">
+    <div style={{
+      background: "#111", border: "1px solid #1e1e1e", borderRadius: 14,
+      overflow: "hidden",
+    }}>
+      {/* Header */}
+      <div style={{
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        padding: "14px 18px", borderBottom: "1px solid #1a1a1a",
+      }}>
+        <span style={{ fontSize: 13, fontWeight: 600, color: "#ccc" }}>Import from MCC</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <button
             onClick={fetchAccounts}
             disabled={loading}
-            className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100"
+            style={{
+              background: "transparent", border: "none", cursor: "pointer",
+              color: "#444", padding: 4, borderRadius: 6,
+              display: "flex", alignItems: "center",
+            }}
           >
-            <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
-          </button>
-          <button
-            onClick={() => setOpen(false)}
-            className="text-xs text-gray-400 hover:text-gray-600"
-          >
-            close
+            <RefreshCw size={13} style={{ animation: loading ? "spin 1s linear infinite" : "none" }} />
           </button>
         </div>
       </div>
 
+      {/* Auth required */}
       {authRequired && (
-        <div className="p-4">
-          <p className="text-sm text-gray-600 mb-3">
-            You need to authorise Google Ads access first.
+        <div style={{ padding: 20 }}>
+          <p style={{ fontSize: 13, color: "#666", marginBottom: 12 }}>
+            Connect your Google Ads account to import.
           </p>
           <a
             href="/api/auth/google-ads"
-            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+            style={{
+              display: "inline-flex", alignItems: "center", gap: 6,
+              background: "#1d4ed8", borderRadius: 8, color: "#fff",
+              fontSize: 13, fontWeight: 500, padding: "8px 16px",
+              textDecoration: "none",
+            }}
           >
             Connect Google Ads →
           </a>
         </div>
       )}
 
+      {/* Error */}
       {error && !authRequired && (
-        <div className="p-4 text-sm text-red-600">{error}</div>
+        <div style={{ padding: "14px 18px", fontSize: 13, color: "#f87171" }}>{error}</div>
       )}
 
+      {/* Loading */}
       {loading && !authRequired && (
-        <div className="flex items-center justify-center gap-2 p-8 text-gray-400">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          <span className="text-sm">Fetching accounts from MCC…</span>
+        <div style={{
+          display: "flex", alignItems: "center", justifyContent: "center",
+          gap: 8, padding: "32px 0", color: "#444",
+        }}>
+          <Loader2 size={14} className="animate-spin" />
+          <span style={{ fontSize: 13 }}>Fetching accounts from MCC…</span>
         </div>
       )}
 
+      {/* Not loaded yet */}
+      {!loaded && !loading && !error && (
+        <div style={{ padding: 20 }}>
+          <button
+            onClick={fetchAccounts}
+            style={{
+              display: "flex", alignItems: "center", gap: 6,
+              background: "#1a1a1a", border: "1px solid #252525",
+              borderRadius: 8, color: "#888", fontSize: 13, fontWeight: 500,
+              padding: "8px 14px", cursor: "pointer",
+            }}
+          >
+            <Plus size={13} />
+            Load accounts from MCC
+          </button>
+        </div>
+      )}
+
+      {/* Account list */}
       {!loading && !error && accounts.length > 0 && (
         <>
-          <div className="px-4 pt-3">
-            <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5">
-              <Search className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
+          {/* Search */}
+          <div style={{ padding: "12px 18px 0" }}>
+            <div style={{
+              display: "flex", alignItems: "center", gap: 8,
+              background: "#0f0f0f", border: "1px solid #1e1e1e",
+              borderRadius: 8, padding: "8px 12px",
+            }}>
+              <Search size={12} style={{ color: "#444", flexShrink: 0 }} />
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search by name or ID…"
-                className="flex-1 bg-transparent text-sm outline-none placeholder-gray-400"
+                style={{
+                  flex: 1, background: "transparent", border: "none", outline: "none",
+                  fontSize: 13, color: "#ccc",
+                }}
               />
             </div>
           </div>
 
-          <div className="max-h-72 overflow-y-auto p-2">
+          {/* Rows */}
+          <div style={{ maxHeight: 280, overflowY: "auto", padding: "8px 10px" }}>
             {filtered.length === 0 ? (
-              <p className="p-4 text-center text-sm text-gray-400">No accounts match</p>
+              <p style={{ padding: "16px 8px", textAlign: "center", fontSize: 13, color: "#444" }}>No accounts match</p>
             ) : (
               filtered.map((account) => (
                 <div
                   key={account.googleAdsId}
-                  className="flex items-center justify-between rounded-lg px-3 py-2.5 hover:bg-gray-50"
+                  style={{
+                    display: "flex", alignItems: "center", justifyContent: "space-between",
+                    padding: "10px 10px", borderRadius: 8,
+                    transition: "background 0.1s",
+                  }}
+                  onMouseEnter={e => (e.currentTarget as HTMLDivElement).style.background = "#161616"}
+                  onMouseLeave={e => (e.currentTarget as HTMLDivElement).style.background = "transparent"}
                 >
                   <div>
-                    <p className="text-sm font-medium text-gray-900">{account.name}</p>
-                    <p className="text-xs text-gray-400">{account.googleAdsId} · {account.currency}</p>
+                    <p style={{ fontSize: 13, fontWeight: 500, color: "#ccc" }}>{account.name}</p>
+                    <p style={{ fontSize: 11, color: "#444" }}>{account.googleAdsId} · {account.currency}</p>
                   </div>
 
                   {account.imported ? (
-                    <span className="flex items-center gap-1 text-xs font-medium text-green-600">
-                      <CheckCircle className="h-3.5 w-3.5" />
-                      Imported
+                    <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 500, color: "#4ade80" }}>
+                      <CheckCircle size={12} /> Imported
                     </span>
                   ) : (
                     <button
                       onClick={() => importAccount(account)}
                       disabled={importing === account.googleAdsId}
-                      className="flex items-center gap-1 rounded-lg bg-blue-600 px-3 py-1 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                      style={{
+                        display: "flex", alignItems: "center", gap: 5,
+                        background: "#1d4ed8", borderRadius: 7, color: "#fff",
+                        fontSize: 12, fontWeight: 500, padding: "5px 12px",
+                        border: "none", cursor: importing === account.googleAdsId ? "not-allowed" : "pointer",
+                        opacity: importing === account.googleAdsId ? 0.5 : 1,
+                      }}
                     >
-                      {importing === account.googleAdsId ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : (
-                        <Plus className="h-3 w-3" />
-                      )}
+                      {importing === account.googleAdsId
+                        ? <Loader2 size={10} className="animate-spin" />
+                        : <Plus size={10} />}
                       Import
                     </button>
                   )}
@@ -195,8 +224,12 @@ export function AccountImporter({ onImported }: Props) {
             )}
           </div>
 
-          <div className="border-t border-gray-100 px-4 py-2 text-xs text-gray-400">
-            {accounts.length} accounts in MCC · {accounts.filter((a) => a.imported).length} imported
+          {/* Footer */}
+          <div style={{
+            borderTop: "1px solid #1a1a1a", padding: "10px 18px",
+            fontSize: 11, color: "#333",
+          }}>
+            {accounts.length} in MCC · {accounts.filter((a) => a.imported).length} imported
           </div>
         </>
       )}

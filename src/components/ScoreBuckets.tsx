@@ -13,21 +13,22 @@ interface Props {
   buckets: BucketData[];
 }
 
-function getScoreColor(score: number): string {
-  if (score >= 80) return "text-green-600";
-  if (score >= 60) return "text-yellow-600";
-  if (score >= 40) return "text-orange-600";
-  return "text-red-600";
+const BUCKET_ACCENT: Record<string, string> = {
+  MEASUREMENT: "#c084fc",
+  TRAFFIC:     "#60a5fa",
+  CONVERSION:  "#fb923c",
+  FUNNEL:      "#fbbf24",
+  ECONOMICS:   "#4ade80",
+};
+
+function scoreColor(score: number): string {
+  if (score >= 80) return "#4ade80";
+  if (score >= 60) return "#fbbf24";
+  if (score >= 40) return "#fb923c";
+  return "#f87171";
 }
 
-function getBarColor(score: number): string {
-  if (score >= 80) return "bg-green-500";
-  if (score >= 60) return "bg-yellow-500";
-  if (score >= 40) return "bg-orange-500";
-  return "bg-red-500";
-}
-
-function getScoreLabel(score: number): string {
+function scoreLabel(score: number): string {
   if (score >= 80) return "Healthy";
   if (score >= 60) return "At Risk";
   if (score >= 40) return "Weak";
@@ -40,68 +41,85 @@ export function ScoreBuckets({ buckets }: Props) {
   );
 
   return (
-    <div className="space-y-3">
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       {ordered.map((bucket, idx) => {
-        const label = BUCKET_LABELS[bucket.bucket as keyof typeof BUCKET_LABELS] ?? bucket.bucket;
-        const desc = BUCKET_DESCRIPTIONS[bucket.bucket as keyof typeof BUCKET_DESCRIPTIONS] ?? "";
+        const label  = BUCKET_LABELS[bucket.bucket as keyof typeof BUCKET_LABELS] ?? bucket.bucket;
+        const desc   = BUCKET_DESCRIPTIONS[bucket.bucket as keyof typeof BUCKET_DESCRIPTIONS] ?? "";
+        const accent = BUCKET_ACCENT[bucket.bucket] ?? "#60a5fa";
+        const color  = scoreColor(bucket.score);
 
         return (
           <div
             key={bucket.bucket}
-            className={`rounded-xl border p-4 transition-all ${
-              bucket.isGoverning
-                ? "border-red-300 bg-red-50 shadow-sm"
-                : "border-gray-100 bg-white"
-            }`}
+            style={{
+              background: bucket.isGoverning ? `rgba(${accent.slice(1).match(/../g)!.map(h => parseInt(h, 16)).join(",")}, 0.06)` : "#111",
+              border: `1px solid ${bucket.isGoverning ? `rgba(${accent.slice(1).match(/../g)!.map(h => parseInt(h, 16)).join(",")}, 0.2)` : "#1e1e1e"}`,
+              borderRadius: 12,
+              padding: "16px 18px",
+            }}
           >
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold ${
-                  bucket.isGoverning ? "bg-red-500 text-white" : "bg-gray-100 text-gray-500"
-                }`}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
+
+              {/* Left: step + info */}
+              <div style={{ display: "flex", alignItems: "center", gap: 12, flex: 1, minWidth: 0 }}>
+                <div style={{
+                  width: 28, height: 28, flexShrink: 0,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  borderRadius: 8, fontSize: 12, fontWeight: 700,
+                  background: bucket.isGoverning ? `rgba(${accent.slice(1).match(/../g)!.map(h => parseInt(h, 16)).join(",")}, 0.15)` : "#1a1a1a",
+                  color: bucket.isGoverning ? accent : "#333",
+                  border: `1px solid ${bucket.isGoverning ? `rgba(${accent.slice(1).match(/../g)!.map(h => parseInt(h, 16)).join(",")}, 0.25)` : "#222"}`,
+                }}>
                   {idx + 1}
                 </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-gray-900">{label}</span>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: "#e0e0e0" }}>{label}</span>
                     {bucket.isGoverning && (
-                      <span className="rounded-full bg-red-500 px-2 py-0.5 text-xs font-bold text-white">
-                        GOVERNING CONSTRAINT
+                      <span style={{
+                        fontSize: 9, fontWeight: 700, letterSpacing: "0.6px", textTransform: "uppercase",
+                        background: `rgba(${accent.slice(1).match(/../g)!.map(h => parseInt(h, 16)).join(",")}, 0.15)`,
+                        color: accent,
+                        padding: "2px 8px", borderRadius: 20,
+                      }}>
+                        Governing constraint
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-gray-500">{desc}</p>
+                  <p style={{ fontSize: 11, color: "#444", marginTop: 1 }}>{desc}</p>
                 </div>
               </div>
 
-              <div className="text-right flex-shrink-0">
-                <div className={`text-2xl font-bold tabular-nums ${getScoreColor(bucket.score)}`}>
+              {/* Right: score */}
+              <div style={{ textAlign: "right", flexShrink: 0 }}>
+                <div style={{ fontSize: 26, fontWeight: 700, color, letterSpacing: "-1px", lineHeight: 1 }}>
                   {bucket.score}
                 </div>
-                <div className={`text-xs font-medium ${getScoreColor(bucket.score)}`}>
-                  {getScoreLabel(bucket.score)}
+                <div style={{ fontSize: 10, fontWeight: 500, color, marginTop: 2, letterSpacing: "0.3px" }}>
+                  {scoreLabel(bucket.score)}
                 </div>
               </div>
             </div>
 
-            <div className="mt-3">
-              <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
-                <div
-                  className={`h-full rounded-full transition-all duration-500 ${getBarColor(bucket.score)}`}
-                  style={{ width: `${bucket.score}%` }}
-                />
-              </div>
+            {/* Score bar */}
+            <div style={{ marginTop: 12, height: 3, background: "#1a1a1a", borderRadius: 2, overflow: "hidden" }}>
+              <div style={{
+                height: "100%", width: `${bucket.score}%`,
+                background: bucket.isGoverning ? accent : color,
+                borderRadius: 2, transition: "width 0.6s ease",
+              }} />
             </div>
 
+            {/* Signals */}
             {bucket.signals.length > 0 && (
-              <ul className="mt-3 space-y-1">
+              <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 4 }}>
                 {bucket.signals.slice(0, 2).map((sig, i) => (
-                  <li key={i} className="flex items-start gap-2 text-xs text-gray-600">
-                    <span className="mt-0.5 flex-shrink-0 text-gray-400">›</span>
+                  <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 6, fontSize: 12, color: "#555" }}>
+                    <span style={{ color: "#333", marginTop: 1 }}>›</span>
                     {sig}
-                  </li>
+                  </div>
                 ))}
-              </ul>
+              </div>
             )}
           </div>
         );
