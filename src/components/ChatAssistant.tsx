@@ -26,11 +26,11 @@ function renderMarkdown(content: string): React.ReactNode {
 
     // Heading
     if (line.startsWith("### ")) {
-      nodes.push(<p key={i} style={{ fontWeight: 700, color: "#ccc", fontSize: 13, marginTop: 12, marginBottom: 4 }}>{line.slice(4)}</p>);
+      nodes.push(<p key={i} style={{ fontWeight: 700, color: "var(--text-3)", fontSize: 13, marginTop: 12, marginBottom: 4 }}>{line.slice(4)}</p>);
       i++; continue;
     }
     if (line.startsWith("## ")) {
-      nodes.push(<p key={i} style={{ fontWeight: 700, color: "#ddd", fontSize: 14, marginTop: 14, marginBottom: 4 }}>{line.slice(3)}</p>);
+      nodes.push(<p key={i} style={{ fontWeight: 700, color: "var(--text-2)", fontSize: 14, marginTop: 14, marginBottom: 4 }}>{line.slice(3)}</p>);
       i++; continue;
     }
 
@@ -44,7 +44,7 @@ function renderMarkdown(content: string): React.ReactNode {
       }
       nodes.push(
         <pre key={i} style={{
-          background: "#0d0d0d", border: "1px solid #222", borderRadius: 8,
+          background: "var(--bg)", border: "1px solid var(--border-2)", borderRadius: 8,
           padding: "10px 12px", margin: "8px 0",
           fontSize: 11, color: "#a0c4ff", overflowX: "auto", lineHeight: 1.6,
           fontFamily: '"SF Mono", "Fira Code", monospace',
@@ -65,7 +65,7 @@ function renderMarkdown(content: string): React.ReactNode {
       nodes.push(
         <ul key={i} style={{ paddingLeft: 18, margin: "6px 0", display: "flex", flexDirection: "column", gap: 3 }}>
           {items.map((item, j) => (
-            <li key={j} style={{ fontSize: 13, color: "#999", lineHeight: 1.6, listStyleType: "disc" }}>
+            <li key={j} style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.6, listStyleType: "disc" }}>
               {inlineMarkdown(item)}
             </li>
           ))}
@@ -84,7 +84,7 @@ function renderMarkdown(content: string): React.ReactNode {
       nodes.push(
         <ol key={i} style={{ paddingLeft: 20, margin: "6px 0", display: "flex", flexDirection: "column", gap: 3 }}>
           {items.map((item, j) => (
-            <li key={j} style={{ fontSize: 13, color: "#999", lineHeight: 1.6, listStyleType: "decimal" }}>
+            <li key={j} style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.6, listStyleType: "decimal" }}>
               {inlineMarkdown(item)}
             </li>
           ))}
@@ -95,7 +95,7 @@ function renderMarkdown(content: string): React.ReactNode {
 
     // Horizontal rule
     if (line === "---" || line === "***") {
-      nodes.push(<hr key={i} style={{ border: "none", borderTop: "1px solid #1e1e1e", margin: "10px 0" }} />);
+      nodes.push(<hr key={i} style={{ border: "none", borderTop: "1px solid var(--surface-3)", margin: "10px 0" }} />);
       i++; continue;
     }
 
@@ -107,7 +107,7 @@ function renderMarkdown(content: string): React.ReactNode {
 
     // Regular paragraph
     nodes.push(
-      <p key={i} style={{ fontSize: 13, color: "#999", lineHeight: 1.7, margin: 0 }}>
+      <p key={i} style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.7, margin: 0 }}>
         {inlineMarkdown(line)}
       </p>
     );
@@ -121,16 +121,16 @@ function inlineMarkdown(text: string): React.ReactNode {
   const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`|_[^_]+_)/);
   return parts.map((part, i) => {
     if (part.startsWith("**") && part.endsWith("**")) {
-      return <strong key={i} style={{ color: "#ccc", fontWeight: 600 }}>{part.slice(2, -2)}</strong>;
+      return <strong key={i} style={{ color: "var(--text-3)", fontWeight: 600 }}>{part.slice(2, -2)}</strong>;
     }
     if ((part.startsWith("*") && part.endsWith("*")) || (part.startsWith("_") && part.endsWith("_"))) {
-      return <em key={i} style={{ color: "#888" }}>{part.slice(1, -1)}</em>;
+      return <em key={i} style={{ color: "var(--text-muted)" }}>{part.slice(1, -1)}</em>;
     }
     if (part.startsWith("`") && part.endsWith("`")) {
       return (
         <code key={i} style={{
           fontFamily: '"SF Mono", "Fira Code", monospace',
-          fontSize: 11, background: "#1a1a1a", border: "1px solid #2a2a2a",
+          fontSize: 11, background: "var(--surface-2)", border: "1px solid var(--border-3)",
           borderRadius: 4, padding: "1px 5px", color: "#a0c4ff",
         }}>
           {part.slice(1, -1)}
@@ -239,7 +239,7 @@ export function ChatAssistant({ accountId, constraintBucket, constraintReason }:
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#0f0f0f" }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "var(--bg-deep)" }}>
 
       {/* Messages */}
       <div style={{ flex: 1, overflowY: "auto", padding: "20px 20px 0" }}>
@@ -259,8 +259,8 @@ export function ChatAssistant({ accountId, constraintBucket, constraintReason }:
                 width: 26, height: 26, borderRadius: "50%", flexShrink: 0,
                 display: "flex", alignItems: "center", justifyContent: "center",
                 fontSize: 10, fontWeight: 700,
-                background: msg.role === "assistant" ? "#1d4ed8" : "#1e1e1e",
-                color: msg.role === "assistant" ? "#fff" : "#666",
+                background: msg.role === "assistant" ? "#1d4ed8" : "var(--surface-3)",
+                color: msg.role === "assistant" ? "#fff" : "var(--text-muted)",
                 marginTop: 2,
               }}>
                 {msg.role === "assistant" ? "AI" : "U"}
@@ -269,8 +269,8 @@ export function ChatAssistant({ accountId, constraintBucket, constraintReason }:
               {/* Bubble */}
               <div style={{
                 maxWidth: "82%",
-                background: msg.role === "user" ? "#1d4ed8" : "#151515",
-                border: msg.role === "user" ? "none" : "1px solid #1e1e1e",
+                background: msg.role === "user" ? "#1d4ed8" : "var(--surface)",
+                border: msg.role === "user" ? "none" : "1px solid var(--surface-3)",
                 borderRadius: msg.role === "user" ? "14px 14px 4px 14px" : "14px 14px 14px 4px",
                 padding: "10px 14px",
               }}>
@@ -278,7 +278,7 @@ export function ChatAssistant({ accountId, constraintBucket, constraintReason }:
                   ? (msg.role === "assistant"
                       ? renderMarkdown(msg.content)
                       : <p style={{ fontSize: 13, color: "#fff", lineHeight: 1.6, margin: 0 }}>{msg.content}</p>)
-                  : <span style={{ fontSize: 13, color: "#444" }}>
+                  : <span style={{ fontSize: 13, color: "var(--text-dim)" }}>
                       <Loader2 size={12} className="animate-spin" style={{ display: "inline", marginRight: 6 }} />
                       Thinking…
                     </span>}
@@ -291,8 +291,8 @@ export function ChatAssistant({ accountId, constraintBucket, constraintReason }:
 
       {/* Quick prompts — only on first message */}
       {messages.length === 1 && (
-        <div style={{ padding: "12px 20px", borderTop: "1px solid #1a1a1a" }}>
-          <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.8px", textTransform: "uppercase", color: "#333", marginBottom: 8 }}>
+        <div style={{ padding: "12px 20px", borderTop: "1px solid var(--border)" }}>
+          <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.8px", textTransform: "uppercase", color: "var(--text-faint)", marginBottom: 8 }}>
             Suggested
           </p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
@@ -301,18 +301,18 @@ export function ChatAssistant({ accountId, constraintBucket, constraintReason }:
                 key={q}
                 onClick={() => send(q)}
                 style={{
-                  background: "#141414", border: "1px solid #222",
-                  borderRadius: 20, color: "#666", fontSize: 11,
+                  background: "var(--surface-2)", border: "1px solid var(--border-2)",
+                  borderRadius: 20, color: "var(--text-muted)", fontSize: 11,
                   padding: "5px 12px", cursor: "pointer",
                   transition: "border-color 0.15s, color 0.15s",
                 }}
                 onMouseEnter={e => {
-                  (e.currentTarget as HTMLButtonElement).style.borderColor = "#3a3a3a";
-                  (e.currentTarget as HTMLButtonElement).style.color = "#aaa";
+                  (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--border-3)";
+                  (e.currentTarget as HTMLButtonElement).style.color = "var(--text-3)";
                 }}
                 onMouseLeave={e => {
-                  (e.currentTarget as HTMLButtonElement).style.borderColor = "#222";
-                  (e.currentTarget as HTMLButtonElement).style.color = "#666";
+                  (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--border-2)";
+                  (e.currentTarget as HTMLButtonElement).style.color = "var(--text-muted)";
                 }}
               >
                 {q}
@@ -323,7 +323,7 @@ export function ChatAssistant({ accountId, constraintBucket, constraintReason }:
       )}
 
       {/* Input */}
-      <div style={{ padding: "12px 16px", borderTop: "1px solid #1a1a1a" }}>
+      <div style={{ padding: "12px 16px", borderTop: "1px solid var(--border)" }}>
         <div style={{ display: "flex", alignItems: "flex-end", gap: 8 }}>
           <textarea
             ref={textareaRef}
@@ -333,22 +333,22 @@ export function ChatAssistant({ accountId, constraintBucket, constraintReason }:
             placeholder="Ask about this constraint… (Enter to send)"
             rows={2}
             style={{
-              flex: 1, resize: "none", background: "#141414",
-              border: "1px solid #222", borderRadius: 10,
-              color: "#e0e0e0", fontSize: 13, padding: "10px 14px",
+              flex: 1, resize: "none", background: "var(--surface-2)",
+              border: "1px solid var(--border-2)", borderRadius: 10,
+              color: "var(--text-2)", fontSize: 13, padding: "10px 14px",
               outline: "none", lineHeight: 1.5,
               fontFamily: "inherit",
             }}
-            onFocus={e => (e.currentTarget.style.borderColor = "#333")}
-            onBlur={e => (e.currentTarget.style.borderColor = "#222")}
+            onFocus={e => (e.currentTarget.style.borderColor = "var(--border-3)")}
+            onBlur={e => (e.currentTarget.style.borderColor = "var(--border-2)")}
           />
           <button
             onClick={() => send()}
             disabled={!input.trim() || streaming}
             style={{
               width: 38, height: 38, borderRadius: 10, border: "none",
-              background: input.trim() && !streaming ? "#1d4ed8" : "#1a1a1a",
-              color: input.trim() && !streaming ? "#fff" : "#333",
+              background: input.trim() && !streaming ? "#1d4ed8" : "var(--surface-2)",
+              color: input.trim() && !streaming ? "#fff" : "var(--text-faint)",
               display: "flex", alignItems: "center", justifyContent: "center",
               cursor: input.trim() && !streaming ? "pointer" : "not-allowed",
               flexShrink: 0, transition: "background 0.15s, color 0.15s",

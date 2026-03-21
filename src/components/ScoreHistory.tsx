@@ -71,14 +71,14 @@ export function ScoreHistory({ accountId, governingConstraint }: Props) {
 
   return (
     <div style={{
-      background: "#111", border: "1px solid #1e1e1e", borderRadius: 12,
+      background: "var(--surface)", border: "1px solid var(--surface-3)", borderRadius: 12,
       padding: "18px 20px", marginTop: 20,
     }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-        <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.8px", textTransform: "uppercase", color: "#444" }}>
+        <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.8px", textTransform: "uppercase", color: "var(--text-dim)" }}>
           Score history
         </span>
-        <span style={{ fontSize: 11, color: "#333" }}>{history.length} snapshots</span>
+        <span style={{ fontSize: 11, color: "var(--text-faint)" }}>{history.length} snapshots</span>
       </div>
 
       {/* SVG chart */}
@@ -93,9 +93,9 @@ export function ScoreHistory({ accountId, governingConstraint }: Props) {
             <g key={v}>
               <line
                 x1={PAD.left} y1={toY(v)} x2={W - PAD.right} y2={toY(v)}
-                stroke="#1a1a1a" strokeWidth={1}
+                stroke="var(--surface-2)" strokeWidth={1}
               />
-              <text x={PAD.left - 6} y={toY(v) + 4} textAnchor="end" fontSize={9} fill="#333">
+              <text x={PAD.left - 6} y={toY(v) + 4} textAnchor="end" fontSize={9} fill="var(--text-faint)">
                 {v}
               </text>
             </g>
@@ -145,7 +145,7 @@ export function ScoreHistory({ accountId, governingConstraint }: Props) {
               y1={PAD.top}
               x2={toX(hovered, history.length)}
               y2={H - PAD.bottom}
-              stroke="#333"
+              stroke="var(--border-3)"
               strokeWidth={1}
               strokeDasharray="3,3"
             />
@@ -153,7 +153,6 @@ export function ScoreHistory({ accountId, governingConstraint }: Props) {
 
           {/* X-axis labels */}
           {history.map((p, i) => {
-            // Show max ~5 date labels
             if (history.length > 5 && i % Math.ceil(history.length / 5) !== 0 && i !== history.length - 1) return null;
             const d = new Date(p.createdAt);
             const label = `${d.getMonth() + 1}/${d.getDate()}`;
@@ -164,7 +163,7 @@ export function ScoreHistory({ accountId, governingConstraint }: Props) {
                 y={H - PAD.bottom + 14}
                 textAnchor="middle"
                 fontSize={9}
-                fill="#333"
+                fill="var(--text-faint)"
               >
                 {label}
               </text>
@@ -176,11 +175,11 @@ export function ScoreHistory({ accountId, governingConstraint }: Props) {
         {hoveredPoint && (
           <div style={{
             position: "absolute", top: 0, right: 0,
-            background: "#0d0d0d", border: "1px solid #222",
+            background: "var(--bg)", border: "1px solid var(--border-2)",
             borderRadius: 8, padding: "8px 12px", fontSize: 11,
             pointerEvents: "none",
           }}>
-            <div style={{ color: "#555", marginBottom: 6 }}>
+            <div style={{ color: "var(--text-dim)", marginBottom: 6 }}>
               {new Date(hoveredPoint.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
             </div>
             {BUCKET_LINES.map((b) => (
@@ -189,8 +188,8 @@ export function ScoreHistory({ accountId, governingConstraint }: Props) {
                 opacity: b.key === constraintKey ? 1 : 0.4,
               }}>
                 <div style={{ width: 6, height: 6, borderRadius: "50%", background: b.color, flexShrink: 0 }} />
-                <span style={{ color: "#666", minWidth: 70 }}>{b.label}</span>
-                <span style={{ color: b.key === constraintKey ? b.color : "#555", fontWeight: 600 }}>
+                <span style={{ color: "var(--text-dim)", minWidth: 70 }}>{b.label}</span>
+                <span style={{ color: b.key === constraintKey ? b.color : "var(--text-dim)", fontWeight: 600 }}>
                   {Number(hoveredPoint[b.key])}
                 </span>
               </div>
@@ -207,7 +206,7 @@ export function ScoreHistory({ accountId, governingConstraint }: Props) {
             opacity: b.key === constraintKey ? 1 : 0.3,
           }}>
             <div style={{ width: 16, height: 2, background: b.color, borderRadius: 1 }} />
-            <span style={{ fontSize: 10, color: b.key === constraintKey ? b.color : "#555" }}>
+            <span style={{ fontSize: 10, color: b.key === constraintKey ? b.color : "var(--text-dim)" }}>
               {b.label}
             </span>
           </div>

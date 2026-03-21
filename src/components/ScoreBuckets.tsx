@@ -47,13 +47,14 @@ export function ScoreBuckets({ buckets }: Props) {
         const desc   = BUCKET_DESCRIPTIONS[bucket.bucket as keyof typeof BUCKET_DESCRIPTIONS] ?? "";
         const accent = BUCKET_ACCENT[bucket.bucket] ?? "#60a5fa";
         const color  = scoreColor(bucket.score);
+        const rgb    = accent.slice(1).match(/../g)!.map(h => parseInt(h, 16)).join(",");
 
         return (
           <div
             key={bucket.bucket}
             style={{
-              background: bucket.isGoverning ? `rgba(${accent.slice(1).match(/../g)!.map(h => parseInt(h, 16)).join(",")}, 0.06)` : "#111",
-              border: `1px solid ${bucket.isGoverning ? `rgba(${accent.slice(1).match(/../g)!.map(h => parseInt(h, 16)).join(",")}, 0.2)` : "#1e1e1e"}`,
+              background: bucket.isGoverning ? `rgba(${rgb}, 0.06)` : "var(--surface)",
+              border: `1px solid ${bucket.isGoverning ? `rgba(${rgb}, 0.2)` : "var(--surface-3)"}`,
               borderRadius: 12,
               padding: "16px 18px",
             }}
@@ -66,19 +67,19 @@ export function ScoreBuckets({ buckets }: Props) {
                   width: 28, height: 28, flexShrink: 0,
                   display: "flex", alignItems: "center", justifyContent: "center",
                   borderRadius: 8, fontSize: 12, fontWeight: 700,
-                  background: bucket.isGoverning ? `rgba(${accent.slice(1).match(/../g)!.map(h => parseInt(h, 16)).join(",")}, 0.15)` : "#1a1a1a",
-                  color: bucket.isGoverning ? accent : "#333",
-                  border: `1px solid ${bucket.isGoverning ? `rgba(${accent.slice(1).match(/../g)!.map(h => parseInt(h, 16)).join(",")}, 0.25)` : "#222"}`,
+                  background: bucket.isGoverning ? `rgba(${rgb}, 0.15)` : "var(--surface-2)",
+                  color: bucket.isGoverning ? accent : "var(--text-faint)",
+                  border: `1px solid ${bucket.isGoverning ? `rgba(${rgb}, 0.25)` : "var(--border-2)"}`,
                 }}>
                   {idx + 1}
                 </div>
                 <div style={{ minWidth: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                    <span style={{ fontSize: 14, fontWeight: 600, color: "#e0e0e0" }}>{label}</span>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text-2)" }}>{label}</span>
                     {bucket.isGoverning && (
                       <span style={{
                         fontSize: 9, fontWeight: 700, letterSpacing: "0.6px", textTransform: "uppercase",
-                        background: `rgba(${accent.slice(1).match(/../g)!.map(h => parseInt(h, 16)).join(",")}, 0.15)`,
+                        background: `rgba(${rgb}, 0.15)`,
                         color: accent,
                         padding: "2px 8px", borderRadius: 20,
                       }}>
@@ -86,7 +87,7 @@ export function ScoreBuckets({ buckets }: Props) {
                       </span>
                     )}
                   </div>
-                  <p style={{ fontSize: 11, color: "#444", marginTop: 1 }}>{desc}</p>
+                  <p style={{ fontSize: 11, color: "var(--text-very-dim)", marginTop: 1 }}>{desc}</p>
                 </div>
               </div>
 
@@ -102,7 +103,7 @@ export function ScoreBuckets({ buckets }: Props) {
             </div>
 
             {/* Score bar */}
-            <div style={{ marginTop: 12, height: 3, background: "#1a1a1a", borderRadius: 2, overflow: "hidden" }}>
+            <div style={{ marginTop: 12, height: 3, background: "var(--surface-2)", borderRadius: 2, overflow: "hidden" }}>
               <div style={{
                 height: "100%", width: `${bucket.score}%`,
                 background: bucket.isGoverning ? accent : color,
@@ -114,8 +115,8 @@ export function ScoreBuckets({ buckets }: Props) {
             {bucket.signals.length > 0 && (
               <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 4 }}>
                 {bucket.signals.slice(0, 2).map((sig, i) => (
-                  <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 6, fontSize: 12, color: "#555" }}>
-                    <span style={{ color: "#333", marginTop: 1 }}>›</span>
+                  <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 6, fontSize: 12, color: "var(--text-dim)" }}>
+                    <span style={{ color: "var(--text-faint)", marginTop: 1 }}>›</span>
                     {sig}
                   </div>
                 ))}

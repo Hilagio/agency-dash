@@ -8,6 +8,7 @@ import { ScoreBuckets } from "@/components/ScoreBuckets";
 import { ScoreHistory } from "@/components/ScoreHistory";
 import { ActionList } from "@/components/ActionList";
 import { ChatAssistant } from "@/components/ChatAssistant";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { BUCKET_LABELS } from "@/lib/engine/types";
 
 type Tab = "overview" | "actions" | "chat";
@@ -66,11 +67,11 @@ const CONSTRAINT_ACCENT: Record<string, string> = {
 };
 
 const CONSTRAINT_GLOW: Record<string, string> = {
-  MEASUREMENT: "rgba(192, 132, 252, 0.08)",
-  TRAFFIC:     "rgba(96, 165, 250, 0.08)",
-  CONVERSION:  "rgba(251, 146, 60, 0.08)",
-  FUNNEL:      "rgba(251, 191, 36, 0.08)",
-  ECONOMICS:   "rgba(74, 222, 128, 0.08)",
+  MEASUREMENT: "rgba(192, 132, 252, 0.06)",
+  TRAFFIC:     "rgba(96, 165, 250, 0.06)",
+  CONVERSION:  "rgba(251, 146, 60, 0.06)",
+  FUNNEL:      "rgba(251, 191, 36, 0.06)",
+  ECONOMICS:   "rgba(74, 222, 128, 0.06)",
 };
 
 export default function AccountPage() {
@@ -140,9 +141,9 @@ export default function AccountPage() {
   if (loading) {
     return (
       <div style={{
-        minHeight: "100vh", background: "#0a0a0a",
+        minHeight: "100vh", background: "var(--bg)",
         display: "flex", alignItems: "center", justifyContent: "center",
-        color: "#444",
+        color: "var(--text-dim)",
       }}>
         <Loader2 size={24} className="animate-spin" />
       </div>
@@ -152,7 +153,7 @@ export default function AccountPage() {
   if (error || !account) {
     return (
       <div style={{
-        minHeight: "100vh", background: "#0a0a0a",
+        minHeight: "100vh", background: "var(--bg)",
         display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16,
       }}>
         <p style={{ color: "#f87171", fontSize: 14 }}>{error ?? "Account not found"}</p>
@@ -165,7 +166,7 @@ export default function AccountPage() {
   const constraint    = snapshot?.governingConstraint ?? "MEASUREMENT";
   const label         = BUCKET_LABELS[constraint as keyof typeof BUCKET_LABELS] ?? constraint;
   const accent        = CONSTRAINT_ACCENT[constraint] ?? "#60a5fa";
-  const glow          = CONSTRAINT_GLOW[constraint] ?? "rgba(96,165,250,0.08)";
+  const glow          = CONSTRAINT_GLOW[constraint] ?? "rgba(96,165,250,0.06)";
   const pendingActions  = actions.filter((a) => a.status === "PENDING");
   const automatable     = pendingActions.filter((a) => a.safeToAutomate);
 
@@ -176,41 +177,44 @@ export default function AccountPage() {
   ];
 
   return (
-    <div style={{ minHeight: "100vh", background: "#0a0a0a", color: "#f0f0f0" }}>
+    <div style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)" }}>
 
       {/* Top nav */}
       <header style={{
-        borderBottom: "1px solid #1a1a1a", padding: "0 32px", height: 52,
+        borderBottom: "1px solid var(--border)", padding: "0 32px", height: 52,
         display: "flex", alignItems: "center", justifyContent: "space-between",
         position: "sticky", top: 0,
-        background: "rgba(10,10,10,0.92)", backdropFilter: "blur(12px)", zIndex: 10,
+        background: "var(--header-bg)", backdropFilter: "blur(12px)", zIndex: 10,
       }}>
         <Link href="/" style={{
           display: "flex", alignItems: "center", gap: 6,
-          color: "#555", fontSize: 13, textDecoration: "none",
+          color: "var(--text-dim)", fontSize: 13, textDecoration: "none",
           transition: "color 0.15s",
         }}
-        onMouseEnter={e => (e.currentTarget as HTMLAnchorElement).style.color = "#aaa"}
-        onMouseLeave={e => (e.currentTarget as HTMLAnchorElement).style.color = "#555"}
+        onMouseEnter={e => (e.currentTarget as HTMLAnchorElement).style.color = "var(--text-muted)"}
+        onMouseLeave={e => (e.currentTarget as HTMLAnchorElement).style.color = "var(--text-dim)"}
         >
           <ArrowLeft size={14} />
           All accounts
         </Link>
 
-        <button
-          onClick={rescore}
-          disabled={rescoring}
-          style={{
-            display: "flex", alignItems: "center", gap: 6,
-            background: "transparent", border: "1px solid #222",
-            borderRadius: 7, color: "#555", fontSize: 12, fontWeight: 500,
-            padding: "6px 12px", cursor: rescoring ? "not-allowed" : "pointer",
-            opacity: rescoring ? 0.5 : 1,
-          }}
-        >
-          {rescoring ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
-          {rescoring ? "Scoring…" : "Rescore"}
-        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <button
+            onClick={rescore}
+            disabled={rescoring}
+            style={{
+              display: "flex", alignItems: "center", gap: 6,
+              background: "transparent", border: "1px solid var(--border-2)",
+              borderRadius: 7, color: "var(--text-dim)", fontSize: 12, fontWeight: 500,
+              padding: "6px 12px", cursor: rescoring ? "not-allowed" : "pointer",
+              opacity: rescoring ? 0.5 : 1,
+            }}
+          >
+            {rescoring ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
+            {rescoring ? "Scoring…" : "Rescore"}
+          </button>
+          <ThemeToggle />
+        </div>
       </header>
 
       {/* Constraint hero */}
@@ -218,14 +222,14 @@ export default function AccountPage() {
         <div style={{
           padding: "32px 32px 28px",
           background: glow,
-          borderBottom: "1px solid #1a1a1a",
+          borderBottom: "1px solid var(--border)",
         }}>
           <div style={{ maxWidth: 860, margin: "0 auto" }}>
             <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 24 }}>
               <div>
-                <div style={{ fontSize: 12, color: "#555", marginBottom: 6 }}>{account.name} · {account.googleAdsId}</div>
+                <div style={{ fontSize: 12, color: "var(--text-dim)", marginBottom: 6 }}>{account.name} · {account.googleAdsId}</div>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                  <h1 style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-0.5px", color: "#f0f0f0" }}>
+                  <h1 style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-0.5px", color: "var(--text)" }}>
                     Governing Constraint
                   </h1>
                   <span style={{
@@ -237,7 +241,7 @@ export default function AccountPage() {
                     {label}
                   </span>
                 </div>
-                <p style={{ fontSize: 13, color: "#777", maxWidth: 560, lineHeight: 1.6 }}>
+                <p style={{ fontSize: 13, color: "var(--text-muted)", maxWidth: 560, lineHeight: 1.6 }}>
                   {snapshot.constraintReason}
                 </p>
               </div>
@@ -249,12 +253,12 @@ export default function AccountPage() {
                   borderRadius: 10, padding: "10px 16px", textAlign: "center",
                 }}>
                   <div style={{ fontSize: 22, fontWeight: 700, color: "#60a5fa" }}>{automatable.length}</div>
-                  <div style={{ fontSize: 11, color: "#555" }}>ready to run</div>
+                  <div style={{ fontSize: 11, color: "var(--text-dim)" }}>ready to run</div>
                 </div>
               )}
             </div>
 
-            <div style={{ fontSize: 11, color: "#333", marginTop: 12 }}>
+            <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 12 }}>
               Last scored {new Date(snapshot.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
             </div>
           </div>
@@ -262,7 +266,7 @@ export default function AccountPage() {
       )}
 
       {/* Tabs */}
-      <div style={{ borderBottom: "1px solid #1a1a1a", padding: "0 32px" }}>
+      <div style={{ borderBottom: "1px solid var(--border)", padding: "0 32px" }}>
         <div style={{ maxWidth: 860, margin: "0 auto", display: "flex", gap: 0 }}>
           {TABS.map((t) => (
             <button
@@ -273,7 +277,7 @@ export default function AccountPage() {
                 padding: "14px 16px", fontSize: 13, fontWeight: 500,
                 borderTop: "none", borderLeft: "none", borderRight: "none",
                 borderBottom: `2px solid ${tab === t.key ? accent : "transparent"}`,
-                color: tab === t.key ? "#e8e8e8" : "#555",
+                color: tab === t.key ? "var(--text-2)" : "var(--text-dim)",
                 background: "transparent",
                 cursor: "pointer", transition: "color 0.15s",
                 marginBottom: -1,
@@ -301,15 +305,15 @@ export default function AccountPage() {
           <>
             {!snapshot ? (
               <div style={{
-                border: "1px dashed #222", borderRadius: 14,
-                padding: "60px 32px", textAlign: "center", color: "#444", fontSize: 13,
+                border: "1px dashed var(--border-2)", borderRadius: 14,
+                padding: "60px 32px", textAlign: "center", color: "var(--text-dim)", fontSize: 13,
               }}>
                 No score yet — click Rescore above to pull live data.
               </div>
             ) : (
               <>
                 <div style={{ marginBottom: 20, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.8px", textTransform: "uppercase", color: "#444" }}>
+                  <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.8px", textTransform: "uppercase", color: "var(--text-dim)" }}>
                     Bucket health
                   </span>
                 </div>
@@ -318,14 +322,14 @@ export default function AccountPage() {
                 <ScoreHistory accountId={id} governingConstraint={constraint} />
 
                 <div style={{
-                  background: "#111", border: "1px solid #1e1e1e", borderRadius: 12,
+                  background: "var(--surface)", border: "1px solid var(--surface-3)", borderRadius: 12,
                   padding: "20px 22px", marginTop: 20,
                 }}>
-                  <p style={{ fontSize: 13, color: "#666", lineHeight: 1.7 }}>
-                    <strong style={{ color: "#888" }}>{label}</strong> is your governing constraint —
+                  <p style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.7 }}>
+                    <strong style={{ color: "var(--text-2)" }}>{label}</strong> is your governing constraint —
                     the single bottleneck blocking growth. Fix this before anything downstream.
-                    Go to the <strong style={{ color: "#888" }}>Actions</strong> tab for prioritized moves,
-                    or use the <strong style={{ color: "#888" }}>AI Advisor</strong> to think it through.
+                    Go to the <strong style={{ color: "var(--text-2)" }}>Actions</strong> tab for prioritized moves,
+                    or use the <strong style={{ color: "var(--text-2)" }}>AI Advisor</strong> to think it through.
                   </p>
                 </div>
               </>
@@ -336,10 +340,10 @@ export default function AccountPage() {
         {tab === "actions" && (
           <>
             <div style={{ marginBottom: 18, display: "flex", alignItems: "baseline", gap: 8 }}>
-              <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.8px", textTransform: "uppercase", color: "#444" }}>
+              <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.8px", textTransform: "uppercase", color: "var(--text-dim)" }}>
                 Recommended actions
               </span>
-              <span style={{ fontSize: 11, color: "#333" }}>
+              <span style={{ fontSize: 11, color: "var(--text-faint)" }}>
                 Governing constraint first · ⚡ = safe to automate · ⚠ = requires client
               </span>
             </div>
@@ -353,8 +357,8 @@ export default function AccountPage() {
 
         {tab === "chat" && snapshot && (
           <div style={{
-            height: 580, borderRadius: 14, border: "1px solid #1a1a1a",
-            background: "#0f0f0f", overflow: "hidden",
+            height: 580, borderRadius: 14, border: "1px solid var(--border)",
+            background: "var(--bg-deep)", overflow: "hidden",
           }}>
             <ChatAssistant
               accountId={id}
@@ -366,8 +370,8 @@ export default function AccountPage() {
 
         {tab === "chat" && !snapshot && (
           <div style={{
-            border: "1px dashed #222", borderRadius: 14,
-            padding: "60px 32px", textAlign: "center", color: "#444", fontSize: 13,
+            border: "1px dashed var(--border-2)", borderRadius: 14,
+            padding: "60px 32px", textAlign: "center", color: "var(--text-dim)", fontSize: 13,
           }}>
             Run a constraint score first to unlock the advisor.
           </div>

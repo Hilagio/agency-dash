@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Search, Plus, CheckCircle, Loader2, RefreshCw, X } from "lucide-react";
+import { Search, Plus, CheckCircle, Loader2, RefreshCw } from "lucide-react";
 
 interface GoogleAdsAccount {
   googleAdsId: string;
@@ -75,22 +75,22 @@ export function AccountImporter({ onImported }: Props) {
 
   return (
     <div style={{
-      background: "#111", border: "1px solid #1e1e1e", borderRadius: 14,
+      background: "var(--surface)", border: "1px solid var(--surface-3)", borderRadius: 14,
       overflow: "hidden",
     }}>
       {/* Header */}
       <div style={{
         display: "flex", alignItems: "center", justifyContent: "space-between",
-        padding: "14px 18px", borderBottom: "1px solid #1a1a1a",
+        padding: "14px 18px", borderBottom: "1px solid var(--border)",
       }}>
-        <span style={{ fontSize: 13, fontWeight: 600, color: "#ccc" }}>Import from MCC</span>
+        <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-3)" }}>Import from MCC</span>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <button
             onClick={fetchAccounts}
             disabled={loading}
             style={{
               background: "transparent", border: "none", cursor: "pointer",
-              color: "#444", padding: 4, borderRadius: 6,
+              color: "var(--text-dim)", padding: 4, borderRadius: 6,
               display: "flex", alignItems: "center",
             }}
           >
@@ -102,7 +102,7 @@ export function AccountImporter({ onImported }: Props) {
       {/* Auth required */}
       {authRequired && (
         <div style={{ padding: 20 }}>
-          <p style={{ fontSize: 13, color: "#666", marginBottom: 12 }}>
+          <p style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 12 }}>
             Connect your Google Ads account to import.
           </p>
           <a
@@ -128,7 +128,7 @@ export function AccountImporter({ onImported }: Props) {
       {loading && !authRequired && (
         <div style={{
           display: "flex", alignItems: "center", justifyContent: "center",
-          gap: 8, padding: "32px 0", color: "#444",
+          gap: 8, padding: "32px 0", color: "var(--text-dim)",
         }}>
           <Loader2 size={14} className="animate-spin" />
           <span style={{ fontSize: 13 }}>Fetching accounts from MCC…</span>
@@ -142,8 +142,8 @@ export function AccountImporter({ onImported }: Props) {
             onClick={fetchAccounts}
             style={{
               display: "flex", alignItems: "center", gap: 6,
-              background: "#1a1a1a", border: "1px solid #252525",
-              borderRadius: 8, color: "#888", fontSize: 13, fontWeight: 500,
+              background: "var(--surface-2)", border: "1px solid var(--border-2)",
+              borderRadius: 8, color: "var(--text-muted)", fontSize: 13, fontWeight: 500,
               padding: "8px 14px", cursor: "pointer",
             }}
           >
@@ -160,17 +160,17 @@ export function AccountImporter({ onImported }: Props) {
           <div style={{ padding: "12px 18px 0" }}>
             <div style={{
               display: "flex", alignItems: "center", gap: 8,
-              background: "#0f0f0f", border: "1px solid #1e1e1e",
+              background: "var(--input-bg)", border: "1px solid var(--surface-3)",
               borderRadius: 8, padding: "8px 12px",
             }}>
-              <Search size={12} style={{ color: "#444", flexShrink: 0 }} />
+              <Search size={12} style={{ color: "var(--text-dim)", flexShrink: 0 }} />
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search by name or ID…"
                 style={{
                   flex: 1, background: "transparent", border: "none", outline: "none",
-                  fontSize: 13, color: "#ccc",
+                  fontSize: 13, color: "var(--text-3)",
                 }}
               />
             </div>
@@ -179,7 +179,7 @@ export function AccountImporter({ onImported }: Props) {
           {/* Rows */}
           <div style={{ maxHeight: 280, overflowY: "auto", padding: "8px 10px" }}>
             {filtered.length === 0 ? (
-              <p style={{ padding: "16px 8px", textAlign: "center", fontSize: 13, color: "#444" }}>No accounts match</p>
+              <p style={{ padding: "16px 8px", textAlign: "center", fontSize: 13, color: "var(--text-dim)" }}>No accounts match</p>
             ) : (
               filtered.map((account) => (
                 <div
@@ -189,12 +189,12 @@ export function AccountImporter({ onImported }: Props) {
                     padding: "10px 10px", borderRadius: 8,
                     transition: "background 0.1s",
                   }}
-                  onMouseEnter={e => (e.currentTarget as HTMLDivElement).style.background = "#161616"}
+                  onMouseEnter={e => (e.currentTarget as HTMLDivElement).style.background = "var(--surface-2)"}
                   onMouseLeave={e => (e.currentTarget as HTMLDivElement).style.background = "transparent"}
                 >
                   <div>
-                    <p style={{ fontSize: 13, fontWeight: 500, color: "#ccc" }}>{account.name}</p>
-                    <p style={{ fontSize: 11, color: "#444" }}>{account.googleAdsId} · {account.currency}</p>
+                    <p style={{ fontSize: 13, fontWeight: 500, color: "var(--text-3)" }}>{account.name}</p>
+                    <p style={{ fontSize: 11, color: "var(--text-dim)" }}>{account.googleAdsId} · {account.currency}</p>
                   </div>
 
                   {account.imported ? (
@@ -226,8 +226,8 @@ export function AccountImporter({ onImported }: Props) {
 
           {/* Footer */}
           <div style={{
-            borderTop: "1px solid #1a1a1a", padding: "10px 18px",
-            fontSize: 11, color: "#333",
+            borderTop: "1px solid var(--border)", padding: "10px 18px",
+            fontSize: 11, color: "var(--text-faint)",
           }}>
             {accounts.length} in MCC · {accounts.filter((a) => a.imported).length} imported
           </div>

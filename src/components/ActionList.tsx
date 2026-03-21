@@ -55,9 +55,9 @@ export function ActionList({ actions, onStatusChange, onExecute }: Props) {
   if (actions.length === 0) {
     return (
       <div style={{
-        border: "1px dashed #222", borderRadius: 12,
+        border: "1px dashed var(--border-2)", borderRadius: 12,
         padding: "40px 32px", textAlign: "center",
-        color: "#444", fontSize: 13,
+        color: "var(--text-very-dim)", fontSize: 13,
       }}>
         No pending actions — account looks healthy.
       </div>
@@ -78,14 +78,14 @@ export function ActionList({ actions, onStatusChange, onExecute }: Props) {
         const isExpanded  = expanded === action.id;
 
         const borderColor = isDone      ? "rgba(74,222,128,0.2)"
-                          : isDismissed ? "#1a1a1a"
+                          : isDismissed ? "var(--border)"
                           : action.isEscalation ? "rgba(251,191,36,0.15)"
-                          : "#1e1e1e";
+                          : "var(--surface-3)";
 
         const bgColor = isDone      ? "rgba(74,222,128,0.04)"
-                      : isDismissed ? "#0f0f0f"
+                      : isDismissed ? "var(--bg-deep)"
                       : action.isEscalation ? "rgba(251,191,36,0.03)"
-                      : "#111";
+                      : "var(--surface)";
 
         return (
           <div
@@ -125,16 +125,16 @@ export function ActionList({ actions, onStatusChange, onExecute }: Props) {
                 </div>
 
                 {/* Title */}
-                <p style={{ fontSize: 13, fontWeight: 500, color: isDone ? "#4ade80" : isDismissed ? "#555" : "#e0e0e0" }}>
+                <p style={{ fontSize: 13, fontWeight: 500, color: isDone ? "#4ade80" : isDismissed ? "var(--text-dim)" : "var(--text-2)" }}>
                   {action.title}
                 </p>
 
                 {/* Expanded description */}
                 {isExpanded && (
                   <p style={{
-                    marginTop: 10, fontSize: 12, color: "#666",
+                    marginTop: 10, fontSize: 12, color: "var(--text-muted)",
                     lineHeight: 1.7,
-                    paddingTop: 10, borderTop: "1px solid #1a1a1a",
+                    paddingTop: 10, borderTop: "1px solid var(--border)",
                   }}>
                     {action.description}
                   </p>
@@ -161,7 +161,7 @@ export function ActionList({ actions, onStatusChange, onExecute }: Props) {
                   onClick={() => setExpanded(isExpanded ? null : action.id)}
                   style={{
                     background: "transparent", border: "none", cursor: "pointer",
-                    color: "#333", padding: 4, borderRadius: 6, display: "flex",
+                    color: "var(--text-faint)", padding: 4, borderRadius: 6, display: "flex",
                   }}
                 >
                   {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
@@ -186,7 +186,7 @@ export function ActionList({ actions, onStatusChange, onExecute }: Props) {
                       title="Dismiss"
                       style={{
                         background: "transparent", border: "none", cursor: "pointer",
-                        color: "#333", padding: 4, borderRadius: 6, display: "flex",
+                        color: "var(--text-faint)", padding: 4, borderRadius: 6, display: "flex",
                       }}
                     >
                       <XCircle size={14} />
