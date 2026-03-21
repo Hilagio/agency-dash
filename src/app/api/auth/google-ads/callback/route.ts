@@ -18,41 +18,73 @@ interface CustomerInfo {
   isManager: boolean;
 }
 
-// ─── Fetch customer names via REST ────────────────────────────────────────────
+// ─── Fetch customer names via GAQL ────────────────────────────────────────────
+// We try each accessible customer as potential MCC login.
+// The first one that can run a customer_client query is the MCC.
+// We then fetch descriptive names for all customers using the MCC.
 
-async function fetchCustomerInfo(
-  accessToken: string,
+async function fetchCustomerInfoViaGaql(
   developerToken: string,
+  refreshToken: string,
+  clientId: string,
+  clientSecret: string,
   customerIds: string[],
-): Promise<CustomerInfo[]> {
-  const results = await Promise.all(
-    customerIds.map(async (id): Promise<CustomerInfo> => {
-      try {
-        const res = await fetch(
-          `https://googleads.googleapis.com/v19/customers/${id}`,
-          {
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-              "developer-token": developerToken,
-            },
-          }
-        );
-        const data = await res.json() as {
-          descriptiveName?: string;
-          manager?: boolean;
-          id?: string;
-        };
-        return {
-          id,
-          name: data.descriptiveName || `Account ${id}`,
-          isManager: data.manager ?? false,
-        };
-      } catch {
-        return { id, name: `Account ${id}`, isManager: false };
+): Promise<{ customers: CustomerInfo[]; detectedMccId: string | null }> {
+  const { GoogleAdsApi } = await import("google-ads-api");
+  const client = new GoogleAdsApi({ client_id: clientId, client_secret: clientSecret, developer_token: developerToken });
+
+  // Try each ID as potential MCC
+  for (const candidateId of customerIds) {
+    try {
+      const mccCustomer = client.Customer({ customer_id: candidateId, refresh_token: refreshToken });
+
+      // Query this customer's own info first
+      const selfRows = await mccCustomer.query(
+        "SELECT customer.id, customer.descriptive_name, customer.manager FROM customer LIMIT 1"
+      );
+      const selfIsManager = selfRows[0]?.customer?.manager ?? false;
+
+      // Try to get all sub-accounts (only works from an MCC)
+      const clientRows = await mccCustomer.query(`
+        SELECT customer_client.id, customer_client.descriptive_name, customer_client.manager
+        FROM customer_client
+        LIMIT 100
+      `);
+
+      // Build a name map from GAQL results
+      const nameMap = new Map<string, { name: string; isManager: boolean }>();
+      nameMap.set(candidateId, {
+        name: selfRows[0]?.customer?.descriptive_name ?? `Account ${candidateId}`,
+        isManager: selfIsManager,
+      });
+      for (const r of clientRows) {
+        const id = String(r.customer_client?.id ?? "");
+        if (id) {
+          nameMap.set(id, {
+            name: r.customer_client?.descriptive_name ?? `Account ${id}`,
+            isManager: r.customer_client?.manager ?? false,
+          });
+        }
       }
-    })
-  );
-  return results;
+
+      // Map all accessible customer IDs
+      const customers = customerIds.map((id) => ({
+        id,
+        name: nameMap.get(id)?.name ?? `Account ${id}`,
+        isManager: nameMap.get(id)?.isManager ?? false,
+      }));
+
+      return { customers, detectedMccId: candidateId };
+    } catch {
+      // This customer can't run GAQL, or isn't an MCC — try next
+    }
+  }
+
+  // Nothing worked — return bare IDs
+  return {
+    customers: customerIds.map((id) => ({ id, name: `Account ${id}`, isManager: false })),
+    detectedMccId: customerIds[0] ?? null,
+  };
 }
 
 // ─── DB persistence ───────────────────────────────────────────────────────────
@@ -174,16 +206,16 @@ export async function GET(req: NextRequest) {
     ), baseUrl);
   }
 
-  // ── 4. Fetch names + detect MCC ─────────────────────────────────────────────
-  const customers = await fetchCustomerInfo(
-    tokens.access_token!,
+  // ── 4. Fetch names + detect MCC via GAQL ────────────────────────────────────
+  const { customers, detectedMccId } = await fetchCustomerInfoViaGaql(
     developerToken,
+    tokens.refresh_token,
+    clientId,
+    clientSecret,
     customerIds,
   );
 
-  // Prefer manager accounts as login customer ID
-  const managers = customers.filter((c) => c.isManager);
-  const loginCustomerId = managers[0]?.id ?? customers[0]?.id ?? null;
+  const loginCustomerId = detectedMccId;
 
   // ── 5. Save everything ──────────────────────────────────────────────────────
   await saveCredentials(tokens.refresh_token, customerIds, loginCustomerId);

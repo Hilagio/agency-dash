@@ -34,16 +34,12 @@ export function AccountImporter({ onImported, onAuthFailed }: Props) {
       const res = await fetch("/api/google-ads/accounts");
       const data = await res.json();
       if (!res.ok) {
-        const isAuthError = !!data.authUrl ||
-          (typeof data.error === "string" && (
-            data.error.includes("invalid_grant") ||
-            data.error.includes("invalid_credentials") ||
-            data.error.includes("unauthorized")
-          ));
-        if (isAuthError) {
+        // Only treat as auth failure for real credential errors (invalid_grant etc.)
+        // NOT for MCC-configuration issues (those should show an error, not log the user out)
+        const isRealAuthError = (res.status === 401 || res.status === 403) && !!data.authUrl;
+        if (isRealAuthError) {
           setAuthRequired(true);
           setError("Authentication required.");
-          // Clear stale token so status check reflects reality
           await fetch("/api/auth/google-ads/disconnect", { method: "POST" }).catch(() => {});
           onAuthFailed?.();
         } else {
