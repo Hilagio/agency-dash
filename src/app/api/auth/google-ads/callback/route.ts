@@ -75,7 +75,7 @@ export async function GET(req: NextRequest) {
   let customerIds: string[] = [];
   let customersError: string | null = null;
   const customersRes = await fetch(
-    "https://googleads.googleapis.com/v19/customers:listAccessibleCustomers",
+    "https://googleads.googleapis.com/v23/customers:listAccessibleCustomers",
     {
       headers: {
         Authorization: `Bearer ${tokens.access_token}`,
