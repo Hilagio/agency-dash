@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { BUCKET_LABELS } from "@/lib/engine/types";
-import { AlertCircle, CheckCircle, TrendingDown, ArrowRight, RefreshCw, Loader2 } from "lucide-react";
+import { AlertCircle, CheckCircle, TrendingDown, ArrowRight, RefreshCw, Loader2, Zap } from "lucide-react";
 import { AccountImporter } from "@/components/AccountImporter";
 
 type ConstraintBucket = "MEASUREMENT" | "TRAFFIC" | "CONVERSION" | "FUNNEL" | "ECONOMICS";
@@ -48,6 +48,8 @@ export default function HomePage() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [scoring, setScoring] = useState<string | null>(null);
+  const [scoringAll, setScoringAll] = useState(false);
+  const [scoreAllResult, setScoreAllResult] = useState<{ succeeded: string[]; failed: { name: string; error: string }[] } | null>(null);
 
   const loadAccounts = useCallback(async () => {
     setLoading(true);
@@ -71,6 +73,21 @@ export default function HomePage() {
     }
   };
 
+  const runScoreAll = async () => {
+    setScoringAll(true);
+    setScoreAllResult(null);
+    try {
+      const res = await fetch("/api/accounts/score-all", { method: "POST" });
+      if (res.ok) {
+        const data = await res.json();
+        setScoreAllResult(data);
+        await loadAccounts();
+      }
+    } finally {
+      setScoringAll(false);
+    }
+  };
+
   return (
     <div className="min-h-screen">
       <header className="border-b border-gray-200 bg-white">
@@ -80,15 +97,43 @@ export default function HomePage() {
               <h1 className="text-xl font-bold text-gray-900">Constraint Optimizer</h1>
               <p className="text-sm text-gray-500">Fix the right thing first.</p>
             </div>
-            <div className="flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700">
-              <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
-              {accounts.length} accounts
+            <div className="flex items-center gap-3">
+              {accounts.length > 1 && (
+                <button
+                  onClick={runScoreAll}
+                  disabled={scoringAll || !!scoring}
+                  className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {scoringAll ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5" />}
+                  {scoringAll ? "Scoring all…" : "Score all accounts"}
+                </button>
+              )}
+              <div className="flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700">
+                <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
+                {accounts.length} accounts
+              </div>
             </div>
           </div>
         </div>
       </header>
 
       <main className="mx-auto max-w-5xl px-6 py-8">
+        {scoreAllResult && (
+          <div className={`mb-4 rounded-xl border p-3 text-sm ${scoreAllResult.failed.length > 0 ? "border-yellow-200 bg-yellow-50" : "border-green-200 bg-green-50"}`}>
+            <span className="font-medium">
+              {scoreAllResult.succeeded.length} scored
+              {scoreAllResult.failed.length > 0 && `, ${scoreAllResult.failed.length} failed`}.
+            </span>
+            {scoreAllResult.failed.length > 0 && (
+              <ul className="mt-1 list-disc pl-4 text-xs text-red-600">
+                {scoreAllResult.failed.map((f) => (
+                  <li key={f.name}>{f.name}: {f.error}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+
         <div className="mb-6 rounded-xl border border-blue-100 bg-blue-50 p-4">
           <p className="text-sm text-blue-800">
             <strong>Core principle:</strong> Every account has one governing constraint.

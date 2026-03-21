@@ -1,9 +1,13 @@
 /**
  * PATCH /api/actions/[id] — update action status (APPROVED, DISMISSED)
- * POST  /api/actions/[id]/execute — execute a safe automated action
+ * POST  /api/actions/[id] — execute a safe automated action
  */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import {
+  executeExcludeSearchTerms,
+  executeEnableEnhancedConversions,
+} from "@/lib/integrations/google-ads-actions";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -23,7 +27,10 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 export async function POST(req: NextRequest, { params }: Params) {
   const { id } = await params;
 
-  const action = await prisma.actionRecommendation.findUnique({ where: { id } });
+  const action = await prisma.actionRecommendation.findUnique({
+    where: { id },
+    include: { account: true },
+  });
   if (!action) {
     return NextResponse.json({ error: "Action not found" }, { status: 404 });
   }
@@ -40,21 +47,23 @@ export async function POST(req: NextRequest, { params }: Params) {
     );
   }
 
-  // ─── Safe action executor ─────────────────────────────────────────────────
-  // In v1 we simulate execution and log it.
-  // Real implementation: call Google Ads API here based on action.actionType.
+  const googleAdsId = action.account.googleAdsId;
   let log = "";
 
-  switch (action.actionType) {
-    case "EXCLUDE_SEARCH_TERMS":
-      log = "[SIMULATED] Would call google.ads.searchTermView.list() to fetch irrelevant terms, " +
-            "then google.ads.campaignCriterion.mutate() to add negatives. Requires human review list first.";
-      break;
-    case "ENABLE_ENHANCED_CONVERSIONS":
-      log = "[SIMULATED] Would call google.ads.conversionAction.mutate() with enhanced_conversions_settings.enabled = true.";
-      break;
-    default:
-      log = `[SIMULATED] Action type '${action.actionType}' executed at ${new Date().toISOString()}.`;
+  try {
+    switch (action.actionType) {
+      case "EXCLUDE_SEARCH_TERMS":
+        log = await executeExcludeSearchTerms(googleAdsId);
+        break;
+      case "ENABLE_ENHANCED_CONVERSIONS":
+        log = await executeEnableEnhancedConversions(googleAdsId);
+        break;
+      default:
+        log = `Action type '${action.actionType}' acknowledged at ${new Date().toISOString()}. Manual follow-up required.`;
+    }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ error: `Execution failed: ${msg}` }, { status: 502 });
   }
 
   const updated = await prisma.actionRecommendation.update({

@@ -57,7 +57,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     }
 
     try {
-      signals = await fetchGoogleAdsSignals();
+      signals = await fetchGoogleAdsSignals(account.googleAdsId, account.industry);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       return NextResponse.json(
