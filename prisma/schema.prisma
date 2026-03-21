@@ -1,0 +1,96 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// ─── Accounts ────────────────────────────────────────────────────────────────
+
+model Account {
+  id            String   @id @default(cuid())
+  name          String
+  googleAdsId   String   @unique
+  currency      String   @default("USD")
+  monthlyBudget Float?
+  industry      String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  snapshots    ConstraintSnapshot[]
+  actions      ActionRecommendation[]
+  chatSessions ChatSession[]
+}
+
+// ─── Constraint Snapshot ─────────────────────────────────────────────────────
+// One snapshot per scoring run (daily or on-demand).
+
+model ConstraintSnapshot {
+  id        String   @id @default(cuid())
+  accountId String
+  account   Account  @relation(fields: [accountId], references: [id])
+  createdAt DateTime @default(now())
+
+  // Raw signals stored as JSON (serialized ConstraintSignals object)
+  rawSignals String
+
+  // Bucket scores 0–100 (higher = healthier)
+  scoreMeasurement Float
+  scoreTraffic     Float
+  scoreConversion  Float
+  scoreFunnel      Float
+  scoreEconomics   Float
+
+  // Governing constraint
+  governingConstraint String // MEASUREMENT | TRAFFIC | CONVERSION | FUNNEL | ECONOMICS
+  constraintReason    String
+
+  actions ActionRecommendation[]
+}
+
+// ─── Action Recommendations ──────────────────────────────────────────────────
+
+model ActionRecommendation {
+  id         String              @id @default(cuid())
+  accountId  String
+  account    Account             @relation(fields: [accountId], references: [id])
+  snapshotId String?
+  snapshot   ConstraintSnapshot? @relation(fields: [snapshotId], references: [id])
+  createdAt  DateTime            @default(now())
+
+  bucket         String // MEASUREMENT | TRAFFIC | CONVERSION | FUNNEL | ECONOMICS
+  title          String
+  description    String
+  impact         String // HIGH | MEDIUM | LOW
+  effort         String // EASY | MEDIUM | HARD
+  safeToAutomate Boolean @default(false)
+  actionType     String // e.g. EXCLUDE_SEARCH_TERM, RAISE_BID, PAUSE_AD
+  actionPayload  String? // JSON payload for automated execution
+
+  status       String    @default("PENDING") // PENDING | APPROVED | EXECUTED | DISMISSED
+  executedAt   DateTime?
+  executionLog String?
+
+  isEscalation Boolean @default(false)
+}
+
+// ─── Chat ─────────────────────────────────────────────────────────────────────
+
+model ChatSession {
+  id        String      @id @default(cuid())
+  accountId String
+  account   Account     @relation(fields: [accountId], references: [id])
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  messages  ChatMessage[]
+}
+
+model ChatMessage {
+  id        String      @id @default(cuid())
+  sessionId String
+  session   ChatSession @relation(fields: [sessionId], references: [id])
+  role      String // user | assistant
+  content   String
+  createdAt DateTime    @default(now())
+}
