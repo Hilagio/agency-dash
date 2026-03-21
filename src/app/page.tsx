@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { BUCKET_LABELS } from "@/lib/engine/types";
 import { Zap, RefreshCw, Loader2, ChevronRight, Plus } from "lucide-react";
@@ -202,12 +203,17 @@ function LoginPage() {
 // ─── Main dashboard ───────────────────────────────────────────────────────────
 
 export default function HomePage() {
+  const searchParams = useSearchParams();
+  const authError = searchParams.get("auth_error");
+
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [scoring, setScoring] = useState<string | null>(null);
   const [scoringAll, setScoringAll] = useState(false);
   const [showImporter, setShowImporter] = useState(false);
   const [connected, setConnected] = useState<boolean | null>(null);
+  const [autoImporting, setAutoImporting] = useState(false);
+  const [autoImportError, setAutoImportError] = useState<string | null>(null);
   const [scoreAllResult, setScoreAllResult] = useState<{
     succeeded: string[];
     failed: { name: string; error: string }[];
@@ -233,6 +239,40 @@ export default function HomePage() {
       })
       .catch(() => { setConnected(false); setLoading(false); });
   }, [loadAccounts]);
+
+  // Auto-import all accounts on first connection (when no accounts exist yet)
+  useEffect(() => {
+    if (!connected || loading || accounts.length > 0 || autoImporting) return;
+    let cancelled = false;
+    async function autoImport() {
+      setAutoImporting(true);
+      setAutoImportError(null);
+      try {
+        const res = await fetch("/api/google-ads/accounts");
+        if (!res.ok) {
+          const d = await res.json();
+          setAutoImportError(d.error ?? "Could not load accounts from MCC.");
+          return;
+        }
+        const mccAccounts: { googleAdsId: string; name: string; currency: string }[] = await res.json();
+        if (mccAccounts.length === 0 || cancelled) return;
+        await Promise.all(mccAccounts.map((a) =>
+          fetch("/api/google-ads/accounts", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ googleAdsId: a.googleAdsId, name: a.name, currency: a.currency }),
+          })
+        ));
+        if (!cancelled) await loadAccounts();
+      } catch {
+        if (!cancelled) setAutoImportError("Network error while importing accounts.");
+      } finally {
+        if (!cancelled) setAutoImporting(false);
+      }
+    }
+    autoImport();
+    return () => { cancelled = true; };
+  }, [connected, loading, accounts.length, autoImporting, loadAccounts]);
 
   const runScore = async (accountId: string, e: React.MouseEvent) => {
     e.preventDefault();
@@ -369,7 +409,52 @@ export default function HomePage() {
 
       <main style={{ maxWidth: 900, margin: "0 auto", padding: "40px 24px" }}>
 
-        {/* Importer panel */}
+        {/* Auth error banner */}
+        {authError && (
+          <div style={{
+            background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.2)",
+            borderRadius: 10, padding: "12px 16px", marginBottom: 20,
+            fontSize: 13, color: "#f87171",
+          }}>
+            {authError === "missing_developer_token"
+              ? "Developer token not set — add GOOGLE_ADS_DEVELOPER_TOKEN to your environment."
+              : authError === "no_accounts"
+              ? "No accessible Google Ads accounts found for this Google account."
+              : `Authentication error: ${authError}`}
+          </div>
+        )}
+
+        {/* Auto-import loading state */}
+        {autoImporting && (
+          <div style={{
+            display: "flex", alignItems: "center", gap: 10,
+            background: "rgba(96,165,250,0.06)", border: "1px solid rgba(96,165,250,0.15)",
+            borderRadius: 10, padding: "12px 16px", marginBottom: 20,
+            fontSize: 13, color: "#60a5fa",
+          }}>
+            <Loader2 size={14} className="animate-spin" />
+            Importing accounts from your MCC…
+          </div>
+        )}
+
+        {/* Auto-import error */}
+        {autoImportError && !autoImporting && (
+          <div style={{
+            background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.2)",
+            borderRadius: 10, padding: "12px 16px", marginBottom: 20,
+            fontSize: 13, color: "#f87171",
+          }}>
+            {autoImportError}
+            <button
+              onClick={() => { setAutoImportError(null); setAutoImporting(false); }}
+              style={{ marginLeft: 12, fontSize: 11, color: "#f87171", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}
+            >
+              Retry
+            </button>
+          </div>
+        )}
+
+        {/* Importer panel (for manual use) */}
         {showImporter && (
           <div style={{ marginBottom: 28 }}>
             <AccountImporter
@@ -444,10 +529,23 @@ export default function HomePage() {
             border: "1px dashed var(--border-3)", borderRadius: 16,
             padding: "60px 32px", textAlign: "center",
           }}>
-            <p style={{ color: "var(--text-dim)", fontSize: 14, marginBottom: 8 }}>No accounts yet.</p>
-            <p style={{ color: "var(--text-faint)", fontSize: 13 }}>
-              Click <strong style={{ color: "var(--text-muted)" }}>Add accounts</strong> to import from your MCC.
-            </p>
+            {autoImporting ? (
+              <p style={{ color: "var(--text-dim)", fontSize: 14 }}>Importing accounts from your MCC…</p>
+            ) : autoImportError ? (
+              <>
+                <p style={{ color: "#f87171", fontSize: 14, marginBottom: 8 }}>{autoImportError}</p>
+                <p style={{ color: "var(--text-faint)", fontSize: 13 }}>
+                  Click <strong style={{ color: "var(--text-muted)" }}>Add accounts</strong> to retry manually.
+                </p>
+              </>
+            ) : (
+              <>
+                <p style={{ color: "var(--text-dim)", fontSize: 14, marginBottom: 8 }}>No accounts yet.</p>
+                <p style={{ color: "var(--text-faint)", fontSize: 13 }}>
+                  Click <strong style={{ color: "var(--text-muted)" }}>Add accounts</strong> to import from your MCC.
+                </p>
+              </>
+            )}
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>

@@ -126,11 +126,11 @@ export async function GET(req: NextRequest) {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
 
   if (error) {
-    return page(errorScreen(`OAuth error: <code>${error}</code>`), baseUrl);
+    return NextResponse.redirect(new URL(`/?auth_error=${encodeURIComponent(error)}`, req.url));
   }
 
   if (!code) {
-    return page(errorScreen("No authorization code returned by Google."), baseUrl);
+    return NextResponse.redirect(new URL("/?auth_error=no_code", req.url));
   }
 
   const clientId     = process.env.GOOGLE_ADS_CLIENT_ID!;
@@ -158,16 +158,14 @@ export async function GET(req: NextRequest) {
   };
 
   if (tokens.error || !tokens.refresh_token) {
-    return page(
-      errorScreen(`Token exchange failed: ${tokens.error ?? "no refresh token returned"}`),
-      baseUrl
-    );
+    const msg = tokens.error ?? "no_refresh_token";
+    return NextResponse.redirect(new URL(`/?auth_error=${encodeURIComponent(msg)}`, req.url));
   }
 
-  // ── 2. No developer token → save refresh token only, show manual step ───────
+  // ── 2. No developer token → save refresh token only ─────────────────────────
   if (!developerToken) {
     await saveCredentials(tokens.refresh_token, [], null);
-    return page(missingDevTokenScreen(), baseUrl);
+    return NextResponse.redirect(new URL("/?auth_error=missing_developer_token", req.url));
   }
 
   // ── 3. List accessible customers ────────────────────────────────────────────
@@ -201,12 +199,10 @@ export async function GET(req: NextRequest) {
   }
 
   if (customersError || customerIds.length === 0) {
+    // Still save the refresh token — dashboard will show the error
     await saveCredentials(tokens.refresh_token, customerIds, null);
-    return page(errorScreen(
-      customersError
-        ? `Could not fetch accounts: ${customersError}`
-        : "No accessible Google Ads accounts found for this Google account."
-    ), baseUrl);
+    const msg = customersError ? "accounts_fetch_failed" : "no_accounts";
+    return NextResponse.redirect(new URL(`/?auth_error=${encodeURIComponent(msg)}`, req.url));
   }
 
   // ── 4. Fetch names + detect MCC via GAQL ────────────────────────────────────
@@ -220,11 +216,11 @@ export async function GET(req: NextRequest) {
 
   const loginCustomerId = detectedMccId;
 
-  // ── 5. Save everything ──────────────────────────────────────────────────────
+  // ── 5. Save everything + redirect ───────────────────────────────────────────
   await saveCredentials(tokens.refresh_token, customerIds, loginCustomerId);
 
-  // ── 6. Show success and redirect ─────────────────────────────────────────────
-  return page(successScreen(customers, loginCustomerId, baseUrl), baseUrl);
+  // Redirect straight to dashboard — no intermediate screen needed
+  return NextResponse.redirect(new URL("/", req.url));
 }
 
 // ─── HTML helpers ─────────────────────────────────────────────────────────────
