@@ -53,11 +53,18 @@ async function getRefreshToken(): Promise<string> {
   throw new Error("No Google Ads refresh token configured. Complete OAuth at /api/auth/google-ads");
 }
 
+async function getLoginCustomerId(): Promise<string | undefined> {
+  if (process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID) return process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID;
+  const cred = await prisma.oAuthCredential.findUnique({ where: { id: "singleton" } }).catch(() => null);
+  return cred?.loginCustomerId ?? undefined;
+}
+
 async function getCustomer(client: GoogleAdsApi, customerId?: string): Promise<Customer> {
-  const refreshToken = await getRefreshToken();
+  const refreshToken    = await getRefreshToken();
+  const loginCustomerId = await getLoginCustomerId();
   return client.Customer({
     customer_id:       customerId ?? process.env.GOOGLE_ADS_CUSTOMER_ID!,
-    login_customer_id: process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID || undefined,
+    login_customer_id: loginCustomerId,
     refresh_token:     refreshToken,
   });
 }

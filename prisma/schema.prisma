@@ -79,10 +79,11 @@ model ActionRecommendation {
 // Stored automatically on OAuth callback — no manual copy-paste needed.
 
 model OAuthCredential {
-  id           String   @id @default("singleton") // one row only
-  refreshToken String
-  customerIds  String   @default("[]") // JSON array of accessible customer IDs
-  updatedAt    DateTime @updatedAt
+  id              String   @id @default("singleton") // one row only
+  refreshToken    String
+  customerIds     String   @default("[]") // JSON array of accessible customer IDs
+  loginCustomerId String?  // MCC/manager customer ID used as login_customer_id
+  updatedAt       DateTime @updatedAt
 }
 
 // ─── Chat ─────────────────────────────────────────────────────────────────────

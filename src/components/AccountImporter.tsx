@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Search, Plus, CheckCircle, Loader2, RefreshCw } from "lucide-react";
+import { Search, Plus, CheckCircle, Loader2, RefreshCw, Download } from "lucide-react";
 
 interface GoogleAdsAccount {
   googleAdsId: string;
@@ -24,6 +24,7 @@ export function AccountImporter({ onImported, onAuthFailed }: Props) {
   const [search, setSearch] = useState("");
   const [authRequired, setAuthRequired] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [importingAll, setImportingAll] = useState(false);
 
   const fetchAccounts = async () => {
     setLoading(true);
@@ -82,6 +83,25 @@ export function AccountImporter({ onImported, onAuthFailed }: Props) {
     }
   };
 
+  const importAll = async () => {
+    const unimported = accounts.filter((a) => !a.imported);
+    if (unimported.length === 0) return;
+    setImportingAll(true);
+    try {
+      await Promise.all(unimported.map((account) =>
+        fetch("/api/google-ads/accounts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ googleAdsId: account.googleAdsId, name: account.name, currency: account.currency }),
+        })
+      ));
+      setAccounts((prev) => prev.map((a) => ({ ...a, imported: true })));
+      onImported();
+    } finally {
+      setImportingAll(false);
+    }
+  };
+
   const filtered = accounts.filter((a) =>
     a.name.toLowerCase().includes(search.toLowerCase()) ||
     a.googleAdsId.includes(search)
@@ -99,6 +119,22 @@ export function AccountImporter({ onImported, onAuthFailed }: Props) {
       }}>
         <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-3)" }}>Import from MCC</span>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {loaded && accounts.some((a) => !a.imported) && (
+            <button
+              onClick={importAll}
+              disabled={importingAll}
+              style={{
+                display: "flex", alignItems: "center", gap: 5,
+                background: "#1d4ed8", border: "none", borderRadius: 7,
+                color: "#fff", fontSize: 11, fontWeight: 500,
+                padding: "4px 10px", cursor: importingAll ? "not-allowed" : "pointer",
+                opacity: importingAll ? 0.6 : 1,
+              }}
+            >
+              {importingAll ? <Loader2 size={10} className="animate-spin" /> : <Download size={10} />}
+              Import all
+            </button>
+          )}
           <button
             onClick={fetchAccounts}
             disabled={loading}

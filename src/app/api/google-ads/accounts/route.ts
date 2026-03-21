@@ -11,11 +11,18 @@ import { GoogleAdsApi } from "google-ads-api";
 import { prisma } from "@/lib/db";
 import { isGoogleAdsConfigured } from "@/lib/integrations/google-ads";
 
-async function getRefreshToken(): Promise<string> {
-  if (process.env.GOOGLE_ADS_REFRESH_TOKEN) return process.env.GOOGLE_ADS_REFRESH_TOKEN;
-  const cred = await prisma.oAuthCredential.findUnique({ where: { id: "singleton" } });
-  if (cred?.refreshToken) return cred.refreshToken;
-  throw new Error("No refresh token available");
+async function getCredentials(): Promise<{ refreshToken: string; loginCustomerId: string }> {
+  const refreshToken = process.env.GOOGLE_ADS_REFRESH_TOKEN
+    ?? (await prisma.oAuthCredential.findUnique({ where: { id: "singleton" } }))?.refreshToken;
+  if (!refreshToken) throw new Error("No refresh token available");
+
+  const loginCustomerId =
+    process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID ||
+    process.env.GOOGLE_ADS_CUSTOMER_ID ||
+    (await prisma.oAuthCredential.findUnique({ where: { id: "singleton" } }))?.loginCustomerId ||
+    "";
+
+  return { refreshToken, loginCustomerId };
 }
 
 export async function GET() {
@@ -27,15 +34,17 @@ export async function GET() {
   }
 
   try {
-    const refreshToken = await getRefreshToken();
+    const { refreshToken, loginCustomerId } = await getCredentials();
     const client = new GoogleAdsApi({
       client_id:       process.env.GOOGLE_ADS_CLIENT_ID!,
       client_secret:   process.env.GOOGLE_ADS_CLIENT_SECRET!,
       developer_token: process.env.GOOGLE_ADS_DEVELOPER_TOKEN!,
     });
 
-    const mccId = process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID || process.env.GOOGLE_ADS_CUSTOMER_ID!;
-    const mccCustomer = client.Customer({ customer_id: mccId, refresh_token: refreshToken });
+    if (!loginCustomerId) {
+      return NextResponse.json({ error: "MCC customer ID not configured. Re-connect Google Ads.", authUrl: "/api/auth/google-ads" }, { status: 422 });
+    }
+    const mccCustomer = client.Customer({ customer_id: loginCustomerId, refresh_token: refreshToken });
 
     const rows = await mccCustomer.query(`
       SELECT
