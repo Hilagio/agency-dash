@@ -1,5 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 
+/**
+ * Derive the public-facing origin from request headers.
+ * Behind Railway/Vercel/Nginx the internal req.url is localhost:PORT,
+ * so we prefer x-forwarded-host + x-forwarded-proto when available.
+ */
+function getOrigin(req: NextRequest): string {
+  if (process.env.NEXT_PUBLIC_BASE_URL) return process.env.NEXT_PUBLIC_BASE_URL;
+  const host  = req.headers.get("x-forwarded-host") ?? req.headers.get("host");
+  const proto = req.headers.get("x-forwarded-proto") ?? "https";
+  if (host) return `${proto}://${host}`;
+  return new URL(req.url).origin;
+}
+
 const SCOPES = [
   "https://www.googleapis.com/auth/adwords",
 ].join(" ");
@@ -10,9 +23,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "GOOGLE_ADS_CLIENT_ID not set" }, { status: 500 });
   }
 
-  // Derive base URL from the incoming request so it works on any host
-  // (Railway, Vercel, localhost, etc.) without extra env var configuration.
-  const origin = process.env.NEXT_PUBLIC_BASE_URL ?? new URL(req.url).origin;
+  const origin = getOrigin(req);
   const redirectUri = `${origin}/api/auth/google-ads/callback`;
 
   const params = new URLSearchParams({

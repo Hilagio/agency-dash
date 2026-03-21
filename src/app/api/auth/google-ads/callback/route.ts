@@ -8,22 +8,30 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 
+function getOrigin(req: NextRequest): string {
+  if (process.env.NEXT_PUBLIC_BASE_URL) return process.env.NEXT_PUBLIC_BASE_URL;
+  const host  = req.headers.get("x-forwarded-host") ?? req.headers.get("host");
+  const proto = req.headers.get("x-forwarded-proto") ?? "https";
+  if (host) return `${proto}://${host}`;
+  return new URL(req.url).origin;
+}
+
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const code  = searchParams.get("code");
   const error = searchParams.get("error");
+  const origin = getOrigin(req);
 
   if (error) {
-    return NextResponse.redirect(new URL(`/?auth_error=${encodeURIComponent(error)}`, req.url));
+    return NextResponse.redirect(`${origin}/?auth_error=${encodeURIComponent(error)}`);
   }
   if (!code) {
-    return NextResponse.redirect(new URL("/?auth_error=no_code", req.url));
+    return NextResponse.redirect(`${origin}/?auth_error=no_code`);
   }
 
   const clientId     = process.env.GOOGLE_ADS_CLIENT_ID!;
   const clientSecret = process.env.GOOGLE_ADS_CLIENT_SECRET!;
-  const baseUrl      = process.env.NEXT_PUBLIC_BASE_URL ?? `${new URL(req.url).origin}`;
-  const redirectUri  = `${baseUrl}/api/auth/google-ads/callback`;
+  const redirectUri  = `${origin}/api/auth/google-ads/callback`;
 
   // ── 1. Exchange code for tokens ─────────────────────────────────────────────
   const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
@@ -46,7 +54,7 @@ export async function GET(req: NextRequest) {
 
   if (tokens.error || !tokens.refresh_token) {
     const msg = tokens.error ?? "no_refresh_token";
-    return NextResponse.redirect(new URL(`/?auth_error=${encodeURIComponent(msg)}`, req.url));
+    return NextResponse.redirect(`${origin}/?auth_error=${encodeURIComponent(msg)}`);
   }
 
   // ── 2. List accessible customer IDs (fast REST call, no GAQL) ───────────────
@@ -80,10 +88,11 @@ export async function GET(req: NextRequest) {
       create: { id: "singleton", refreshToken: tokens.refresh_token, customerIds: JSON.stringify(customerIds) },
     });
   } catch (e) {
-    console.error("[oauth callback] DB save failed:", e);
-    return NextResponse.redirect(new URL("/?auth_error=db_save_failed", req.url));
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error("[oauth callback] DB save failed:", msg);
+    return NextResponse.redirect(`${origin}/?auth_error=${encodeURIComponent("db: " + msg)}`);
   }
 
   // ── 4. Redirect straight to dashboard ────────────────────────────────────────
-  return NextResponse.redirect(new URL("/", req.url));
+  return NextResponse.redirect(`${origin}/`);
 }
