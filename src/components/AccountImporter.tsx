@@ -13,9 +13,10 @@ interface GoogleAdsAccount {
 
 interface Props {
   onImported: () => void;
+  onAuthFailed?: () => void;
 }
 
-export function AccountImporter({ onImported }: Props) {
+export function AccountImporter({ onImported, onAuthFailed }: Props) {
   const [accounts, setAccounts] = useState<GoogleAdsAccount[]>([]);
   const [loading, setLoading] = useState(false);
   const [importing, setImporting] = useState<string | null>(null);
@@ -32,8 +33,21 @@ export function AccountImporter({ onImported }: Props) {
       const res = await fetch("/api/google-ads/accounts");
       const data = await res.json();
       if (!res.ok) {
-        if (data.authUrl) { setAuthRequired(true); setError("Authentication required."); }
-        else setError(data.error ?? "Failed to fetch accounts");
+        const isAuthError = !!data.authUrl ||
+          (typeof data.error === "string" && (
+            data.error.includes("invalid_grant") ||
+            data.error.includes("invalid_credentials") ||
+            data.error.includes("unauthorized")
+          ));
+        if (isAuthError) {
+          setAuthRequired(true);
+          setError("Authentication required.");
+          // Clear stale token so status check reflects reality
+          await fetch("/api/auth/google-ads/disconnect", { method: "POST" }).catch(() => {});
+          onAuthFailed?.();
+        } else {
+          setError(data.error ?? "Failed to fetch accounts");
+        }
         return;
       }
       setAccounts(data);
