@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, Suspense } from "react";
+import { useEffect, useState, useCallback, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { BUCKET_LABELS } from "@/lib/engine/types";
@@ -214,6 +214,7 @@ function HomePageInner() {
   const [connected, setConnected] = useState<boolean | null>(null);
   const [autoImporting, setAutoImporting] = useState(false);
   const [autoImportError, setAutoImportError] = useState<string | null>(null);
+  const autoImportAttempted = useRef(false);
   const [scoreAllResult, setScoreAllResult] = useState<{
     succeeded: string[];
     failed: { name: string; error: string }[];
@@ -241,9 +242,10 @@ function HomePageInner() {
   }, [loadAccounts]);
 
   // Auto-import all accounts on first connection (when no accounts exist yet).
-  // Guard on autoImportError so a failed attempt doesn't re-trigger endlessly.
+  // Use a ref so this runs at most once per page load regardless of outcome.
   useEffect(() => {
-    if (!connected || loading || accounts.length > 0 || autoImporting || autoImportError !== null) return;
+    if (!connected || loading || accounts.length > 0 || autoImportAttempted.current) return;
+    autoImportAttempted.current = true;
     let cancelled = false;
     async function autoImport() {
       setAutoImporting(true);
@@ -256,7 +258,11 @@ function HomePageInner() {
           return;
         }
         const mccAccounts: { googleAdsId: string; name: string; currency: string }[] = await res.json();
-        if (mccAccounts.length === 0 || cancelled) return;
+        if (cancelled) return;
+        if (mccAccounts.length === 0) {
+          setAutoImportError("No accounts found. Use 'Add accounts' to import manually.");
+          return;
+        }
         await Promise.all(mccAccounts.map((a) =>
           fetch("/api/google-ads/accounts", {
             method: "POST",
@@ -273,7 +279,7 @@ function HomePageInner() {
     }
     autoImport();
     return () => { cancelled = true; };
-  }, [connected, loading, accounts.length, autoImporting, autoImportError, loadAccounts]);
+  }, [connected, loading, accounts.length, loadAccounts]);
 
   const runScore = async (accountId: string, e: React.MouseEvent) => {
     e.preventDefault();

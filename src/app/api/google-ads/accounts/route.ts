@@ -1,6 +1,6 @@
 /**
  * GET /api/google-ads/accounts
- * Lists all accessible customer accounts under the MCC.
+ * Lists all accessible customer accounts (MCC or direct).
  *
  * POST /api/google-ads/accounts
  * Body: { googleAdsId, name, currency, industry?, monthlyBudget? }
@@ -18,63 +18,74 @@ async function getRefreshToken(): Promise<string> {
   throw new Error("No refresh token available");
 }
 
-// Try each candidate ID — the one where customer.manager = true is the MCC.
-// Caches the working ID in DB for future requests.
-async function discoverMccId(
+/**
+ * Returns accessible customer IDs from DB cache, or fetches them live
+ * via the library's listAccessibleCustomers if the cache is empty.
+ * Updates the DB cache when a live fetch is performed.
+ */
+async function getAccessibleCustomerIds(
+  client: GoogleAdsApi,
+  refreshToken: string,
+): Promise<string[]> {
+  // Try DB cache first
+  const cred = await prisma.oAuthCredential.findUnique({ where: { id: "singleton" } });
+  const cached: string[] = JSON.parse(cred?.customerIds ?? "[]");
+  if (cached.length > 0) return cached;
+
+  // Cache miss — call the library directly (uses the correct API version)
+  const response = await client.listAccessibleCustomers(refreshToken);
+  const ids = (response.resource_names ?? []).map((r: string) => r.replace("customers/", ""));
+
+  // Persist back to DB so future requests skip this step
+  if (ids.length > 0 && cred) {
+    await prisma.oAuthCredential.update({
+      where: { id: "singleton" },
+      data:  { customerIds: JSON.stringify(ids) },
+    }).catch(() => {});
+  }
+
+  return ids;
+}
+
+/**
+ * Returns the MCC (manager account) ID, or null if none exists.
+ * Checks env var → DB cache → live discovery.
+ */
+async function findMccId(
   client: GoogleAdsApi,
   refreshToken: string,
   candidateIds: string[],
 ): Promise<string | null> {
+  // 1. env var override
+  const envId = process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID || process.env.GOOGLE_ADS_CUSTOMER_ID;
+  if (envId) return envId;
+
+  // 2. DB-cached login customer ID
+  const cred = await prisma.oAuthCredential.findUnique({ where: { id: "singleton" } });
+  if (cred?.loginCustomerId) {
+    try {
+      const c = client.Customer({ customer_id: cred.loginCustomerId, refresh_token: refreshToken });
+      const rows = await c.query("SELECT customer.manager FROM customer LIMIT 1");
+      if (rows[0]?.customer?.manager) return cred.loginCustomerId;
+    } catch { /* stale — fall through */ }
+  }
+
+  // 3. Try each candidate to find a manager account
   for (const id of candidateIds) {
     try {
       const c = client.Customer({ customer_id: id, refresh_token: refreshToken });
-      // Check if this account is actually a manager account
       const rows = await c.query("SELECT customer.id, customer.manager FROM customer LIMIT 1");
-      if (!rows[0]?.customer?.manager) continue; // client account, not MCC — skip
-      // This IS an MCC — cache it
+      if (!rows[0]?.customer?.manager) continue;
+      // Cache it
       await prisma.oAuthCredential.update({
         where: { id: "singleton" },
         data:  { loginCustomerId: id },
       }).catch(() => {});
       return id;
-    } catch {
-      // Auth error or unreachable — try next
-    }
+    } catch { /* try next */ }
   }
+
   return null;
-}
-
-async function getMccId(client: GoogleAdsApi, refreshToken: string): Promise<string> {
-  // 1. env vars first
-  const envId = process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID || process.env.GOOGLE_ADS_CUSTOMER_ID;
-  if (envId) return envId;
-
-  // 2. DB cached value
-  const cred = await prisma.oAuthCredential.findUnique({ where: { id: "singleton" } });
-  if (!cred) throw new Error("No credentials in DB");
-
-  const candidateIds: string[] = JSON.parse(cred.customerIds ?? "[]");
-
-  if (cred.loginCustomerId) {
-    // Validate the cached value is still a manager account
-    try {
-      const c = client.Customer({ customer_id: cred.loginCustomerId, refresh_token: refreshToken });
-      const rows = await c.query("SELECT customer.manager FROM customer LIMIT 1");
-      if (rows[0]?.customer?.manager) return cred.loginCustomerId;
-      // Cached ID is not a manager — fall through to rediscover
-    } catch {
-      // Stale credentials — fall through to discover
-    }
-  }
-
-  // 3. Auto-discover by trying all accessible customer IDs
-  const discovered = await discoverMccId(client, refreshToken, candidateIds);
-  if (discovered) return discovered;
-
-  throw new Error(
-    "No manager (MCC) account found among the accessible accounts. " +
-    "Make sure you authenticated with a Google Ads Manager account."
-  );
 }
 
 export async function GET() {
@@ -93,13 +104,23 @@ export async function GET() {
       developer_token: process.env.GOOGLE_ADS_DEVELOPER_TOKEN!,
     });
 
-    // Try MCC path first; fall back to querying each accessible account directly.
-    let mccId: string | null = null;
-    try { mccId = await getMccId(client, refreshToken); } catch { /* not an MCC */ }
+    // Ensure we have customer IDs (fetched live if cache was empty)
+    const customerIds = await getAccessibleCustomerIds(client, refreshToken);
+
+    if (customerIds.length === 0) {
+      return NextResponse.json(
+        { error: "No Google Ads accounts accessible with these credentials." },
+        { status: 404 }
+      );
+    }
+
+    // Try to find an MCC among accessible accounts
+    const mccId = await findMccId(client, refreshToken, customerIds);
 
     let accounts: { googleAdsId: string; name: string; currency: string; isManager: boolean; resourceName: string }[];
 
     if (mccId) {
+      // List all client accounts under the MCC
       const mccCustomer = client.Customer({ customer_id: mccId, refresh_token: refreshToken });
       const rows = await mccCustomer.query(`
         SELECT
@@ -124,10 +145,8 @@ export async function GET() {
       }));
     } else {
       // No MCC — query each accessible account directly
-      const cred = await prisma.oAuthCredential.findUnique({ where: { id: "singleton" } });
-      const directIds: string[] = JSON.parse(cred?.customerIds ?? "[]");
       accounts = await Promise.all(
-        directIds.map(async (id) => {
+        customerIds.map(async (id) => {
           try {
             const c = client.Customer({ customer_id: id, refresh_token: refreshToken });
             const rows = await c.query(
@@ -153,7 +172,6 @@ export async function GET() {
     return NextResponse.json(accounts.map((a) => ({ ...a, imported: importedIds.has(a.googleAdsId) })));
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    // Only signal auth failure for real credential errors, not MCC config issues
     const isCredentialError = msg.includes("invalid_grant") || msg.includes("invalid_credentials");
     return NextResponse.json(
       { error: msg, ...(isCredentialError ? { authUrl: "/api/auth/google-ads" } : {}) },
