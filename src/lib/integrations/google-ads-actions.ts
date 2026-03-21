@@ -6,8 +6,17 @@
  */
 
 import { GoogleAdsApi, enums } from "google-ads-api";
+import { prisma } from "@/lib/db";
 
-function getCustomer(customerId: string) {
+async function getRefreshToken(): Promise<string> {
+  if (process.env.GOOGLE_ADS_REFRESH_TOKEN) return process.env.GOOGLE_ADS_REFRESH_TOKEN;
+  const cred = await prisma.oAuthCredential.findUnique({ where: { id: "singleton" } });
+  if (cred?.refreshToken) return cred.refreshToken;
+  throw new Error("No Google Ads refresh token configured");
+}
+
+async function getCustomer(customerId: string) {
+  const refreshToken = await getRefreshToken();
   const client = new GoogleAdsApi({
     client_id:       process.env.GOOGLE_ADS_CLIENT_ID!,
     client_secret:   process.env.GOOGLE_ADS_CLIENT_SECRET!,
@@ -17,7 +26,7 @@ function getCustomer(customerId: string) {
   return client.Customer({
     customer_id:       customerId,
     login_customer_id: process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID || undefined,
-    refresh_token:     process.env.GOOGLE_ADS_REFRESH_TOKEN!,
+    refresh_token:     refreshToken,
   });
 }
 
@@ -26,7 +35,7 @@ function getCustomer(customerId: string) {
 // and adds them as broad-match campaign-level negatives.
 
 export async function executeExcludeSearchTerms(googleAdsId: string): Promise<string> {
-  const customer = getCustomer(googleAdsId);
+  const customer = await getCustomer(googleAdsId);
 
   const end   = new Date();
   const start = new Date();
@@ -101,7 +110,7 @@ export async function executeExcludeSearchTerms(googleAdsId: string): Promise<st
 // conversion actions.
 
 export async function executeEnableEnhancedConversions(googleAdsId: string): Promise<string> {
-  const customer = getCustomer(googleAdsId);
+  const customer = await getCustomer(googleAdsId);
 
   const actions = await customer.query(`
     SELECT

@@ -75,6 +75,16 @@ model ActionRecommendation {
   isEscalation Boolean @default(false)
 }
 
+// ─── OAuth Credentials ───────────────────────────────────────────────────────
+// Stored automatically on OAuth callback — no manual copy-paste needed.
+
+model OAuthCredential {
+  id           String   @id @default("singleton") // one row only
+  refreshToken String
+  customerIds  String   @default("[]") // JSON array of accessible customer IDs
+  updatedAt    DateTime @updatedAt
+}
+
 // ─── Chat ─────────────────────────────────────────────────────────────────────
 
 model ChatSession {

@@ -10,7 +10,7 @@ import { scoreConstraints } from "@/lib/engine";
 import { fetchGoogleAdsSignals, isGoogleAdsConfigured } from "@/lib/integrations/google-ads";
 
 export async function POST() {
-  if (!isGoogleAdsConfigured()) {
+  if (!(await isGoogleAdsConfigured())) {
     return NextResponse.json(
       { error: "Google Ads not fully configured", authUrl: "/api/auth/google-ads" },
       { status: 422 }

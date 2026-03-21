@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Send, Bot, User } from "lucide-react";
+import { Send, Loader2 } from "lucide-react";
 
 interface Message {
   role: "user" | "assistant";
@@ -14,37 +14,166 @@ interface Props {
   constraintReason: string;
 }
 
+// ─── Markdown renderer ────────────────────────────────────────────────────────
+
+function renderMarkdown(content: string): React.ReactNode {
+  const lines = content.split("\n");
+  const nodes: React.ReactNode[] = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+
+    // Heading
+    if (line.startsWith("### ")) {
+      nodes.push(<p key={i} style={{ fontWeight: 700, color: "#ccc", fontSize: 13, marginTop: 12, marginBottom: 4 }}>{line.slice(4)}</p>);
+      i++; continue;
+    }
+    if (line.startsWith("## ")) {
+      nodes.push(<p key={i} style={{ fontWeight: 700, color: "#ddd", fontSize: 14, marginTop: 14, marginBottom: 4 }}>{line.slice(3)}</p>);
+      i++; continue;
+    }
+
+    // Code block
+    if (line.startsWith("```")) {
+      const codeLines: string[] = [];
+      i++;
+      while (i < lines.length && !lines[i].startsWith("```")) {
+        codeLines.push(lines[i]);
+        i++;
+      }
+      nodes.push(
+        <pre key={i} style={{
+          background: "#0d0d0d", border: "1px solid #222", borderRadius: 8,
+          padding: "10px 12px", margin: "8px 0",
+          fontSize: 11, color: "#a0c4ff", overflowX: "auto", lineHeight: 1.6,
+          fontFamily: '"SF Mono", "Fira Code", monospace',
+        }}>
+          {codeLines.join("\n")}
+        </pre>
+      );
+      i++; continue;
+    }
+
+    // Bullet list
+    if (line.startsWith("- ") || line.startsWith("* ")) {
+      const items: string[] = [];
+      while (i < lines.length && (lines[i].startsWith("- ") || lines[i].startsWith("* "))) {
+        items.push(lines[i].slice(2));
+        i++;
+      }
+      nodes.push(
+        <ul key={i} style={{ paddingLeft: 18, margin: "6px 0", display: "flex", flexDirection: "column", gap: 3 }}>
+          {items.map((item, j) => (
+            <li key={j} style={{ fontSize: 13, color: "#999", lineHeight: 1.6, listStyleType: "disc" }}>
+              {inlineMarkdown(item)}
+            </li>
+          ))}
+        </ul>
+      );
+      continue;
+    }
+
+    // Numbered list
+    if (/^\d+\. /.test(line)) {
+      const items: string[] = [];
+      while (i < lines.length && /^\d+\. /.test(lines[i])) {
+        items.push(lines[i].replace(/^\d+\. /, ""));
+        i++;
+      }
+      nodes.push(
+        <ol key={i} style={{ paddingLeft: 20, margin: "6px 0", display: "flex", flexDirection: "column", gap: 3 }}>
+          {items.map((item, j) => (
+            <li key={j} style={{ fontSize: 13, color: "#999", lineHeight: 1.6, listStyleType: "decimal" }}>
+              {inlineMarkdown(item)}
+            </li>
+          ))}
+        </ol>
+      );
+      continue;
+    }
+
+    // Horizontal rule
+    if (line === "---" || line === "***") {
+      nodes.push(<hr key={i} style={{ border: "none", borderTop: "1px solid #1e1e1e", margin: "10px 0" }} />);
+      i++; continue;
+    }
+
+    // Empty line = spacing
+    if (line.trim() === "") {
+      nodes.push(<div key={i} style={{ height: 6 }} />);
+      i++; continue;
+    }
+
+    // Regular paragraph
+    nodes.push(
+      <p key={i} style={{ fontSize: 13, color: "#999", lineHeight: 1.7, margin: 0 }}>
+        {inlineMarkdown(line)}
+      </p>
+    );
+    i++;
+  }
+
+  return <>{nodes}</>;
+}
+
+function inlineMarkdown(text: string): React.ReactNode {
+  const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`|_[^_]+_)/);
+  return parts.map((part, i) => {
+    if (part.startsWith("**") && part.endsWith("**")) {
+      return <strong key={i} style={{ color: "#ccc", fontWeight: 600 }}>{part.slice(2, -2)}</strong>;
+    }
+    if ((part.startsWith("*") && part.endsWith("*")) || (part.startsWith("_") && part.endsWith("_"))) {
+      return <em key={i} style={{ color: "#888" }}>{part.slice(1, -1)}</em>;
+    }
+    if (part.startsWith("`") && part.endsWith("`")) {
+      return (
+        <code key={i} style={{
+          fontFamily: '"SF Mono", "Fira Code", monospace',
+          fontSize: 11, background: "#1a1a1a", border: "1px solid #2a2a2a",
+          borderRadius: 4, padding: "1px 5px", color: "#a0c4ff",
+        }}>
+          {part.slice(1, -1)}
+        </code>
+      );
+    }
+    return <span key={i}>{part}</span>;
+  });
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
+const QUICK_PROMPTS = [
+  "Why is this the governing constraint?",
+  "What's the most impactful first action?",
+  "What should I NOT do right now?",
+  "What metrics show we're improving?",
+];
+
 export function ChatAssistant({ accountId, constraintBucket, constraintReason }: Props) {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
-      content: `I'm analyzing **${accountId ? "this account" : "the account"}** through the lens of its governing constraint.
-
-The primary focus is: **${constraintBucket.replace("_", " ")}**
-
-_${constraintReason}_
-
-What would you like to understand or work through?`,
+      content: `Analyzing this account through its governing constraint: **${constraintBucket}**\n\n_${constraintReason}_\n\nWhat would you like to work through?`,
     },
   ]);
   const [input, setInput] = useState("");
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [streaming, setStreaming] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const send = async () => {
-    if (!input.trim() || streaming) return;
+  const send = async (text?: string) => {
+    const userMessage = (text ?? input).trim();
+    if (!userMessage || streaming) return;
 
-    const userMessage = input.trim();
     setInput("");
     setMessages((prev) => [...prev, { role: "user", content: userMessage }]);
     setStreaming(true);
-
-    // Add empty assistant placeholder
     setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
 
     try {
@@ -54,9 +183,7 @@ What would you like to understand or work through?`,
         body: JSON.stringify({ message: userMessage, sessionId }),
       });
 
-      if (!res.ok) {
-        throw new Error(await res.text());
-      }
+      if (!res.ok) throw new Error(await res.text());
 
       const reader = res.body!.getReader();
       const decoder = new TextDecoder();
@@ -65,7 +192,6 @@ What would you like to understand or work through?`,
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split("\n");
         buffer = lines.pop() ?? "";
@@ -73,7 +199,6 @@ What would you like to understand or work through?`,
         for (const line of lines) {
           if (!line.startsWith("data: ")) continue;
           const data = JSON.parse(line.slice(6));
-
           if (data.text) {
             setMessages((prev) => {
               const updated = [...prev];
@@ -84,18 +209,11 @@ What would you like to understand or work through?`,
               return updated;
             });
           }
-
-          if (data.done && data.sessionId) {
-            setSessionId(data.sessionId);
-          }
-
+          if (data.done && data.sessionId) setSessionId(data.sessionId);
           if (data.error) {
             setMessages((prev) => {
               const updated = [...prev];
-              updated[updated.length - 1] = {
-                role: "assistant",
-                content: `Error: ${data.error}`,
-              };
+              updated[updated.length - 1] = { role: "assistant", content: `Error: ${data.error}` };
               return updated;
             });
           }
@@ -112,80 +230,90 @@ What would you like to understand or work through?`,
       });
     } finally {
       setStreaming(false);
+      textareaRef.current?.focus();
     }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      send();
-    }
-  };
-
-  // Simple markdown-ish rendering
-  const renderContent = (content: string) => {
-    return content
-      .split(/(\*\*[^*]+\*\*|_[^_]+_)/)
-      .map((part, i) => {
-        if (part.startsWith("**") && part.endsWith("**")) {
-          return <strong key={i}>{part.slice(2, -2)}</strong>;
-        }
-        if (part.startsWith("_") && part.endsWith("_")) {
-          return <em key={i} className="text-gray-600">{part.slice(1, -1)}</em>;
-        }
-        return <span key={i}>{part}</span>;
-      });
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
   };
 
   return (
-    <div className="flex h-full flex-col">
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#0f0f0f" }}>
+
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto space-y-4 p-4">
-        {messages.map((msg, i) => (
-          <div
-            key={i}
-            className={`flex items-start gap-3 ${msg.role === "user" ? "flex-row-reverse" : ""}`}
-          >
-            <div className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full ${
-              msg.role === "assistant" ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-600"
-            }`}>
-              {msg.role === "assistant" ? (
-                <Bot className="h-4 w-4" />
-              ) : (
-                <User className="h-4 w-4" />
-              )}
-            </div>
+      <div style={{ flex: 1, overflowY: "auto", padding: "20px 20px 0" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          {messages.map((msg, i) => (
             <div
-              className={`max-w-[85%] rounded-xl px-4 py-3 text-sm leading-relaxed ${
-                msg.role === "assistant"
-                  ? "bg-white border border-gray-100 text-gray-800"
-                  : "bg-blue-600 text-white"
-              }`}
+              key={i}
+              style={{
+                display: "flex",
+                flexDirection: msg.role === "user" ? "row-reverse" : "row",
+                alignItems: "flex-start",
+                gap: 10,
+              }}
             >
-              {msg.content ? renderContent(msg.content) : (
-                <span className="animate-pulse text-gray-400">Thinking…</span>
-              )}
+              {/* Avatar */}
+              <div style={{
+                width: 26, height: 26, borderRadius: "50%", flexShrink: 0,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 10, fontWeight: 700,
+                background: msg.role === "assistant" ? "#1d4ed8" : "#1e1e1e",
+                color: msg.role === "assistant" ? "#fff" : "#666",
+                marginTop: 2,
+              }}>
+                {msg.role === "assistant" ? "AI" : "U"}
+              </div>
+
+              {/* Bubble */}
+              <div style={{
+                maxWidth: "82%",
+                background: msg.role === "user" ? "#1d4ed8" : "#151515",
+                border: msg.role === "user" ? "none" : "1px solid #1e1e1e",
+                borderRadius: msg.role === "user" ? "14px 14px 4px 14px" : "14px 14px 14px 4px",
+                padding: "10px 14px",
+              }}>
+                {msg.content
+                  ? (msg.role === "assistant"
+                      ? renderMarkdown(msg.content)
+                      : <p style={{ fontSize: 13, color: "#fff", lineHeight: 1.6, margin: 0 }}>{msg.content}</p>)
+                  : <span style={{ fontSize: 13, color: "#444" }}>
+                      <Loader2 size={12} className="animate-spin" style={{ display: "inline", marginRight: 6 }} />
+                      Thinking…
+                    </span>}
+              </div>
             </div>
-          </div>
-        ))}
-        <div ref={bottomRef} />
+          ))}
+          <div ref={bottomRef} style={{ height: 12 }} />
+        </div>
       </div>
 
-      {/* Quick prompts */}
+      {/* Quick prompts — only on first message */}
       {messages.length === 1 && (
-        <div className="border-t border-gray-100 p-3">
-          <p className="mb-2 text-xs text-gray-400 font-medium">SUGGESTED QUESTIONS</p>
-          <div className="flex flex-wrap gap-2">
-            {[
-              "Why is this the governing constraint?",
-              "What's the most impactful first action?",
-              "What should I NOT do right now?",
-              "What metrics tell me if we're improving?",
-            ].map((q) => (
+        <div style={{ padding: "12px 20px", borderTop: "1px solid #1a1a1a" }}>
+          <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.8px", textTransform: "uppercase", color: "#333", marginBottom: 8 }}>
+            Suggested
+          </p>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {QUICK_PROMPTS.map((q) => (
               <button
                 key={q}
-                onClick={() => { setInput(q); }}
-                className="rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs text-gray-600 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
+                onClick={() => send(q)}
+                style={{
+                  background: "#141414", border: "1px solid #222",
+                  borderRadius: 20, color: "#666", fontSize: 11,
+                  padding: "5px 12px", cursor: "pointer",
+                  transition: "border-color 0.15s, color 0.15s",
+                }}
+                onMouseEnter={e => {
+                  (e.currentTarget as HTMLButtonElement).style.borderColor = "#3a3a3a";
+                  (e.currentTarget as HTMLButtonElement).style.color = "#aaa";
+                }}
+                onMouseLeave={e => {
+                  (e.currentTarget as HTMLButtonElement).style.borderColor = "#222";
+                  (e.currentTarget as HTMLButtonElement).style.color = "#666";
+                }}
               >
                 {q}
               </button>
@@ -195,22 +323,38 @@ What would you like to understand or work through?`,
       )}
 
       {/* Input */}
-      <div className="border-t border-gray-100 p-3">
-        <div className="flex items-end gap-2">
+      <div style={{ padding: "12px 16px", borderTop: "1px solid #1a1a1a" }}>
+        <div style={{ display: "flex", alignItems: "flex-end", gap: 8 }}>
           <textarea
+            ref={textareaRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Ask about this constraint…"
+            placeholder="Ask about this constraint… (Enter to send)"
             rows={2}
-            className="flex-1 resize-none rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-400 focus:bg-white focus:outline-none"
+            style={{
+              flex: 1, resize: "none", background: "#141414",
+              border: "1px solid #222", borderRadius: 10,
+              color: "#e0e0e0", fontSize: 13, padding: "10px 14px",
+              outline: "none", lineHeight: 1.5,
+              fontFamily: "inherit",
+            }}
+            onFocus={e => (e.currentTarget.style.borderColor = "#333")}
+            onBlur={e => (e.currentTarget.style.borderColor = "#222")}
           />
           <button
-            onClick={send}
+            onClick={() => send()}
             disabled={!input.trim() || streaming}
-            className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40"
+            style={{
+              width: 38, height: 38, borderRadius: 10, border: "none",
+              background: input.trim() && !streaming ? "#1d4ed8" : "#1a1a1a",
+              color: input.trim() && !streaming ? "#fff" : "#333",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              cursor: input.trim() && !streaming ? "pointer" : "not-allowed",
+              flexShrink: 0, transition: "background 0.15s, color 0.15s",
+            }}
           >
-            <Send className="h-4 w-4" />
+            {streaming ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
           </button>
         </div>
       </div>

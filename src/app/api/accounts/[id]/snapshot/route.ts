@@ -42,7 +42,7 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   if (source === "google-ads") {
     // Pull live signals from the Google Ads API
-    if (!isGoogleAdsConfigured()) {
+    if (!(await isGoogleAdsConfigured())) {
       return NextResponse.json(
         {
           error: "Google Ads not fully configured",

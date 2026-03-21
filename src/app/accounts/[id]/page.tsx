@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, RefreshCw, MessageSquare, ListChecks, BarChart2, Loader2 } from "lucide-react";
 import { ScoreBuckets } from "@/components/ScoreBuckets";
+import { ScoreHistory } from "@/components/ScoreHistory";
 import { ActionList } from "@/components/ActionList";
 import { ChatAssistant } from "@/components/ChatAssistant";
 import { BUCKET_LABELS } from "@/lib/engine/types";
@@ -313,6 +314,8 @@ export default function AccountPage() {
                   </span>
                 </div>
                 <ScoreBuckets buckets={buckets} />
+
+                <ScoreHistory accountId={id} governingConstraint={constraint} />
 
                 <div style={{
                   background: "#111", border: "1px solid #1e1e1e", borderRadius: 12,

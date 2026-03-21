@@ -16,6 +16,7 @@
  */
 
 import { GoogleAdsApi, Customer, enums } from "google-ads-api";
+import { prisma } from "@/lib/db";
 import {
   ConstraintSignals,
   MeasurementSignals,
@@ -45,11 +46,19 @@ function getClient(): GoogleAdsApi {
   });
 }
 
-function getCustomer(client: GoogleAdsApi, customerId?: string): Customer {
+async function getRefreshToken(): Promise<string> {
+  if (process.env.GOOGLE_ADS_REFRESH_TOKEN) return process.env.GOOGLE_ADS_REFRESH_TOKEN;
+  const cred = await prisma.oAuthCredential.findUnique({ where: { id: "singleton" } });
+  if (cred?.refreshToken) return cred.refreshToken;
+  throw new Error("No Google Ads refresh token configured. Complete OAuth at /api/auth/google-ads");
+}
+
+async function getCustomer(client: GoogleAdsApi, customerId?: string): Promise<Customer> {
+  const refreshToken = await getRefreshToken();
   return client.Customer({
     customer_id:       customerId ?? process.env.GOOGLE_ADS_CUSTOMER_ID!,
     login_customer_id: process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID || undefined,
-    refresh_token:     process.env.GOOGLE_ADS_REFRESH_TOKEN!,
+    refresh_token:     refreshToken,
   });
 }
 
@@ -461,7 +470,7 @@ async function fetchEconomicsSignals(customer: Customer): Promise<EconomicsSigna
 
 export async function fetchGoogleAdsSignals(customerId?: string, industry?: string | null): Promise<ConstraintSignals> {
   const client   = getClient();
-  const customer = getCustomer(client, customerId);
+  const customer = await getCustomer(client, customerId);
 
   const [measurement, traffic, conversion, funnel, economics] = await Promise.all([
     fetchMeasurementSignals(customer),
@@ -474,12 +483,24 @@ export async function fetchGoogleAdsSignals(customerId?: string, industry?: stri
   return { measurement, traffic, conversion, funnel, economics };
 }
 
-export function isGoogleAdsConfigured(): boolean {
-  return !!(
+export async function isGoogleAdsConfigured(): Promise<boolean> {
+  const hasEnvToken = !!(
     process.env.GOOGLE_ADS_DEVELOPER_TOKEN &&
     process.env.GOOGLE_ADS_CLIENT_ID &&
     process.env.GOOGLE_ADS_CLIENT_SECRET &&
     process.env.GOOGLE_ADS_REFRESH_TOKEN &&
     process.env.GOOGLE_ADS_CUSTOMER_ID
   );
+  if (hasEnvToken) return true;
+
+  // Fall back to DB-stored credentials
+  if (
+    process.env.GOOGLE_ADS_DEVELOPER_TOKEN &&
+    process.env.GOOGLE_ADS_CLIENT_ID &&
+    process.env.GOOGLE_ADS_CLIENT_SECRET
+  ) {
+    const cred = await prisma.oAuthCredential.findUnique({ where: { id: "singleton" } }).catch(() => null);
+    return !!(cred?.refreshToken);
+  }
+  return false;
 }

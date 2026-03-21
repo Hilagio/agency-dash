@@ -5,6 +5,7 @@
  * Exchanges the code for tokens and shows the refresh token + accessible customer IDs.
  */
 import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/db";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -47,7 +48,8 @@ export async function GET(req: NextRequest) {
 
   const developerToken = process.env.GOOGLE_ADS_DEVELOPER_TOKEN;
   if (!developerToken) {
-    return page(successScreen(tokens.refresh_token, [], null, true));
+    await saveCredentials(tokens.refresh_token, []);
+    return page(successScreen(tokens.refresh_token, [], null, true, true));
   }
 
   let customerIds: string[] = [];
@@ -76,7 +78,24 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  return page(successScreen(tokens.refresh_token, customerIds, customersError, false));
+  // Auto-save credentials to DB — no manual copy-paste needed
+  await saveCredentials(tokens.refresh_token, customerIds);
+
+  return page(successScreen(tokens.refresh_token, customerIds, customersError, false, true));
+}
+
+// ─── DB persistence ───────────────────────────────────────────────────────────
+
+async function saveCredentials(refreshToken: string, customerIds: string[]): Promise<void> {
+  try {
+    await prisma.oAuthCredential.upsert({
+      where:  { id: "singleton" },
+      update: { refreshToken, customerIds: JSON.stringify(customerIds) },
+      create: { id: "singleton", refreshToken, customerIds: JSON.stringify(customerIds) },
+    });
+  } catch (e) {
+    console.error("[oauth] failed to save credentials to DB:", e);
+  }
 }
 
 // ─── HTML builders ────────────────────────────────────────────────────────────
@@ -334,9 +353,17 @@ function successScreen(
   refreshToken: string,
   customerIds: string[],
   customersError: string | null,
-  missingDevToken: boolean
+  missingDevToken: boolean,
+  savedToDB: boolean = false,
 ): string {
   const tokenEnv = `GOOGLE_ADS_REFRESH_TOKEN=${refreshToken}`;
+  const baseUrl  = process.env.NEXT_PUBLIC_BASE_URL ?? "";
+
+  const savedBanner = savedToDB
+    ? `<div style="background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.2);border-radius:10px;padding:12px 16px;margin-bottom:24px;font-size:13px;color:#4ade80;">
+        ✓ Credentials saved automatically — no copy-paste needed.
+      </div>`
+    : "";
 
   const accountSection = missingDevToken
     ? `<div class="warn-box">
@@ -360,36 +387,47 @@ function successScreen(
          <button class="copy-btn" id="btn-cid" onclick="copyText(document.getElementById('full-env').dataset.val, 'btn-cid')">Copy</button>
        </div>`;
 
+  const hasAccounts = !missingDevToken && !customersError && customerIds.length > 0;
+
   return `
     <div class="icon-wrap success">✓</div>
     <h1>Connected to Google Ads</h1>
-    <p class="subtitle">Copy these values into your Railway Variables.</p>
+    <p class="subtitle">${savedToDB ? "Credentials saved automatically." : "Copy these values into your Railway Variables."}</p>
 
-    <p class="section-label">Refresh token</p>
-    <div class="field-row">
-      <span class="field-value">${tokenEnv}</span>
-      <button class="copy-btn" id="btn-rt" onclick="copyText('${tokenEnv}', 'btn-rt')">Copy</button>
-    </div>
+    ${savedBanner}
 
+    ${hasAccounts ? accountSection : ""}
+
+    ${!hasAccounts ? `
+      <p class="section-label">Refresh token</p>
+      <div class="field-row">
+        <span class="field-value">${tokenEnv}</span>
+        <button class="copy-btn" id="btn-rt" onclick="copyText('${tokenEnv}', 'btn-rt')">Copy</button>
+      </div>
+      <hr class="divider" />
+      ${accountSection}
+    ` : ""}
+
+    ${hasAccounts ? `
     <hr class="divider" />
-
-    ${accountSection}
-
-    ${!missingDevToken && !customersError && customerIds.length > 0 ? `
+    <a href="${baseUrl}/" style="display:flex;align-items:center;justify-content:center;gap:8px;background:#1d4ed8;border-radius:10px;color:#fff;font-size:14px;font-weight:600;padding:13px;text-decoration:none;margin-top:4px;">
+      Go to dashboard →
+    </a>
+    ` : `
     <hr class="divider" />
     <div class="step">
       <div class="step-num">1</div>
-      <div class="step-text">Copy the refresh token above into Railway Variables</div>
+      <div class="step-text">Copy the refresh token into Railway Variables</div>
     </div>
     <div class="step">
       <div class="step-num">2</div>
-      <div class="step-text">Select your account, copy <code>GOOGLE_ADS_CUSTOMER_ID</code> into Railway Variables</div>
+      <div class="step-text">Select your account and copy <code>GOOGLE_ADS_CUSTOMER_ID</code> into Railway Variables</div>
     </div>
     <div class="step">
       <div class="step-num">3</div>
-      <div class="step-text">Redeploy and click <strong>Score from Google Ads</strong> on the dashboard</div>
+      <div class="step-text">Redeploy, then return to the dashboard and score an account</div>
     </div>
-    ` : ""}
+    `}
   `;
 }
 

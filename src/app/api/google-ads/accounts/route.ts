@@ -1,9 +1,6 @@
 /**
  * GET /api/google-ads/accounts
- *
  * Lists all accessible customer accounts under the MCC.
- * Used by the account selector UI to let specialists pick which
- * account to import/score.
  *
  * POST /api/google-ads/accounts
  * Body: { googleAdsId, name, currency, industry?, monthlyBudget? }
@@ -14,16 +11,15 @@ import { GoogleAdsApi } from "google-ads-api";
 import { prisma } from "@/lib/db";
 import { isGoogleAdsConfigured } from "@/lib/integrations/google-ads";
 
-function getClient() {
-  return new GoogleAdsApi({
-    client_id:       process.env.GOOGLE_ADS_CLIENT_ID!,
-    client_secret:   process.env.GOOGLE_ADS_CLIENT_SECRET!,
-    developer_token: process.env.GOOGLE_ADS_DEVELOPER_TOKEN!,
-  });
+async function getRefreshToken(): Promise<string> {
+  if (process.env.GOOGLE_ADS_REFRESH_TOKEN) return process.env.GOOGLE_ADS_REFRESH_TOKEN;
+  const cred = await prisma.oAuthCredential.findUnique({ where: { id: "singleton" } });
+  if (cred?.refreshToken) return cred.refreshToken;
+  throw new Error("No refresh token available");
 }
 
 export async function GET() {
-  if (!isGoogleAdsConfigured()) {
+  if (!(await isGoogleAdsConfigured())) {
     return NextResponse.json(
       { error: "Google Ads not configured", authUrl: "/api/auth/google-ads" },
       { status: 422 }
@@ -31,17 +27,16 @@ export async function GET() {
   }
 
   try {
-    const client = getClient();
-
-    // Use the MCC customer to list all accessible leaf accounts
-    const mccId = process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID || process.env.GOOGLE_ADS_CUSTOMER_ID!;
-
-    const mccCustomer = client.Customer({
-      customer_id:   mccId,
-      refresh_token: process.env.GOOGLE_ADS_REFRESH_TOKEN!,
+    const refreshToken = await getRefreshToken();
+    const client = new GoogleAdsApi({
+      client_id:       process.env.GOOGLE_ADS_CLIENT_ID!,
+      client_secret:   process.env.GOOGLE_ADS_CLIENT_SECRET!,
+      developer_token: process.env.GOOGLE_ADS_DEVELOPER_TOKEN!,
     });
 
-    // CustomerClient gives us all accounts under the MCC
+    const mccId = process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID || process.env.GOOGLE_ADS_CUSTOMER_ID!;
+    const mccCustomer = client.Customer({ customer_id: mccId, refresh_token: refreshToken });
+
     const rows = await mccCustomer.query(`
       SELECT
         customer_client.client_customer,
@@ -65,15 +60,10 @@ export async function GET() {
       resourceName: r.customer_client?.client_customer ?? "",
     }));
 
-    // Also mark which ones are already imported into our DB
-    const existing = await prisma.account.findMany({
-      select: { googleAdsId: true },
-    });
+    const existing = await prisma.account.findMany({ select: { googleAdsId: true } });
     const importedIds = new Set(existing.map((a) => a.googleAdsId));
 
-    return NextResponse.json(
-      accounts.map((a) => ({ ...a, imported: importedIds.has(a.googleAdsId) }))
-    );
+    return NextResponse.json(accounts.map((a) => ({ ...a, imported: importedIds.has(a.googleAdsId) })));
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ error: msg }, { status: 502 });
