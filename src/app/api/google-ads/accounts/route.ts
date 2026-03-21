@@ -93,31 +93,59 @@ export async function GET() {
       developer_token: process.env.GOOGLE_ADS_DEVELOPER_TOKEN!,
     });
 
-    const mccId = await getMccId(client, refreshToken);
-    const mccCustomer = client.Customer({ customer_id: mccId, refresh_token: refreshToken });
+    // Try MCC path first; fall back to querying each accessible account directly.
+    let mccId: string | null = null;
+    try { mccId = await getMccId(client, refreshToken); } catch { /* not an MCC */ }
 
-    const rows = await mccCustomer.query(`
-      SELECT
-        customer_client.client_customer,
-        customer_client.descriptive_name,
-        customer_client.id,
-        customer_client.currency_code,
-        customer_client.manager,
-        customer_client.status,
-        customer_client.test_account
-      FROM customer_client
-      WHERE customer_client.status = 'ENABLED'
-        AND customer_client.manager = false
-        AND customer_client.test_account = false
-    `);
+    let accounts: { googleAdsId: string; name: string; currency: string; isManager: boolean; resourceName: string }[];
 
-    const accounts = rows.map((r) => ({
-      googleAdsId:  String(r.customer_client?.id ?? ""),
-      name:         r.customer_client?.descriptive_name ?? `Account ${r.customer_client?.id}`,
-      currency:     r.customer_client?.currency_code ?? "USD",
-      isManager:    r.customer_client?.manager ?? false,
-      resourceName: r.customer_client?.client_customer ?? "",
-    }));
+    if (mccId) {
+      const mccCustomer = client.Customer({ customer_id: mccId, refresh_token: refreshToken });
+      const rows = await mccCustomer.query(`
+        SELECT
+          customer_client.client_customer,
+          customer_client.descriptive_name,
+          customer_client.id,
+          customer_client.currency_code,
+          customer_client.manager,
+          customer_client.status,
+          customer_client.test_account
+        FROM customer_client
+        WHERE customer_client.status = 'ENABLED'
+          AND customer_client.manager = false
+          AND customer_client.test_account = false
+      `);
+      accounts = rows.map((r) => ({
+        googleAdsId:  String(r.customer_client?.id ?? ""),
+        name:         r.customer_client?.descriptive_name ?? `Account ${r.customer_client?.id}`,
+        currency:     r.customer_client?.currency_code ?? "USD",
+        isManager:    false,
+        resourceName: r.customer_client?.client_customer ?? "",
+      }));
+    } else {
+      // No MCC — query each accessible account directly
+      const cred = await prisma.oAuthCredential.findUnique({ where: { id: "singleton" } });
+      const directIds: string[] = JSON.parse(cred?.customerIds ?? "[]");
+      accounts = await Promise.all(
+        directIds.map(async (id) => {
+          try {
+            const c = client.Customer({ customer_id: id, refresh_token: refreshToken });
+            const rows = await c.query(
+              "SELECT customer.id, customer.descriptive_name, customer.currency_code FROM customer LIMIT 1"
+            );
+            return {
+              googleAdsId:  id,
+              name:         rows[0]?.customer?.descriptive_name ?? `Account ${id}`,
+              currency:     (rows[0]?.customer?.currency_code as string | undefined) ?? "USD",
+              isManager:    false,
+              resourceName: `customers/${id}`,
+            };
+          } catch {
+            return { googleAdsId: id, name: `Account ${id}`, currency: "USD", isManager: false, resourceName: `customers/${id}` };
+          }
+        })
+      );
+    }
 
     const existing = await prisma.account.findMany({ select: { googleAdsId: true } });
     const importedIds = new Set(existing.map((a) => a.googleAdsId));

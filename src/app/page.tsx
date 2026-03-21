@@ -240,9 +240,10 @@ function HomePageInner() {
       .catch(() => { setConnected(false); setLoading(false); });
   }, [loadAccounts]);
 
-  // Auto-import all accounts on first connection (when no accounts exist yet)
+  // Auto-import all accounts on first connection (when no accounts exist yet).
+  // Guard on autoImportError so a failed attempt doesn't re-trigger endlessly.
   useEffect(() => {
-    if (!connected || loading || accounts.length > 0 || autoImporting) return;
+    if (!connected || loading || accounts.length > 0 || autoImporting || autoImportError !== null) return;
     let cancelled = false;
     async function autoImport() {
       setAutoImporting(true);
@@ -272,7 +273,7 @@ function HomePageInner() {
     }
     autoImport();
     return () => { cancelled = true; };
-  }, [connected, loading, accounts.length, autoImporting, loadAccounts]);
+  }, [connected, loading, accounts.length, autoImporting, autoImportError, loadAccounts]);
 
   const runScore = async (accountId: string, e: React.MouseEvent) => {
     e.preventDefault();
