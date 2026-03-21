@@ -3,34 +3,26 @@
  *
  * Google redirects here after OAuth consent.
  * Exchanges the code for tokens and shows the refresh token + accessible customer IDs.
- * Copy these into your .env file.
  */
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
-  const code = searchParams.get("code");
+  const code  = searchParams.get("code");
   const error = searchParams.get("error");
 
   if (error) {
-    return new NextResponse(
-      html(`<h2 style="color:red">OAuth error: ${error}</h2>`),
-      { headers: { "Content-Type": "text/html" } }
-    );
+    return page(errorScreen(`OAuth error: <code>${error}</code>`));
   }
 
   if (!code) {
-    return new NextResponse(
-      html(`<h2 style="color:red">No code returned by Google.</h2>`),
-      { headers: { "Content-Type": "text/html" } }
-    );
+    return page(errorScreen("No authorization code returned by Google."));
   }
 
   const clientId     = process.env.GOOGLE_ADS_CLIENT_ID!;
   const clientSecret = process.env.GOOGLE_ADS_CLIENT_SECRET!;
   const redirectUri  = `${process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000"}/api/auth/google-ads/callback`;
 
-  // Exchange code for tokens
   const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -50,73 +42,362 @@ export async function GET(req: NextRequest) {
   };
 
   if (tokens.error || !tokens.refresh_token) {
-    return new NextResponse(
-      html(`<h2 style="color:red">Token exchange failed</h2><pre>${JSON.stringify(tokens, null, 2)}</pre>`),
-      { headers: { "Content-Type": "text/html" } }
-    );
+    return page(errorScreen(`Token exchange failed: ${tokens.error ?? "no refresh token returned"}`));
   }
 
-  // Fetch accessible Google Ads customer IDs
   const developerToken = process.env.GOOGLE_ADS_DEVELOPER_TOKEN;
   if (!developerToken) {
-    return new NextResponse(
-      html(`
-        <h1 style="color:green">✓ Authentication successful</h1>
-        <p>Copy your refresh token into Railway Variables:</p>
-        <pre style="background:#f4f4f4;padding:16px;border-radius:8px;font-size:13px;word-break:break-all">GOOGLE_ADS_REFRESH_TOKEN=${tokens.refresh_token}</pre>
-        <p style="background:#fff3cd;padding:12px;border-radius:6px;border-left:4px solid #ffc107">
-          <strong>GOOGLE_ADS_DEVELOPER_TOKEN is not set.</strong> Add it to Railway Variables, then re-run the OAuth flow to auto-fetch customer IDs.
-        </p>
-      `),
-      { headers: { "Content-Type": "text/html" } }
-    );
+    return page(successScreen(tokens.refresh_token, [], null, true));
   }
 
   let customerIds: string[] = [];
   let customersError: string | null = null;
+
   const customersRes = await fetch(
     "https://googleads.googleapis.com/v23/customers:listAccessibleCustomers",
     {
       headers: {
         Authorization: `Bearer ${tokens.access_token}`,
-        "developer-token": process.env.GOOGLE_ADS_DEVELOPER_TOKEN!,
+        "developer-token": developerToken,
       },
     }
   );
-  const customersData = await customersRes.json() as { resourceNames?: string[]; error?: unknown };
+
+  const customersData = await customersRes.json() as { resourceNames?: string[]; error?: { message?: string; code?: number } };
+
   if (!customersRes.ok || customersData.error) {
-    customersError = JSON.stringify(customersData, null, 2);
+    const errMsg = typeof customersData.error === "object"
+      ? (customersData.error?.message ?? JSON.stringify(customersData.error))
+      : JSON.stringify(customersData);
+    customersError = errMsg;
   } else {
     customerIds = (customersData.resourceNames ?? []).map((r: string) =>
       r.replace("customers/", "")
     );
   }
 
-  const is501 = customersError?.includes('"code": 501') || customersError?.includes('"code":501');
-  const customerSection = customersError
-    ? `<h3 style="color:red">Could not fetch customer IDs</h3>
-       ${is501 ? `<p style="background:#fff3cd;padding:12px;border-radius:6px;border-left:4px solid #ffc107">
-         <strong>Fix:</strong> The Google Ads API is not enabled in your Cloud project.<br>
-         Go to <a href="https://console.cloud.google.com/apis/library/googleads.googleapis.com" target="_blank">
-         console.cloud.google.com → APIs &amp; Services → Google Ads API</a> and click <strong>Enable</strong>, then try again.
-       </p>` : ""}
-       <pre style="background:#fff0f0;padding:12px;border-radius:6px;font-size:12px">${customersError}</pre>`
-    : customerIds.length === 0
-    ? `<p style="color:orange">No accessible Google Ads accounts found for this Google account.</p>`
-    : `<h3>Accessible Google Ads accounts:</h3><ul>${customerIds.map(id => `<li><code>${id}</code></li>`).join("")}</ul>`;
+  return page(successScreen(tokens.refresh_token, customerIds, customersError, false));
+}
 
+// ─── HTML builders ────────────────────────────────────────────────────────────
+
+function page(body: string): NextResponse {
   return new NextResponse(
-    html(`
-      <h1 style="color:green">✓ Authentication successful</h1>
-      <p>Copy your refresh token into Railway Variables:</p>
-      <pre style="background:#f4f4f4;padding:16px;border-radius:8px;font-size:13px;word-break:break-all">GOOGLE_ADS_REFRESH_TOKEN=${tokens.refresh_token}</pre>
-      ${customerSection}
-      ${customerIds.length > 0 ? `<p>Also add to Railway Variables:<br><pre style="background:#f4f4f4;padding:16px;border-radius:8px;font-size:13px">GOOGLE_ADS_CUSTOMER_ID=${customerIds[0]}</pre></p>` : ""}
-    `),
+    `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Google Ads — Connected</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0d0d0d;
+      color: #e8e8e8;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", system-ui, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .card {
+      background: #161616;
+      border: 1px solid #2a2a2a;
+      border-radius: 20px;
+      padding: 48px;
+      width: 100%;
+      max-width: 560px;
+      box-shadow: 0 32px 80px rgba(0,0,0,0.6);
+    }
+
+    .icon-wrap {
+      width: 56px;
+      height: 56px;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 24px;
+      font-size: 24px;
+    }
+    .icon-wrap.success { background: rgba(52, 199, 89, 0.12); }
+    .icon-wrap.error   { background: rgba(255, 59, 48, 0.12); }
+
+    h1 {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.4px;
+      color: #ffffff;
+      margin-bottom: 6px;
+    }
+
+    .subtitle {
+      font-size: 14px;
+      color: #666;
+      margin-bottom: 36px;
+      line-height: 1.5;
+    }
+
+    .section-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: #555;
+      margin-bottom: 8px;
+    }
+
+    .field-row {
+      display: flex;
+      align-items: center;
+      background: #111;
+      border: 1px solid #222;
+      border-radius: 10px;
+      padding: 12px 14px;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+
+    .field-value {
+      flex: 1;
+      font-family: "SF Mono", "Fira Code", monospace;
+      font-size: 12px;
+      color: #a0a0a0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      min-width: 0;
+    }
+
+    .copy-btn {
+      flex-shrink: 0;
+      background: #222;
+      border: 1px solid #333;
+      border-radius: 7px;
+      color: #ccc;
+      font-size: 12px;
+      font-weight: 500;
+      padding: 5px 12px;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+      font-family: inherit;
+    }
+    .copy-btn:hover { background: #2a2a2a; color: #fff; }
+    .copy-btn.copied { background: rgba(52,199,89,0.15); color: #34c759; border-color: rgba(52,199,89,0.3); }
+
+    select {
+      width: 100%;
+      background: #111;
+      border: 1px solid #222;
+      border-radius: 10px;
+      color: #e8e8e8;
+      font-size: 14px;
+      font-family: inherit;
+      padding: 13px 14px;
+      appearance: none;
+      -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23555' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+      cursor: pointer;
+      margin-bottom: 12px;
+    }
+    select:focus { outline: none; border-color: #3a3a3a; }
+
+    .env-preview {
+      display: flex;
+      align-items: center;
+      background: #111;
+      border: 1px solid #222;
+      border-radius: 10px;
+      padding: 12px 14px;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+
+    .env-key {
+      font-family: "SF Mono", "Fira Code", monospace;
+      font-size: 12px;
+      color: #555;
+      white-space: nowrap;
+    }
+
+    .env-val {
+      font-family: "SF Mono", "Fira Code", monospace;
+      font-size: 12px;
+      color: #a0a0a0;
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .divider {
+      border: none;
+      border-top: 1px solid #1e1e1e;
+      margin: 28px 0;
+    }
+
+    .warn-box {
+      background: rgba(255, 159, 10, 0.08);
+      border: 1px solid rgba(255, 159, 10, 0.2);
+      border-radius: 10px;
+      padding: 14px 16px;
+      font-size: 13px;
+      color: #ff9f0a;
+      line-height: 1.5;
+    }
+
+    .err-box {
+      background: rgba(255, 59, 48, 0.08);
+      border: 1px solid rgba(255, 59, 48, 0.2);
+      border-radius: 10px;
+      padding: 14px 16px;
+      font-size: 13px;
+      color: #ff3b30;
+      line-height: 1.6;
+    }
+
+    .err-box a { color: #ff6b61; }
+
+    .step {
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+      margin-bottom: 16px;
+    }
+    .step-num {
+      flex-shrink: 0;
+      width: 24px;
+      height: 24px;
+      background: #1e1e1e;
+      border: 1px solid #2a2a2a;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 600;
+      color: #666;
+    }
+    .step-text {
+      font-size: 13px;
+      color: #888;
+      padding-top: 3px;
+      line-height: 1.5;
+    }
+
+    code {
+      font-family: "SF Mono", "Fira Code", monospace;
+      font-size: 11px;
+      background: #1e1e1e;
+      border: 1px solid #2a2a2a;
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: #aaa;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    ${body}
+  </div>
+  <script>
+    function copyText(text, btnId) {
+      navigator.clipboard.writeText(text).then(() => {
+        const btn = document.getElementById(btnId);
+        if (!btn) return;
+        btn.textContent = 'Copied';
+        btn.classList.add('copied');
+        setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
+      });
+    }
+
+    function onAccountChange(sel) {
+      const id = sel.value;
+      const envVal = document.getElementById('env-val');
+      const fullEnv = document.getElementById('full-env');
+      if (envVal) envVal.textContent = id;
+      if (fullEnv) fullEnv.dataset.val = 'GOOGLE_ADS_CUSTOMER_ID=' + id;
+    }
+  </script>
+</body>
+</html>`,
     { headers: { "Content-Type": "text/html" } }
   );
 }
 
-function html(body: string): string {
-  return `<!DOCTYPE html><html><body style="font-family:sans-serif;max-width:700px;margin:40px auto;padding:0 20px">${body}</body></html>`;
+function successScreen(
+  refreshToken: string,
+  customerIds: string[],
+  customersError: string | null,
+  missingDevToken: boolean
+): string {
+  const tokenEnv = `GOOGLE_ADS_REFRESH_TOKEN=${refreshToken}`;
+
+  const accountSection = missingDevToken
+    ? `<div class="warn-box">
+        <strong>Developer token not set.</strong><br>
+        Add <code>GOOGLE_ADS_DEVELOPER_TOKEN</code> to Railway Variables, then re-run the OAuth flow to auto-fetch your account list.
+      </div>`
+    : customersError
+    ? `<div class="err-box">
+        Could not fetch accounts: ${customersError}<br><br>
+        If this is a 501 error, <a href="https://console.cloud.google.com/apis/library/googleads.googleapis.com" target="_blank">enable the Google Ads API</a> in your Cloud project.
+      </div>`
+    : customerIds.length === 0
+    ? `<div class="warn-box">No accessible Google Ads accounts found for this Google account.</div>`
+    : `<p class="section-label">Select your account</p>
+       <select id="account-select" onchange="onAccountChange(this)">
+         ${customerIds.map((id, i) => `<option value="${id}"${i === 0 ? " selected" : ""}>${id}</option>`).join("")}
+       </select>
+       <div class="env-preview" id="full-env" data-val="GOOGLE_ADS_CUSTOMER_ID=${customerIds[0]}">
+         <span class="env-key">GOOGLE_ADS_CUSTOMER_ID=</span>
+         <span class="env-val" id="env-val">${customerIds[0]}</span>
+         <button class="copy-btn" id="btn-cid" onclick="copyText(document.getElementById('full-env').dataset.val, 'btn-cid')">Copy</button>
+       </div>`;
+
+  return `
+    <div class="icon-wrap success">✓</div>
+    <h1>Connected to Google Ads</h1>
+    <p class="subtitle">Copy these values into your Railway Variables.</p>
+
+    <p class="section-label">Refresh token</p>
+    <div class="field-row">
+      <span class="field-value">${tokenEnv}</span>
+      <button class="copy-btn" id="btn-rt" onclick="copyText('${tokenEnv}', 'btn-rt')">Copy</button>
+    </div>
+
+    <hr class="divider" />
+
+    ${accountSection}
+
+    ${!missingDevToken && !customersError && customerIds.length > 0 ? `
+    <hr class="divider" />
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-text">Copy the refresh token above into Railway Variables</div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-text">Select your account, copy <code>GOOGLE_ADS_CUSTOMER_ID</code> into Railway Variables</div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-text">Redeploy and click <strong>Score from Google Ads</strong> on the dashboard</div>
+    </div>
+    ` : ""}
+  `;
+}
+
+function errorScreen(message: string): string {
+  return `
+    <div class="icon-wrap error">✕</div>
+    <h1>Something went wrong</h1>
+    <p class="subtitle">Authentication could not be completed.</p>
+    <div class="err-box">${message}</div>
+  `;
 }
