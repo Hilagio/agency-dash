@@ -57,6 +57,21 @@ export async function GET(req: NextRequest) {
   }
 
   // Fetch accessible Google Ads customer IDs
+  const developerToken = process.env.GOOGLE_ADS_DEVELOPER_TOKEN;
+  if (!developerToken) {
+    return new NextResponse(
+      html(`
+        <h1 style="color:green">✓ Authentication successful</h1>
+        <p>Copy your refresh token into Railway Variables:</p>
+        <pre style="background:#f4f4f4;padding:16px;border-radius:8px;font-size:13px;word-break:break-all">GOOGLE_ADS_REFRESH_TOKEN=${tokens.refresh_token}</pre>
+        <p style="background:#fff3cd;padding:12px;border-radius:6px;border-left:4px solid #ffc107">
+          <strong>GOOGLE_ADS_DEVELOPER_TOKEN is not set.</strong> Add it to Railway Variables, then re-run the OAuth flow to auto-fetch customer IDs.
+        </p>
+      `),
+      { headers: { "Content-Type": "text/html" } }
+    );
+  }
+
   let customerIds: string[] = [];
   let customersError: string | null = null;
   const customersRes = await fetch(
