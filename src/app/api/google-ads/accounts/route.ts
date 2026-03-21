@@ -18,7 +18,7 @@ async function getRefreshToken(): Promise<string> {
   throw new Error("No refresh token available");
 }
 
-// Try each candidate ID with a minimal customer_client query to find which is the MCC.
+// Try each candidate ID — the one where customer.manager = true is the MCC.
 // Caches the working ID in DB for future requests.
 async function discoverMccId(
   client: GoogleAdsApi,
@@ -28,15 +28,17 @@ async function discoverMccId(
   for (const id of candidateIds) {
     try {
       const c = client.Customer({ customer_id: id, refresh_token: refreshToken });
-      await c.query("SELECT customer_client.id FROM customer_client LIMIT 1");
-      // This ID can run customer_client queries — it's the MCC
+      // Check if this account is actually a manager account
+      const rows = await c.query("SELECT customer.id, customer.manager FROM customer LIMIT 1");
+      if (!rows[0]?.customer?.manager) continue; // client account, not MCC — skip
+      // This IS an MCC — cache it
       await prisma.oAuthCredential.update({
         where: { id: "singleton" },
         data:  { loginCustomerId: id },
       }).catch(() => {});
       return id;
     } catch {
-      // Not an MCC or no access, try next
+      // Auth error or unreachable — try next
     }
   }
   return null;
@@ -54,13 +56,14 @@ async function getMccId(client: GoogleAdsApi, refreshToken: string): Promise<str
   const candidateIds: string[] = JSON.parse(cred.customerIds ?? "[]");
 
   if (cred.loginCustomerId) {
-    // Validate the cached value still works; if not, rediscover
+    // Validate the cached value is still a manager account
     try {
       const c = client.Customer({ customer_id: cred.loginCustomerId, refresh_token: refreshToken });
-      await c.query("SELECT customer_client.id FROM customer_client LIMIT 1");
-      return cred.loginCustomerId;
+      const rows = await c.query("SELECT customer.manager FROM customer LIMIT 1");
+      if (rows[0]?.customer?.manager) return cred.loginCustomerId;
+      // Cached ID is not a manager — fall through to rediscover
     } catch {
-      // Cached value is stale; fall through to discover
+      // Stale credentials — fall through to discover
     }
   }
 

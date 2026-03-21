@@ -33,29 +33,32 @@ async function fetchCustomerInfoViaGaql(
   const { GoogleAdsApi } = await import("google-ads-api");
   const client = new GoogleAdsApi({ client_id: clientId, client_secret: clientSecret, developer_token: developerToken });
 
-  // Try each ID as potential MCC
+  // Try each ID as potential MCC — must have customer.manager = true
   for (const candidateId of customerIds) {
     try {
       const mccCustomer = client.Customer({ customer_id: candidateId, refresh_token: refreshToken });
 
-      // Query this customer's own info first
+      // Check if this account is a manager (MCC)
       const selfRows = await mccCustomer.query(
         "SELECT customer.id, customer.descriptive_name, customer.manager FROM customer LIMIT 1"
       );
       const selfIsManager = selfRows[0]?.customer?.manager ?? false;
 
-      // Try to get all sub-accounts (only works from an MCC)
+      // Skip non-manager accounts — they're client accounts, not MCCs
+      if (!selfIsManager) continue;
+
+      // This IS an MCC — fetch all sub-accounts for names
       const clientRows = await mccCustomer.query(`
         SELECT customer_client.id, customer_client.descriptive_name, customer_client.manager
         FROM customer_client
-        LIMIT 100
+        LIMIT 500
       `);
 
       // Build a name map from GAQL results
       const nameMap = new Map<string, { name: string; isManager: boolean }>();
       nameMap.set(candidateId, {
         name: selfRows[0]?.customer?.descriptive_name ?? `Account ${candidateId}`,
-        isManager: selfIsManager,
+        isManager: true,
       });
       for (const r of clientRows) {
         const id = String(r.customer_client?.id ?? "");
@@ -67,7 +70,7 @@ async function fetchCustomerInfoViaGaql(
         }
       }
 
-      // Map all accessible customer IDs
+      // Map all accessible customer IDs with names from this MCC
       const customers = customerIds.map((id) => ({
         id,
         name: nameMap.get(id)?.name ?? `Account ${id}`,
@@ -76,7 +79,7 @@ async function fetchCustomerInfoViaGaql(
 
       return { customers, detectedMccId: candidateId };
     } catch {
-      // This customer can't run GAQL, or isn't an MCC — try next
+      // Auth error or unreachable — try next
     }
   }
 
