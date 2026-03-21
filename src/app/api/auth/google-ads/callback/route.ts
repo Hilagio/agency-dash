@@ -77,8 +77,15 @@ export async function GET(req: NextRequest) {
     );
   }
 
+  const is501 = customersError?.includes('"code": 501') || customersError?.includes('"code":501');
   const customerSection = customersError
-    ? `<h3 style="color:red">Could not fetch customer IDs</h3><pre style="background:#fff0f0;padding:12px;border-radius:6px;font-size:12px">${customersError}</pre>`
+    ? `<h3 style="color:red">Could not fetch customer IDs</h3>
+       ${is501 ? `<p style="background:#fff3cd;padding:12px;border-radius:6px;border-left:4px solid #ffc107">
+         <strong>Fix:</strong> The Google Ads API is not enabled in your Cloud project.<br>
+         Go to <a href="https://console.cloud.google.com/apis/library/googleads.googleapis.com" target="_blank">
+         console.cloud.google.com → APIs &amp; Services → Google Ads API</a> and click <strong>Enable</strong>, then try again.
+       </p>` : ""}
+       <pre style="background:#fff0f0;padding:12px;border-radius:6px;font-size:12px">${customersError}</pre>`
     : customerIds.length === 0
     ? `<p style="color:orange">No accessible Google Ads accounts found for this Google account.</p>`
     : `<h3>Accessible Google Ads accounts:</h3><ul>${customerIds.map(id => `<li><code>${id}</code></li>`).join("")}</ul>`;
