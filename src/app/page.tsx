@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { BUCKET_LABELS } from "@/lib/engine/types";
@@ -202,7 +202,7 @@ function LoginPage() {
 
 // ─── Main dashboard ───────────────────────────────────────────────────────────
 
-export default function HomePage() {
+function HomePageInner() {
   const searchParams = useSearchParams();
   const authError = searchParams.get("auth_error");
 
@@ -702,5 +702,17 @@ export default function HomePage() {
         )}
       </main>
     </div>
+  );
+}
+
+export default function HomePage() {
+  return (
+    <Suspense fallback={
+      <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <Loader2 size={20} className="animate-spin" style={{ color: "var(--text-dim)" }} />
+      </div>
+    }>
+      <HomePageInner />
+    </Suspense>
   );
 }
