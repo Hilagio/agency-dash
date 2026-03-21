@@ -58,35 +58,38 @@ export async function GET(req: NextRequest) {
 
   // Fetch accessible Google Ads customer IDs
   let customerIds: string[] = [];
-  try {
-    const customersRes = await fetch(
-      "https://googleads.googleapis.com/v19/customers:listAccessibleCustomers",
-      {
-        headers: {
-          Authorization: `Bearer ${tokens.access_token}`,
-          "developer-token": process.env.GOOGLE_ADS_DEVELOPER_TOKEN!,
-        },
-      }
-    );
-    const customersData = await customersRes.json() as { resourceNames?: string[] };
+  let customersError: string | null = null;
+  const customersRes = await fetch(
+    "https://googleads.googleapis.com/v19/customers:listAccessibleCustomers",
+    {
+      headers: {
+        Authorization: `Bearer ${tokens.access_token}`,
+        "developer-token": process.env.GOOGLE_ADS_DEVELOPER_TOKEN!,
+      },
+    }
+  );
+  const customersData = await customersRes.json() as { resourceNames?: string[]; error?: unknown };
+  if (!customersRes.ok || customersData.error) {
+    customersError = JSON.stringify(customersData, null, 2);
+  } else {
     customerIds = (customersData.resourceNames ?? []).map((r: string) =>
       r.replace("customers/", "")
     );
-  } catch {
-    customerIds = ["(could not fetch — add manually)"];
   }
+
+  const customerSection = customersError
+    ? `<h3 style="color:red">Could not fetch customer IDs</h3><pre style="background:#fff0f0;padding:12px;border-radius:6px;font-size:12px">${customersError}</pre>`
+    : customerIds.length === 0
+    ? `<p style="color:orange">No accessible Google Ads accounts found for this Google account.</p>`
+    : `<h3>Accessible Google Ads accounts:</h3><ul>${customerIds.map(id => `<li><code>${id}</code></li>`).join("")}</ul>`;
 
   return new NextResponse(
     html(`
       <h1 style="color:green">✓ Authentication successful</h1>
-      <p>Add these to your <code>.env</code> file:</p>
-      <pre style="background:#f4f4f4;padding:16px;border-radius:8px;font-size:14px">
-GOOGLE_ADS_REFRESH_TOKEN="${tokens.refresh_token}"
-GOOGLE_ADS_CUSTOMER_ID="${customerIds[0] ?? ""}"
-# All accessible customer IDs:
-# ${customerIds.join("\n# ")}
-      </pre>
-      <p style="color:#666">Then restart the dev server. You can close this tab.</p>
+      <p>Copy your refresh token into Railway Variables:</p>
+      <pre style="background:#f4f4f4;padding:16px;border-radius:8px;font-size:13px;word-break:break-all">GOOGLE_ADS_REFRESH_TOKEN=${tokens.refresh_token}</pre>
+      ${customerSection}
+      ${customerIds.length > 0 ? `<p>Also add to Railway Variables:<br><pre style="background:#f4f4f4;padding:16px;border-radius:8px;font-size:13px">GOOGLE_ADS_CUSTOMER_ID=${customerIds[0]}</pre></p>` : ""}
     `),
     { headers: { "Content-Type": "text/html" } }
   );
