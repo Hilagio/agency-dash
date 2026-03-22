@@ -47,9 +47,10 @@ function getClient(): GoogleAdsApi {
 }
 
 async function getRefreshToken(): Promise<string> {
-  if (process.env.GOOGLE_ADS_REFRESH_TOKEN) return process.env.GOOGLE_ADS_REFRESH_TOKEN;
+  // DB token takes priority — it's always fresher than the env var
   const cred = await prisma.oAuthCredential.findUnique({ where: { id: "singleton" } });
   if (cred?.refreshToken) return cred.refreshToken;
+  if (process.env.GOOGLE_ADS_REFRESH_TOKEN) return process.env.GOOGLE_ADS_REFRESH_TOKEN;
   throw new Error("No Google Ads refresh token configured. Complete OAuth at /api/auth/google-ads");
 }
 

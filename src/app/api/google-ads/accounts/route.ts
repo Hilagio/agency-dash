@@ -12,9 +12,10 @@ import { prisma } from "@/lib/db";
 import { isGoogleAdsConfigured } from "@/lib/integrations/google-ads";
 
 async function getRefreshToken(): Promise<string> {
-  if (process.env.GOOGLE_ADS_REFRESH_TOKEN) return process.env.GOOGLE_ADS_REFRESH_TOKEN;
+  // DB token takes priority — it's always fresher than the env var
   const cred = await prisma.oAuthCredential.findUnique({ where: { id: "singleton" } });
   if (cred?.refreshToken) return cred.refreshToken;
+  if (process.env.GOOGLE_ADS_REFRESH_TOKEN) return process.env.GOOGLE_ADS_REFRESH_TOKEN;
   throw new Error("No refresh token available");
 }
 
