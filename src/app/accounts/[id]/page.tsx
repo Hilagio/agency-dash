@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, RefreshCw, MessageSquare, ListChecks, BarChart2, Loader2, Search, BookOpen } from "lucide-react";
+import { ArrowLeft, RefreshCw, MessageSquare, ListChecks, BarChart2, Loader2, Search, BookOpen, ClipboardList, Send } from "lucide-react";
 import { ScoreBuckets } from "@/components/ScoreBuckets";
 import { ScoreHistory } from "@/components/ScoreHistory";
 import { ActionList } from "@/components/ActionList";
@@ -13,7 +13,132 @@ import { PlaybookView } from "@/components/PlaybookView";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { BUCKET_LABELS } from "@/lib/engine/types";
 
-type Tab = "overview" | "actions" | "search-terms" | "playbook" | "chat";
+type Tab = "overview" | "actions" | "search-terms" | "playbook" | "chat" | "notes";
+
+interface Note {
+  id: string;
+  content: string;
+  author: string;
+  createdAt: string;
+}
+
+function NotesLog({ accountId }: { accountId: string }) {
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [content, setContent] = useState("");
+  const [author, setAuthor] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    fetch(`/api/accounts/${accountId}/notes`)
+      .then(r => r.json())
+      .then(d => { setNotes(d); setLoading(false); });
+  }, [accountId]);
+
+  const submit = async () => {
+    if (!content.trim()) return;
+    setSaving(true);
+    const res = await fetch(`/api/accounts/${accountId}/notes`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content: content.trim(), author: author.trim() }),
+    });
+    if (res.ok) {
+      const note: Note = await res.json();
+      setNotes(prev => [note, ...prev]);
+      setContent("");
+    }
+    setSaving(false);
+  };
+
+  return (
+    <div>
+      {/* Add note */}
+      <div style={{
+        background: "var(--surface)", border: "1px solid var(--border)",
+        borderRadius: 10, padding: "16px 18px", marginBottom: 20,
+      }}>
+        <textarea
+          value={content}
+          onChange={e => setContent(e.target.value)}
+          placeholder="Add a change log entry, observation, or note…"
+          rows={3}
+          style={{
+            width: "100%", background: "transparent", border: "none",
+            color: "var(--text)", fontSize: 13, lineHeight: 1.6,
+            resize: "vertical", outline: "none", fontFamily: "inherit",
+            boxSizing: "border-box",
+          }}
+        />
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10 }}>
+          <input
+            value={author}
+            onChange={e => setAuthor(e.target.value)}
+            placeholder="Your name (optional)"
+            style={{
+              flex: 1, background: "var(--bg)", border: "1px solid var(--border-2)",
+              borderRadius: 6, color: "var(--text-muted)", fontSize: 12,
+              padding: "5px 10px", outline: "none", fontFamily: "inherit",
+            }}
+          />
+          <button
+            onClick={submit}
+            disabled={saving || !content.trim()}
+            style={{
+              display: "flex", alignItems: "center", gap: 5,
+              background: "#1d4ed8", border: "none", borderRadius: 6,
+              color: "#fff", fontSize: 12, fontWeight: 600,
+              padding: "6px 14px", cursor: saving || !content.trim() ? "not-allowed" : "pointer",
+              opacity: saving || !content.trim() ? 0.5 : 1,
+            }}
+          >
+            <Send size={11} /> {saving ? "Saving…" : "Add note"}
+          </button>
+        </div>
+      </div>
+
+      {/* Note list */}
+      {loading ? (
+        <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--text-dim)", fontSize: 13, padding: "20px 0" }}>
+          <Loader2 size={14} className="animate-spin" /> Loading…
+        </div>
+      ) : notes.length === 0 ? (
+        <div style={{
+          border: "1px dashed var(--border-2)", borderRadius: 10,
+          padding: "40px 24px", textAlign: "center",
+          color: "var(--text-faint)", fontSize: 13,
+        }}>
+          No notes yet — add the first one above.
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {notes.map(note => (
+            <div key={note.id} style={{
+              background: "var(--surface)", border: "1px solid var(--border)",
+              borderRadius: 10, padding: "14px 18px",
+            }}>
+              <p style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.65, margin: 0, whiteSpace: "pre-wrap" }}>
+                {note.content}
+              </p>
+              <div style={{ marginTop: 8, display: "flex", gap: 8, alignItems: "center" }}>
+                {note.author && (
+                  <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-dim)" }}>{note.author}</span>
+                )}
+                {note.author && <span style={{ fontSize: 11, color: "var(--border-2)" }}>·</span>}
+                <span style={{ fontSize: 11, color: "var(--text-faint)" }}>
+                  {new Date(note.createdAt).toLocaleString("en-US", {
+                    month: "short", day: "numeric", year: "numeric",
+                    hour: "numeric", minute: "2-digit",
+                  })}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface Snapshot {
   id: string;
@@ -180,6 +305,7 @@ export default function AccountPage() {
     { key: "search-terms",  label: "Search terms", icon: <Search       size={14} /> },
     { key: "playbook",      label: "Playbook",     icon: <BookOpen     size={14} /> },
     { key: "chat",          label: "AI Advisor",   icon: <MessageSquare size={14} /> },
+    { key: "notes",         label: "Change log",   icon: <ClipboardList size={14} /> },
   ];
 
   return (
@@ -403,6 +529,20 @@ export default function AccountPage() {
           }}>
             Run a constraint score first to unlock the advisor.
           </div>
+        )}
+
+        {tab === "notes" && (
+          <>
+            <div style={{ marginBottom: 18, display: "flex", alignItems: "baseline", gap: 8 }}>
+              <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.8px", textTransform: "uppercase", color: "var(--text-dim)" }}>
+                Change log
+              </span>
+              <span style={{ fontSize: 11, color: "var(--text-faint)" }}>
+                Internal notes, observations, and change history
+              </span>
+            </div>
+            <NotesLog accountId={id} />
+          </>
         )}
       </div>
     </div>

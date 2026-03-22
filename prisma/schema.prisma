@@ -21,6 +21,7 @@ model Account {
   snapshots    ConstraintSnapshot[]
   actions      ActionRecommendation[]
   chatSessions ChatSession[]
+  notes        AccountNote[]
 }
 
 // ─── Constraint Snapshot ─────────────────────────────────────────────────────
@@ -118,4 +119,17 @@ model AgencySop {
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// ─── Account Notes / Change Log ───────────────────────────────────────────────
+// Manual notes logged per account by the team. Shown as a timeline.
+// E.g. "Added 23 negatives to Brand campaign" or "Client approved budget raise".
+
+model AccountNote {
+  id        String   @id @default(cuid())
+  accountId String
+  account   Account  @relation(fields: [accountId], references: [id])
+  content   String
+  author    String   @default("") // free text, e.g. team member initials
+  createdAt DateTime @default(now())
 }
