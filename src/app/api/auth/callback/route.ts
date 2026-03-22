@@ -27,6 +27,8 @@ export async function GET(req: NextRequest) {
   const state = searchParams.get("state");
   const origin = getOrigin(req);
 
+  console.log("[callback] debug", { code: !!code, error, origin });
+
   if (error || !code) {
     return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent(error ?? "no_code")}`);
   }
@@ -52,10 +54,11 @@ export async function GET(req: NextRequest) {
       grant_type:    "authorization_code",
     }),
   });
-  const tokens = await tokenRes.json() as { access_token?: string; error?: string };
+  const tokens = await tokenRes.json() as { access_token?: string; error?: string; error_description?: string };
+  console.log("[callback] token exchange:", { error: tokens.error, error_description: tokens.error_description, hasToken: !!tokens.access_token });
 
   if (tokens.error || !tokens.access_token) {
-    return NextResponse.redirect(`${origin}/login?error=token_exchange`);
+    return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent(tokens.error ?? "token_exchange")}`);
   }
 
   // ── 2. Fetch user profile ────────────────────────────────────────────────────
