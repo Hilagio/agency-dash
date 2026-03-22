@@ -119,9 +119,9 @@ export function SearchTermReport({ accountId }: { accountId: string }) {
       <div style={{ display: "flex", gap: 16, marginBottom: 20, flexWrap: "wrap", alignItems: "center" }}>
         <div style={{ display: "flex", gap: 12 }}>
           {[
-            { rec: "EXCLUDE" as const, count: excludeRows.length, extra: `€${wastedTotal.toFixed(0)} wasted` },
-            { rec: "WATCH"   as const, count: watchRows.length,   extra: "no conversions yet" },
-            { rec: "KEEP"    as const, count: keepRows.length,     extra: "converting" },
+            { rec: "EXCLUDE" as const, count: excludeRows.length, extra: `€${wastedTotal.toFixed(0)} spent, 0 conv.` },
+            { rec: "WATCH"   as const, count: watchRows.length,   extra: "€5–30 spent, worth watching" },
+            { rec: "KEEP"    as const, count: keepRows.length,     extra: "converting or minimal spend" },
           ].map(({ rec, count, extra }) => {
             const s = REC_STYLE[rec];
             return (
@@ -167,8 +167,8 @@ export function SearchTermReport({ accountId }: { accountId: string }) {
           fontSize: 12, color: "#ef4444", display: "flex", alignItems: "center", gap: 8,
         }}>
           <AlertTriangle size={13} />
-          <strong>€{wastedTotal.toFixed(2)}</strong> spent in last 30 days on queries with zero conversions.
-          Adding these as negative keywords recovers that budget immediately.
+          <strong>€{wastedTotal.toFixed(2)}</strong> spent over 90 days on queries with zero conversions and {">"}€30 each.
+          Adding these as negative keywords stops future spend immediately.
         </div>
       )}
 

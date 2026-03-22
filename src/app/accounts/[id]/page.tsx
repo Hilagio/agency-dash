@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, RefreshCw, MessageSquare, ListChecks, BarChart2, Loader2, Search, BookOpen, ClipboardList, Send, Pencil, X } from "lucide-react";
+import { ArrowLeft, RefreshCw, MessageSquare, ListChecks, BarChart2, Loader2, Search, BookOpen, ClipboardList, Send, Pencil, X, CheckSquare } from "lucide-react";
 import { ScoreBuckets } from "@/components/ScoreBuckets";
 import { ScoreHistory } from "@/components/ScoreHistory";
 import { ActionList } from "@/components/ActionList";
@@ -13,13 +13,208 @@ import { PlaybookView } from "@/components/PlaybookView";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { BUCKET_LABELS } from "@/lib/engine/types";
 
-type Tab = "overview" | "actions" | "search-terms" | "playbook" | "chat" | "notes";
+type Tab = "overview" | "actions" | "search-terms" | "playbook" | "chat" | "notes" | "sops";
 
 interface Note {
   id: string;
   content: string;
   author: string;
   createdAt: string;
+}
+
+// ─── SOP checklist component ──────────────────────────────────────────────────
+
+interface SopProgress {
+  id: string;
+  sopId: string;
+  completedSteps: string; // JSON number[]
+  sop: { id: string; title: string; content: string; isActive: boolean };
+}
+
+function parseSteps(content: string): string[] {
+  return content
+    .split("\n")
+    .filter(line => /^\s*\d+[.)]\s+/.test(line))
+    .map(line => line.replace(/^\s*\d+[.)]\s+/, "").trim())
+    .filter(Boolean);
+}
+
+function SopChecklist({ accountId }: { accountId: string }) {
+  const [progressList, setProgressList] = useState<SopProgress[]>([]);
+  const [allSops, setAllSops] = useState<{ id: string; title: string; content: string; isActive: boolean }[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [toggling, setToggling] = useState<string | null>(null); // "sopId-stepIndex"
+
+  useEffect(() => {
+    Promise.all([
+      fetch(`/api/accounts/${accountId}/sop-progress`).then(r => r.json()),
+      fetch("/api/sops").then(r => r.json()),
+    ]).then(([prog, sops]) => {
+      setProgressList(prog);
+      setAllSops(sops.filter((s: { isActive: boolean }) => s.isActive));
+      setLoading(false);
+    });
+  }, [accountId]);
+
+  const toggle = async (sopId: string, stepIndex: number) => {
+    const key = `${sopId}-${stepIndex}`;
+    setToggling(key);
+    const res = await fetch(`/api/accounts/${accountId}/sop-progress`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sopId, stepIndex }),
+    });
+    if (res.ok) {
+      const updated: SopProgress = await res.json();
+      setProgressList(prev => {
+        const idx = prev.findIndex(p => p.sopId === sopId);
+        if (idx === -1) {
+          // Need to re-fetch to get sop relation
+          const sop = allSops.find(s => s.id === sopId)!;
+          return [...prev, { ...updated, sop }];
+        }
+        return prev.map(p => p.sopId === sopId ? { ...p, completedSteps: updated.completedSteps } : p);
+      });
+    }
+    setToggling(null);
+  };
+
+  if (loading) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--text-dim)", fontSize: 13, padding: "20px 0" }}>
+        <Loader2 size={14} className="animate-spin" /> Loading SOPs…
+      </div>
+    );
+  }
+
+  if (allSops.length === 0) {
+    return (
+      <div style={{
+        border: "1px dashed var(--border-2)", borderRadius: 12,
+        padding: "40px 24px", textAlign: "center", color: "var(--text-faint)", fontSize: 13,
+      }}>
+        No active SOPs. Go to{" "}
+        <a href="/sops" style={{ color: "#60a5fa", textDecoration: "none" }}>Agency SOPs</a>
+        {" "}to add your procedures.
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      {allSops.map(sop => {
+        const steps = parseSteps(sop.content);
+        const prog = progressList.find(p => p.sopId === sop.id);
+        const done: number[] = prog ? JSON.parse(prog.completedSteps) : [];
+        const pct = steps.length > 0 ? Math.round((done.length / steps.length) * 100) : 0;
+
+        return (
+          <div key={sop.id} style={{
+            border: "1px solid var(--border)",
+            borderLeft: `3px solid ${pct === 100 ? "#4ade80" : pct > 0 ? "#60a5fa" : "var(--border-2)"}`,
+            borderRadius: 12, overflow: "hidden",
+          }}>
+            {/* SOP header */}
+            <div style={{
+              padding: "12px 18px",
+              background: "var(--surface)",
+              borderBottom: "1px solid var(--border)",
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+            }}>
+              <div>
+                <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-2)" }}>{sop.title}</span>
+                {steps.length > 0 && (
+                  <span style={{ fontSize: 11, color: "var(--text-faint)", marginLeft: 10 }}>
+                    {done.length}/{steps.length} steps
+                  </span>
+                )}
+              </div>
+              {steps.length > 0 && (
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  {/* Progress bar */}
+                  <div style={{ width: 80, height: 4, background: "var(--border-2)", borderRadius: 2, overflow: "hidden" }}>
+                    <div style={{
+                      height: "100%", borderRadius: 2,
+                      width: `${pct}%`,
+                      background: pct === 100 ? "#4ade80" : "#60a5fa",
+                      transition: "width 0.3s ease",
+                    }} />
+                  </div>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: pct === 100 ? "#4ade80" : "var(--text-dim)" }}>
+                    {pct}%
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Steps or raw content */}
+            <div style={{ padding: "14px 18px" }}>
+              {steps.length === 0 ? (
+                <p style={{ fontSize: 12, color: "var(--text-faint)", lineHeight: 1.6, margin: 0 }}>
+                  No numbered steps detected. Format steps as a numbered list (1. 2. 3.) to enable progress tracking.
+                </p>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {steps.map((step, i) => {
+                    const isDone = done.includes(i);
+                    const key = `${sop.id}-${i}`;
+                    const isToggling = toggling === key;
+                    return (
+                      <button
+                        key={i}
+                        onClick={() => toggle(sop.id, i)}
+                        disabled={isToggling}
+                        style={{
+                          display: "flex", alignItems: "flex-start", gap: 10,
+                          background: isDone ? "rgba(74,222,128,0.04)" : "transparent",
+                          border: `1px solid ${isDone ? "rgba(74,222,128,0.15)" : "var(--border)"}`,
+                          borderRadius: 8, padding: "9px 12px",
+                          cursor: isToggling ? "not-allowed" : "pointer",
+                          textAlign: "left", width: "100%",
+                          transition: "all 0.15s",
+                          opacity: isToggling ? 0.6 : 1,
+                        }}
+                      >
+                        {/* Checkbox */}
+                        <div style={{
+                          flexShrink: 0, width: 16, height: 16, borderRadius: 4,
+                          background: isDone ? "#4ade80" : "var(--bg)",
+                          border: `1.5px solid ${isDone ? "#4ade80" : "var(--border-2)"}`,
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          marginTop: 1,
+                        }}>
+                          {isDone && (
+                            <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                              <path d="M1.5 5L4 7.5L8.5 2.5" stroke="#111" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          )}
+                          {isToggling && <Loader2 size={8} className="animate-spin" style={{ color: "var(--text-faint)" }} />}
+                        </div>
+
+                        {/* Step number + text */}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-faint)", marginRight: 6 }}>
+                            {i + 1}.
+                          </span>
+                          <span style={{
+                            fontSize: 12, color: isDone ? "var(--text-dim)" : "var(--text-muted)",
+                            textDecoration: isDone ? "line-through" : "none",
+                            lineHeight: 1.6,
+                          }}>
+                            {step}
+                          </span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 function NotesLog({ accountId }: { accountId: string }) {
@@ -425,6 +620,7 @@ export default function AccountPage() {
     { key: "search-terms",  label: "Search terms", icon: <Search       size={14} /> },
     { key: "playbook",      label: "Playbook",     icon: <BookOpen     size={14} /> },
     { key: "chat",          label: "AI Advisor",   icon: <MessageSquare size={14} /> },
+    { key: "sops",          label: "SOPs",         icon: <CheckSquare   size={14} /> },
     { key: "notes",         label: "Change log",   icon: <ClipboardList size={14} /> },
   ];
 
@@ -620,10 +816,10 @@ export default function AccountPage() {
           <>
             <div style={{ marginBottom: 16, display: "flex", alignItems: "baseline", gap: 8 }}>
               <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.8px", textTransform: "uppercase", color: "var(--text-dim)" }}>
-                Search term report — last 30 days
+                Search term report — last 90 days
               </span>
               <span style={{ fontSize: 11, color: "var(--text-faint)" }}>
-                Exclude = zero conversions + high spend · Watch = zero conversions + low spend
+                Exclude = 0 conv. + {">"}€30 spent · Watch = 0 conv. + €5–30 spent
               </span>
             </div>
             <SearchTermReport accountId={id} />
@@ -658,6 +854,28 @@ export default function AccountPage() {
           }}>
             Run a constraint score first to unlock the advisor.
           </div>
+        )}
+
+        {tab === "sops" && (
+          <>
+            <div style={{ marginBottom: 18, display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.8px", textTransform: "uppercase", color: "var(--text-dim)" }}>
+                  SOP Progress
+                </span>
+                <span style={{ fontSize: 11, color: "var(--text-faint)" }}>
+                  Check off steps as you complete them — progress is saved per account
+                </span>
+              </div>
+              <a
+                href="/sops"
+                style={{ fontSize: 11, color: "#60a5fa", textDecoration: "none" }}
+              >
+                Manage SOPs →
+              </a>
+            </div>
+            <SopChecklist accountId={id} />
+          </>
         )}
 
         {tab === "notes" && (

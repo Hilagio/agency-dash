@@ -162,7 +162,7 @@ function SearchTermPreview({
         fontSize: 11, color: "#ef4444", fontWeight: 600, marginBottom: 8,
       }}>
         <AlertTriangle size={11} />
-        €{totalWasted.toFixed(2)} wasted in 30 days on these queries
+        €{totalWasted.toFixed(2)} spent over 90 days — 0 conversions, {">"}€30 each
       </div>
 
       {/* Terms table */}

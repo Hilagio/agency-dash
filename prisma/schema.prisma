@@ -23,6 +23,7 @@ model Account {
   actions      ActionRecommendation[]
   chatSessions ChatSession[]
   notes        AccountNote[]
+  sopProgress  AccountSopProgress[]
 }
 
 // ─── Constraint Snapshot ─────────────────────────────────────────────────────
@@ -120,6 +121,8 @@ model AgencySop {
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  progress  AccountSopProgress[]
 }
 
 // ─── Account Notes / Change Log ───────────────────────────────────────────────
@@ -133,4 +136,21 @@ model AccountNote {
   content   String
   author    String   @default("") // free text, e.g. team member initials
   createdAt DateTime @default(now())
+}
+
+// ─── SOP Progress Tracking ───────────────────────────────────────────────────
+// Tracks which steps of each SOP have been completed for a given account.
+// Steps are auto-parsed from the SOP content (numbered list items).
+
+model AccountSopProgress {
+  id             String   @id @default(cuid())
+  accountId      String
+  account        Account  @relation(fields: [accountId], references: [id])
+  sopId          String
+  sop            AgencySop @relation(fields: [sopId], references: [id])
+  completedSteps String   @default("[]") // JSON array of step indices (0-based)
+  startedAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([accountId, sopId])
 }

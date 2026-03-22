@@ -179,6 +179,14 @@ function last30Days(): { start: string; end: string } {
   return { start: fmt(start), end: fmt(end) };
 }
 
+function last90Days(): { start: string; end: string } {
+  const end   = new Date();
+  const start = new Date();
+  start.setDate(start.getDate() - 90);
+  const fmt = (d: Date) => d.toISOString().slice(0, 10).replace(/-/g, "-");
+  return { start: fmt(start), end: fmt(end) };
+}
+
 // ─── Measurement signals ──────────────────────────────────────────────────────
 
 async function fetchMeasurementSignals(customer: Customer): Promise<MeasurementSignals> {
@@ -581,10 +589,17 @@ export interface SearchTermRow {
   recommendation: "EXCLUDE" | "WATCH" | "KEEP";
 }
 
+// Thresholds for search term classification (90-day window):
+//   EXCLUDE — zero conversions and spent > €30: meaningful budget leak worth acting on
+//   WATCH   — zero conversions and spent > €5:  accumulating spend, keep an eye on it
+//   KEEP    — has conversions or minimal spend: leave alone
+const EXCLUDE_COST_THRESHOLD = 30;
+const WATCH_COST_THRESHOLD   = 5;
+
 export async function fetchSearchTermReport(customerId: string): Promise<SearchTermRow[]> {
   const client   = getClient();
   const customer = await getCustomer(client, customerId);
-  const { start, end } = last30Days();
+  const { start, end } = last90Days(); // 90-day window for meaningful spend signal
 
   const rows = await safeQuery(
     () => customer.query(`
@@ -598,7 +613,7 @@ export async function fetchSearchTermReport(customerId: string): Promise<SearchT
         metrics.cost_micros
       FROM search_term_view
       WHERE segments.date BETWEEN '${start}' AND '${end}'
-        AND metrics.clicks >= 3
+        AND metrics.clicks >= 1
         AND search_term_view.status != 'EXCLUDED'
     `),
     "search term report"
@@ -610,9 +625,10 @@ export async function fetchSearchTermReport(customerId: string): Promise<SearchT
       const conversions = Number(r.metrics?.conversions  ?? 0);
       const costEur     = Number(r.metrics?.cost_micros  ?? 0) / 1_000_000;
 
+      // Cost-based thresholds: only flag when there's meaningful spend to recover
       const recommendation: SearchTermRow["recommendation"] =
-        conversions === 0 && clicks >= 10 ? "EXCLUDE" :
-        conversions === 0 && clicks >= 3  ? "WATCH"   : "KEEP";
+        conversions === 0 && costEur >= EXCLUDE_COST_THRESHOLD ? "EXCLUDE" :
+        conversions === 0 && costEur >= WATCH_COST_THRESHOLD   ? "WATCH"   : "KEEP";
 
       return {
         searchTerm:   r.search_term_view?.search_term ?? "",
@@ -625,7 +641,7 @@ export async function fetchSearchTermReport(customerId: string): Promise<SearchT
       };
     })
     .filter(r => r.searchTerm.length > 0)
-    .sort((a, b) => b.costEur - a.costEur); // highest waste first
+    .sort((a, b) => b.costEur - a.costEur); // highest spend first
 }
 
 export async function isGoogleAdsConfigured(): Promise<boolean> {
