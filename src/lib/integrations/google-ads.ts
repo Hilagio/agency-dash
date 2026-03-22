@@ -71,24 +71,94 @@ async function getCustomer(client: GoogleAdsApi, customerId?: string): Promise<C
 }
 
 // ─── Industry CVR benchmarks ──────────────────────────────────────────────────
-// Source: WordStream / Google Ads industry benchmarks (search network, 2024)
+// Sources: WordStream 2024, Google Ads benchmarks, industry-specific research.
+// Higher specificity keys take priority in matching.
+// CVR = macro conversions / clicks on the search network.
 
 const INDUSTRY_CVR_BENCHMARKS: Record<string, number> = {
-  "automotive":        0.064,
-  "b2b":               0.034,
-  "consumer_services": 0.065,
-  "dating":            0.090,
-  "ecommerce":         0.026,
-  "education":         0.055,
-  "employment":        0.057,
-  "finance":           0.056,
-  "health":            0.036,
-  "home_improvement":  0.037,
-  "industrial":        0.031,
-  "legal":             0.067,
-  "real_estate":       0.024,
-  "technology":        0.023,
-  "travel":            0.035,
+  // ── eCommerce verticals ────────────────────────────────────────────────────
+  "ecommerce":             0.026,
+  "fashion":               0.019,
+  "fashion_retail":        0.019,
+  "clothing":              0.019,
+  "apparel":               0.019,
+  "luxury_fashion":        0.012,
+  "shoes":                 0.018,
+  "accessories":           0.020,
+  "jewelry":               0.014,
+  "optics":                0.031,
+  "glasses":               0.031,
+  "eyewear":               0.031,
+  "beauty":                0.024,
+  "cosmetics":             0.024,
+  "skincare":              0.023,
+  "supplements":           0.027,
+  "sport":                 0.022,
+  "sporting_goods":        0.022,
+  "outdoor":               0.021,
+  "pets":                  0.028,
+  "pet_supplies":          0.028,
+  "baby":                  0.026,
+  "toys":                  0.024,
+  "electronics":           0.020,
+  "computers":             0.018,
+  "furniture":             0.014,
+  "home_decor":            0.016,
+  "kitchen":               0.024,
+  "food":                  0.030,
+  "grocery":               0.030,
+  "wine":                  0.022,
+  "horeca":                0.018,   // horeca supplies/equipment
+  "catering":              0.018,
+  "restaurant_supplies":   0.018,
+  // ── B2C services ──────────────────────────────────────────────────────────
+  "automotive":            0.064,
+  "car_dealership":        0.055,
+  "consumer_services":     0.065,
+  "health":                0.036,
+  "healthcare":            0.036,
+  "dental":                0.042,
+  "cosmetic_surgery":      0.025,
+  "fitness":               0.038,
+  "gym":                   0.038,
+  "dating":                0.090,
+  "travel":                0.035,
+  "hotel":                 0.030,
+  "vacation":              0.033,
+  "home_improvement":      0.037,
+  "cleaning":              0.055,
+  "plumber":               0.075,
+  "electrician":           0.070,
+  "moving":                0.060,
+  "photography":           0.045,
+  "wedding":               0.040,
+  // ── Education & courses ───────────────────────────────────────────────────
+  "education":             0.055,
+  "online_course":         0.065,
+  "driving_school":        0.090, // High intent — people actively searching
+  "language_school":       0.070,
+  "university":            0.040,
+  "tutoring":              0.075,
+  // ── B2B ───────────────────────────────────────────────────────────────────
+  "b2b":                   0.034,
+  "saas":                  0.026,
+  "software":              0.023,
+  "technology":            0.023,
+  "it_services":           0.028,
+  "marketing_agency":      0.035,
+  "recruitment":           0.057,
+  "employment":            0.057,
+  "industrial":            0.031,
+  "manufacturing":         0.028,
+  // ── Finance & legal ───────────────────────────────────────────────────────
+  "finance":               0.056,
+  "insurance":             0.054,
+  "mortgage":              0.044,
+  "accounting":            0.062,
+  "legal":                 0.067,
+  "lawyer":                0.067,
+  // ── Real estate ───────────────────────────────────────────────────────────
+  "real_estate":           0.024,
 };
 
 const DEFAULT_CVR_BENCHMARK = 0.035; // broad average across industries
@@ -158,15 +228,23 @@ async function fetchMeasurementSignals(customer: Customer): Promise<MeasurementS
     ? campaignsWithConversions / totalCampaigns
     : 0;
 
-  // GA4 linked — check if any Google Analytics links exist
+  // GA4 linked — two checks:
+  //  1. google_analytics_link covers both UA and GA4 links from Google Ads' side
+  //  2. Conversion actions of type GOOGLE_ANALYTICS_4 confirm an active GA4 linkage
   const analyticsLinks = await safeQuery(
     () => customer.query(`
-      SELECT google_analytics_link.resource_name
+      SELECT google_analytics_link.resource_name, google_analytics_link.type
       FROM google_analytics_link
     `),
     "GA4 links"
   );
-  const hasGa4Linked = analyticsLinks.length > 0;
+  // Also check for GA4 conversion actions (most reliable signal — means GA4 is ACTIVELY firing)
+  const ga4ConvActions = convActions.filter(
+    (r) =>
+      r.conversion_action?.type === enums.ConversionActionType.GOOGLE_ANALYTICS_4_CUSTOM ||
+      r.conversion_action?.type === enums.ConversionActionType.GOOGLE_ANALYTICS_4_PURCHASE
+  );
+  const hasGa4Linked = analyticsLinks.length > 0 || ga4ConvActions.length > 0;
 
   // Merchant Center linked
   const merchantLinks = await safeQuery(
@@ -489,6 +567,65 @@ export async function fetchGoogleAdsSignals(customerId?: string, industry?: stri
   ]);
 
   return { measurement, traffic, conversion, funnel, economics };
+}
+
+// ─── Search Term Report ───────────────────────────────────────────────────────
+
+export interface SearchTermRow {
+  searchTerm:   string;
+  campaignId:   string;
+  campaignName: string;
+  clicks:       number;
+  conversions:  number;
+  costEur:      number; // cost in account currency
+  recommendation: "EXCLUDE" | "WATCH" | "KEEP";
+}
+
+export async function fetchSearchTermReport(customerId: string): Promise<SearchTermRow[]> {
+  const client   = getClient();
+  const customer = await getCustomer(client, customerId);
+  const { start, end } = last30Days();
+
+  const rows = await safeQuery(
+    () => customer.query(`
+      SELECT
+        search_term_view.search_term,
+        search_term_view.status,
+        campaign.id,
+        campaign.name,
+        metrics.clicks,
+        metrics.conversions,
+        metrics.cost_micros
+      FROM search_term_view
+      WHERE segments.date BETWEEN '${start}' AND '${end}'
+        AND metrics.clicks >= 3
+        AND search_term_view.status != 'EXCLUDED'
+    `),
+    "search term report"
+  );
+
+  return rows
+    .map((r): SearchTermRow => {
+      const clicks      = Number(r.metrics?.clicks      ?? 0);
+      const conversions = Number(r.metrics?.conversions  ?? 0);
+      const costEur     = Number(r.metrics?.cost_micros  ?? 0) / 1_000_000;
+
+      const recommendation: SearchTermRow["recommendation"] =
+        conversions === 0 && clicks >= 10 ? "EXCLUDE" :
+        conversions === 0 && clicks >= 3  ? "WATCH"   : "KEEP";
+
+      return {
+        searchTerm:   r.search_term_view?.search_term ?? "",
+        campaignId:   String(r.campaign?.id   ?? ""),
+        campaignName: r.campaign?.name ?? "Unknown campaign",
+        clicks,
+        conversions,
+        costEur,
+        recommendation,
+      };
+    })
+    .filter(r => r.searchTerm.length > 0)
+    .sort((a, b) => b.costEur - a.costEur); // highest waste first
 }
 
 export async function isGoogleAdsConfigured(): Promise<boolean> {

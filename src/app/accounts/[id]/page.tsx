@@ -3,15 +3,17 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, RefreshCw, MessageSquare, ListChecks, BarChart2, Loader2 } from "lucide-react";
+import { ArrowLeft, RefreshCw, MessageSquare, ListChecks, BarChart2, Loader2, Search, BookOpen } from "lucide-react";
 import { ScoreBuckets } from "@/components/ScoreBuckets";
 import { ScoreHistory } from "@/components/ScoreHistory";
 import { ActionList } from "@/components/ActionList";
 import { ChatAssistant } from "@/components/ChatAssistant";
+import { SearchTermReport } from "@/components/SearchTermReport";
+import { PlaybookView } from "@/components/PlaybookView";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { BUCKET_LABELS } from "@/lib/engine/types";
 
-type Tab = "overview" | "actions" | "chat";
+type Tab = "overview" | "actions" | "search-terms" | "playbook" | "chat";
 
 interface Snapshot {
   id: string;
@@ -173,9 +175,11 @@ export default function AccountPage() {
   const automatable     = pendingActions.filter((a) => a.safeToAutomate);
 
   const TABS: { key: Tab; label: string; icon: React.ReactNode; badge?: number }[] = [
-    { key: "overview", label: "Overview",   icon: <BarChart2 size={14} /> },
-    { key: "actions",  label: "Actions",    icon: <ListChecks size={14} />, badge: pendingActions.length },
-    { key: "chat",     label: "AI Advisor", icon: <MessageSquare size={14} /> },
+    { key: "overview",      label: "Overview",     icon: <BarChart2    size={14} /> },
+    { key: "actions",       label: "Actions",      icon: <ListChecks   size={14} />, badge: pendingActions.length },
+    { key: "search-terms",  label: "Search terms", icon: <Search       size={14} /> },
+    { key: "playbook",      label: "Playbook",     icon: <BookOpen     size={14} /> },
+    { key: "chat",          label: "AI Advisor",   icon: <MessageSquare size={14} /> },
   ];
 
   return (
@@ -355,6 +359,28 @@ export default function AccountPage() {
               onExecute={handleExecute}
             />
           </>
+        )}
+
+        {tab === "search-terms" && (
+          <>
+            <div style={{ marginBottom: 16, display: "flex", alignItems: "baseline", gap: 8 }}>
+              <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.8px", textTransform: "uppercase", color: "var(--text-dim)" }}>
+                Search term report — last 30 days
+              </span>
+              <span style={{ fontSize: 11, color: "var(--text-faint)" }}>
+                Exclude = zero conversions + high spend · Watch = zero conversions + low spend
+              </span>
+            </div>
+            <SearchTermReport accountId={id} />
+          </>
+        )}
+
+        {tab === "playbook" && (
+          <PlaybookView
+            accountId={id}
+            accountName={account.name}
+            hasSnapshot={!!snapshot}
+          />
         )}
 
         {tab === "chat" && snapshot && (

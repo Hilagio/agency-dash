@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { BUCKET_LABELS } from "@/lib/engine/types";
-import { Zap, RefreshCw, Loader2, Plus, AlertTriangle, TrendingUp } from "lucide-react";
+import { Zap, RefreshCw, Loader2, Plus, AlertTriangle, TrendingUp, BookOpen } from "lucide-react";
 import { AccountImporter } from "@/components/AccountImporter";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
@@ -398,6 +398,14 @@ function HomePageInner() {
                 : <><Zap size={12} /> Score all</>}
             </button>
           )}
+          <Link href="/sops" style={{
+            display: "flex", alignItems: "center", gap: 5,
+            background: "var(--surface)", border: "1px solid var(--border-2)",
+            borderRadius: 7, color: "var(--text-muted)", fontSize: 12,
+            padding: "6px 12px", textDecoration: "none",
+          }}>
+            <BookOpen size={12} /> SOPs
+          </Link>
           <button onClick={() => setShowImporter(!showImporter)} style={{
             display: "flex", alignItems: "center", gap: 5,
             background: "var(--surface)", border: "1px solid var(--border-2)",

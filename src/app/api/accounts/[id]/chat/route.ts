@@ -67,8 +67,11 @@ export async function POST(req: NextRequest, { params }: Params) {
     sessionId?: string;
   };
 
-  // Load account + latest snapshot
-  const account = await prisma.account.findUnique({ where: { id } });
+  // Load account + latest snapshot + active agency SOPs
+  const [account, sops] = await Promise.all([
+    prisma.account.findUnique({ where: { id } }),
+    prisma.agencySop.findMany({ where: { isActive: true }, orderBy: { createdAt: "asc" } }),
+  ]);
   if (!account) {
     return NextResponse.json({ error: "Account not found" }, { status: 404 });
   }
@@ -114,6 +117,12 @@ export async function POST(req: NextRequest, { params }: Params) {
     ECONOMICS:   snapshot.scoreEconomics,
   };
 
+  const sopContext = sops.length > 0
+    ? `\n\nAGENCY STANDARD OPERATING PROCEDURES (always follow these):\n${
+        sops.map(s => `--- ${s.title} ---\n${s.content}`).join("\n\n").slice(0, 5000)
+      }`
+    : "";
+
   const systemPrompt = buildSystemPrompt(
     account.name,
     snapshot.governingConstraint,
@@ -124,7 +133,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       description: a.description,
       impact: a.impact,
     }))
-  );
+  ) + sopContext;
 
   // Build message history for context
   const history = (session.messages ?? []).map((m) => ({

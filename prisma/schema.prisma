@@ -105,3 +105,17 @@ model ChatMessage {
   content   String
   createdAt DateTime    @default(now())
 }
+
+// ─── Agency SOPs / Knowledge Base ────────────────────────────────────────────
+// Standard operating procedures injected into AI prompts so the advisor
+// reasons from your playbook, not generic Google Ads advice.
+
+model AgencySop {
+  id        String   @id @default(cuid())
+  title     String
+  content   String
+  tags      String   @default("[]") // JSON array e.g. ["traffic","measurement"]
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
