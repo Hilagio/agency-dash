@@ -114,6 +114,10 @@ function AccountRow({
   const bucket  = snap?.governingConstraint as ConstraintBucket | undefined;
   const color   = score !== null ? scoreColor(score) : "var(--text-dim)";
 
+  const severityBar = score !== null && score < 50 ? "#ef4444"
+    : score !== null && score < 70 ? "#eab308"
+    : null;
+
   return (
     <Link href={`/accounts/${account.id}`} style={{ textDecoration: "none", display: "block" }}>
       <div
@@ -127,6 +131,8 @@ function AccountRow({
           background: "var(--bg)",
           cursor: "pointer",
           transition: "background 0.1s",
+          borderLeft: severityBar ? `3px solid ${severityBar}` : "3px solid transparent",
+          paddingLeft: 17,
         }}
         onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = "var(--surface)"}
         onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = "var(--bg)"}
@@ -142,13 +148,22 @@ function AccountRow({
           <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 1 }}>{account.googleAdsId}</div>
         </div>
 
-        {/* Health score */}
-        <div style={{ textAlign: "right" }}>
+        {/* Health score — made impossible to ignore */}
+        <div style={{ display: "flex", justifyContent: "flex-end" }}>
           {score !== null ? (
-            <>
-              <div style={{ fontSize: 15, fontWeight: 700, color, letterSpacing: "-0.5px" }}>{Math.round(score)}</div>
-              <div style={{ fontSize: 10, color: "var(--text-faint)" }}>score</div>
-            </>
+            <div style={{
+              display: "inline-flex", flexDirection: "column", alignItems: "center",
+              background: color + "18",
+              border: `1px solid ${color}40`,
+              borderRadius: 8, padding: "4px 10px", minWidth: 52,
+            }}>
+              <span style={{ fontSize: 17, fontWeight: 800, color, letterSpacing: "-0.8px", lineHeight: 1 }}>
+                {Math.round(score)}
+              </span>
+              <span style={{ fontSize: 9, fontWeight: 700, color, letterSpacing: "0.5px", textTransform: "uppercase", marginTop: 1 }}>
+                {score < 50 ? "Critical" : score < 70 ? "At risk" : "OK"}
+              </span>
+            </div>
           ) : (
             <div style={{ fontSize: 11, color: "var(--text-faint)", fontStyle: "italic" }}>—</div>
           )}

@@ -26,7 +26,18 @@ export async function GET(_req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "No snapshot found" }, { status: 404 });
   }
 
-  return NextResponse.json(snapshot);
+  // Re-run the deterministic scorer from rawSignals to recover per-bucket signal strings.
+  // These aren't persisted (only the numeric scores are), so we recompute — pure logic, no API calls.
+  let bucketSignals: Record<string, string[]> = {};
+  if (snapshot.rawSignals) {
+    try {
+      const signals = JSON.parse(snapshot.rawSignals) as ConstraintSignals;
+      const result  = scoreConstraints(signals);
+      bucketSignals = Object.fromEntries(result.buckets.map(b => [b.bucket, b.signals]));
+    } catch { /* ignore */ }
+  }
+
+  return NextResponse.json({ ...snapshot, bucketSignals });
 }
 
 export async function POST(req: NextRequest, { params }: Params) {

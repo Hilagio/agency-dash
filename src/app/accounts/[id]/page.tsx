@@ -24,6 +24,7 @@ interface Snapshot {
   scoreFunnel: number;
   scoreEconomics: number;
   actions: Action[];
+  bucketSignals?: Record<string, string[]>;
 }
 
 interface Action {
@@ -49,12 +50,13 @@ interface Account {
 }
 
 function buildBuckets(snap: Snapshot) {
+  const sigs = snap.bucketSignals ?? {};
   return [
-    { bucket: "MEASUREMENT", score: snap.scoreMeasurement, isGoverning: snap.governingConstraint === "MEASUREMENT", signals: [] },
-    { bucket: "TRAFFIC",     score: snap.scoreTraffic,     isGoverning: snap.governingConstraint === "TRAFFIC",     signals: [] },
-    { bucket: "CONVERSION",  score: snap.scoreConversion,  isGoverning: snap.governingConstraint === "CONVERSION",  signals: [] },
-    { bucket: "FUNNEL",      score: snap.scoreFunnel,      isGoverning: snap.governingConstraint === "FUNNEL",      signals: [] },
-    { bucket: "ECONOMICS",   score: snap.scoreEconomics,   isGoverning: snap.governingConstraint === "ECONOMICS",   signals: [] },
+    { bucket: "MEASUREMENT", score: snap.scoreMeasurement, isGoverning: snap.governingConstraint === "MEASUREMENT", signals: sigs["MEASUREMENT"] ?? [] },
+    { bucket: "TRAFFIC",     score: snap.scoreTraffic,     isGoverning: snap.governingConstraint === "TRAFFIC",     signals: sigs["TRAFFIC"]     ?? [] },
+    { bucket: "CONVERSION",  score: snap.scoreConversion,  isGoverning: snap.governingConstraint === "CONVERSION",  signals: sigs["CONVERSION"]  ?? [] },
+    { bucket: "FUNNEL",      score: snap.scoreFunnel,      isGoverning: snap.governingConstraint === "FUNNEL",      signals: sigs["FUNNEL"]      ?? [] },
+    { bucket: "ECONOMICS",   score: snap.scoreEconomics,   isGoverning: snap.governingConstraint === "ECONOMICS",   signals: sigs["ECONOMICS"]   ?? [] },
   ];
 }
 
