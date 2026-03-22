@@ -4,9 +4,14 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { getAuthContext, unauthorized } from "@/lib/auth";
 
 export async function GET() {
+  const ctx = await getAuthContext();
+  if (!ctx) return unauthorized();
+
   const sops = await prisma.agencySop.findMany({
+    where: { organizationId: ctx.orgId },
     orderBy: [{ isActive: "desc" }, { createdAt: "desc" }],
     select: { id: true, title: true, content: true, tags: true, isActive: true, createdAt: true },
   });
@@ -14,6 +19,9 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const ctx = await getAuthContext();
+  if (!ctx) return unauthorized();
+
   const { title, content, tags } = await req.json() as {
     title: string;
     content: string;
@@ -26,9 +34,10 @@ export async function POST(req: NextRequest) {
 
   const sop = await prisma.agencySop.create({
     data: {
-      title: title.trim(),
-      content: content.trim(),
-      tags: JSON.stringify(tags ?? []),
+      organizationId: ctx.orgId,
+      title:          title.trim(),
+      content:        content.trim(),
+      tags:           JSON.stringify(tags ?? []),
     },
   });
 

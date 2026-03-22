@@ -1,27 +1,34 @@
 /**
  * POST /api/accounts/score-all
  *
- * Scores all accounts in the database from live Google Ads data.
+ * Scores all accounts in the org from live Google Ads data.
  * Returns a summary of successes and failures.
  */
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { scoreConstraints } from "@/lib/engine";
 import { fetchGoogleAdsSignals, isGoogleAdsConfigured } from "@/lib/integrations/google-ads";
+import { getAuthContext, unauthorized } from "@/lib/auth";
 
 export async function POST() {
-  if (!(await isGoogleAdsConfigured())) {
+  const ctx = await getAuthContext();
+  if (!ctx) return unauthorized();
+
+  if (!(await isGoogleAdsConfigured(ctx.orgId))) {
     return NextResponse.json(
       { error: "Google Ads not fully configured", authUrl: "/api/auth/google-ads" },
       { status: 422 }
     );
   }
 
-  const accounts = await prisma.account.findMany({ select: { id: true, name: true, googleAdsId: true, industry: true } });
+  const accounts = await prisma.account.findMany({
+    where: { organizationId: ctx.orgId },
+    select: { id: true, name: true, googleAdsId: true, industry: true },
+  });
 
   const results = await Promise.allSettled(
     accounts.map(async (account) => {
-      const signals = await fetchGoogleAdsSignals(account.googleAdsId, account.industry);
+      const signals = await fetchGoogleAdsSignals(account.googleAdsId, account.industry, ctx.orgId);
       const result  = scoreConstraints(signals);
 
       await prisma.constraintSnapshot.create({

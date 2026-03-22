@@ -11,12 +11,16 @@ import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { prisma } from "@/lib/db";
 import { ConstraintSignals } from "@/lib/engine/types";
+import { getAuthContext, unauthorized, forbidden } from "@/lib/auth";
 
 type Params = { params: Promise<{ id: string }> };
 
 const client = new Anthropic();
 
 export async function POST(req: NextRequest, { params }: Params) {
+  const ctx = await getAuthContext();
+  if (!ctx) return unauthorized();
+
   const { id } = await params;
   const { type, actionTitle, actionDescription } = await req.json() as {
     type: "cro" | "ctr";
@@ -25,14 +29,14 @@ export async function POST(req: NextRequest, { params }: Params) {
   };
 
   const [account, snapshot] = await Promise.all([
-    prisma.account.findUnique({ where: { id } }),
+    prisma.account.findFirst({ where: { id, organizationId: ctx.orgId } }),
     prisma.constraintSnapshot.findFirst({
       where: { accountId: id },
       orderBy: { createdAt: "desc" },
     }),
   ]);
 
-  if (!account) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!account) return forbidden();
 
   // Extract relevant live metrics from rawSignals
   let metricsBlock = "";

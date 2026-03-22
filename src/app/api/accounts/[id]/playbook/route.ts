@@ -13,25 +13,29 @@ import Anthropic from "@anthropic-ai/sdk";
 import { prisma } from "@/lib/db";
 import { scoreConstraints } from "@/lib/engine";
 import { ConstraintSignals, BUCKET_LABELS, BUCKET_DESCRIPTIONS } from "@/lib/engine/types";
+import { getAuthContext, unauthorized, forbidden } from "@/lib/auth";
 
 type Params = { params: Promise<{ id: string }> };
 
 const client = new Anthropic();
 
 export async function POST(_req: NextRequest, { params }: Params) {
+  const ctx = await getAuthContext();
+  if (!ctx) return unauthorized();
+
   const { id } = await params;
 
   const [account, snapshot, sops] = await Promise.all([
-    prisma.account.findUnique({ where: { id } }),
+    prisma.account.findFirst({ where: { id, organizationId: ctx.orgId } }),
     prisma.constraintSnapshot.findFirst({
       where: { accountId: id },
       orderBy: { createdAt: "desc" },
       include: { actions: { orderBy: { impact: "asc" } } },
     }),
-    prisma.agencySop.findMany({ where: { isActive: true }, orderBy: { createdAt: "asc" } }),
+    prisma.agencySop.findMany({ where: { organizationId: ctx.orgId, isActive: true }, orderBy: { createdAt: "asc" } }),
   ]);
 
-  if (!account) return NextResponse.json({ error: "Account not found" }, { status: 404 });
+  if (!account) return forbidden();
   if (!snapshot) return NextResponse.json({ error: "No snapshot — run scoring first" }, { status: 400 });
 
   // Re-run scorer to get per-bucket signal strings

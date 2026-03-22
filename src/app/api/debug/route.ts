@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { getAuthContext } from "@/lib/auth";
 
 export async function GET() {
+  const ctx = await getAuthContext();
+  const orgId = ctx?.orgId;
+
   const env = {
     GOOGLE_ADS_CLIENT_ID:        !!process.env.GOOGLE_ADS_CLIENT_ID,
     GOOGLE_ADS_CLIENT_SECRET:    !!process.env.GOOGLE_ADS_CLIENT_SECRET,
@@ -14,7 +18,10 @@ export async function GET() {
   let tokenTest: object = { skipped: true };
 
   try {
-    const cred = await prisma.oAuthCredential.findUnique({ where: { id: "singleton" } });
+    const cred = orgId
+      ? await prisma.oAuthCredential.findUnique({ where: { organizationId: orgId } })
+      : await prisma.oAuthCredential.findFirst();
+
     db = cred
       ? {
           hasRefreshToken: !!cred.refreshToken,
@@ -22,6 +29,7 @@ export async function GET() {
           customerIds: cred.customerIds,
           loginCustomerId: cred.loginCustomerId,
           updatedAt: cred.updatedAt,
+          orgId: cred.organizationId,
         }
       : { row: "none — need to OAuth" };
 
@@ -46,5 +54,5 @@ export async function GET() {
     db = { error: e instanceof Error ? e.message : String(e) };
   }
 
-  return NextResponse.json({ env, db, tokenTest });
+  return NextResponse.json({ env, db, tokenTest, orgId: orgId ?? null });
 }

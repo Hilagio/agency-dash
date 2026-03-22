@@ -10,10 +10,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { GoogleAdsApi } from "google-ads-api";
 import { prisma } from "@/lib/db";
 import { isGoogleAdsConfigured } from "@/lib/integrations/google-ads";
+import { getAuthContext, unauthorized } from "@/lib/auth";
 
-async function getRefreshToken(): Promise<string> {
-  // DB token takes priority — it's always fresher than the env var
-  const cred = await prisma.oAuthCredential.findUnique({ where: { id: "singleton" } });
+async function getOrgRefreshToken(orgId: string): Promise<string> {
+  const cred = await prisma.oAuthCredential.findUnique({ where: { organizationId: orgId } });
   if (cred?.refreshToken) return cred.refreshToken;
   if (process.env.GOOGLE_ADS_REFRESH_TOKEN) return process.env.GOOGLE_ADS_REFRESH_TOKEN;
   throw new Error("No refresh token available");
@@ -27,9 +27,10 @@ async function getRefreshToken(): Promise<string> {
 async function getAccessibleCustomerIds(
   client: GoogleAdsApi,
   refreshToken: string,
+  orgId: string,
 ): Promise<string[]> {
   // Try DB cache first
-  const cred = await prisma.oAuthCredential.findUnique({ where: { id: "singleton" } });
+  const cred = await prisma.oAuthCredential.findUnique({ where: { organizationId: orgId } });
   const cached: string[] = JSON.parse(cred?.customerIds ?? "[]");
   if (cached.length > 0) return cached;
 
@@ -40,7 +41,7 @@ async function getAccessibleCustomerIds(
   // Persist back to DB so future requests skip this step
   if (ids.length > 0 && cred) {
     await prisma.oAuthCredential.update({
-      where: { id: "singleton" },
+      where: { organizationId: orgId },
       data:  { customerIds: JSON.stringify(ids) },
     }).catch(() => {});
   }
@@ -56,13 +57,14 @@ async function findMccId(
   client: GoogleAdsApi,
   refreshToken: string,
   candidateIds: string[],
+  orgId: string,
 ): Promise<string | null> {
   // 1. env var override
   const envId = process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID || process.env.GOOGLE_ADS_CUSTOMER_ID;
   if (envId) return envId;
 
   // 2. DB-cached login customer ID
-  const cred = await prisma.oAuthCredential.findUnique({ where: { id: "singleton" } });
+  const cred = await prisma.oAuthCredential.findUnique({ where: { organizationId: orgId } });
   if (cred?.loginCustomerId) {
     try {
       const c = client.Customer({ customer_id: cred.loginCustomerId, refresh_token: refreshToken });
@@ -79,7 +81,7 @@ async function findMccId(
       if (!rows[0]?.customer?.manager) continue;
       // Cache it
       await prisma.oAuthCredential.update({
-        where: { id: "singleton" },
+        where: { organizationId: orgId },
         data:  { loginCustomerId: id },
       }).catch(() => {});
       return id;
@@ -90,7 +92,10 @@ async function findMccId(
 }
 
 export async function GET() {
-  if (!(await isGoogleAdsConfigured())) {
+  const ctx = await getAuthContext();
+  if (!ctx) return unauthorized();
+
+  if (!(await isGoogleAdsConfigured(ctx.orgId))) {
     return NextResponse.json(
       { error: "Google Ads not configured", authUrl: "/api/auth/google-ads" },
       { status: 422 }
@@ -98,7 +103,7 @@ export async function GET() {
   }
 
   try {
-    const refreshToken = await getRefreshToken();
+    const refreshToken = await getOrgRefreshToken(ctx.orgId);
     const client = new GoogleAdsApi({
       client_id:       process.env.GOOGLE_ADS_CLIENT_ID!,
       client_secret:   process.env.GOOGLE_ADS_CLIENT_SECRET!,
@@ -106,7 +111,7 @@ export async function GET() {
     });
 
     // Ensure we have customer IDs (fetched live if cache was empty)
-    const customerIds = await getAccessibleCustomerIds(client, refreshToken);
+    const customerIds = await getAccessibleCustomerIds(client, refreshToken, ctx.orgId);
 
     if (customerIds.length === 0) {
       return NextResponse.json(
@@ -116,7 +121,7 @@ export async function GET() {
     }
 
     // Try to find an MCC among accessible accounts
-    const mccId = await findMccId(client, refreshToken, customerIds);
+    const mccId = await findMccId(client, refreshToken, customerIds, ctx.orgId);
 
     let accounts: { googleAdsId: string; name: string; currency: string; isManager: boolean; resourceName: string }[];
 
@@ -167,7 +172,10 @@ export async function GET() {
       );
     }
 
-    const existing = await prisma.account.findMany({ select: { googleAdsId: true } });
+    const existing = await prisma.account.findMany({
+      where: { organizationId: ctx.orgId },
+      select: { googleAdsId: true },
+    });
     const importedIds = new Set(existing.map((a) => a.googleAdsId));
 
     return NextResponse.json(accounts.map((a) => ({ ...a, imported: importedIds.has(a.googleAdsId) })));
@@ -192,6 +200,9 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const ctx = await getAuthContext();
+  if (!ctx) return unauthorized();
+
   const body = await req.json() as {
     googleAdsId: string;
     name: string;
@@ -207,17 +218,19 @@ export async function POST(req: NextRequest) {
   const account = await prisma.account.upsert({
     where: { googleAdsId: body.googleAdsId },
     update: {
-      name:          body.name,
-      currency:      body.currency ?? "USD",
-      industry:      body.industry ?? null,
-      monthlyBudget: body.monthlyBudget ?? null,
+      name:           body.name,
+      currency:       body.currency ?? "USD",
+      industry:       body.industry ?? null,
+      monthlyBudget:  body.monthlyBudget ?? null,
+      organizationId: ctx.orgId,
     },
     create: {
-      googleAdsId:   body.googleAdsId,
-      name:          body.name,
-      currency:      body.currency ?? "USD",
-      industry:      body.industry ?? null,
-      monthlyBudget: body.monthlyBudget ?? null,
+      googleAdsId:    body.googleAdsId,
+      name:           body.name,
+      currency:       body.currency ?? "USD",
+      industry:       body.industry ?? null,
+      monthlyBudget:  body.monthlyBudget ?? null,
+      organizationId: ctx.orgId,
     },
   });
 

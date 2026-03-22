@@ -46,23 +46,27 @@ function getClient(): GoogleAdsApi {
   });
 }
 
-async function getRefreshToken(): Promise<string> {
+async function getRefreshToken(orgId?: string): Promise<string> {
   // DB token takes priority — it's always fresher than the env var
-  const cred = await prisma.oAuthCredential.findUnique({ where: { id: "singleton" } });
+  const cred = orgId
+    ? await prisma.oAuthCredential.findUnique({ where: { organizationId: orgId } }).catch(() => null)
+    : await prisma.oAuthCredential.findFirst().catch(() => null);
   if (cred?.refreshToken) return cred.refreshToken;
   if (process.env.GOOGLE_ADS_REFRESH_TOKEN) return process.env.GOOGLE_ADS_REFRESH_TOKEN;
   throw new Error("No Google Ads refresh token configured. Complete OAuth at /api/auth/google-ads");
 }
 
-async function getLoginCustomerId(): Promise<string | undefined> {
+async function getLoginCustomerId(orgId?: string): Promise<string | undefined> {
   if (process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID) return process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID;
-  const cred = await prisma.oAuthCredential.findUnique({ where: { id: "singleton" } }).catch(() => null);
+  const cred = orgId
+    ? await prisma.oAuthCredential.findUnique({ where: { organizationId: orgId } }).catch(() => null)
+    : await prisma.oAuthCredential.findFirst().catch(() => null);
   return cred?.loginCustomerId ?? undefined;
 }
 
-async function getCustomer(client: GoogleAdsApi, customerId?: string): Promise<Customer> {
-  const refreshToken    = await getRefreshToken();
-  const loginCustomerId = await getLoginCustomerId();
+async function getCustomer(client: GoogleAdsApi, customerId?: string, orgId?: string): Promise<Customer> {
+  const refreshToken    = await getRefreshToken(orgId);
+  const loginCustomerId = await getLoginCustomerId(orgId);
   return client.Customer({
     customer_id:       customerId ?? process.env.GOOGLE_ADS_CUSTOMER_ID!,
     login_customer_id: loginCustomerId,
@@ -562,9 +566,9 @@ async function fetchEconomicsSignals(customer: Customer): Promise<EconomicsSigna
 
 // ─── Main export ──────────────────────────────────────────────────────────────
 
-export async function fetchGoogleAdsSignals(customerId?: string, industry?: string | null): Promise<ConstraintSignals> {
+export async function fetchGoogleAdsSignals(customerId?: string, industry?: string | null, orgId?: string): Promise<ConstraintSignals> {
   const client   = getClient();
-  const customer = await getCustomer(client, customerId);
+  const customer = await getCustomer(client, customerId, orgId);
 
   const [measurement, traffic, conversion, funnel, economics] = await Promise.all([
     fetchMeasurementSignals(customer),
@@ -596,9 +600,9 @@ export interface SearchTermRow {
 const EXCLUDE_COST_THRESHOLD = 30;
 const WATCH_COST_THRESHOLD   = 5;
 
-export async function fetchSearchTermReport(customerId: string): Promise<SearchTermRow[]> {
+export async function fetchSearchTermReport(customerId: string, orgId?: string): Promise<SearchTermRow[]> {
   const client   = getClient();
-  const customer = await getCustomer(client, customerId);
+  const customer = await getCustomer(client, customerId, orgId);
   const { start, end } = last90Days(); // 90-day window for meaningful spend signal
 
   const rows = await safeQuery(
@@ -644,7 +648,7 @@ export async function fetchSearchTermReport(customerId: string): Promise<SearchT
     .sort((a, b) => b.costEur - a.costEur); // highest spend first
 }
 
-export async function isGoogleAdsConfigured(): Promise<boolean> {
+export async function isGoogleAdsConfigured(orgId?: string): Promise<boolean> {
   const hasEnvToken = !!(
     process.env.GOOGLE_ADS_DEVELOPER_TOKEN &&
     process.env.GOOGLE_ADS_CLIENT_ID &&
@@ -660,7 +664,9 @@ export async function isGoogleAdsConfigured(): Promise<boolean> {
     process.env.GOOGLE_ADS_CLIENT_ID &&
     process.env.GOOGLE_ADS_CLIENT_SECRET
   ) {
-    const cred = await prisma.oAuthCredential.findUnique({ where: { id: "singleton" } }).catch(() => null);
+    const cred = orgId
+      ? await prisma.oAuthCredential.findUnique({ where: { organizationId: orgId } }).catch(() => null)
+      : await prisma.oAuthCredential.findFirst().catch(() => null);
     return !!(cred?.refreshToken);
   }
   return false;

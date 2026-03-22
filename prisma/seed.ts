@@ -106,14 +106,25 @@ const nova_signals: ConstraintSignals = {
   },
 };
 
+// Bootstrap org ID — matches the migration that assigns legacy data
+const BOOTSTRAP_ORG_ID = "clbootstrap0000000000000001";
+
 async function main() {
   console.log("Seeding demo accounts…");
+
+  // Ensure bootstrap org exists
+  await prisma.organization.upsert({
+    where: { id: BOOTSTRAP_ORG_ID },
+    update: {},
+    create: { id: BOOTSTRAP_ORG_ID, name: "Demo Agency", slug: "demo-agency" },
+  });
 
   // Account 1: Acme Co — Traffic constraint
   const acme = await prisma.account.upsert({
     where: { googleAdsId: "123-456-7890" },
     update: {},
     create: {
+      organizationId: BOOTSTRAP_ORG_ID,
       name: "Acme Co",
       googleAdsId: "123-456-7890",
       currency: "USD",
@@ -156,6 +167,7 @@ async function main() {
     where: { googleAdsId: "987-654-3210" },
     update: {},
     create: {
+      organizationId: BOOTSTRAP_ORG_ID,
       name: "Nova Health",
       googleAdsId: "987-654-3210",
       currency: "USD",

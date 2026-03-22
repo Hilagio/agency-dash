@@ -7,6 +7,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { getSession } from "@/lib/session";
 
 function getOrigin(req: NextRequest): string {
   if (process.env.NEXT_PUBLIC_BASE_URL) return process.env.NEXT_PUBLIC_BASE_URL;
@@ -28,6 +29,13 @@ export async function GET(req: NextRequest) {
   if (!code) {
     return NextResponse.redirect(`${origin}/?auth_error=no_code`);
   }
+
+  // Get current session to associate credential with the org
+  const session = await getSession();
+  if (!session?.orgId) {
+    return NextResponse.redirect(`${origin}/onboard?auth_error=no_org`);
+  }
+  const orgId = session.orgId;
 
   const clientId     = process.env.GOOGLE_ADS_CLIENT_ID!;
   const clientSecret = process.env.GOOGLE_ADS_CLIENT_SECRET!;
@@ -79,13 +87,12 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // ── 3. Persist credentials immediately ──────────────────────────────────────
-  // loginCustomerId is resolved lazily by the accounts route on first use.
+  // ── 3. Persist credentials scoped to the current org ────────────────────────
   try {
     await prisma.oAuthCredential.upsert({
-      where:  { id: "singleton" },
+      where:  { organizationId: orgId },
       update: { refreshToken: tokens.refresh_token, customerIds: JSON.stringify(customerIds) },
-      create: { id: "singleton", refreshToken: tokens.refresh_token, customerIds: JSON.stringify(customerIds) },
+      create: { organizationId: orgId, refreshToken: tokens.refresh_token, customerIds: JSON.stringify(customerIds) },
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);

@@ -4,6 +4,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { getAuthContext, unauthorized, forbidden } from "@/lib/auth";
 import {
   executeExcludeSearchTerms,
   executeEnableEnhancedConversions,
@@ -12,9 +13,18 @@ import {
 type Params = { params: Promise<{ id: string }> };
 
 export async function PATCH(req: NextRequest, { params }: Params) {
+  const ctx = await getAuthContext();
+  if (!ctx) return unauthorized();
+
   const { id } = await params;
-  const body = await req.json();
-  const { status } = body as { status: "APPROVED" | "DISMISSED" };
+
+  // Verify action belongs to org
+  const existing = await prisma.actionRecommendation.findFirst({
+    where: { id, account: { organizationId: ctx.orgId } },
+  });
+  if (!existing) return forbidden();
+
+  const { status } = await req.json() as { status: "APPROVED" | "DISMISSED" };
 
   const action = await prisma.actionRecommendation.update({
     where: { id },
@@ -25,10 +35,13 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 }
 
 export async function POST(req: NextRequest, { params }: Params) {
+  const ctx = await getAuthContext();
+  if (!ctx) return unauthorized();
+
   const { id } = await params;
 
-  const action = await prisma.actionRecommendation.findUnique({
-    where: { id },
+  const action = await prisma.actionRecommendation.findFirst({
+    where: { id, account: { organizationId: ctx.orgId } },
     include: { account: true },
   });
   if (!action) {

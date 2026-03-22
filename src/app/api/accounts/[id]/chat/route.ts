@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { prisma } from "@/lib/db";
 import { BUCKET_LABELS, BUCKET_DESCRIPTIONS } from "@/lib/engine/types";
+import { getAuthContext, unauthorized, forbidden } from "@/lib/auth";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -61,6 +62,9 @@ RULES FOR YOUR RESPONSES:
 }
 
 export async function POST(req: NextRequest, { params }: Params) {
+  const ctx = await getAuthContext();
+  if (!ctx) return unauthorized();
+
   const { id } = await params;
   const { message, sessionId } = await req.json() as {
     message: string;
@@ -69,11 +73,11 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   // Load account + latest snapshot + active agency SOPs
   const [account, sops] = await Promise.all([
-    prisma.account.findUnique({ where: { id } }),
-    prisma.agencySop.findMany({ where: { isActive: true }, orderBy: { createdAt: "asc" } }),
+    prisma.account.findFirst({ where: { id, organizationId: ctx.orgId } }),
+    prisma.agencySop.findMany({ where: { organizationId: ctx.orgId, isActive: true }, orderBy: { createdAt: "asc" } }),
   ]);
   if (!account) {
-    return NextResponse.json({ error: "Account not found" }, { status: 404 });
+    return forbidden();
   }
 
   const snapshot = await prisma.constraintSnapshot.findFirst({

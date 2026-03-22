@@ -8,11 +8,19 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { getAuthContext, unauthorized, forbidden } from "@/lib/auth";
 
 type Params = { params: Promise<{ id: string }> };
 
 export async function GET(_req: NextRequest, { params }: Params) {
+  const ctx = await getAuthContext();
+  if (!ctx) return unauthorized();
+
   const { id } = await params;
+
+  const account = await prisma.account.findFirst({ where: { id, organizationId: ctx.orgId } });
+  if (!account) return forbidden();
+
   const progress = await prisma.accountSopProgress.findMany({
     where: { accountId: id },
     include: { sop: { select: { id: true, title: true, content: true, isActive: true } } },
@@ -22,8 +30,19 @@ export async function GET(_req: NextRequest, { params }: Params) {
 }
 
 export async function POST(req: NextRequest, { params }: Params) {
+  const ctx = await getAuthContext();
+  if (!ctx) return unauthorized();
+
   const { id } = await params;
+
+  const account = await prisma.account.findFirst({ where: { id, organizationId: ctx.orgId } });
+  if (!account) return forbidden();
+
   const { sopId, stepIndex } = await req.json() as { sopId: string; stepIndex: number };
+
+  // Verify SOP belongs to org
+  const sop = await prisma.agencySop.findFirst({ where: { id: sopId, organizationId: ctx.orgId } });
+  if (!sop) return forbidden();
 
   // Find or create progress record
   const existing = await prisma.accountSopProgress.findUnique({

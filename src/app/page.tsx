@@ -6,10 +6,17 @@ import Link from "next/link";
 import { BUCKET_LABELS } from "@/lib/engine/types";
 import {
   Zap, RefreshCw, Loader2, Plus, AlertTriangle, TrendingUp,
-  BookOpen, ListChecks, TrendingDown, Pencil, Check, X,
+  BookOpen, ListChecks, TrendingDown, Pencil, Check, X, Settings, LogOut,
 } from "lucide-react";
 import { AccountImporter } from "@/components/AccountImporter";
 import { ThemeToggle } from "@/components/ThemeToggle";
+
+interface SessionUser {
+  userId: string;
+  orgId:  string | null;
+  email:  string;
+  name:   string | null;
+}
 
 type ConstraintBucket = "MEASUREMENT" | "TRAFFIC" | "CONVERSION" | "FUNNEL" | "ECONOMICS";
 
@@ -386,6 +393,7 @@ function HomePageInner() {
   const [connected, setConnected]             = useState<boolean | null>(null);
   const [autoImporting, setAutoImporting]     = useState(false);
   const [autoImportError, setAutoImportError] = useState<string | null>(null);
+  const [sessionUser, setSessionUser]         = useState<SessionUser | null>(null);
   const autoImportAttempted = useRef(false);
 
   const loadAccounts = useCallback(async () => {
@@ -397,6 +405,12 @@ function HomePageInner() {
   }, []);
 
   useEffect(() => {
+    // Load session user and Google Ads status in parallel
+    fetch("/api/auth/me")
+      .then(r => r.json())
+      .then(d => { if (d.user) setSessionUser(d.user); })
+      .catch(() => {});
+
     fetch("/api/auth/google-ads/status")
       .then(r => r.json())
       .then(d => { setConnected(d.connected); if (d.connected) loadAccounts(); else setLoading(false); })
@@ -515,6 +529,19 @@ function HomePageInner() {
             <Plus size={12} /> Add accounts
           </button>
           <ThemeToggle />
+          <Link href="/settings" style={{ display: "flex", alignItems: "center", gap: 5, background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: 7, color: "var(--text-muted)", fontSize: 12, padding: "6px 12px", textDecoration: "none" }} title="Settings">
+            <Settings size={12} />
+          </Link>
+          {sessionUser && (
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <div style={{ width: 26, height: 26, borderRadius: "50%", background: "linear-gradient(135deg, #3b82f6, #8b5cf6)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, color: "#fff" }}>
+                {(sessionUser.name ?? sessionUser.email).charAt(0).toUpperCase()}
+              </div>
+              <a href="/api/auth/signout" title="Sign out" style={{ display: "flex", alignItems: "center", color: "var(--text-faint)", fontSize: 11, textDecoration: "none" }}>
+                <LogOut size={11} />
+              </a>
+            </div>
+          )}
         </div>
       </header>
 

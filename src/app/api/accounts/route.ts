@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { getAuthContext, unauthorized } from "@/lib/auth";
 
 function minScore(snap: { scoreMeasurement: number; scoreTraffic: number; scoreConversion: number; scoreFunnel: number; scoreEconomics: number }) {
   return Math.min(snap.scoreMeasurement, snap.scoreTraffic, snap.scoreConversion, snap.scoreFunnel, snap.scoreEconomics);
@@ -19,7 +20,11 @@ const SNAP_SELECT = {
 } as const;
 
 export async function GET() {
+  const ctx = await getAuthContext();
+  if (!ctx) return unauthorized();
+
   const accounts = await prisma.account.findMany({
+    where: { organizationId: ctx.orgId },
     orderBy: { name: "asc" },
     include: {
       snapshots: {

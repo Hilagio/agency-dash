@@ -8,11 +8,18 @@ import { prisma } from "@/lib/db";
 import { scoreConstraints } from "@/lib/engine";
 import { ConstraintSignals } from "@/lib/engine/types";
 import { fetchGoogleAdsSignals, isGoogleAdsConfigured } from "@/lib/integrations/google-ads";
+import { getAuthContext, unauthorized, forbidden } from "@/lib/auth";
 
 type Params = { params: Promise<{ id: string }> };
 
 export async function GET(_req: NextRequest, { params }: Params) {
+  const ctx = await getAuthContext();
+  if (!ctx) return unauthorized();
+
   const { id } = await params;
+
+  const account = await prisma.account.findFirst({ where: { id, organizationId: ctx.orgId } });
+  if (!account) return forbidden();
 
   const snapshot = await prisma.constraintSnapshot.findFirst({
     where: { accountId: id },
@@ -27,7 +34,6 @@ export async function GET(_req: NextRequest, { params }: Params) {
   }
 
   // Re-run the deterministic scorer from rawSignals to recover per-bucket signal strings.
-  // These aren't persisted (only the numeric scores are), so we recompute — pure logic, no API calls.
   let bucketSignals: Record<string, string[]> = {};
   if (snapshot.rawSignals) {
     try {
@@ -41,19 +47,19 @@ export async function GET(_req: NextRequest, { params }: Params) {
 }
 
 export async function POST(req: NextRequest, { params }: Params) {
+  const ctx = await getAuthContext();
+  if (!ctx) return unauthorized();
+
   const { id } = await params;
   const source = new URL(req.url).searchParams.get("source");
 
-  const account = await prisma.account.findUnique({ where: { id } });
-  if (!account) {
-    return NextResponse.json({ error: "Account not found" }, { status: 404 });
-  }
+  const account = await prisma.account.findFirst({ where: { id, organizationId: ctx.orgId } });
+  if (!account) return forbidden();
 
   let signals: ConstraintSignals;
 
   if (source === "google-ads") {
-    // Pull live signals from the Google Ads API
-    if (!(await isGoogleAdsConfigured())) {
+    if (!(await isGoogleAdsConfigured(ctx.orgId))) {
       return NextResponse.json(
         {
           error: "Google Ads not fully configured",
@@ -68,7 +74,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     }
 
     try {
-      signals = await fetchGoogleAdsSignals(account.googleAdsId, account.industry);
+      signals = await fetchGoogleAdsSignals(account.googleAdsId, account.industry, ctx.orgId);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       return NextResponse.json(
@@ -77,7 +83,6 @@ export async function POST(req: NextRequest, { params }: Params) {
       );
     }
   } else {
-    // Accept manually provided signals (for testing / manual override)
     signals = await req.json() as ConstraintSignals;
   }
 
