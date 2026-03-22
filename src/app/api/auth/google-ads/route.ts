@@ -25,7 +25,9 @@ export async function GET(req: NextRequest) {
   }
 
   const origin = getOrigin(req);
-  const redirectUri = `${origin}/api/auth/google-ads/callback`;
+  const redirectUri = process.env.GOOGLE_ADS_REDIRECT_URI ?? `${origin}/api/auth/google-ads/callback`;
+
+  console.log("[google-ads auth] redirectUri:", redirectUri);
 
   const params = new URLSearchParams({
     client_id:     clientId,

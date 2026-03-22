@@ -40,7 +40,9 @@ export async function GET(req: NextRequest) {
 
   const clientId     = process.env.GOOGLE_ADS_CLIENT_ID!;
   const clientSecret = process.env.GOOGLE_ADS_CLIENT_SECRET!;
-  const redirectUri  = `${origin}/api/auth/google-ads/callback`;
+  const redirectUri  = process.env.GOOGLE_ADS_REDIRECT_URI ?? `${origin}/api/auth/google-ads/callback`;
+
+  console.log("[google-ads callback] redirectUri:", redirectUri);
 
   // ── 1. Exchange code for tokens ─────────────────────────────────────────────
   const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
