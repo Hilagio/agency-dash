@@ -172,7 +172,17 @@ export async function GET() {
 
     return NextResponse.json(accounts.map((a) => ({ ...a, imported: importedIds.has(a.googleAdsId) })));
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
+    // gRPC errors from google-ads-api are plain objects, not Error instances
+    let msg: string;
+    if (err instanceof Error) {
+      msg = err.message;
+    } else if (err && typeof err === "object") {
+      const e = err as Record<string, unknown>;
+      msg = String(e.message ?? e.details ?? e.code ?? JSON.stringify(err));
+    } else {
+      msg = String(err);
+    }
+    console.error("[google-ads/accounts]", msg, err);
     const isCredentialError = msg.includes("invalid_grant") || msg.includes("invalid_credentials");
     return NextResponse.json(
       { error: msg, ...(isCredentialError ? { authUrl: "/api/auth/google-ads" } : {}) },
