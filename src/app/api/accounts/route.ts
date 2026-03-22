@@ -11,6 +11,7 @@ export async function GET() {
         select: {
           id: true,
           createdAt: true,
+          rawSignals: true,
           governingConstraint: true,
           constraintReason: true,
           scoreMeasurement: true,
@@ -23,5 +24,24 @@ export async function GET() {
     },
   });
 
-  return NextResponse.json(accounts);
+  return NextResponse.json(accounts.map((a) => {
+    const snap = a.snapshots[0];
+    let roas = 0;
+    let budgetUtil = 0;
+    if (snap?.rawSignals) {
+      try {
+        const raw = JSON.parse(snap.rawSignals) as {
+          economics?: { actualRoas?: number; budgetUtilizationPercent?: number };
+        };
+        roas       = raw.economics?.actualRoas              ?? 0;
+        budgetUtil = raw.economics?.budgetUtilizationPercent ?? 0;
+      } catch { /* ignore */ }
+    }
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { rawSignals: _, ...snapOut } = snap ?? {} as typeof snap;
+    return {
+      ...a,
+      snapshots: snap ? [{ ...snapOut, roas, budgetUtil }] : [],
+    };
+  }));
 }
