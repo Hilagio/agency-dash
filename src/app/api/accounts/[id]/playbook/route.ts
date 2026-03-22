@@ -93,11 +93,15 @@ Key live metrics (last 30 days):
       }\n`
     : "";
 
+  const clientBriefContext = account.clientContext
+    ? `\nCLIENT BRIEF (provided by agency):\n${account.clientContext}\n`
+    : "";
+
   const systemPrompt = `You are a senior Google Ads optimization specialist writing a concrete, actionable playbook for a client account. You do NOT give generic advice — every recommendation references the specific data and signals provided.
 
 Write in a direct, confident tone — like a playbook from an expert who has already diagnosed the problem. No fluff, no "it depends", no "consider" — tell them exactly what to do and why.
 
-${sopContext}
+${clientBriefContext}${sopContext}
 IMPORTANT: If the account is ecommerce (Shopping/PMax), adapt all advice to feed-based campaigns:
 - "Rewrite ads" → "Improve product feed titles/descriptions to match search intent"
 - "CTR issues" → "Feed title mismatch or pricing issue vs competitors"

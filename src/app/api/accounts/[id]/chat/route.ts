@@ -123,6 +123,10 @@ export async function POST(req: NextRequest, { params }: Params) {
       }`
     : "";
 
+  const clientBriefContext = account.clientContext
+    ? `\n\nCLIENT BRIEF (provided by agency):\n${account.clientContext}`
+    : "";
+
   const systemPrompt = buildSystemPrompt(
     account.name,
     snapshot.governingConstraint,
@@ -133,7 +137,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       description: a.description,
       impact: a.impact,
     }))
-  ) + sopContext;
+  ) + clientBriefContext + sopContext;
 
   // Build message history for context
   const history = (session.messages ?? []).map((m) => ({

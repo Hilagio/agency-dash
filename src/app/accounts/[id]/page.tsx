@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, RefreshCw, MessageSquare, ListChecks, BarChart2, Loader2, Search, BookOpen, ClipboardList, Send } from "lucide-react";
+import { ArrowLeft, RefreshCw, MessageSquare, ListChecks, BarChart2, Loader2, Search, BookOpen, ClipboardList, Send, Pencil, X } from "lucide-react";
 import { ScoreBuckets } from "@/components/ScoreBuckets";
 import { ScoreHistory } from "@/components/ScoreHistory";
 import { ActionList } from "@/components/ActionList";
@@ -174,6 +174,126 @@ interface Account {
   industry: string | null;
   monthlyBudget: number | null;
   currency: string;
+  clientContext: string | null;
+}
+
+// ─── Client Context Panel ─────────────────────────────────────────────────────
+
+function ClientContextPanel({
+  accountId,
+  initial,
+  onSaved,
+}: {
+  accountId: string;
+  initial: string | null;
+  onSaved: (value: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(initial ?? "");
+  const [saving, setSaving] = useState(false);
+
+  const save = async () => {
+    setSaving(true);
+    await fetch(`/api/accounts/${accountId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ clientContext: value }),
+    });
+    onSaved(value);
+    setSaving(false);
+    setEditing(false);
+  };
+
+  const cancel = () => {
+    setValue(initial ?? "");
+    setEditing(false);
+  };
+
+  return (
+    <div style={{
+      background: "var(--surface)", border: "1px solid var(--border)",
+      borderRadius: 12, padding: "16px 20px", marginBottom: 20,
+    }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: editing || value ? 10 : 0 }}>
+        <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.8px", textTransform: "uppercase", color: "var(--text-dim)" }}>
+          Account Brief · AI Context
+        </span>
+        {!editing && (
+          <button
+            onClick={() => setEditing(true)}
+            style={{
+              display: "flex", alignItems: "center", gap: 4,
+              background: "transparent", border: "none", cursor: "pointer",
+              color: "var(--text-faint)", fontSize: 11, padding: "2px 4px",
+            }}
+          >
+            <Pencil size={10} /> {value ? "Edit" : "Add brief"}
+          </button>
+        )}
+        {editing && (
+          <button
+            onClick={cancel}
+            style={{ background: "transparent", border: "none", cursor: "pointer", color: "var(--text-faint)", display: "flex" }}
+          >
+            <X size={12} />
+          </button>
+        )}
+      </div>
+
+      {!editing && value && (
+        <p style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.7, whiteSpace: "pre-wrap", margin: 0 }}>
+          {value}
+        </p>
+      )}
+
+      {!editing && !value && (
+        <p style={{ fontSize: 12, color: "var(--text-faint)", lineHeight: 1.7, margin: 0 }}>
+          No brief yet — add context so the AI gives better advice: what the client sells, landing page URL, target CPA/ROAS, key USPs.
+        </p>
+      )}
+
+      {editing && (
+        <>
+          <textarea
+            value={value}
+            onChange={e => setValue(e.target.value)}
+            placeholder={"What does this client sell?\nLanding page URL?\nTarget CPA / ROAS?\nKey USPs and differentiators?\nSeasonal or promotional context?"}
+            rows={5}
+            style={{
+              width: "100%", background: "var(--bg)", border: "1px solid var(--border-2)",
+              borderRadius: 8, color: "var(--text)", fontSize: 12, lineHeight: 1.7,
+              padding: "10px 12px", resize: "vertical", outline: "none", fontFamily: "inherit",
+              boxSizing: "border-box",
+            }}
+          />
+          <div style={{ display: "flex", gap: 8, marginTop: 10, justifyContent: "flex-end" }}>
+            <button
+              onClick={cancel}
+              style={{
+                background: "transparent", border: "1px solid var(--border-2)",
+                borderRadius: 6, color: "var(--text-dim)", fontSize: 11,
+                padding: "5px 12px", cursor: "pointer",
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={save}
+              disabled={saving}
+              style={{
+                background: "#1d4ed8", border: "none", borderRadius: 6,
+                color: "#fff", fontSize: 11, fontWeight: 600,
+                padding: "5px 14px", cursor: saving ? "not-allowed" : "pointer",
+                opacity: saving ? 0.6 : 1,
+              }}
+            >
+              {saving ? "Saving…" : "Save"}
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
 }
 
 function buildBuckets(snap: Snapshot) {
@@ -444,6 +564,13 @@ export default function AccountPage() {
               </div>
             ) : (
               <>
+                {/* Account Brief — feeds AI context */}
+                <ClientContextPanel
+                  accountId={id}
+                  initial={account.clientContext}
+                  onSaved={(v) => setAccount(prev => prev ? { ...prev, clientContext: v } : prev)}
+                />
+
                 <div style={{ marginBottom: 20, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                   <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.8px", textTransform: "uppercase", color: "var(--text-dim)" }}>
                     Bucket health
@@ -481,6 +608,8 @@ export default function AccountPage() {
             </div>
             <ActionList
               actions={actions}
+              accountId={id}
+              onTabChange={(t) => setTab(t as Tab)}
               onStatusChange={handleStatusChange}
               onExecute={handleExecute}
             />

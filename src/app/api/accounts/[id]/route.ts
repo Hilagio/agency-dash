@@ -12,6 +12,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     industry:      string | null;
     monthlyBudget: number | null;
     name:          string;
+    clientContext: string | null;
   }>;
 
   const account = await prisma.account.update({
@@ -20,6 +21,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       ...(body.industry      !== undefined && { industry:      body.industry }),
       ...(body.monthlyBudget !== undefined && { monthlyBudget: body.monthlyBudget }),
       ...(body.name          !== undefined && { name:          body.name }),
+      ...(body.clientContext !== undefined && { clientContext: body.clientContext }),
     },
   });
 

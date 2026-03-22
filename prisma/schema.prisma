@@ -15,6 +15,7 @@ model Account {
   currency      String   @default("USD")
   monthlyBudget Float?
   industry      String?
+  clientContext String?  // free-text: what they sell, landing page, target CPA, USPs etc.
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
