@@ -18,7 +18,15 @@ export async function GET(req: NextRequest) {
   const origin       = getOrigin(req);
   const clientId     = process.env.GOOGLE_ADS_CLIENT_ID!;
   const redirectUri  = `${origin}/api/auth/callback`;
-  console.log("[signin] redirectUri:", redirectUri);
+  console.log("[signin] debug", {
+    NEXT_PUBLIC_BASE_URL: process.env.NEXT_PUBLIC_BASE_URL,
+    RAILWAY_PUBLIC_DOMAIN: process.env.RAILWAY_PUBLIC_DOMAIN,
+    "x-forwarded-host": req.headers.get("x-forwarded-host"),
+    "x-forwarded-proto": req.headers.get("x-forwarded-proto"),
+    host: req.headers.get("host"),
+    "req.url": req.url,
+    redirectUri,
+  });
   const next         = new URL(req.url).searchParams.get("next") ?? "/";
 
   // Store 'next' in state so we can redirect after OAuth
