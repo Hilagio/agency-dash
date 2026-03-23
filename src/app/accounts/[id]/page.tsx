@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, RefreshCw, MessageSquare, ListChecks, BarChart2, Loader2, Search, BookOpen, ClipboardList, Send, Pencil, X, CheckSquare } from "lucide-react";
+import { ArrowLeft, RefreshCw, MessageSquare, ListChecks, BarChart2, Loader2, Search, BookOpen, ClipboardList, Send, Pencil, X, CheckSquare, Sparkles } from "lucide-react";
 import { ScoreBuckets } from "@/components/ScoreBuckets";
 import { ScoreHistory } from "@/components/ScoreHistory";
 import { ActionList } from "@/components/ActionList";
@@ -696,6 +696,100 @@ function AccountTargetsPanel({
   );
 }
 
+// ─── AI Intelligence Panel ────────────────────────────────────────────────────
+
+function IntelligencePanel({ accountId }: { accountId: string }) {
+  const [text, setText]       = useState("");
+  const [loading, setLoading] = useState(false);
+  const [done, setDone]       = useState(false);
+  const [error, setError]     = useState<string | null>(null);
+
+  const generate = async () => {
+    if (loading) return;
+    setLoading(true);
+    setText("");
+    setDone(false);
+    setError(null);
+
+    try {
+      const res = await fetch(`/api/accounts/${accountId}/intelligence`, { method: "POST" });
+      if (!res.ok || !res.body) throw new Error("Failed to generate");
+
+      const reader = res.body.getReader();
+      const dec    = new TextDecoder();
+
+      while (true) {
+        const { done: streamDone, value } = await reader.read();
+        if (streamDone) break;
+        for (const line of dec.decode(value).split("\n")) {
+          if (!line.startsWith("data: ")) continue;
+          const payload = JSON.parse(line.slice(6));
+          if (payload.error) { setError(payload.error); break; }
+          if (payload.done)  { setDone(true); break; }
+          if (payload.text)  setText(prev => prev + payload.text);
+        }
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div style={{
+      background: "var(--surface)",
+      border: "1px solid var(--border)",
+      borderRadius: 12, padding: "16px 20px", marginBottom: 20,
+    }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: text || loading ? 12 : 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+          <Sparkles size={13} style={{ color: "#c084fc" }} />
+          <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.8px", textTransform: "uppercase", color: "var(--text-dim)" }}>
+            AI Intelligence
+          </span>
+        </div>
+        <button
+          onClick={generate}
+          disabled={loading}
+          style={{
+            display: "flex", alignItems: "center", gap: 5,
+            background: done ? "transparent" : "rgba(192,132,252,0.1)",
+            border: "1px solid rgba(192,132,252,0.25)",
+            borderRadius: 7, padding: "5px 12px",
+            fontSize: 11, fontWeight: 500, color: "#c084fc",
+            cursor: loading ? "not-allowed" : "pointer",
+            opacity: loading ? 0.6 : 1,
+          }}
+        >
+          {loading
+            ? <><Loader2 size={11} className="animate-spin" /> Analysing…</>
+            : done
+              ? <><Sparkles size={11} /> Regenerate</>
+              : <><Sparkles size={11} /> Generate insight</>}
+        </button>
+      </div>
+
+      {error && (
+        <p style={{ fontSize: 12, color: "#f87171", margin: 0 }}>{error}</p>
+      )}
+
+      {!text && !loading && !error && (
+        <p style={{ fontSize: 12, color: "var(--text-faint)", lineHeight: 1.6, margin: 0 }}>
+          Generate a contextual analysis of this account — what's actually happening, why, and what to watch.
+        </p>
+      )}
+
+      {(text || loading) && !error && (
+        <p style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.75, margin: 0, whiteSpace: "pre-wrap" }}>
+          {text}
+          {loading && !done && <span style={{ opacity: 0.35 }}>▍</span>}
+        </p>
+      )}
+    </div>
+  );
+}
+
 function buildBuckets(snap: Snapshot) {
   const sigs = snap.bucketSignals ?? {};
   return [
@@ -984,12 +1078,15 @@ export default function AccountPage() {
                   onSaved={(v) => setAccount(prev => prev ? { ...prev, clientContext: v } : prev)}
                 />
 
+                {/* AI Intelligence Brief */}
+                <IntelligencePanel accountId={id} />
+
                 <div style={{ marginBottom: 20, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                   <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.8px", textTransform: "uppercase", color: "var(--text-dim)" }}>
                     Bucket health
                   </span>
                 </div>
-                <ScoreBuckets buckets={buckets} />
+                <ScoreBuckets buckets={buckets} accountId={id} />
 
                 <ScoreHistory accountId={id} governingConstraint={constraint} />
 

@@ -1,18 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, ChevronRight, CheckCircle2, AlertTriangle, XCircle, Info } from "lucide-react";
+import { ChevronDown, ChevronRight, CheckCircle2, AlertTriangle, XCircle, Sparkles, Loader2 } from "lucide-react";
 import { BUCKET_LABELS, BUCKET_DESCRIPTIONS, BUCKET_ORDER } from "@/lib/engine/types";
 
-// ─── Static check inventory ─────────────────────────────────────────────────
-// Every check the scorer evaluates, with human labels and what "passing" means.
-// Used to show "what we looked at" even when a check passes.
+// ─── Static check inventory ──────────────────────────────────────────────────
 
 interface CheckDef {
   id: string;
   label: string;
-  what: string; // one-liner explaining the metric
-  threshold: string; // what the pass bar is
+  what: string;
+  threshold: string;
 }
 
 const BUCKET_CHECKS: Record<string, CheckDef[]> = {
@@ -57,11 +55,12 @@ interface BucketData {
   bucket: string;
   score: number;
   isGoverning: boolean;
-  signals: string[]; // triggered penalty/warning strings from the scorer
+  signals: string[];
 }
 
 interface Props {
-  buckets: BucketData[];
+  buckets:   BucketData[];
+  accountId: string;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -88,8 +87,6 @@ function scoreLabel(score: number): string {
   return "Critical";
 }
 
-// A "signal" matches a check if it contains any of the check's keywords.
-// This is a simple heuristic — the scorer already surfaces the right text.
 const CHECK_KEYWORDS: Record<string, string[]> = {
   conv_tracking:      ["conversion tracking"],
   conv_actions_count: ["zero conversion actions"],
@@ -123,9 +120,111 @@ function findSignalForCheck(checkId: string, signals: string[]): string | undefi
   );
 }
 
+// ─── AI Explanation ───────────────────────────────────────────────────────────
+
+function AiExplanation({
+  accountId, bucket, checkLabel, signal, threshold,
+}: {
+  accountId:  string;
+  bucket:     string;
+  checkLabel: string;
+  signal:     string;
+  threshold:  string;
+}) {
+  const [text, setText]       = useState("");
+  const [loading, setLoading] = useState(false);
+  const [done, setDone]       = useState(false);
+  const [error, setError]     = useState<string | null>(null);
+
+  const generate = async () => {
+    if (done || loading) return;
+    setLoading(true);
+    setText("");
+    setError(null);
+
+    try {
+      const res = await fetch(`/api/accounts/${accountId}/explain-check`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bucket, checkLabel, signal, threshold }),
+      });
+      if (!res.ok || !res.body) throw new Error("Failed to start stream");
+
+      const reader = res.body.getReader();
+      const dec    = new TextDecoder();
+
+      while (true) {
+        const { done: streamDone, value } = await reader.read();
+        if (streamDone) break;
+        const lines = dec.decode(value).split("\n");
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          const payload = JSON.parse(line.slice(6));
+          if (payload.error) { setError(payload.error); break; }
+          if (payload.done)  { setDone(true); break; }
+          if (payload.text)  setText(prev => prev + payload.text);
+        }
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!text && !loading && !error) {
+    return (
+      <button
+        onClick={generate}
+        style={{
+          display: "inline-flex", alignItems: "center", gap: 5,
+          background: "rgba(192,132,252,0.08)", border: "1px solid rgba(192,132,252,0.2)",
+          borderRadius: 6, padding: "4px 10px",
+          fontSize: 11, fontWeight: 500, color: "#c084fc",
+          cursor: "pointer", marginTop: 6,
+        }}
+      >
+        <Sparkles size={11} /> Why does this matter for this account?
+      </button>
+    );
+  }
+
+  return (
+    <div style={{
+      marginTop: 8,
+      background: "rgba(192,132,252,0.05)",
+      border: "1px solid rgba(192,132,252,0.15)",
+      borderRadius: 8, padding: "10px 12px",
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+        <Sparkles size={10} style={{ color: "#c084fc" }} />
+        <span style={{ fontSize: 10, fontWeight: 600, color: "#c084fc", letterSpacing: "0.4px", textTransform: "uppercase" }}>
+          AI Context
+        </span>
+        {loading && <Loader2 size={10} className="animate-spin" style={{ color: "#c084fc" }} />}
+      </div>
+      {error ? (
+        <span style={{ fontSize: 11, color: "#f87171" }}>{error}</span>
+      ) : (
+        <p style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.65, margin: 0 }}>
+          {text}
+          {loading && !done && <span style={{ opacity: 0.4 }}>▍</span>}
+        </p>
+      )}
+    </div>
+  );
+}
+
 // ─── Check Row ────────────────────────────────────────────────────────────────
 
-function CheckRow({ check, triggeredSignal }: { check: CheckDef; triggeredSignal: string | undefined }) {
+function CheckRow({
+  check, triggeredSignal, accountId, bucket,
+}: {
+  check:          CheckDef;
+  triggeredSignal: string | undefined;
+  accountId:      string;
+  bucket:         string;
+}) {
   const [showDetail, setShowDetail] = useState(false);
   const passed = !triggeredSignal;
 
@@ -133,26 +232,21 @@ function CheckRow({ check, triggeredSignal }: { check: CheckDef; triggeredSignal
     <div style={{ borderBottom: "1px solid var(--border)" }}>
       <div
         style={{
-          display: "grid", gridTemplateColumns: "20px 1fr 20px", gap: 10,
+          display: "grid", gridTemplateColumns: "20px 1fr", gap: 10,
           alignItems: "center", padding: "9px 0", cursor: "pointer",
         }}
         onClick={() => setShowDetail(v => !v)}
       >
-        {/* Status icon */}
         <div>
           {passed
-            ? <CheckCircle2 size={14} style={{ color: "#4ade80", flexShrink: 0 }} />
+            ? <CheckCircle2 size={14} style={{ color: "#4ade80" }} />
             : triggeredSignal?.toLowerCase().includes("room to improve") || triggeredSignal?.toLowerCase().includes("slightly") || triggeredSignal?.toLowerCase().includes("watch")
-              ? <AlertTriangle size={14} style={{ color: "#fbbf24", flexShrink: 0 }} />
-              : <XCircle size={14} style={{ color: "#f87171", flexShrink: 0 }} />}
+              ? <AlertTriangle size={14} style={{ color: "#fbbf24" }} />
+              : <XCircle size={14} style={{ color: "#f87171" }} />}
         </div>
 
-        {/* Label + signal summary */}
         <div>
-          <div style={{
-            fontSize: 12, fontWeight: 500,
-            color: passed ? "var(--text-muted)" : "var(--text-2)",
-          }}>
+          <div style={{ fontSize: 12, fontWeight: 500, color: passed ? "var(--text-muted)" : "var(--text-2)" }}>
             {check.label}
           </div>
           {!passed && (
@@ -161,21 +255,29 @@ function CheckRow({ check, triggeredSignal }: { check: CheckDef; triggeredSignal
             </div>
           )}
         </div>
-
-        {/* Expand */}
-        <Info
-          size={12}
-          style={{ color: "var(--text-faint)", cursor: "pointer" }}
-        />
       </div>
 
       {showDetail && (
-        <div style={{
-          background: "var(--surface-2)", borderRadius: 6, padding: "8px 12px",
-          marginBottom: 6, fontSize: 11, color: "var(--text-dim)", lineHeight: 1.5,
-        }}>
-          <div><strong style={{ color: "var(--text-muted)" }}>What:</strong> {check.what}</div>
-          <div><strong style={{ color: "var(--text-muted)" }}>Pass bar:</strong> {check.threshold}</div>
+        <div style={{ paddingBottom: 10, paddingLeft: 30 }}>
+          {/* Static metadata */}
+          <div style={{
+            background: "var(--surface-2)", borderRadius: 6, padding: "8px 12px",
+            fontSize: 11, color: "var(--text-dim)", lineHeight: 1.5,
+          }}>
+            <div><strong style={{ color: "var(--text-muted)" }}>What:</strong> {check.what}</div>
+            <div><strong style={{ color: "var(--text-muted)" }}>Pass bar:</strong> {check.threshold}</div>
+          </div>
+
+          {/* AI explanation — only shown for failing checks */}
+          {!passed && triggeredSignal && (
+            <AiExplanation
+              accountId={accountId}
+              bucket={bucket}
+              checkLabel={check.label}
+              signal={triggeredSignal}
+              threshold={check.threshold}
+            />
+          )}
         </div>
       )}
     </div>
@@ -184,7 +286,7 @@ function CheckRow({ check, triggeredSignal }: { check: CheckDef; triggeredSignal
 
 // ─── Bucket Card ─────────────────────────────────────────────────────────────
 
-function BucketCard({ bucket, idx }: { bucket: BucketData; idx: number }) {
+function BucketCard({ bucket, idx, accountId }: { bucket: BucketData; idx: number; accountId: string }) {
   const [open, setOpen] = useState(bucket.isGoverning);
 
   const label  = BUCKET_LABELS[bucket.bucket as keyof typeof BUCKET_LABELS] ?? bucket.bucket;
@@ -203,7 +305,7 @@ function BucketCard({ bucket, idx }: { bucket: BucketData; idx: number }) {
       border: `1px solid ${bucket.isGoverning ? `rgba(${rgb}, 0.25)` : "var(--border)"}`,
       borderRadius: 12, overflow: "hidden",
     }}>
-      {/* Header row — always visible */}
+      {/* Header */}
       <div
         style={{
           display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16,
@@ -211,7 +313,6 @@ function BucketCard({ bucket, idx }: { bucket: BucketData; idx: number }) {
         }}
         onClick={() => setOpen(v => !v)}
       >
-        {/* Left: step + name */}
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <div style={{
             width: 26, height: 26, flexShrink: 0,
@@ -241,9 +342,7 @@ function BucketCard({ bucket, idx }: { bucket: BucketData; idx: number }) {
           </div>
         </div>
 
-        {/* Right: score + pass/fail count + chevron */}
         <div style={{ display: "flex", alignItems: "center", gap: 16, flexShrink: 0 }}>
-          {/* Pass/fail summary */}
           <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11 }}>
             {failCount > 0 && (
               <span style={{ color: "#f87171", display: "flex", alignItems: "center", gap: 3 }}>
@@ -257,7 +356,6 @@ function BucketCard({ bucket, idx }: { bucket: BucketData; idx: number }) {
             )}
           </div>
 
-          {/* Score */}
           <div style={{ textAlign: "right" }}>
             <div style={{ fontSize: 24, fontWeight: 800, color, letterSpacing: "-1px", lineHeight: 1 }}>
               {bucket.score}
@@ -282,11 +380,11 @@ function BucketCard({ bucket, idx }: { bucket: BucketData; idx: number }) {
         }} />
       </div>
 
-      {/* Expanded: checks */}
+      {/* Expanded checks */}
       {open && (
         <div style={{ padding: "8px 18px 12px" }}>
           {checks.length === 0 ? (
-            <p style={{ fontSize: 12, color: "var(--text-faint)", padding: "8px 0" }}>No checks defined for this bucket.</p>
+            <p style={{ fontSize: 12, color: "var(--text-faint)", padding: "8px 0" }}>No checks defined.</p>
           ) : (
             <>
               <p style={{ fontSize: 10, color: "var(--text-faint)", margin: "8px 0 4px", letterSpacing: "0.4px", textTransform: "uppercase", fontWeight: 600 }}>
@@ -297,9 +395,10 @@ function BucketCard({ bucket, idx }: { bucket: BucketData; idx: number }) {
                   key={check.id}
                   check={check}
                   triggeredSignal={findSignalForCheck(check.id, bucket.signals)}
+                  accountId={accountId}
+                  bucket={bucket.bucket}
                 />
               ))}
-              {/* Any signals not matched to a known check */}
               {bucket.signals
                 .filter(sig => !checks.some(c => findSignalForCheck(c.id, [sig])))
                 .map((sig, i) => (
@@ -321,7 +420,7 @@ function BucketCard({ bucket, idx }: { bucket: BucketData; idx: number }) {
 
 // ─── Main export ─────────────────────────────────────────────────────────────
 
-export function ScoreBuckets({ buckets }: Props) {
+export function ScoreBuckets({ buckets, accountId }: Props) {
   const ordered = BUCKET_ORDER.map(
     (b) => buckets.find((s) => s.bucket === b) ?? { bucket: b, score: 100, isGoverning: false, signals: [] }
   );
@@ -329,7 +428,7 @@ export function ScoreBuckets({ buckets }: Props) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       {ordered.map((bucket, idx) => (
-        <BucketCard key={bucket.bucket} bucket={bucket} idx={idx} />
+        <BucketCard key={bucket.bucket} bucket={bucket} idx={idx} accountId={accountId} />
       ))}
     </div>
   );
