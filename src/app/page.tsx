@@ -425,7 +425,6 @@ function HomePageInner() {
     // If accounts already loaded from DB, nothing to import.
     if (accounts.length > 0) { autoImportAttempted.current = true; return; }
     autoImportAttempted.current = true;
-    let cancelled = false;
     async function run() {
       setAutoImporting(true);
       setAutoImportError(null);
@@ -433,26 +432,14 @@ function HomePageInner() {
         const res = await fetch("/api/google-ads/accounts");
         if (!res.ok) { setAutoImportError((await res.json()).error ?? "Could not load accounts."); return; }
         const mccAccounts: { googleAdsId: string; name: string; currency: string }[] = await res.json();
-        if (cancelled || mccAccounts.length === 0) { if (!mccAccounts.length) setAutoImportError("No accounts found."); return; }
+        if (mccAccounts.length === 0) { setAutoImportError("No accounts found."); return; }
         const bulkRes = await fetch("/api/google-ads/accounts/bulk", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ accounts: mccAccounts }) });
         if (!bulkRes.ok) { setAutoImportError((await bulkRes.json()).error ?? "Import failed."); return; }
-        if (cancelled) return;
         await loadAccounts();
-        if (!cancelled) {
-          setScoringAll(true);
-          const scoreRes = await fetch("/api/accounts/score-all", { method: "POST" });
-          if (scoreRes.ok && !cancelled) await loadAccounts();
-          setScoringAll(false);
-        }
-      } catch { if (!cancelled) setAutoImportError("Network error while importing."); }
+      } catch { setAutoImportError("Network error while importing."); }
       finally { setAutoImporting(false); }
     }
     run();
-    return () => { cancelled = true; };
-    // accounts.length is intentionally excluded from deps — reading it as a
-    // snapshot avoids triggering effect cleanup mid-import when loadAccounts()
-    // updates accounts state (which was the original "banner stuck" bug).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [connected, loading, loadAccounts]);
 
   const runScore = async (accountId: string, e: React.MouseEvent) => {
