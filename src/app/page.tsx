@@ -428,16 +428,20 @@ function HomePageInner() {
     async function run() {
       setAutoImporting(true);
       setAutoImportError(null);
+      const abort = new AbortController();
+      const timer = setTimeout(() => abort.abort(), 60_000);
       try {
-        const res = await fetch("/api/google-ads/accounts");
+        const res = await fetch("/api/google-ads/accounts", { signal: abort.signal });
         if (!res.ok) { setAutoImportError((await res.json()).error ?? "Could not load accounts."); return; }
         const mccAccounts: { googleAdsId: string; name: string; currency: string }[] = await res.json();
         if (mccAccounts.length === 0) { setAutoImportError("No accounts found."); return; }
-        const bulkRes = await fetch("/api/google-ads/accounts/bulk", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ accounts: mccAccounts }) });
+        const bulkRes = await fetch("/api/google-ads/accounts/bulk", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ accounts: mccAccounts }), signal: abort.signal });
         if (!bulkRes.ok) { setAutoImportError((await bulkRes.json()).error ?? "Import failed."); return; }
         await loadAccounts();
-      } catch { setAutoImportError("Network error while importing."); }
-      finally { setAutoImporting(false); }
+      } catch (e) {
+        const msg = e instanceof Error && e.name === "AbortError" ? "Import timed out. Try again." : "Network error while importing.";
+        setAutoImportError(msg);
+      } finally { clearTimeout(timer); setAutoImporting(false); }
     }
     run();
   }, [connected, loading, loadAccounts]);

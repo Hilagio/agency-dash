@@ -73,19 +73,22 @@ async function findMccId(
     } catch { /* stale — fall through */ }
   }
 
-  // 3. Try each candidate to find a manager account
-  for (const id of candidateIds) {
-    try {
+  // 3. Try all candidates in parallel to find a manager account
+  const results = await Promise.allSettled(
+    candidateIds.map(async (id) => {
       const c = client.Customer({ customer_id: id, refresh_token: refreshToken });
       const rows = await c.query("SELECT customer.id, customer.manager FROM customer LIMIT 1");
-      if (!rows[0]?.customer?.manager) continue;
-      // Cache it
-      await prisma.oAuthCredential.update({
-        where: { organizationId: orgId },
-        data:  { loginCustomerId: id },
-      }).catch(() => {});
+      if (!rows[0]?.customer?.manager) throw new Error("not manager");
       return id;
-    } catch { /* try next */ }
+    })
+  );
+  const found = results.find((r): r is PromiseFulfilledResult<string> => r.status === "fulfilled");
+  if (found) {
+    await prisma.oAuthCredential.update({
+      where: { organizationId: orgId },
+      data:  { loginCustomerId: found.value },
+    }).catch(() => {});
+    return found.value;
   }
 
   return null;
