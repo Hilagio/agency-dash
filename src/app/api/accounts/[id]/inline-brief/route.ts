@@ -2,16 +2,17 @@
  * POST /api/accounts/[id]/inline-brief
  *
  * Streams a focused, actionable brief for a specific issue detected in the account.
- * Body: { type: "cro" | "ctr", actionTitle: string, actionDescription: string }
+ * Body: { type: "cro" | "ctr", actionTitle: string, actionDescription?: string }
  *
- * CRO type: structured brief for landing page / conversion rate issues
- * CTR type: headline ideas + ad copy recommendations
+ * CRO type: scrapes the client's actual landing page and writes a page-specific brief.
+ * CTR type: headline ideas + ad copy recommendations based on live metrics.
  */
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { prisma } from "@/lib/db";
 import { ConstraintSignals } from "@/lib/engine/types";
 import { getAuthContext, unauthorized, forbidden } from "@/lib/auth";
+import { scrapePage, formatPageForPrompt } from "@/lib/scrape-page";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -38,24 +39,23 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   if (!account) return forbidden();
 
-  // Extract relevant live metrics from rawSignals
+  // ─── Live metrics ─────────────────────────────────────────────────────────
   let metricsBlock = "";
   if (snapshot?.rawSignals) {
     try {
       const signals = JSON.parse(snapshot.rawSignals) as ConstraintSignals;
       if (type === "ctr") {
-        metricsBlock = `
-Live metrics:
+        metricsBlock = `Live metrics:
   CTR: ${(signals.traffic.clickThroughRate * 100).toFixed(2)}%
   Quality Score avg: ${signals.traffic.qualityScoreAvg.toFixed(1)}/10
   Impression share lost to rank: ${Math.round(signals.traffic.impressionShareLost_rank * 100)}%
   Irrelevant query share: ${Math.round(signals.traffic.irrelevantQueryPercent * 100)}%`;
-      } else if (type === "cro") {
-        metricsBlock = `
-Live metrics:
+      } else {
+        metricsBlock = `Live metrics:
   Conversion rate: ${(signals.conversion.conversionRate * 100).toFixed(2)}%
   Industry benchmark: ~${(signals.conversion.industryBenchmarkConversionRate * 100).toFixed(1)}%
-  Landing page score: ${signals.conversion.landingPageScore}/10
+  Landing page score (Google): ${signals.conversion.landingPageScore}/10
+  Mobile speed score: ${signals.conversion.mobileSpeedScore}/100
   ROAS: ${signals.economics.actualRoas.toFixed(2)}x
   Budget utilisation: ${Math.round(signals.economics.budgetUtilizationPercent * 100)}%`;
       }
@@ -63,71 +63,110 @@ Live metrics:
   }
 
   const clientBrief = account.clientContext
-    ? `\nCLIENT BRIEF (from agency):\n${account.clientContext}\n`
+    ? `CLIENT BRIEF:\n${account.clientContext}\n`
     : "";
 
+  // ─── Scrape landing page for CRO (parallel with other work) ───────────────
+  let pageBlock = "";
+  if (type === "cro" && account.landingPageUrl) {
+    const page = await scrapePage(account.landingPageUrl);
+    pageBlock   = formatPageForPrompt(page);
+  } else if (type === "cro" && !account.landingPageUrl) {
+    pageBlock = "[No landing page URL set — add it in Account Targets for page-specific analysis]";
+  }
+
+  // ─── Prompts ──────────────────────────────────────────────────────────────
   let systemPrompt = "";
-  let userPrompt = "";
+  let userPrompt   = "";
 
   if (type === "cro") {
-    systemPrompt = `You are a senior CRO specialist creating a concise brief that can be handed directly to a CRO specialist or shown to a client. Write in markdown. Be specific and actionable — no generic advice. Every recommendation should directly relate to the account context and metrics provided.`;
+    const hasPage = !!account.landingPageUrl && !pageBlock.includes("failed");
+
+    const pageInstruction = hasPage
+      ? "You have the actual page content below — reference SPECIFIC elements: quote actual headline text, name actual button labels, describe actual form fields. Never say 'your headline' — say what the headline currently IS and what it should become."
+      : "No page URL is set, so base recommendations on the industry and client brief.";
+
+    const cvrRef = metricsBlock.includes("Conversion rate") ? "see metrics above" : "from brief";
+
+    const aboveFoldInstruction = hasPage
+      ? "[Reference the ACTUAL current H1/headline text. Say: 'The current headline \"[exact text]\" should become \"[new text]\" because [reason for this niche].' Do this for 2-3 specific changes.]"
+      : "[3 specific changes for this industry. For each: what to change, what to change it TO, why it matters.]";
+
+    const ctaInstruction = hasPage
+      ? "[Name the actual button text currently on the page and what it should say. List any form fields and whether the number should be reduced.]"
+      : "[2-3 specific CTA and form recommendations for this industry.]";
+
+    const trustInstruction = hasPage
+      ? "[Note what trust signals ARE present on the page. Name what is MISSING that this type of customer expects — be specific to the industry and price point.]"
+      : "[What trust signals are likely missing based on the industry. Be specific.]";
+
+    systemPrompt = `You are a senior CRO specialist writing a brief that goes directly to a developer or CRO specialist.
+${pageInstruction}
+Write in markdown. Be specific and actionable. No generic advice.`;
+
     userPrompt = `Create a CRO brief for this account.
 
 Account: ${account.name}
-Industry: ${account.industry ?? "Not set — assume ecommerce/retail"}
+Industry: ${account.industry ?? "ecommerce"}
 Issue detected: "${actionTitle}"
-${actionDescription ? `Details: ${actionDescription}` : ""}
+${actionDescription ? `Details: ${actionDescription}\n` : ""}
 ${metricsBlock}
 ${clientBrief}
+${pageBlock}
+
 Write this structure exactly:
 
 ## CRO Brief — ${account.name}
 
 ### What's happening
-[2 sentences max. Include the actual CVR number vs benchmark. Name the problem precisely.]
+[2 sentences. Include the actual CVR (${cvrRef}) vs benchmark. Be precise about the gap.]
 
-### Highest-impact fixes (above the fold)
-[3-4 specific changes. For each: what to change, what to change it TO, why it matters for this niche.]
+### Above the fold — what to change
+${aboveFoldInstruction}
 
 ### CTA & form
-[2-3 specific changes based on the industry. What CTA text, placement, form length, etc.]
+${ctaInstruction}
 
-### Trust signals missing
-[What's likely absent based on the industry. Be specific — e.g. "payment badges near checkout CTA" not just "add trust signals".]
+### Trust signals
+${trustInstruction}
 
-### A/B tests to run (priority order)
-1. Hypothesis: [what to test] — Expected lift: [X–Y%]
-2. Hypothesis: [what to test] — Expected lift: [X–Y%]
-3. Hypothesis: [what to test] — Expected lift: [X–Y%]
+### A/B tests (priority order)
+1. Hypothesis: [specific test] — Expected lift: [X–Y%]
+2. Hypothesis: [specific test] — Expected lift: [X–Y%]
+3. Hypothesis: [specific test] — Expected lift: [X–Y%]
 
-### Brief for the CRO specialist
-[6–8 bullet points, ready to paste. Start each with an action verb.]`;
+### Brief for the specialist
+[6–8 bullet points, ready to paste. Start each with an action verb. Reference actual page elements where possible.]`;
 
   } else {
-    systemPrompt = `You are a senior Google Ads specialist creating specific, ready-to-use CTR improvement recommendations. Write in markdown. Provide real, testable headlines — not descriptions of headlines. Every recommendation should reference the actual metrics provided.`;
+    // CTR brief
+    systemPrompt = `You are a senior Google Ads specialist writing specific, ready-to-use CTR recommendations.
+Write in markdown. Provide REAL testable headlines — not descriptions of what a headline should do.
+Every recommendation must reference the actual metrics.`;
+
     userPrompt = `Create CTR improvement recommendations for this account.
 
 Account: ${account.name}
-Industry: ${account.industry ?? "Not set — assume ecommerce/retail"}
+Industry: ${account.industry ?? "ecommerce"}
 Issue detected: "${actionTitle}"
-${actionDescription ? `Details: ${actionDescription}` : ""}
+${actionDescription ? `Details: ${actionDescription}\n` : ""}
 ${metricsBlock}
 ${clientBrief}
+
 Write this structure exactly:
 
 ## CTR Improvement Brief — ${account.name}
 
 ### Root cause
-[1–2 sentences. Name the specific reason for low CTR based on the data — low QS = ad relevance, high irrelevant query share = wrong match types, etc.]
+[1–2 sentences. Name the specific reason based on the data. Low QS = ad/page mismatch. High irrelevant query share = wrong match types. Be precise.]
 
-### Headline ideas — ready to test (30 chars max each)
-Cover these angles in order:
+### Headlines — ready to test (30 chars max each)
 1. [Headline] — Benefit-led
 2. [Headline] — Specificity/numbers
 3. [Headline] — Urgency or scarcity
 4. [Headline] — Social proof
 5. [Headline] — Question format
-6. [Headline] — Pain point / problem aware
+6. [Headline] — Pain point
 7. [Headline] — Brand differentiator
 8. [Headline] — Feature highlight
 
@@ -136,25 +175,26 @@ Cover these angles in order:
 2. [Description 2]
 3. [Description 3]
 
-### Ad extensions to add immediately
-[Sitelinks, callouts, structured snippets — list specific examples based on the industry, not generic advice]
+### Ad extensions to add now
+[Sitelinks, callouts, structured snippets — give specific examples based on the industry, not generic labels]
 
-### Match type & query relevance
-[1–2 actionable sentences on improving query relevance for this account]`;
+### Match type & query hygiene
+[1–2 actionable sentences on improving query relevance for this specific account]`;
   }
 
+  // ─── Stream ───────────────────────────────────────────────────────────────
   const encoder = new TextEncoder();
-  const stream = new ReadableStream({
+  const stream  = new ReadableStream({
     async start(controller) {
       try {
-        const anthropicStream = await client.messages.stream({
-          model: "claude-sonnet-4-6",
-          max_tokens: 1024,
-          system: systemPrompt,
-          messages: [{ role: "user", content: userPrompt }],
+        const aiStream = await client.messages.stream({
+          model:      "claude-sonnet-4-6",
+          max_tokens: 1200,
+          system:     systemPrompt,
+          messages:   [{ role: "user", content: userPrompt }],
         });
 
-        for await (const chunk of anthropicStream) {
+        for await (const chunk of aiStream) {
           if (chunk.type === "content_block_delta" && chunk.delta.type === "text_delta") {
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: chunk.delta.text })}\n\n`));
           }
@@ -171,9 +211,9 @@ Cover these angles in order:
 
   return new NextResponse(stream, {
     headers: {
-      "Content-Type": "text/event-stream",
+      "Content-Type":  "text/event-stream",
       "Cache-Control": "no-cache",
-      Connection: "keep-alive",
+      Connection:      "keep-alive",
     },
   });
 }

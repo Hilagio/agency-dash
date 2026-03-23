@@ -25,6 +25,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     targetCpa:          number | null;
     grossMarginPercent: number | null;
     leadToSaleRate:     number | null;
+    landingPageUrl:     string | null;
   }>;
 
   const account = await prisma.account.update({
@@ -38,6 +39,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       ...(body.targetCpa          !== undefined && { targetCpa:          body.targetCpa }),
       ...(body.grossMarginPercent !== undefined && { grossMarginPercent: body.grossMarginPercent }),
       ...(body.leadToSaleRate     !== undefined && { leadToSaleRate:     body.leadToSaleRate }),
+      ...(body.landingPageUrl     !== undefined && { landingPageUrl:     body.landingPageUrl }),
     },
   });
 

@@ -374,6 +374,7 @@ interface Account {
   targetCpa:          number | null;
   grossMarginPercent: number | null;
   leadToSaleRate:     number | null;
+  landingPageUrl:     string | null;
 }
 
 // ─── Client Context Panel ─────────────────────────────────────────────────────
@@ -503,6 +504,7 @@ interface AccountTargets {
   targetRoas:         number | null;
   targetCpa:          number | null;
   grossMarginPercent: number | null;
+  landingPageUrl:     string | null;
 }
 
 function AccountTargetsPanel({
@@ -518,38 +520,41 @@ function AccountTargetsPanel({
 }) {
   const [editing, setEditing] = useState(false);
   const [vals, setVals] = useState({
-    targetRoas:         initial.targetRoas         != null ? String(initial.targetRoas)                         : "",
-    targetCpa:          initial.targetCpa          != null ? String(initial.targetCpa)                          : "",
+    targetRoas:         initial.targetRoas         != null ? String(initial.targetRoas)                          : "",
+    targetCpa:          initial.targetCpa          != null ? String(initial.targetCpa)                           : "",
     grossMarginPercent: initial.grossMarginPercent != null ? String(Math.round(initial.grossMarginPercent * 100)) : "",
+    landingPageUrl:     initial.landingPageUrl     ?? "",
   });
   const [saving, setSaving] = useState(false);
 
   const currSym = currency === "EUR" ? "€" : currency === "GBP" ? "£" : "$";
 
-  const hasAny = initial.targetRoas != null || initial.targetCpa != null || initial.grossMarginPercent != null;
+  const hasAny = initial.targetRoas != null || initial.targetCpa != null || initial.grossMarginPercent != null || !!initial.landingPageUrl;
 
   const save = async () => {
     setSaving(true);
-    const body: Partial<AccountTargets> = {
+    const body: AccountTargets = {
       targetRoas:         vals.targetRoas         !== "" ? parseFloat(vals.targetRoas)         : null,
       targetCpa:          vals.targetCpa          !== "" ? parseFloat(vals.targetCpa)          : null,
       grossMarginPercent: vals.grossMarginPercent !== "" ? parseFloat(vals.grossMarginPercent) / 100 : null,
+      landingPageUrl:     vals.landingPageUrl.trim() || null,
     };
     await fetch(`/api/accounts/${accountId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
-    onSaved(body as AccountTargets);
+    onSaved(body);
     setSaving(false);
     setEditing(false);
   };
 
   const cancel = () => {
     setVals({
-      targetRoas:         initial.targetRoas         != null ? String(initial.targetRoas)                         : "",
-      targetCpa:          initial.targetCpa          != null ? String(initial.targetCpa)                          : "",
+      targetRoas:         initial.targetRoas         != null ? String(initial.targetRoas)                          : "",
+      targetCpa:          initial.targetCpa          != null ? String(initial.targetCpa)                           : "",
       grossMarginPercent: initial.grossMarginPercent != null ? String(Math.round(initial.grossMarginPercent * 100)) : "",
+      landingPageUrl:     initial.landingPageUrl     ?? "",
     });
     setEditing(false);
   };
@@ -621,6 +626,19 @@ function AccountTargetsPanel({
               <div style={{ fontSize: 10, color: "var(--text-faint)", marginTop: 2, textTransform: "uppercase", letterSpacing: "0.4px" }}>Break-even ROAS</div>
             </div>
           )}
+          {initial.landingPageUrl && (
+            <div style={{ marginLeft: "auto" }}>
+              <a
+                href={initial.landingPageUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ fontSize: 12, color: "#60a5fa", textDecoration: "none", wordBreak: "break-all" }}
+              >
+                {initial.landingPageUrl.replace(/^https?:\/\//, "").replace(/\/$/, "")}
+              </a>
+              <div style={{ fontSize: 10, color: "var(--text-faint)", marginTop: 2, textTransform: "uppercase", letterSpacing: "0.4px" }}>Landing page</div>
+            </div>
+          )}
         </div>
       )}
 
@@ -671,6 +689,21 @@ function AccountTargetsPanel({
               </span>
             </label>
           </div>
+
+          {/* Landing page URL — full width */}
+          <label style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 4 }}>
+            <span style={{ fontSize: 10, color: "var(--text-faint)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.4px" }}>Landing Page URL</span>
+            <div style={{ display: "flex", alignItems: "center", background: "var(--bg)", border: "1px solid var(--border-2)", borderRadius: 7, padding: "6px 10px" }}>
+              <input
+                type="url"
+                placeholder="https://www.example.com/landing"
+                value={vals.landingPageUrl}
+                onChange={e => setVals(v => ({ ...v, landingPageUrl: e.target.value }))}
+                style={{ flex: 1, background: "transparent", border: "none", outline: "none", color: "var(--text)", fontSize: 13, fontFamily: "inherit" }}
+              />
+            </div>
+            <span style={{ fontSize: 10, color: "var(--text-very-dim)" }}>Scraped automatically for CRO briefs</span>
+          </label>
 
           <div style={{ display: "flex", gap: 8, marginTop: 14, justifyContent: "flex-end", alignItems: "center" }}>
             <span style={{ fontSize: 11, color: "var(--text-faint)", marginRight: "auto" }}>
@@ -1067,6 +1100,7 @@ export default function AccountPage() {
                     targetRoas:         account.targetRoas,
                     targetCpa:          account.targetCpa,
                     grossMarginPercent: account.grossMarginPercent,
+                    landingPageUrl:     account.landingPageUrl,
                   }}
                   onSaved={(v) => setAccount(prev => prev ? { ...prev, ...v } : prev)}
                 />
