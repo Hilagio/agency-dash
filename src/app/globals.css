@@ -2,51 +2,68 @@
 
 /* ─── Dark theme (default) ─────────────────────────────────────────────────── */
 :root {
-  --bg:            #0a0a0a;
-  --bg-deep:       #050505;
-  --surface:       #111111;
-  --surface-hover: #141414;
-  --surface-2:     #1a1a1a;
-  --surface-3:     #1e1e1e;
-  --border:        #1a1a1a;
-  --border-2:      #222222;
-  --border-3:      #2a2a2a;
-  --text:          #f0f0f0;
-  --text-2:        #e8e8e8;
-  --text-3:        #cccccc;
-  --text-muted:    #888888;
-  --text-dim:      #555555;
-  --text-very-dim: #444444;
-  --text-faint:    #333333;
-  --header-bg:     rgba(10, 10, 10, 0.92);
-  --input-bg:      #0f0f0f;
+  --bg:            #060606;
+  --bg-deep:       #020202;
+  --surface:       #0d0d0d;
+  --surface-hover: #111111;
+  --surface-2:     #141414;
+  --surface-3:     #181818;
+  --border:        rgba(255, 255, 255, 0.06);
+  --border-2:      rgba(255, 255, 255, 0.10);
+  --border-3:      rgba(255, 255, 255, 0.15);
+  --text:          #f8f8f8;
+  --text-2:        #e2e2e2;
+  --text-3:        #b8b8b8;
+  --text-muted:    #6a6a6a;
+  --text-dim:      #4a4a4a;
+  --text-very-dim: #363636;
+  --text-faint:    #2a2a2a;
+  --header-bg:     rgba(6, 6, 6, 0.88);
+  --input-bg:      #0a0a0a;
 }
 
 /* ─── Light theme ───────────────────────────────────────────────────────────── */
 :root.light {
-  --bg:            #f5f5f5;
-  --bg-deep:       #eeeeee;
+  --bg:            #f0f0f0;
+  --bg-deep:       #e8e8e8;
   --surface:       #ffffff;
-  --surface-hover: #f8f8f8;
-  --surface-2:     #f0f0f0;
-  --surface-3:     #e8e8e8;
-  --border:        #e5e5e5;
-  --border-2:      #d4d4d4;
-  --border-3:      #c4c4c4;
+  --surface-hover: #fafafa;
+  --surface-2:     #f4f4f4;
+  --surface-3:     #ebebeb;
+  --border:        rgba(0, 0, 0, 0.07);
+  --border-2:      rgba(0, 0, 0, 0.11);
+  --border-3:      rgba(0, 0, 0, 0.17);
   --text:          #0a0a0a;
   --text-2:        #1a1a1a;
-  --text-3:        #333333;
+  --text-3:        #383838;
   --text-muted:    #666666;
   --text-dim:      #888888;
   --text-very-dim: #999999;
   --text-faint:    #aaaaaa;
-  --header-bg:     rgba(245, 245, 245, 0.92);
+  --header-bg:     rgba(240, 240, 240, 0.92);
   --input-bg:      #fafafa;
 }
 
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", system-ui, sans-serif;
+  font-family: var(--font-inter), "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Display", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  letter-spacing: -0.01em;
+}
+
+/* ─── Global interactive states ──────────────────────────────────────────────── */
+* { box-sizing: border-box; }
+
+a { color: inherit; }
+
+button, [role="button"] {
+  transition: opacity 0.15s, background 0.15s, border-color 0.15s;
+}
+
+/* ─── Selection ────────────────────────────────────────────────────────────── */
+::selection {
+  background: rgba(59, 130, 246, 0.3);
+  color: var(--text);
 }

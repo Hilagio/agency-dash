@@ -370,6 +370,10 @@ interface Account {
   monthlyBudget: number | null;
   currency: string;
   clientContext: string | null;
+  targetRoas:         number | null;
+  targetCpa:          number | null;
+  grossMarginPercent: number | null;
+  leadToSaleRate:     number | null;
 }
 
 // ─── Client Context Panel ─────────────────────────────────────────────────────
@@ -483,6 +487,207 @@ function ClientContextPanel({
               }}
             >
               {saving ? "Saving…" : "Save"}
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ─── Account Targets Panel ────────────────────────────────────────────────────
+// Ecommerce-focused. Values override Google Ads API data and feed accurate
+// ECONOMICS scoring.
+
+interface AccountTargets {
+  targetRoas:         number | null;
+  targetCpa:          number | null;
+  grossMarginPercent: number | null;
+}
+
+function AccountTargetsPanel({
+  accountId,
+  currency,
+  initial,
+  onSaved,
+}: {
+  accountId: string;
+  currency: string;
+  initial: AccountTargets;
+  onSaved: (v: AccountTargets) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [vals, setVals] = useState({
+    targetRoas:         initial.targetRoas         != null ? String(initial.targetRoas)                         : "",
+    targetCpa:          initial.targetCpa          != null ? String(initial.targetCpa)                          : "",
+    grossMarginPercent: initial.grossMarginPercent != null ? String(Math.round(initial.grossMarginPercent * 100)) : "",
+  });
+  const [saving, setSaving] = useState(false);
+
+  const currSym = currency === "EUR" ? "€" : currency === "GBP" ? "£" : "$";
+
+  const hasAny = initial.targetRoas != null || initial.targetCpa != null || initial.grossMarginPercent != null;
+
+  const save = async () => {
+    setSaving(true);
+    const body: Partial<AccountTargets> = {
+      targetRoas:         vals.targetRoas         !== "" ? parseFloat(vals.targetRoas)         : null,
+      targetCpa:          vals.targetCpa          !== "" ? parseFloat(vals.targetCpa)          : null,
+      grossMarginPercent: vals.grossMarginPercent !== "" ? parseFloat(vals.grossMarginPercent) / 100 : null,
+    };
+    await fetch(`/api/accounts/${accountId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    onSaved(body as AccountTargets);
+    setSaving(false);
+    setEditing(false);
+  };
+
+  const cancel = () => {
+    setVals({
+      targetRoas:         initial.targetRoas         != null ? String(initial.targetRoas)                         : "",
+      targetCpa:          initial.targetCpa          != null ? String(initial.targetCpa)                          : "",
+      grossMarginPercent: initial.grossMarginPercent != null ? String(Math.round(initial.grossMarginPercent * 100)) : "",
+    });
+    setEditing(false);
+  };
+
+  return (
+    <div style={{
+      background: "var(--surface)", border: "1px solid var(--border)",
+      borderRadius: 12, padding: "16px 20px", marginBottom: 20,
+    }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: editing || hasAny ? 12 : 0 }}>
+        <div>
+          <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.8px", textTransform: "uppercase", color: "var(--text-dim)" }}>
+            Account Targets
+          </span>
+          <span style={{ fontSize: 11, color: "var(--text-faint)", marginLeft: 8 }}>
+            feeds ECONOMICS scoring
+          </span>
+        </div>
+        {!editing && (
+          <button
+            onClick={() => setEditing(true)}
+            style={{
+              display: "flex", alignItems: "center", gap: 4,
+              background: "transparent", border: "none", cursor: "pointer",
+              color: hasAny ? "var(--text-faint)" : "#f97316", fontSize: 11, padding: "2px 4px",
+            }}
+          >
+            <Pencil size={10} /> {hasAny ? "Edit" : "Set targets"}
+          </button>
+        )}
+        {editing && (
+          <button onClick={cancel} style={{ background: "transparent", border: "none", cursor: "pointer", color: "var(--text-faint)", display: "flex" }}>
+            <X size={12} />
+          </button>
+        )}
+      </div>
+
+      {!editing && !hasAny && (
+        <p style={{ fontSize: 12, color: "var(--text-faint)", lineHeight: 1.6, margin: 0 }}>
+          No targets set — FUNNEL & ECONOMICS scores will be inaccurate. Set target ROAS and gross margin to get meaningful numbers.
+        </p>
+      )}
+
+      {!editing && hasAny && (
+        <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
+          {initial.targetRoas != null && (
+            <div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text-2)", letterSpacing: "-0.5px", lineHeight: 1 }}>{initial.targetRoas}x</div>
+              <div style={{ fontSize: 10, color: "var(--text-faint)", marginTop: 2, textTransform: "uppercase", letterSpacing: "0.4px" }}>Target ROAS</div>
+            </div>
+          )}
+          {initial.targetCpa != null && (
+            <div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text-2)", letterSpacing: "-0.5px", lineHeight: 1 }}>{currSym}{initial.targetCpa}</div>
+              <div style={{ fontSize: 10, color: "var(--text-faint)", marginTop: 2, textTransform: "uppercase", letterSpacing: "0.4px" }}>Target CPA</div>
+            </div>
+          )}
+          {initial.grossMarginPercent != null && (
+            <div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text-2)", letterSpacing: "-0.5px", lineHeight: 1 }}>{Math.round(initial.grossMarginPercent * 100)}%</div>
+              <div style={{ fontSize: 10, color: "var(--text-faint)", marginTop: 2, textTransform: "uppercase", letterSpacing: "0.4px" }}>Gross Margin</div>
+            </div>
+          )}
+          {initial.grossMarginPercent != null && (
+            <div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text-2)", letterSpacing: "-0.5px", lineHeight: 1 }}>
+                {(1 / initial.grossMarginPercent).toFixed(1)}x
+              </div>
+              <div style={{ fontSize: 10, color: "var(--text-faint)", marginTop: 2, textTransform: "uppercase", letterSpacing: "0.4px" }}>Break-even ROAS</div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {editing && (
+        <>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+            <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              <span style={{ fontSize: 10, color: "var(--text-faint)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.4px" }}>Target ROAS</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--bg)", border: "1px solid var(--border-2)", borderRadius: 7, padding: "6px 10px" }}>
+                <input
+                  type="number" step="0.1" min="0" placeholder="e.g. 4.0"
+                  value={vals.targetRoas}
+                  onChange={e => setVals(v => ({ ...v, targetRoas: e.target.value }))}
+                  style={{ flex: 1, background: "transparent", border: "none", outline: "none", color: "var(--text)", fontSize: 13, fontFamily: "inherit", minWidth: 0 }}
+                />
+                <span style={{ fontSize: 11, color: "var(--text-faint)" }}>x</span>
+              </div>
+              <span style={{ fontSize: 10, color: "var(--text-very-dim)" }}>Overrides campaign targets</span>
+            </label>
+
+            <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              <span style={{ fontSize: 10, color: "var(--text-faint)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.4px" }}>Target CPA</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--bg)", border: "1px solid var(--border-2)", borderRadius: 7, padding: "6px 10px" }}>
+                <span style={{ fontSize: 11, color: "var(--text-faint)" }}>{currSym}</span>
+                <input
+                  type="number" step="1" min="0" placeholder="e.g. 25"
+                  value={vals.targetCpa}
+                  onChange={e => setVals(v => ({ ...v, targetCpa: e.target.value }))}
+                  style={{ flex: 1, background: "transparent", border: "none", outline: "none", color: "var(--text)", fontSize: 13, fontFamily: "inherit", minWidth: 0 }}
+                />
+              </div>
+              <span style={{ fontSize: 10, color: "var(--text-very-dim)" }}>For lead-gen accounts</span>
+            </label>
+
+            <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              <span style={{ fontSize: 10, color: "var(--text-faint)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.4px" }}>Gross Margin</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--bg)", border: "1px solid var(--border-2)", borderRadius: 7, padding: "6px 10px" }}>
+                <input
+                  type="number" step="1" min="0" max="100" placeholder="e.g. 38"
+                  value={vals.grossMarginPercent}
+                  onChange={e => setVals(v => ({ ...v, grossMarginPercent: e.target.value }))}
+                  style={{ flex: 1, background: "transparent", border: "none", outline: "none", color: "var(--text)", fontSize: 13, fontFamily: "inherit", minWidth: 0 }}
+                />
+                <span style={{ fontSize: 11, color: "var(--text-faint)" }}>%</span>
+              </div>
+              <span style={{ fontSize: 10, color: "var(--text-very-dim)" }}>
+                {vals.grossMarginPercent ? `Break-even ROAS: ${(100 / parseFloat(vals.grossMarginPercent || "1")).toFixed(1)}x` : "Required for break-even ROAS"}
+              </span>
+            </label>
+          </div>
+
+          <div style={{ display: "flex", gap: 8, marginTop: 14, justifyContent: "flex-end", alignItems: "center" }}>
+            <span style={{ fontSize: 11, color: "var(--text-faint)", marginRight: "auto" }}>
+              Rescore after saving to apply
+            </span>
+            <button
+              onClick={cancel}
+              style={{ background: "transparent", border: "1px solid var(--border-2)", borderRadius: 6, color: "var(--text-dim)", fontSize: 11, padding: "5px 12px", cursor: "pointer" }}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={save}
+              disabled={saving}
+              style={{ background: "#1d4ed8", border: "none", borderRadius: 6, color: "#fff", fontSize: 11, fontWeight: 600, padding: "5px 14px", cursor: saving ? "not-allowed" : "pointer", opacity: saving ? 0.6 : 1 }}
+            >
+              {saving ? "Saving…" : "Save targets"}
             </button>
           </div>
         </>
@@ -760,6 +965,18 @@ export default function AccountPage() {
               </div>
             ) : (
               <>
+                {/* Account Targets — feeds ECONOMICS scoring */}
+                <AccountTargetsPanel
+                  accountId={id}
+                  currency={account.currency}
+                  initial={{
+                    targetRoas:         account.targetRoas,
+                    targetCpa:          account.targetCpa,
+                    grossMarginPercent: account.grossMarginPercent,
+                  }}
+                  onSaved={(v) => setAccount(prev => prev ? { ...prev, ...v } : prev)}
+                />
+
                 {/* Account Brief — feeds AI context */}
                 <ClientContextPanel
                   accountId={id}

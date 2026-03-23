@@ -69,6 +69,15 @@ model Account {
   monthlyBudget  Float?
   industry       String?
   clientContext  String?  // free-text: what they sell, landing page, target CPA, USPs etc.
+
+  // ─── Per-account scoring targets ───────────────────────────────────────────
+  // Set these to get accurate FUNNEL + ECONOMICS scores.
+  // They override whatever Google Ads campaign targets return.
+  targetRoas          Float?  // e.g. 4.0 → 4x ROAS target (ecommerce)
+  targetCpa           Float?  // e.g. 25.00 → €25 CPA target (lead-gen; also used as target CPL)
+  grossMarginPercent  Float?  // e.g. 0.38 → 38% gross margin (for break-even ROAS check)
+  leadToSaleRate      Float?  // e.g. 0.15 → 15% of leads close (from CRM)
+
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id])
   createdAt      DateTime @default(now())
