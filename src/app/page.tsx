@@ -429,7 +429,8 @@ function HomePageInner() {
         if (!res.ok) { setAutoImportError((await res.json()).error ?? "Could not load accounts."); return; }
         const mccAccounts: { googleAdsId: string; name: string; currency: string }[] = await res.json();
         if (cancelled || mccAccounts.length === 0) { if (!mccAccounts.length) setAutoImportError("No accounts found."); return; }
-        await Promise.all(mccAccounts.map(a => fetch("/api/google-ads/accounts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ googleAdsId: a.googleAdsId, name: a.name, currency: a.currency }) })));
+        const bulkRes = await fetch("/api/google-ads/accounts/bulk", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ accounts: mccAccounts }) });
+        if (!bulkRes.ok) { setAutoImportError((await bulkRes.json()).error ?? "Import failed."); return; }
         if (cancelled) return;
         await loadAccounts();
         if (!cancelled) {
