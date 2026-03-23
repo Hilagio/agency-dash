@@ -418,7 +418,12 @@ function HomePageInner() {
   }, [loadAccounts]);
 
   useEffect(() => {
-    if (!connected || autoImportAttempted.current) return;
+    // Wait for the initial loadAccounts() to finish before deciding to import.
+    // This prevents a race where the import's loadAccounts() result gets
+    // overwritten by the stale initial fetch (which started before DB had data).
+    if (!connected || loading || autoImportAttempted.current) return;
+    // If accounts already loaded from DB, nothing to import.
+    if (accounts.length > 0) { autoImportAttempted.current = true; return; }
     autoImportAttempted.current = true;
     let cancelled = false;
     async function run() {
@@ -444,8 +449,11 @@ function HomePageInner() {
     }
     run();
     return () => { cancelled = true; };
+    // accounts.length is intentionally excluded from deps — reading it as a
+    // snapshot avoids triggering effect cleanup mid-import when loadAccounts()
+    // updates accounts state (which was the original "banner stuck" bug).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [connected, loadAccounts]);
+  }, [connected, loading, loadAccounts]);
 
   const runScore = async (accountId: string, e: React.MouseEvent) => {
     e.preventDefault();
