@@ -3,17 +3,18 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, RefreshCw, MessageSquare, ListChecks, BarChart2, Loader2, Search, BookOpen, ClipboardList, Send, Pencil, X, CheckSquare, Sparkles } from "lucide-react";
+import { ArrowLeft, RefreshCw, MessageSquare, ListChecks, BarChart2, Loader2, Search, BookOpen, ClipboardList, Send, Pencil, X, CheckSquare, Sparkles, Package } from "lucide-react";
 import { ScoreBuckets } from "@/components/ScoreBuckets";
 import { ScoreHistory } from "@/components/ScoreHistory";
 import { ActionList } from "@/components/ActionList";
 import { ChatAssistant } from "@/components/ChatAssistant";
 import { SearchTermReport } from "@/components/SearchTermReport";
 import { PlaybookView } from "@/components/PlaybookView";
+import { ProductPerformance } from "@/components/ProductPerformance";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { BUCKET_LABELS } from "@/lib/engine/types";
 
-type Tab = "overview" | "actions" | "search-terms" | "playbook" | "chat" | "notes" | "sops";
+type Tab = "overview" | "actions" | "products" | "search-terms" | "playbook" | "chat" | "notes" | "sops";
 
 interface Note {
   id: string;
@@ -949,6 +950,7 @@ export default function AccountPage() {
   const TABS: { key: Tab; label: string; icon: React.ReactNode; badge?: number }[] = [
     { key: "overview",      label: "Overview",     icon: <BarChart2    size={14} /> },
     { key: "actions",       label: "Actions",      icon: <ListChecks   size={14} />, badge: pendingActions.length },
+    { key: "products",      label: "Products",     icon: <Package      size={14} /> },
     { key: "search-terms",  label: "Search terms", icon: <Search       size={14} /> },
     { key: "playbook",      label: "Playbook",     icon: <BookOpen     size={14} /> },
     { key: "chat",          label: "AI Advisor",   icon: <MessageSquare size={14} /> },
@@ -1157,6 +1159,20 @@ export default function AccountPage() {
               onStatusChange={handleStatusChange}
               onExecute={handleExecute}
             />
+          </>
+        )}
+
+        {tab === "products" && (
+          <>
+            <div style={{ marginBottom: 16, display: "flex", alignItems: "baseline", gap: 8 }}>
+              <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.8px", textTransform: "uppercase", color: "var(--text-dim)" }}>
+                Product performance — last 30 days
+              </span>
+              <span style={{ fontSize: 11, color: "var(--text-faint)" }}>
+                Shopping &amp; Performance Max · sorted by revenue
+              </span>
+            </div>
+            <ProductPerformance accountId={id} currency={account.currency} />
           </>
         )}
 

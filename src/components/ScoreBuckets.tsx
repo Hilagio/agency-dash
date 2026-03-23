@@ -18,7 +18,7 @@ const BUCKET_CHECKS: Record<string, CheckDef[]> = {
     { id: "conv_tracking",       label: "Conversion tracking active",     what: "Is at least one conversion action recording?",          threshold: "Must be active" },
     { id: "conv_actions_count",  label: "Conversion actions configured",  what: "How many distinct conversion actions exist?",           threshold: ">0 configured" },
     { id: "enhanced_conv",       label: "Enhanced conversions",           what: "Enhanced conversions improve modelling of missing data", threshold: "Must be enabled" },
-    { id: "tag_coverage",        label: "Tag coverage",                   what: "% of sessions where the conversion tag fired",          threshold: "≥ 90% coverage" },
+    { id: "tag_coverage",        label: "Conversion data continuity",     what: "Recent 7-day conversion volume vs prior 3-week baseline — flags sudden drops that indicate tracking breakage",  threshold: "Recent volume ≥ 90% of baseline" },
     { id: "ga4_linked",          label: "GA4 linked",                     what: "Google Analytics 4 linked for audience + engagement",   threshold: "Must be linked" },
     { id: "date_lag",            label: "Attribution lag",                what: "Days delay before conversions appear in reporting",     threshold: "≤ 7 days" },
   ],

@@ -39,9 +39,13 @@ function scoreMeasurement(s: ConstraintSignals["measurement"]): BucketScore {
     signals.push("Enhanced conversions not enabled — losing signal quality");
   }
   if (s.tagCoveragePercent < 0.9) {
-    const loss = Math.round((1 - s.tagCoveragePercent) * 100);
-    score -= Math.min(20, loss);
-    signals.push(`Tag coverage ${Math.round(s.tagCoveragePercent * 100)}% — ${loss}% of traffic untracked`);
+    const dropPct = Math.round((1 - s.tagCoveragePercent) * 100);
+    score -= Math.min(20, dropPct);
+    if (s.tagCoveragePercent < 0.5) {
+      signals.push(`Conversion data dropped ${dropPct}% vs prior weeks — possible tracking breakage`);
+    } else {
+      signals.push(`Conversion volume ${dropPct}% below recent baseline — watch for tracking issues`);
+    }
   }
   if (!s.hasGa4Linked) {
     score -= 5;

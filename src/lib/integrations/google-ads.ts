@@ -232,13 +232,59 @@ async function fetchMeasurementSignals(customer: Customer): Promise<MeasurementS
     "campaign conversions"
   );
 
+  // ── Data-drop detection via daily conversion trend ───────────────────────
+  // For 3rd-party API tracking (no GTM/GA4 tag to inspect), the most reliable
+  // signal is whether conversions suddenly stopped arriving.
+  // Method: compare last 7 days vs previous 21 days (daily average).
+  // A drop ≥ 40% flags potential tracking breakage.
   const totalCampaigns = campaignConversions.length;
   const campaignsWithConversions = campaignConversions.filter(
     (r) => (r.metrics?.conversions ?? 0) > 0
   ).length;
-  const tagCoveragePercent = totalCampaigns > 0
-    ? campaignsWithConversions / totalCampaigns
-    : 0;
+
+  // Daily conversion volume over last 30 days — segmented by date
+  const dailyConvRows = await safeQuery(
+    () => customer.query(`
+      SELECT
+        segments.date,
+        metrics.conversions
+      FROM customer
+      WHERE segments.date BETWEEN '${start}' AND '${end}'
+    `),
+    "daily conversions"
+  );
+
+  // Sort by date
+  const dailySorted = dailyConvRows
+    .map(r => ({
+      date: String(r.segments?.date ?? ""),
+      conversions: Number(r.metrics?.conversions ?? 0),
+    }))
+    .filter(r => r.date)
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  let tagCoveragePercent: number;
+
+  if (dailySorted.length >= 14) {
+    const recent   = dailySorted.slice(-7);
+    const baseline = dailySorted.slice(0, -7);
+    const recentAvg   = recent.reduce((s, r) => s + r.conversions, 0) / recent.length;
+    const baselineAvg = baseline.reduce((s, r) => s + r.conversions, 0) / baseline.length;
+
+    if (baselineAvg > 0) {
+      // tagCoveragePercent = ratio of recent to baseline (capped at 1)
+      tagCoveragePercent = Math.min(1, recentAvg / baselineAvg);
+    } else if (recentAvg > 0) {
+      tagCoveragePercent = 1; // no baseline but conversions are coming in — healthy
+    } else {
+      tagCoveragePercent = 0; // zero conversions across entire window — critical
+    }
+  } else {
+    // Not enough days — fall back to campaign coverage proxy
+    tagCoveragePercent = totalCampaigns > 0
+      ? Math.min(1, (campaignsWithConversions / totalCampaigns) + 0.1)
+      : 0;
+  }
 
   // GA4 linked — two checks:
   //  1. google_analytics_link covers both UA and GA4 links from Google Ads' side
@@ -579,6 +625,154 @@ export async function fetchGoogleAdsSignals(customerId?: string, industry?: stri
   ]);
 
   return { measurement, traffic, conversion, funnel, economics };
+}
+
+// ─── Product Performance Report ──────────────────────────────────────────────
+
+export interface ProductRow {
+  itemId:      string;
+  title:       string;
+  brand:       string;
+  clicks:      number;
+  impressions: number;
+  ctr:         number;
+  conversions: number;
+  revenue:     number;  // conversions_value in account currency
+  cost:        number;
+  roas:        number;  // revenue / cost (0 if no cost)
+  cpc:         number;
+}
+
+export interface ShoppingOverview {
+  hasShoppingCampaigns: boolean;
+  campaignCount:        number;
+  totalCost:            number;
+  totalRevenue:         number;
+  totalConversions:     number;
+  roas:                 number;
+  isLostBudget:         number;  // avg impression share lost to budget
+  isLostRank:           number;  // avg impression share lost to rank
+  disapprovedCount:     number;
+  products:             ProductRow[];
+}
+
+export async function fetchProductPerformance(customerId: string, orgId?: string): Promise<ShoppingOverview> {
+  const client   = getClient();
+  const customer = await getCustomer(client, customerId, orgId);
+  const { start, end } = last30Days();
+
+  // ── Shopping / PMax campaign overview ────────────────────────────────────
+  const campaignRows = await safeQuery(
+    () => customer.query(`
+      SELECT
+        campaign.id,
+        campaign.name,
+        campaign.advertising_channel_type,
+        metrics.cost_micros,
+        metrics.conversions_value,
+        metrics.conversions,
+        metrics.search_budget_lost_impression_share,
+        metrics.search_rank_lost_impression_share
+      FROM campaign
+      WHERE campaign.status = 'ENABLED'
+        AND campaign.advertising_channel_type IN ('SHOPPING', 'PERFORMANCE_MAX')
+        AND segments.date BETWEEN '${start}' AND '${end}'
+    `),
+    "shopping campaigns"
+  );
+
+  if (campaignRows.length === 0) {
+    return {
+      hasShoppingCampaigns: false,
+      campaignCount: 0, totalCost: 0, totalRevenue: 0, totalConversions: 0,
+      roas: 0, isLostBudget: 0, isLostRank: 0, disapprovedCount: 0, products: [],
+    };
+  }
+
+  const totalCost        = campaignRows.reduce((s, r) => s + Number(r.metrics?.cost_micros ?? 0), 0) / 1_000_000;
+  const totalRevenue     = campaignRows.reduce((s, r) => s + Number(r.metrics?.conversions_value ?? 0), 0);
+  const totalConversions = campaignRows.reduce((s, r) => s + Number(r.metrics?.conversions ?? 0), 0);
+  const isLostBudget     = campaignRows.reduce((s, r) => s + Number(r.metrics?.search_budget_lost_impression_share ?? 0), 0) / campaignRows.length;
+  const isLostRank       = campaignRows.reduce((s, r) => s + Number(r.metrics?.search_rank_lost_impression_share ?? 0), 0) / campaignRows.length;
+
+  // ── Product-level performance ─────────────────────────────────────────────
+  const productRows = await safeQuery(
+    () => customer.query(`
+      SELECT
+        segments.product_item_id,
+        segments.product_title,
+        segments.product_brand,
+        metrics.clicks,
+        metrics.impressions,
+        metrics.ctr,
+        metrics.conversions,
+        metrics.conversions_value,
+        metrics.cost_micros
+      FROM shopping_performance_view
+      WHERE segments.date BETWEEN '${start}' AND '${end}'
+        AND metrics.impressions > 0
+    `),
+    "shopping product performance"
+  );
+
+  // Aggregate by product item ID (same product can appear across campaigns)
+  const productMap = new Map<string, ProductRow>();
+  for (const r of productRows) {
+    const itemId = String(r.segments?.product_item_id ?? "unknown");
+    const title  = String(r.segments?.product_title  ?? "Unknown product");
+    const brand  = String(r.segments?.product_brand  ?? "");
+    const clicks      = Number(r.metrics?.clicks           ?? 0);
+    const impressions = Number(r.metrics?.impressions       ?? 0);
+    const conversions = Number(r.metrics?.conversions       ?? 0);
+    const revenue     = Number(r.metrics?.conversions_value ?? 0);
+    const cost        = Number(r.metrics?.cost_micros       ?? 0) / 1_000_000;
+
+    const existing = productMap.get(itemId);
+    if (existing) {
+      existing.clicks      += clicks;
+      existing.impressions += impressions;
+      existing.conversions += conversions;
+      existing.revenue     += revenue;
+      existing.cost        += cost;
+    } else {
+      productMap.set(itemId, { itemId, title, brand, clicks, impressions, ctr: 0, conversions, revenue, cost, roas: 0, cpc: 0 });
+    }
+  }
+
+  // Compute derived metrics
+  const products: ProductRow[] = Array.from(productMap.values()).map(p => ({
+    ...p,
+    ctr:  p.impressions > 0 ? p.clicks / p.impressions : 0,
+    roas: p.cost > 0 ? p.revenue / p.cost : 0,
+    cpc:  p.clicks > 0 ? p.cost / p.clicks : 0,
+  }));
+
+  // Sort by revenue desc, take top 50
+  products.sort((a, b) => b.revenue - a.revenue);
+
+  // ── Disapproved products ──────────────────────────────────────────────────
+  const disapprovedRows = await safeQuery(
+    () => customer.query(`
+      SELECT shopping_product.item_id
+      FROM shopping_product
+      WHERE shopping_product.status = 'DISAPPROVED'
+    `),
+    "disapproved products"
+  );
+  const disapprovedCount = disapprovedRows.length;
+
+  return {
+    hasShoppingCampaigns: true,
+    campaignCount: new Set(campaignRows.map(r => String(r.campaign?.id))).size,
+    totalCost,
+    totalRevenue,
+    totalConversions,
+    roas: totalCost > 0 ? totalRevenue / totalCost : 0,
+    isLostBudget:  Math.min(1, isLostBudget),
+    isLostRank:    Math.min(1, isLostRank),
+    disapprovedCount,
+    products: products.slice(0, 50),
+  };
 }
 
 // ─── Search Term Report ───────────────────────────────────────────────────────
