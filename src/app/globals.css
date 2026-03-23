@@ -4,22 +4,25 @@
 :root {
   --bg:            #060606;
   --bg-deep:       #020202;
-  --surface:       #0d0d0d;
-  --surface-hover: #111111;
-  --surface-2:     #141414;
-  --surface-3:     #181818;
-  --border:        rgba(255, 255, 255, 0.06);
-  --border-2:      rgba(255, 255, 255, 0.10);
-  --border-3:      rgba(255, 255, 255, 0.15);
-  --text:          #f8f8f8;
-  --text-2:        #e2e2e2;
-  --text-3:        #b8b8b8;
-  --text-muted:    #6a6a6a;
-  --text-dim:      #4a4a4a;
-  --text-very-dim: #363636;
-  --text-faint:    #2a2a2a;
-  --header-bg:     rgba(6, 6, 6, 0.88);
+  --surface:       #0e0e0e;
+  --surface-hover: #131313;
+  --surface-2:     #161616;
+  --surface-3:     #1a1a1a;
+  --border:        rgba(255, 255, 255, 0.07);
+  --border-2:      rgba(255, 255, 255, 0.12);
+  --border-3:      rgba(255, 255, 255, 0.18);
+  --text:          #f0f0f0;
+  --text-2:        #d4d4d4;
+  --text-3:        #a0a0a0;
+  --text-muted:    #707070;
+  --text-dim:      #505050;
+  --text-very-dim: #383838;
+  --text-faint:    #282828;
+  --header-bg:     rgba(6, 6, 6, 0.92);
   --input-bg:      #0a0a0a;
+  --accent:        #e8e8e8;
+  --accent-blue:   #3b82f6;
+  --accent-dim:    rgba(255, 255, 255, 0.04);
 }
 
 /* ─── Light theme ───────────────────────────────────────────────────────────── */
