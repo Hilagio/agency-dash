@@ -418,7 +418,7 @@ function HomePageInner() {
   }, [loadAccounts]);
 
   useEffect(() => {
-    if (!connected || loading || accounts.length > 0 || autoImportAttempted.current) return;
+    if (!connected || autoImportAttempted.current) return;
     autoImportAttempted.current = true;
     let cancelled = false;
     async function run() {
@@ -440,11 +440,12 @@ function HomePageInner() {
           setScoringAll(false);
         }
       } catch { if (!cancelled) setAutoImportError("Network error while importing."); }
-      finally { if (!cancelled) setAutoImporting(false); }
+      finally { setAutoImporting(false); }
     }
     run();
     return () => { cancelled = true; };
-  }, [connected, loading, accounts.length, loadAccounts]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [connected, loadAccounts]);
 
   const runScore = async (accountId: string, e: React.MouseEvent) => {
     e.preventDefault();
