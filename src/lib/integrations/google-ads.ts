@@ -210,12 +210,63 @@ async function fetchMeasurementSignals(customer: Customer): Promise<MeasurementS
   );
   const conversionTrackingActive = activeConversions.length > 0;
 
-  // Check for enhanced conversions (user provided data)
-  const hasEnhancedConversions = activeConversions.some(
-    (r) =>
-      r.conversion_action?.type ===
-      enums.ConversionActionType.WEBPAGE
+  // Check for enhanced conversions — must actually have the setting enabled,
+  // not just be of WEBPAGE type (which is necessary but not sufficient).
+  const ecActions = await safeQuery(
+    () => customer.query(`
+      SELECT
+        conversion_action.id,
+        conversion_action.enhanced_conversions_settings.enabled
+      FROM conversion_action
+      WHERE conversion_action.status = 'ENABLED'
+        AND conversion_action.type = 'WEBPAGE'
+    `),
+    "enhanced conversions settings"
   );
+  const ecEnabledActions = ecActions.filter(
+    (r) => r.conversion_action?.enhanced_conversions_settings?.enabled === true
+  );
+  const hasEnhancedConversions = ecEnabledActions.length > 0;
+
+  // Detect enhanced conversion degradation — EC is enabled but conversion volume
+  // for those specific actions has dropped significantly vs baseline.
+  let enhancedConversionsDegraded = false;
+  if (hasEnhancedConversions && ecEnabledActions.length > 0) {
+    const ecActionIds = ecEnabledActions
+      .map((r) => r.conversion_action?.id)
+      .filter(Boolean)
+      .join(",");
+    const { start: ecStart, end: ecEnd } = last30Days();
+    const ecDailyRows = await safeQuery(
+      () => customer.query(`
+        SELECT
+          segments.date,
+          metrics.conversions
+        FROM conversion_action
+        WHERE conversion_action.id IN (${ecActionIds})
+          AND segments.date BETWEEN '${ecStart}' AND '${ecEnd}'
+      `),
+      "ec daily conversions"
+    );
+    const ecDailySorted = ecDailyRows
+      .map((r) => ({
+        date: String(r.segments?.date ?? ""),
+        conversions: Number(r.metrics?.conversions ?? 0),
+      }))
+      .filter((r) => r.date)
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    if (ecDailySorted.length >= 14) {
+      const ecRecent   = ecDailySorted.slice(-7);
+      const ecBaseline = ecDailySorted.slice(0, -7);
+      const ecRecentAvg   = ecRecent.reduce((s, r) => s + r.conversions, 0) / ecRecent.length;
+      const ecBaselineAvg = ecBaseline.reduce((s, r) => s + r.conversions, 0) / ecBaseline.length;
+      // Flag as degraded if baseline had conversions and recent dropped ≥40%
+      if (ecBaselineAvg > 0 && ecRecentAvg / ecBaselineAvg < 0.6) {
+        enhancedConversionsDegraded = true;
+      }
+    }
+  }
 
   // Tag coverage via campaign-level conversion tracking check
   // Approximated: campaigns with 0 conversions in 30 days vs. total
@@ -319,6 +370,7 @@ async function fetchMeasurementSignals(customer: Customer): Promise<MeasurementS
     conversionTrackingActive,
     conversionActionsCount: activeConversions.length,
     hasEnhancedConversions,
+    enhancedConversionsDegraded,
     tagCoveragePercent: Math.min(1, tagCoveragePercent + 0.1), // baseline buffer
     dateLagDays: 3, // Google Ads standard attribution lag
     hasGa4Linked,

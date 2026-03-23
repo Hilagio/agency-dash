@@ -38,6 +38,10 @@ function scoreMeasurement(s: ConstraintSignals["measurement"]): BucketScore {
     score -= 10;
     signals.push("Enhanced conversions not enabled — losing signal quality");
   }
+  if (s.hasEnhancedConversions && s.enhancedConversionsDegraded) {
+    score -= 20;
+    signals.push("Enhanced conversions enabled but conversion volume dropped ≥40% — likely broken");
+  }
   if (s.tagCoveragePercent < 0.9) {
     const dropPct = Math.round((1 - s.tagCoveragePercent) * 100);
     score -= Math.min(20, dropPct);

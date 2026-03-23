@@ -49,6 +49,7 @@ export interface MeasurementSignals {
   conversionTrackingActive: boolean;
   conversionActionsCount: number;
   hasEnhancedConversions: boolean;
+  enhancedConversionsDegraded: boolean;    // EC enabled but conversion volume dropped ≥40%
   tagCoveragePercent: number;              // 0–1
   dateLagDays: number;                     // avg attribution lag
   hasGa4Linked: boolean;

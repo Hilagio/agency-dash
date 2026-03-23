@@ -60,6 +60,24 @@ const measurementRules: RuleSet = (s) => {
     });
   }
 
+  if (m.hasEnhancedConversions && m.enhancedConversionsDegraded) {
+    recs.push({
+      bucket: "MEASUREMENT",
+      title: "Enhanced Conversions appears broken — conversion volume dropped ≥40%",
+      description:
+        "Enhanced Conversions is enabled but the conversion volume for those actions has dropped " +
+        "significantly vs the prior 3 weeks. This usually means the tag stopped passing user data " +
+        "(hashed email/phone) — triggered by a website update, GTM change, or Consent Mode misconfiguration. " +
+        "Check Tag Assistant, verify the dataLayer push on the confirmation page, and confirm " +
+        "ad_user_data consent is being granted.",
+      impact: "HIGH",
+      effort: "MEDIUM",
+      safeToAutomate: false,
+      actionType: "FIX_ENHANCED_CONVERSIONS",
+      isEscalation: true,
+    });
+  }
+
   if (m.tagCoveragePercent < 0.9) {
     recs.push({
       bucket: "MEASUREMENT",

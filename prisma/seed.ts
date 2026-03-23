@@ -23,6 +23,7 @@ const acme_signals: ConstraintSignals = {
     conversionTrackingActive: true,
     conversionActionsCount: 3,
     hasEnhancedConversions: false,   // ← weakness
+    enhancedConversionsDegraded: false,
     tagCoveragePercent: 0.92,
     dateLagDays: 3,
     hasGa4Linked: true,
@@ -67,6 +68,7 @@ const nova_signals: ConstraintSignals = {
     conversionTrackingActive: false, // ← critical
     conversionActionsCount: 0,
     hasEnhancedConversions: false,
+    enhancedConversionsDegraded: false,
     tagCoveragePercent: 0.6,
     dateLagDays: 0,
     hasGa4Linked: false,
