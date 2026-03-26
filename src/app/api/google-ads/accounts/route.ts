@@ -75,7 +75,7 @@ async function findMccId(
   const cred = await prisma.oAuthCredential.findUnique({ where: { organizationId: orgId } });
   if (cred?.loginCustomerId) {
     try {
-      const c = client.Customer({ customer_id: cred.loginCustomerId, refresh_token: refreshToken });
+      const c = client.Customer({ customer_id: cred.loginCustomerId, login_customer_id: cred.loginCustomerId, refresh_token: refreshToken });
       const rows = await withQueryTimeout(c.query("SELECT customer.manager FROM customer LIMIT 1"));
       if (rows[0]?.customer?.manager) return cred.loginCustomerId;
     } catch { /* stale — fall through */ }
@@ -140,8 +140,9 @@ export async function GET() {
     let accounts: { googleAdsId: string; name: string; currency: string; isManager: boolean; resourceName: string }[];
 
     if (mccId) {
-      // List all client accounts under the MCC
-      const mccCustomer = client.Customer({ customer_id: mccId, refresh_token: refreshToken });
+      // List all client accounts under the MCC.
+      // login_customer_id must equal the MCC's own ID when querying manager-level resources (customer_client).
+      const mccCustomer = client.Customer({ customer_id: mccId, login_customer_id: mccId, refresh_token: refreshToken });
       const rows = await withQueryTimeout(mccCustomer.query(`
         SELECT
           customer_client.client_customer,
