@@ -224,7 +224,8 @@ async function fetchMeasurementSignals(customer: Customer): Promise<MeasurementS
     "enhanced conversions settings"
   );
   const ecEnabledActions = ecActions.filter(
-    (r) => r.conversion_action?.enhanced_conversions_settings?.enabled === true
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (r) => (r.conversion_action as any)?.enhanced_conversions_settings?.enabled === true
   );
   const hasEnhancedConversions = ecEnabledActions.length > 0;
 
