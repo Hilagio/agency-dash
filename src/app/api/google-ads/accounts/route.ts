@@ -126,6 +126,7 @@ export async function GET() {
 
     // Ensure we have customer IDs (fetched live if cache was empty)
     const customerIds = await getAccessibleCustomerIds(client, refreshToken, ctx.orgId);
+    console.log(`[google-ads/accounts] orgId=${ctx.orgId} customerIds(${customerIds.length})=${customerIds.slice(0, 5).join(",")}`);
 
     if (customerIds.length === 0) {
       return NextResponse.json(
@@ -136,6 +137,7 @@ export async function GET() {
 
     // Try to find an MCC among accessible accounts
     const mccId = await findMccId(client, refreshToken, customerIds, ctx.orgId);
+    console.log(`[google-ads/accounts] mccId=${mccId ?? "(none)"}`);
 
     let accounts: { googleAdsId: string; name: string; currency: string; isManager: boolean; resourceName: string }[];
 

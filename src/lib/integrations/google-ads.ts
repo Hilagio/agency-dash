@@ -667,6 +667,10 @@ async function fetchEconomicsSignals(customer: Customer): Promise<EconomicsSigna
 
 export async function fetchGoogleAdsSignals(customerId?: string, industry?: string | null, orgId?: string): Promise<ConstraintSignals> {
   const client   = getClient();
+
+  const loginCustomerId = await getLoginCustomerId(orgId);
+  console.log(`[google-ads] fetchGoogleAdsSignals customerId=${customerId} loginCustomerId=${loginCustomerId ?? "(none)"} orgId=${orgId}`);
+
   const customer = await getCustomer(client, customerId, orgId);
 
   const [measurement, traffic, conversion, funnel, economics] = await Promise.all([
@@ -677,6 +681,7 @@ export async function fetchGoogleAdsSignals(customerId?: string, industry?: stri
     fetchEconomicsSignals(customer),
   ]);
 
+  console.log(`[google-ads] fetchGoogleAdsSignals done for ${customerId}`);
   return { measurement, traffic, conversion, funnel, economics };
 }
 

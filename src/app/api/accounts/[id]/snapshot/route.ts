@@ -77,6 +77,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       signals = await fetchGoogleAdsSignals(account.googleAdsId, account.industry, ctx.orgId);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[snapshot] fetchGoogleAdsSignals failed for account ${id} (googleAdsId=${account.googleAdsId})`, msg, err);
       return NextResponse.json(
         { error: `Google Ads API error: ${msg}` },
         { status: 502 }
