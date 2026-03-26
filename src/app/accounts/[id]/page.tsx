@@ -859,6 +859,7 @@ export default function AccountPage() {
   const [tab, setTab] = useState<Tab>("overview");
   const [loading, setLoading] = useState(true);
   const [rescoring, setRescoring] = useState(false);
+  const [rescoreError, setRescoreError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -890,9 +891,17 @@ export default function AccountPage() {
 
   const rescore = async () => {
     setRescoring(true);
+    setRescoreError(null);
     try {
-      await fetch(`/api/accounts/${id}/snapshot?source=google-ads`, { method: "POST" });
+      const res = await fetch(`/api/accounts/${id}/snapshot?source=google-ads`, { method: "POST" });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as { error?: string };
+        setRescoreError(body.error ?? `Scoring failed (${res.status})`);
+        return;
+      }
       await load();
+    } catch (e) {
+      setRescoreError(e instanceof Error ? e.message : "Network error");
     } finally {
       setRescoring(false);
     }
@@ -1085,12 +1094,36 @@ export default function AccountPage() {
 
         {tab === "overview" && (
           <>
+            {rescoreError && (
+              <div style={{
+                background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)",
+                borderRadius: 10, padding: "12px 16px", marginBottom: 20,
+                fontSize: 13, color: "#ef4444",
+              }}>
+                <strong>Scoring failed:</strong> {rescoreError}
+              </div>
+            )}
             {!snapshot ? (
               <div style={{
                 border: "1px dashed var(--border-2)", borderRadius: 14,
-                padding: "60px 32px", textAlign: "center", color: "var(--text-dim)", fontSize: 13,
+                padding: "60px 32px", textAlign: "center",
               }}>
-                No score yet — click Rescore above to pull live data.
+                <p style={{ color: "var(--text-dim)", fontSize: 14, marginBottom: 20 }}>
+                  No score yet — pull live data from Google Ads to get started.
+                </p>
+                <button
+                  onClick={rescore}
+                  disabled={rescoring}
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: 8,
+                    background: "#1d4ed8", border: "none", borderRadius: 8,
+                    color: "#fff", fontSize: 13, fontWeight: 600,
+                    padding: "10px 22px", cursor: rescoring ? "not-allowed" : "pointer",
+                    opacity: rescoring ? 0.6 : 1,
+                  }}
+                >
+                  {rescoring ? <><Loader2 size={13} className="animate-spin" /> Scoring…</> : <><RefreshCw size={13} /> Score this account</>}
+                </button>
               </div>
             ) : (
               <>
