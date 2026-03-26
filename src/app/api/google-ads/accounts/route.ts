@@ -12,6 +12,14 @@ import { prisma } from "@/lib/db";
 import { isGoogleAdsConfigured } from "@/lib/integrations/google-ads";
 import { getAuthContext, unauthorized } from "@/lib/auth";
 
+/** Rejects after ms if the wrapped promise hasn't settled — guards against gRPC hangs */
+function withQueryTimeout<T>(promise: Promise<T>, ms = 8_000): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) => setTimeout(() => reject(new Error("query timeout")), ms)),
+  ]);
+}
+
 async function getOrgRefreshToken(orgId: string): Promise<string> {
   const cred = await prisma.oAuthCredential.findUnique({ where: { organizationId: orgId } });
   if (cred?.refreshToken) return cred.refreshToken;
@@ -68,27 +76,30 @@ async function findMccId(
   if (cred?.loginCustomerId) {
     try {
       const c = client.Customer({ customer_id: cred.loginCustomerId, refresh_token: refreshToken });
-      const rows = await c.query("SELECT customer.manager FROM customer LIMIT 1");
+      const rows = await withQueryTimeout(c.query("SELECT customer.manager FROM customer LIMIT 1"));
       if (rows[0]?.customer?.manager) return cred.loginCustomerId;
     } catch { /* stale — fall through */ }
   }
 
-  // 3. Try all candidates in parallel to find a manager account
-  const results = await Promise.allSettled(
-    candidateIds.map(async (id) => {
-      const c = client.Customer({ customer_id: id, refresh_token: refreshToken });
-      const rows = await c.query("SELECT customer.id, customer.manager FROM customer LIMIT 1");
-      if (!rows[0]?.customer?.manager) throw new Error("not manager");
-      return id;
-    })
-  );
-  const found = results.find((r): r is PromiseFulfilledResult<string> => r.status === "fulfilled");
-  if (found) {
-    await prisma.oAuthCredential.update({
-      where: { organizationId: orgId },
-      data:  { loginCustomerId: found.value },
-    }).catch(() => {});
-    return found.value;
+  // 3. Query candidates in batches of 5. Promise.any per batch stops at first manager found.
+  const BATCH = 5;
+  for (let i = 0; i < candidateIds.length; i += BATCH) {
+    const batch = candidateIds.slice(i, i + BATCH);
+    try {
+      const mccId = await Promise.any(
+        batch.map(async (id) => {
+          const c = client.Customer({ customer_id: id, refresh_token: refreshToken });
+          const rows = await withQueryTimeout(c.query("SELECT customer.id, customer.manager FROM customer LIMIT 1"));
+          if (!rows[0]?.customer?.manager) throw new Error("not manager");
+          return id;
+        })
+      );
+      await prisma.oAuthCredential.update({
+        where: { organizationId: orgId },
+        data:  { loginCustomerId: mccId },
+      }).catch(() => {});
+      return mccId;
+    } catch { /* all in batch failed/timed out — try next batch */ }
   }
 
   return null;
@@ -153,13 +164,13 @@ export async function GET() {
         resourceName: r.customer_client?.client_customer ?? "",
       }));
     } else {
-      // No MCC — query each accessible account directly
+      // No MCC — query each accessible account directly, with timeout so hangs don't block
       accounts = await Promise.all(
         customerIds.map(async (id) => {
           try {
             const c = client.Customer({ customer_id: id, refresh_token: refreshToken });
-            const rows = await c.query(
-              "SELECT customer.id, customer.descriptive_name, customer.currency_code FROM customer LIMIT 1"
+            const rows = await withQueryTimeout(
+              c.query("SELECT customer.id, customer.descriptive_name, customer.currency_code FROM customer LIMIT 1")
             );
             return {
               googleAdsId:  id,
