@@ -29,7 +29,18 @@ function isPublic(pathname: string): boolean {
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Always allow public paths
+  // For /login: redirect to dashboard if already authenticated
+  if (pathname === "/login" || pathname.startsWith("/login?")) {
+    const token = request.cookies.get("agency-session")?.value;
+    if (token) {
+      const session = await verifySessionToken(token);
+      if (session?.orgId) return NextResponse.redirect(new URL("/", request.url));
+      if (session && !session.orgId) return NextResponse.redirect(new URL("/onboard", request.url));
+    }
+    return NextResponse.next();
+  }
+
+  // Always allow other public paths
   if (isPublic(pathname)) return NextResponse.next();
 
   // Read session token from cookie
