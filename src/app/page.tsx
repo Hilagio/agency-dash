@@ -452,6 +452,7 @@ function HomePageInner() {
 
   const runScore = async (accountId: string, e: React.MouseEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     setScoring(accountId);
     try {
       await fetch(`/api/accounts/${accountId}/snapshot?source=google-ads`, { method: "POST" });
@@ -542,9 +543,13 @@ function HomePageInner() {
               <div style={{ width: 26, height: 26, borderRadius: "50%", background: "linear-gradient(135deg, #3b82f6, #8b5cf6)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, color: "#fff" }}>
                 {(sessionUser.name ?? sessionUser.email).charAt(0).toUpperCase()}
               </div>
-              <a href="/api/auth/signout" title="Sign out" style={{ display: "flex", alignItems: "center", color: "var(--text-faint)", fontSize: 11, textDecoration: "none" }}>
+              <button
+                onClick={() => { const f = document.createElement("form"); f.method = "POST"; f.action = "/api/auth/signout"; document.body.appendChild(f); f.submit(); }}
+                title="Sign out"
+                style={{ display: "flex", alignItems: "center", background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", padding: 0 }}
+              >
                 <LogOut size={11} />
-              </a>
+              </button>
             </div>
           )}
         </div>
