@@ -43,7 +43,7 @@ async function getAccessibleCustomerIds(
   if (cached.length > 0) return cached;
 
   // Cache miss — call the library directly (uses the correct API version)
-  const response = await client.listAccessibleCustomers(refreshToken);
+  const response = await withQueryTimeout(client.listAccessibleCustomers(refreshToken), 15_000);
   const ids = (response.resource_names ?? []).map((r: string) => r.replace("customers/", ""));
 
   // Persist back to DB so future requests skip this step
@@ -142,7 +142,7 @@ export async function GET() {
     if (mccId) {
       // List all client accounts under the MCC
       const mccCustomer = client.Customer({ customer_id: mccId, refresh_token: refreshToken });
-      const rows = await mccCustomer.query(`
+      const rows = await withQueryTimeout(mccCustomer.query(`
         SELECT
           customer_client.client_customer,
           customer_client.descriptive_name,
@@ -155,7 +155,7 @@ export async function GET() {
         WHERE customer_client.status = 'ENABLED'
           AND customer_client.manager = false
           AND customer_client.test_account = false
-      `);
+      `), 15_000);
       accounts = rows.map((r) => ({
         googleAdsId:  String(r.customer_client?.id ?? ""),
         name:         r.customer_client?.descriptive_name ?? `Account ${r.customer_client?.id}`,

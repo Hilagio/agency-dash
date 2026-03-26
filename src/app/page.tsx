@@ -393,6 +393,7 @@ function HomePageInner() {
   const [connected, setConnected]             = useState<boolean | null>(null);
   const [autoImporting, setAutoImporting]     = useState(false);
   const [autoImportError, setAutoImportError] = useState<string | null>(null);
+  const [importStep, setImportStep]           = useState("");
   const [sessionUser, setSessionUser]         = useState<SessionUser | null>(null);
   const autoImportAttempted = useRef(false);
 
@@ -428,6 +429,7 @@ function HomePageInner() {
     async function run() {
       setAutoImporting(true);
       setAutoImportError(null);
+      setImportStep("Connecting to Google Ads…");
       const abort = new AbortController();
       const timer = setTimeout(() => abort.abort(), 60_000);
       try {
@@ -435,13 +437,15 @@ function HomePageInner() {
         if (!res.ok) { setAutoImportError((await res.json()).error ?? "Could not load accounts."); return; }
         const mccAccounts: { googleAdsId: string; name: string; currency: string }[] = await res.json();
         if (mccAccounts.length === 0) { setAutoImportError("No accounts found."); return; }
+        setImportStep(`Importing ${mccAccounts.length} accounts…`);
         const bulkRes = await fetch("/api/google-ads/accounts/bulk", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ accounts: mccAccounts }), signal: abort.signal });
         if (!bulkRes.ok) { setAutoImportError((await bulkRes.json()).error ?? "Import failed."); return; }
+        setImportStep("Loading dashboard…");
         await loadAccounts();
       } catch (e) {
         const msg = e instanceof Error && e.name === "AbortError" ? "Import timed out. Try again." : "Network error while importing.";
         setAutoImportError(msg);
-      } finally { clearTimeout(timer); setAutoImporting(false); }
+      } finally { clearTimeout(timer); setAutoImporting(false); setImportStep(""); }
     }
     run();
   }, [connected, loading, loadAccounts]);
@@ -557,7 +561,7 @@ function HomePageInner() {
         {(autoImporting || scoringAll) && (
           <div style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(59,130,246,0.06)", border: "1px solid rgba(59,130,246,0.15)", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: "#60a5fa" }}>
             <Loader2 size={13} className="animate-spin" />
-            {autoImporting ? "Importing accounts from Google Ads…" : scoringProgress ? `Scoring accounts… ${scoringProgress.done} / ${scoringProgress.total}` : "Scoring all accounts…"}
+            {autoImporting ? (importStep || "Importing accounts from Google Ads…") : scoringProgress ? `Scoring accounts… ${scoringProgress.done} / ${scoringProgress.total}` : "Scoring all accounts…"}
           </div>
         )}
 
