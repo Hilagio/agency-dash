@@ -570,7 +570,7 @@ function HomePageInner() {
 
         {showImporter && (
           <div style={{ marginBottom: 20 }}>
-            <AccountImporter onImported={() => { loadAccounts(); setShowImporter(false); }} onAuthFailed={() => setConnected(false)} />
+            <AccountImporter onImported={() => { loadAccounts(); setShowImporter(false); }} onClose={() => setShowImporter(false)} onAuthFailed={() => setConnected(false)} />
           </div>
         )}
 

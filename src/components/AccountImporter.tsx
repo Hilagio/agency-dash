@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Search, Plus, CheckCircle, Loader2, RefreshCw, Download } from "lucide-react";
+import { Search, Plus, CheckCircle, Loader2, RefreshCw, Download, X, ArrowRight } from "lucide-react";
 
 interface GoogleAdsAccount {
   googleAdsId: string;
@@ -13,10 +13,11 @@ interface GoogleAdsAccount {
 
 interface Props {
   onImported: () => void;
+  onClose: () => void;
   onAuthFailed?: () => void;
 }
 
-export function AccountImporter({ onImported, onAuthFailed }: Props) {
+export function AccountImporter({ onImported, onClose, onAuthFailed }: Props) {
   const [accounts, setAccounts] = useState<GoogleAdsAccount[]>([]);
   const [loading, setLoading] = useState(false);
   const [importing, setImporting] = useState<string | null>(null);
@@ -141,6 +142,16 @@ export function AccountImporter({ onImported, onAuthFailed }: Props) {
             }}
           >
             <RefreshCw size={13} style={{ animation: loading ? "spin 1s linear infinite" : "none" }} />
+          </button>
+          <button
+            onClick={onClose}
+            style={{
+              background: "transparent", border: "none", cursor: "pointer",
+              color: "var(--text-dim)", padding: 4, borderRadius: 6,
+              display: "flex", alignItems: "center",
+            }}
+          >
+            <X size={14} />
           </button>
         </div>
       </div>
@@ -274,8 +285,22 @@ export function AccountImporter({ onImported, onAuthFailed }: Props) {
           <div style={{
             borderTop: "1px solid var(--border)", padding: "10px 18px",
             fontSize: 11, color: "var(--text-faint)",
+            display: "flex", alignItems: "center", justifyContent: "space-between",
           }}>
-            {accounts.length} in MCC · {accounts.filter((a) => a.imported).length} imported
+            <span>{accounts.length} in MCC · {accounts.filter((a) => a.imported).length} imported</span>
+            {accounts.length > 0 && accounts.every((a) => a.imported) && (
+              <button
+                onClick={onClose}
+                style={{
+                  display: "flex", alignItems: "center", gap: 4,
+                  background: "var(--surface-2)", border: "1px solid var(--border-2)",
+                  borderRadius: 6, color: "var(--text-muted)", fontSize: 11, fontWeight: 500,
+                  padding: "4px 10px", cursor: "pointer",
+                }}
+              >
+                Done <ArrowRight size={10} />
+              </button>
+            )}
           </div>
         </>
       )}
