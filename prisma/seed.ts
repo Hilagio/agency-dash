@@ -60,6 +60,8 @@ const acme_signals: ConstraintSignals = {
     grossMarginPercent: 0.42,
     ltv: 850,
     budgetUtilizationPercent: 0.88,
+    avgOrderValue: 0,
+    monthlyChurnRate: 0,
   },
 };
 
@@ -105,6 +107,8 @@ const nova_signals: ConstraintSignals = {
     grossMarginPercent: 0.55,
     ltv: 1200,
     budgetUtilizationPercent: 0.62,
+    avgOrderValue: 0,
+    monthlyChurnRate: 0,
   },
 };
 
