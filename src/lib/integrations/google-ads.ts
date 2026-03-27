@@ -167,10 +167,86 @@ const INDUSTRY_CVR_BENCHMARKS: Record<string, number> = {
 
 const DEFAULT_CVR_BENCHMARK = 0.035; // broad average across industries
 
-function getIndustryCvrBenchmark(industry: string | null | undefined): number {
-  if (!industry) return DEFAULT_CVR_BENCHMARK;
-  const key = industry.toLowerCase().replace(/[^a-z_]/g, "_");
-  return INDUSTRY_CVR_BENCHMARKS[key] ?? DEFAULT_CVR_BENCHMARK;
+/**
+ * Country multipliers relative to US baseline (where most benchmark data originates).
+ * Lower trust, lower card penetration, and higher price sensitivity reduce CVR.
+ */
+const COUNTRY_CVR_MULTIPLIER: Record<string, number> = {
+  US: 1.00, CA: 0.95, AU: 0.88, NZ: 0.85,
+  GB: 0.92, IE: 0.88,
+  DE: 0.85, AT: 0.82, CH: 0.83,
+  NL: 0.90, BE: 0.86, LU: 0.85,
+  FR: 0.82, IT: 0.76, ES: 0.74, PT: 0.72,
+  SE: 0.92, NO: 0.90, DK: 0.90, FI: 0.87,
+  PL: 0.68, CZ: 0.66, SK: 0.63, HU: 0.63,
+  RO: 0.58, BG: 0.55, HR: 0.60, SI: 0.65,
+  GR: 0.65, CY: 0.68,
+  TR: 0.55, ZA: 0.52,
+  BR: 0.60, MX: 0.58, AR: 0.50,
+  IN: 0.55, PH: 0.50, ID: 0.48, MY: 0.60,
+  SG: 0.85, HK: 0.82, JP: 0.78, KR: 0.75,
+  AE: 0.72, SA: 0.68, IL: 0.80,
+};
+
+/**
+ * Business model multipliers — how the fulfilment/acquisition model affects CVR.
+ * Dropshippers have lower CVR due to brand unfamiliarity; DTC brands higher.
+ */
+const BUSINESS_MODEL_CVR_MULTIPLIER: Record<string, number> = {
+  dtc:          1.10, // own brand, higher trust
+  marketplace:  1.15, // high-intent, price-competitive listings
+  dropship:     0.55, // unrecognised brand, slow shipping, price shopped
+  subscription: 0.75, // commitment friction reduces impulse conversions
+  service:      1.00,
+  lead_gen:     1.00, // lead-gen CVR benchmarks are already "lead" focused
+};
+
+/**
+ * Maps IANA timezone strings to ISO country codes.
+ * Only the most common zones per country are listed; falls back to undefined.
+ */
+function timezoneToCountry(tz: string): string | undefined {
+  const map: Record<string, string> = {
+    "America/New_York": "US", "America/Chicago": "US", "America/Denver": "US",
+    "America/Los_Angeles": "US", "America/Phoenix": "US", "America/Anchorage": "US",
+    "America/Honolulu": "US", "America/Toronto": "CA", "America/Vancouver": "CA",
+    "America/Winnipeg": "CA", "America/Halifax": "CA",
+    "Europe/London": "GB", "Europe/Dublin": "IE",
+    "Europe/Berlin": "DE", "Europe/Vienna": "AT", "Europe/Zurich": "CH",
+    "Europe/Paris": "FR", "Europe/Brussels": "BE", "Europe/Luxembourg": "LU",
+    "Europe/Amsterdam": "NL",
+    "Europe/Warsaw": "PL", "Europe/Prague": "CZ", "Europe/Bratislava": "SK",
+    "Europe/Budapest": "HU", "Europe/Bucharest": "RO", "Europe/Sofia": "BG",
+    "Europe/Zagreb": "HR", "Europe/Ljubljana": "SI",
+    "Europe/Madrid": "ES", "Europe/Lisbon": "PT", "Europe/Rome": "IT",
+    "Europe/Athens": "GR", "Europe/Nicosia": "CY",
+    "Europe/Stockholm": "SE", "Europe/Oslo": "NO", "Europe/Copenhagen": "DK",
+    "Europe/Helsinki": "FI",
+    "Europe/Istanbul": "TR", "Asia/Jerusalem": "IL",
+    "Asia/Dubai": "AE", "Asia/Riyadh": "SA",
+    "Asia/Kolkata": "IN", "Asia/Manila": "PH", "Asia/Jakarta": "ID",
+    "Asia/Kuala_Lumpur": "MY", "Asia/Singapore": "SG",
+    "Asia/Hong_Kong": "HK", "Asia/Tokyo": "JP", "Asia/Seoul": "KR",
+    "America/Sao_Paulo": "BR", "America/Mexico_City": "MX",
+    "America/Buenos_Aires": "AR",
+    "Africa/Johannesburg": "ZA",
+    "Australia/Sydney": "AU", "Australia/Melbourne": "AU",
+    "Australia/Brisbane": "AU", "Pacific/Auckland": "NZ",
+  };
+  // Try exact match first, then prefix match (e.g. "America/New_York" → "US")
+  return map[tz] ?? map[Object.keys(map).find(k => tz.startsWith(k.split("/")[0] + "/")) ?? ""];
+}
+
+function getIndustryCvrBenchmark(
+  industry: string | null | undefined,
+  country: string | null | undefined,
+  businessModel: string | null | undefined,
+): number {
+  const key = (industry ?? "").toLowerCase().replace(/[^a-z_]/g, "_");
+  const base = INDUSTRY_CVR_BENCHMARKS[key] ?? DEFAULT_CVR_BENCHMARK;
+  const countryMul = COUNTRY_CVR_MULTIPLIER[country?.toUpperCase() ?? ""] ?? 1.0;
+  const bizMul = BUSINESS_MODEL_CVR_MULTIPLIER[businessModel ?? ""] ?? 1.0;
+  return base * countryMul * bizMul;
 }
 
 // ─── Date helpers ─────────────────────────────────────────────────────────────
@@ -483,7 +559,12 @@ async function fetchTrafficSignals(customer: Customer): Promise<TrafficSignals> 
 
 // ─── Conversion signals ───────────────────────────────────────────────────────
 
-async function fetchConversionSignals(customer: Customer, industry?: string | null): Promise<ConversionSignals> {
+async function fetchConversionSignals(
+  customer: Customer,
+  industry?: string | null,
+  country?: string | null,
+  businessModel?: string | null,
+): Promise<ConversionSignals> {
   const { start, end } = last30Days();
 
   const rows = await safeQuery(
@@ -533,7 +614,7 @@ async function fetchConversionSignals(customer: Customer, industry?: string | nu
 
   return {
     conversionRate,
-    industryBenchmarkConversionRate: getIndustryCvrBenchmark(industry),
+    industryBenchmarkConversionRate: getIndustryCvrBenchmark(industry, country, businessModel),
     landingPageScore: Math.max(1, landingPageScore),
     mobileSpeedScore,
     bounceRateEstimate: avgPageViews < 1.2 ? 0.75 : avgPageViews < 1.5 ? 0.55 : 0.4,
@@ -652,20 +733,31 @@ async function fetchEconomicsSignals(customer: Customer): Promise<EconomicsSigna
     ? Math.min(1, totalCost / (totalBudget * 30))
     : 0.8;
 
+  // AOV — computed live: conversions_value / conversions
+  const avgOrderValue = totalConversions > 0 ? totalConversionValue / totalConversions : 0;
+
   return {
     targetRoas,
     actualRoas,
     targetCpa,
     actualCpa,
-    grossMarginPercent: 0,   // Requires Shopify/manual input — will be 0 until connected
-    ltv: 0,                  // Same — needs Shopify/CRM
+    grossMarginPercent: 0,   // Requires Shopify/manual input — overridden in snapshot route
+    ltv: 0,                  // Requires CRM — overridden in snapshot route if monthlyChurnRate set
+    avgOrderValue,
+    monthlyChurnRate: 0,     // Overridden in snapshot route from account.monthlyChurnRate
     budgetUtilizationPercent,
   };
 }
 
 // ─── Main export ──────────────────────────────────────────────────────────────
 
-export async function fetchGoogleAdsSignals(customerId?: string, industry?: string | null, orgId?: string): Promise<ConstraintSignals> {
+export async function fetchGoogleAdsSignals(
+  customerId?: string,
+  industry?: string | null,
+  orgId?: string,
+  countryOverride?: string | null,
+  businessModel?: string | null,
+): Promise<ConstraintSignals> {
   const client   = getClient();
 
   const loginCustomerId = await getLoginCustomerId(orgId);
@@ -673,15 +765,27 @@ export async function fetchGoogleAdsSignals(customerId?: string, industry?: stri
 
   const customer = await getCustomer(client, customerId, orgId);
 
+  // Auto-detect country from customer time_zone unless the account has an explicit override
+  let country = countryOverride ?? null;
+  if (!country) {
+    const tzRows = await safeQuery(
+      () => customer.query("SELECT customer.time_zone FROM customer LIMIT 1"),
+      "customer time_zone"
+    );
+    const tz = tzRows[0]?.customer?.time_zone as string | undefined;
+    country = (tz ? timezoneToCountry(tz) : null) ?? null;
+    if (country) console.log(`[google-ads] auto-detected country=${country} from tz=${tz}`);
+  }
+
   const [measurement, traffic, conversion, funnel, economics] = await Promise.all([
     fetchMeasurementSignals(customer),
     fetchTrafficSignals(customer),
-    fetchConversionSignals(customer, industry),
+    fetchConversionSignals(customer, industry, country, businessModel),
     fetchFunnelSignals(customer),
     fetchEconomicsSignals(customer),
   ]);
 
-  console.log(`[google-ads] fetchGoogleAdsSignals done for ${customerId}`);
+  console.log(`[google-ads] fetchGoogleAdsSignals done for ${customerId} country=${country ?? "(unknown)"} businessModel=${businessModel ?? "(unset)"}`);
   return { measurement, traffic, conversion, funnel, economics };
 }
 

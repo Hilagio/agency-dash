@@ -79,6 +79,13 @@ model Account {
   leadToSaleRate      Float?  // e.g. 0.15 → 15% of leads close (from CRM)
   landingPageUrl      String? // primary landing page — scraped for CRO briefs
 
+  // ─── Market & business context (affects benchmarks) ──────────────────────
+  // country auto-detected from customer.time_zone; this field overrides that detection
+  country           String? // ISO 3166-1 alpha-2 (PL, DE, GB, US…) — adjusts CVR benchmarks
+  businessModel     String? // dropship | subscription | dtc | service | lead_gen | marketplace
+  monthlyChurnRate  Float?  // 0–1, subscription only (e.g. 0.05 = 5%/mo) — used for LTV calc
+  // AOV is computed live from conversions_value / conversions — no manual field needed
+
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id])
   createdAt      DateTime @default(now())

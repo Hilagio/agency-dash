@@ -246,6 +246,45 @@ function scoreEconomics(s: ConstraintSignals["economics"]): BucketScore {
     }
   }
 
+  // LTV-based CPA check (subscription: LTV = AOV / monthly churn)
+  const ltv = s.ltv > 0 ? s.ltv
+    : (s.avgOrderValue > 0 && s.monthlyChurnRate > 0)
+      ? s.avgOrderValue / s.monthlyChurnRate
+      : 0;
+  if (ltv > 0 && s.actualCpa > 0) {
+    const cpaLtvRatio = s.actualCpa / ltv;
+    if (cpaLtvRatio > 0.5) {
+      score -= 25;
+      signals.push(`CPA ${s.actualCpa.toFixed(0)} is ${Math.round(cpaLtvRatio * 100)}% of LTV ${ltv.toFixed(0)} — unprofitable on LTV basis`);
+    } else if (cpaLtvRatio > 0.33) {
+      score -= 10;
+      signals.push(`CPA is ${Math.round(cpaLtvRatio * 100)}% of LTV — margin is thin`);
+    }
+  }
+
+  // AOV-based CPA sanity check (ecommerce: CPA should be well below AOV)
+  if (s.avgOrderValue > 0 && s.actualCpa > 0 && s.monthlyChurnRate === 0) {
+    const cpaAovRatio = s.actualCpa / s.avgOrderValue;
+    if (cpaAovRatio > 0.6) {
+      score -= 20;
+      signals.push(`CPA ${s.actualCpa.toFixed(0)} is ${Math.round(cpaAovRatio * 100)}% of AOV ${s.avgOrderValue.toFixed(0)} — barely covers acquisition cost`);
+    } else if (cpaAovRatio > 0.4) {
+      score -= 8;
+      signals.push(`CPA is ${Math.round(cpaAovRatio * 100)}% of AOV — watch margin`);
+    }
+  }
+
+  // Churn rate signal for subscription businesses
+  if (s.monthlyChurnRate > 0) {
+    if (s.monthlyChurnRate > 0.1) {
+      score -= 20;
+      signals.push(`Monthly churn ${Math.round(s.monthlyChurnRate * 100)}% — LTV is eroding, economics unsustainable`);
+    } else if (s.monthlyChurnRate > 0.05) {
+      score -= 8;
+      signals.push(`Monthly churn ${Math.round(s.monthlyChurnRate * 100)}% — above healthy threshold (<5%)`);
+    }
+  }
+
   if (s.budgetUtilizationPercent < 0.7) {
     score -= 10;
     signals.push(`Only ${Math.round(s.budgetUtilizationPercent * 100)}% of budget used — campaigns may be over-restricted`);

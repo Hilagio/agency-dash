@@ -58,7 +58,7 @@ export interface MeasurementSignals {
 
 export interface ConversionSignals {
   conversionRate: number;                  // 0–1
-  industryBenchmarkConversionRate: number; // 0–1
+  industryBenchmarkConversionRate: number; // 0–1 — already adjusted for country + businessModel
   landingPageScore: number;                // 1–10 (from Ads API)
   mobileSpeedScore: number;               // 0–100
   bounceRateEstimate: number;             // 0–1
@@ -78,8 +78,10 @@ export interface EconomicsSignals {
   targetCpa: number;
   actualCpa: number;
   grossMarginPercent: number;              // 0–1
-  ltv: number;                             // customer lifetime value
+  ltv: number;                             // customer lifetime value (0 = unknown)
   budgetUtilizationPercent: number;        // 0–1 (how much of budget is spent)
+  avgOrderValue: number;                   // computed: conversions_value / conversions (0 = unknown)
+  monthlyChurnRate: number;                // 0–1, subscription only — drives LTV = AOV / churnRate
 }
 
 export interface ConstraintSignals {

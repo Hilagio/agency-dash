@@ -376,6 +376,9 @@ interface Account {
   grossMarginPercent: number | null;
   leadToSaleRate:     number | null;
   landingPageUrl:     string | null;
+  country:            string | null;
+  businessModel:      string | null;
+  monthlyChurnRate:   number | null;
 }
 
 // ─── Client Context Panel ─────────────────────────────────────────────────────
@@ -506,6 +509,9 @@ interface AccountTargets {
   targetCpa:          number | null;
   grossMarginPercent: number | null;
   landingPageUrl:     string | null;
+  country:            string | null;
+  businessModel:      string | null;
+  monthlyChurnRate:   number | null;
 }
 
 function AccountTargetsPanel({
@@ -520,17 +526,22 @@ function AccountTargetsPanel({
   onSaved: (v: AccountTargets) => void;
 }) {
   const [editing, setEditing] = useState(false);
-  const [vals, setVals] = useState({
+  const initVals = () => ({
     targetRoas:         initial.targetRoas         != null ? String(initial.targetRoas)                          : "",
     targetCpa:          initial.targetCpa          != null ? String(initial.targetCpa)                           : "",
     grossMarginPercent: initial.grossMarginPercent != null ? String(Math.round(initial.grossMarginPercent * 100)) : "",
     landingPageUrl:     initial.landingPageUrl     ?? "",
+    country:            initial.country            ?? "",
+    businessModel:      initial.businessModel      ?? "",
+    monthlyChurnRate:   initial.monthlyChurnRate   != null ? String(Math.round(initial.monthlyChurnRate * 100))   : "",
   });
+  const [vals, setVals] = useState(initVals);
   const [saving, setSaving] = useState(false);
 
   const currSym = currency === "EUR" ? "€" : currency === "GBP" ? "£" : "$";
 
-  const hasAny = initial.targetRoas != null || initial.targetCpa != null || initial.grossMarginPercent != null || !!initial.landingPageUrl;
+  const hasAny = initial.targetRoas != null || initial.targetCpa != null || initial.grossMarginPercent != null
+    || !!initial.landingPageUrl || !!initial.country || !!initial.businessModel || initial.monthlyChurnRate != null;
 
   const save = async () => {
     setSaving(true);
@@ -539,6 +550,9 @@ function AccountTargetsPanel({
       targetCpa:          vals.targetCpa          !== "" ? parseFloat(vals.targetCpa)          : null,
       grossMarginPercent: vals.grossMarginPercent !== "" ? parseFloat(vals.grossMarginPercent) / 100 : null,
       landingPageUrl:     vals.landingPageUrl.trim() || null,
+      country:            vals.country.trim().toUpperCase() || null,
+      businessModel:      vals.businessModel || null,
+      monthlyChurnRate:   vals.monthlyChurnRate !== "" ? parseFloat(vals.monthlyChurnRate) / 100 : null,
     };
     await fetch(`/api/accounts/${accountId}`, {
       method: "PATCH",
@@ -550,15 +564,7 @@ function AccountTargetsPanel({
     setEditing(false);
   };
 
-  const cancel = () => {
-    setVals({
-      targetRoas:         initial.targetRoas         != null ? String(initial.targetRoas)                          : "",
-      targetCpa:          initial.targetCpa          != null ? String(initial.targetCpa)                           : "",
-      grossMarginPercent: initial.grossMarginPercent != null ? String(Math.round(initial.grossMarginPercent * 100)) : "",
-      landingPageUrl:     initial.landingPageUrl     ?? "",
-    });
-    setEditing(false);
-  };
+  const cancel = () => { setVals(initVals()); setEditing(false); };
 
   return (
     <div style={{
@@ -627,6 +633,24 @@ function AccountTargetsPanel({
               <div style={{ fontSize: 10, color: "var(--text-faint)", marginTop: 2, textTransform: "uppercase", letterSpacing: "0.4px" }}>Break-even ROAS</div>
             </div>
           )}
+          {initial.country && (
+            <div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text-2)", letterSpacing: "-0.5px", lineHeight: 1 }}>{initial.country}</div>
+              <div style={{ fontSize: 10, color: "var(--text-faint)", marginTop: 2, textTransform: "uppercase", letterSpacing: "0.4px" }}>Market</div>
+            </div>
+          )}
+          {initial.businessModel && (
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-2)", lineHeight: 1 }}>{initial.businessModel}</div>
+              <div style={{ fontSize: 10, color: "var(--text-faint)", marginTop: 2, textTransform: "uppercase", letterSpacing: "0.4px" }}>Business model</div>
+            </div>
+          )}
+          {initial.monthlyChurnRate != null && (
+            <div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text-2)", letterSpacing: "-0.5px", lineHeight: 1 }}>{Math.round(initial.monthlyChurnRate * 100)}%/mo</div>
+              <div style={{ fontSize: 10, color: "var(--text-faint)", marginTop: 2, textTransform: "uppercase", letterSpacing: "0.4px" }}>Churn rate</div>
+            </div>
+          )}
           {initial.landingPageUrl && (
             <div style={{ marginLeft: "auto" }}>
               <a
@@ -688,6 +712,55 @@ function AccountTargetsPanel({
               <span style={{ fontSize: 10, color: "var(--text-very-dim)" }}>
                 {vals.grossMarginPercent ? `Break-even ROAS: ${(100 / parseFloat(vals.grossMarginPercent || "1")).toFixed(1)}x` : "Required for break-even ROAS"}
               </span>
+            </label>
+          </div>
+
+          {/* Market + business model */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginTop: 4 }}>
+            <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              <span style={{ fontSize: 10, color: "var(--text-faint)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.4px" }}>Market (country)</span>
+              <div style={{ display: "flex", alignItems: "center", background: "var(--bg)", border: "1px solid var(--border-2)", borderRadius: 7, padding: "6px 10px" }}>
+                <input
+                  type="text" maxLength={2} placeholder="e.g. PL, DE, GB"
+                  value={vals.country}
+                  onChange={e => setVals(v => ({ ...v, country: e.target.value.toUpperCase() }))}
+                  style={{ flex: 1, background: "transparent", border: "none", outline: "none", color: "var(--text)", fontSize: 13, fontFamily: "inherit", textTransform: "uppercase" }}
+                />
+              </div>
+              <span style={{ fontSize: 10, color: "var(--text-very-dim)" }}>Auto-detected from account timezone if blank</span>
+            </label>
+
+            <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              <span style={{ fontSize: 10, color: "var(--text-faint)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.4px" }}>Business Model</span>
+              <select
+                value={vals.businessModel}
+                onChange={e => setVals(v => ({ ...v, businessModel: e.target.value }))}
+                style={{ background: "var(--bg)", border: "1px solid var(--border-2)", borderRadius: 7, padding: "7px 10px", color: vals.businessModel ? "var(--text)" : "var(--text-faint)", fontSize: 13, fontFamily: "inherit", outline: "none" }}
+              >
+                <option value="">— not set —</option>
+                <option value="dtc">DTC (own brand)</option>
+                <option value="dropship">Dropship</option>
+                <option value="subscription">Subscription</option>
+                <option value="marketplace">Marketplace seller</option>
+                <option value="service">Service business</option>
+                <option value="lead_gen">Lead generation</option>
+              </select>
+              <span style={{ fontSize: 10, color: "var(--text-very-dim)" }}>Adjusts CVR benchmarks</span>
+            </label>
+
+            <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              <span style={{ fontSize: 10, color: "var(--text-faint)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.4px" }}>Monthly Churn</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--bg)", border: "1px solid var(--border-2)", borderRadius: 7, padding: "6px 10px", opacity: vals.businessModel === "subscription" ? 1 : 0.4 }}>
+                <input
+                  type="number" step="0.5" min="0" max="100" placeholder="e.g. 5"
+                  disabled={vals.businessModel !== "subscription"}
+                  value={vals.monthlyChurnRate}
+                  onChange={e => setVals(v => ({ ...v, monthlyChurnRate: e.target.value }))}
+                  style={{ flex: 1, background: "transparent", border: "none", outline: "none", color: "var(--text)", fontSize: 13, fontFamily: "inherit", minWidth: 0 }}
+                />
+                <span style={{ fontSize: 11, color: "var(--text-faint)" }}>%/mo</span>
+              </div>
+              <span style={{ fontSize: 10, color: "var(--text-very-dim)" }}>Subscription only — used for LTV</span>
             </label>
           </div>
 
@@ -1136,6 +1209,9 @@ export default function AccountPage() {
                     targetCpa:          account.targetCpa,
                     grossMarginPercent: account.grossMarginPercent,
                     landingPageUrl:     account.landingPageUrl,
+                    country:            account.country,
+                    businessModel:      account.businessModel,
+                    monthlyChurnRate:   account.monthlyChurnRate,
                   }}
                   onSaved={(v) => setAccount(prev => prev ? { ...prev, ...v } : prev)}
                 />

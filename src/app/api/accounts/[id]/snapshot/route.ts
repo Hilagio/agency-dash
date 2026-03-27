@@ -74,7 +74,15 @@ export async function POST(req: NextRequest, { params }: Params) {
     }
 
     try {
-      signals = await fetchGoogleAdsSignals(account.googleAdsId, account.industry, ctx.orgId);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const acct = account as any;
+      signals = await fetchGoogleAdsSignals(
+        account.googleAdsId,
+        account.industry,
+        ctx.orgId,
+        acct.country ?? null,
+        acct.businessModel ?? null,
+      );
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error(`[snapshot] fetchGoogleAdsSignals failed for account ${id} (googleAdsId=${account.googleAdsId})`, msg, err);
@@ -89,12 +97,15 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   // ─── Apply per-account targets (override API/placeholder values) ─────────
   // These are set by the user in account settings and take full precedence.
-  if (account.targetRoas         != null) signals.economics.targetRoas        = account.targetRoas;
-  if (account.targetCpa          != null) signals.economics.targetCpa         = account.targetCpa;
-  if (account.grossMarginPercent != null) signals.economics.grossMarginPercent = account.grossMarginPercent;
-  if (account.leadToSaleRate     != null) signals.funnel.leadToSaleRate        = account.leadToSaleRate;
+  if (account.targetRoas         != null) signals.economics.targetRoas         = account.targetRoas;
+  if (account.targetCpa          != null) signals.economics.targetCpa          = account.targetCpa;
+  if (account.grossMarginPercent != null) signals.economics.grossMarginPercent  = account.grossMarginPercent;
+  if (account.leadToSaleRate     != null) signals.funnel.leadToSaleRate         = account.leadToSaleRate;
   // targetCpa doubles as targetCostPerLead for lead-gen accounts
-  if (account.targetCpa          != null) signals.funnel.targetCostPerLead    = account.targetCpa;
+  if (account.targetCpa          != null) signals.funnel.targetCostPerLead      = account.targetCpa;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const acctExtra = account as any;
+  if (acctExtra.monthlyChurnRate != null) signals.economics.monthlyChurnRate    = acctExtra.monthlyChurnRate;
 
   const result = scoreConstraints(signals);
 
