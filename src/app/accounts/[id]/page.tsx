@@ -1032,6 +1032,165 @@ function LandingAnalysisPanel({ accountId, landingPageUrl }: { accountId: string
   );
 }
 
+// ─── PDP Audit Panel ──────────────────────────────────────────────────────────
+
+interface PDPAnalysis {
+  score: number;
+  checks: { area: string; status: "good" | "warning" | "missing"; note: string }[];
+  issues: { severity: "high" | "medium" | "low"; text: string }[];
+  topRecommendation: string;
+}
+
+function PDPAnalysisPanel({ accountId }: { accountId: string }) {
+  const [url,     setUrl]     = useState("");
+  const [loading, setLoading] = useState(false);
+  const [result,  setResult]  = useState<PDPAnalysis | null>(null);
+  const [error,   setError]   = useState<string | null>(null);
+
+  const run = async () => {
+    if (!url.trim()) return;
+    setLoading(true);
+    setError(null);
+    setResult(null);
+    try {
+      const res  = await fetch(`/api/accounts/${accountId}/pdp-analysis`, {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ url: url.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error ?? "Audit failed"); return; }
+      setResult(data);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Request failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const scoreColor = (s: number) => s >= 75 ? "#4ade80" : s >= 50 ? "#fbbf24" : "#f87171";
+  const scoreLabel = (s: number) => s >= 75 ? "Good" : s >= 50 ? "Needs work" : "Poor";
+  const sevColor   = (sev: string) => sev === "high" ? "#f87171" : sev === "medium" ? "#fbbf24" : "var(--text-dim)";
+  const statusIcon = (st: string) =>
+    st === "good" ? { icon: "✓", color: "#4ade80" }
+    : st === "warning" ? { icon: "!", color: "#fbbf24" }
+    : { icon: "✗", color: "#f87171" };
+
+  return (
+    <div style={{
+      background: "var(--surface)", border: "1px solid var(--border)",
+      borderRadius: 12, padding: "16px 20px", marginBottom: 20,
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+        <Sparkles size={13} style={{ color: "var(--text-dim)" }} />
+        <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.8px", textTransform: "uppercase", color: "var(--text-dim)" }}>
+          Product Page Audit
+        </span>
+        <span style={{ fontSize: 11, color: "var(--text-faint)" }}>AI · PDP review</span>
+      </div>
+
+      <div style={{ display: "flex", gap: 8 }}>
+        <input
+          type="url"
+          placeholder="https://store.com/products/example"
+          value={url}
+          onChange={e => setUrl(e.target.value)}
+          onKeyDown={e => e.key === "Enter" && !loading && run()}
+          style={{
+            flex: 1, background: "var(--surface-2)", border: "1px solid var(--border-2)",
+            borderRadius: 7, padding: "7px 11px",
+            fontSize: 12, color: "var(--text)", fontFamily: "inherit", outline: "none",
+          }}
+        />
+        <button
+          onClick={run}
+          disabled={loading || !url.trim()}
+          style={{
+            display: "flex", alignItems: "center", gap: 5,
+            background: "transparent", border: "1px solid var(--border-2)",
+            borderRadius: 7, padding: "7px 12px",
+            fontSize: 11, fontWeight: 500,
+            color: loading || !url.trim() ? "var(--text-faint)" : "var(--text-muted)",
+            cursor: loading || !url.trim() ? "default" : "pointer", flexShrink: 0,
+          }}
+        >
+          {loading ? <><Loader2 size={11} className="animate-spin" /> Auditing…</> : "Audit"}
+        </button>
+      </div>
+
+      {error && <p style={{ fontSize: 12, color: "#f87171", marginTop: 10 }}>{error}</p>}
+
+      {result && (
+        <div style={{ marginTop: 16 }}>
+          {/* Score */}
+          <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 16 }}>
+            <span style={{ fontSize: 40, fontWeight: 800, lineHeight: 1, letterSpacing: "-2px", color: scoreColor(result.score) }}>
+              {result.score}
+            </span>
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 600, color: scoreColor(result.score) }}>{scoreLabel(result.score)}</div>
+              <div style={{ fontSize: 10, color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: "0.4px" }}>PDP score</div>
+            </div>
+          </div>
+
+          {/* Area checklist */}
+          {result.checks.length > 0 && (
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 10, fontWeight: 600, color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: "0.4px", marginBottom: 8 }}>
+                Area checks
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px 16px" }}>
+                {result.checks.map((c, i) => {
+                  const { icon, color } = statusIcon(c.status);
+                  return (
+                    <div key={i} style={{ display: "flex", gap: 6, alignItems: "flex-start", paddingBottom: 4 }}>
+                      <span style={{ color, fontWeight: 700, fontSize: 11, flexShrink: 0, marginTop: 1 }}>{icon}</span>
+                      <div>
+                        <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)" }}>{c.area}</div>
+                        <div style={{ fontSize: 10, color: "var(--text-faint)", lineHeight: 1.4 }}>{c.note}</div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Issues */}
+          {result.issues.length > 0 && (
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 10, fontWeight: 600, color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: "0.4px", marginBottom: 6 }}>
+                Issues to fix
+              </div>
+              {result.issues.map((issue, i) => (
+                <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start", paddingBottom: 5, fontSize: 12 }}>
+                  <span style={{ color: sevColor(issue.severity), fontWeight: 700, flexShrink: 0, marginTop: 1 }}>
+                    {issue.severity === "high" ? "●" : issue.severity === "medium" ? "◐" : "○"}
+                  </span>
+                  <span style={{ color: "var(--text-dim)", lineHeight: 1.4 }}>{issue.text}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Top recommendation */}
+          {result.topRecommendation && (
+            <div style={{
+              background: "rgba(192,132,252,0.06)", border: "1px solid rgba(192,132,252,0.2)",
+              borderRadius: 8, padding: "10px 12px",
+            }}>
+              <div style={{ fontSize: 10, fontWeight: 600, color: "#c084fc", textTransform: "uppercase", letterSpacing: "0.4px", marginBottom: 4 }}>
+                Top recommendation
+              </div>
+              <p style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.55, margin: 0 }}>{result.topRecommendation}</p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function buildBuckets(snap: Snapshot) {
   const sigs = snap.bucketSignals ?? {};
   return [
@@ -1368,6 +1527,9 @@ export default function AccountPage() {
                 </div>
                 {/* Landing page AI CRO review */}
                 <LandingAnalysisPanel accountId={id} landingPageUrl={account.landingPageUrl ?? null} />
+
+                {/* Product page AI audit */}
+                <PDPAnalysisPanel accountId={id} />
 
                 <ScoreBuckets buckets={buckets} accountId={id} />
 
