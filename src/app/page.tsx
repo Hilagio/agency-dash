@@ -59,7 +59,7 @@ const BUCKET_COLOR: Record<ConstraintBucket, string> = {
 
 function scoreColor(s: number) {
   if (s >= 70) return "#22c55e";
-  if (s >= 50) return "#eab308";
+  if (s >= 45) return "#eab308";
   return "#ef4444";
 }
 
@@ -186,7 +186,7 @@ function AccountRow({
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "36px 1fr 96px 72px 60px 130px 76px",
+          gridTemplateColumns: "36px 1fr 160px 72px 60px 130px 76px",
           alignItems: "center",
           gap: 12,
           padding: "11px 20px 11px 17px",
@@ -216,26 +216,34 @@ function AccountRow({
           </div>
         </div>
 
-        {/* Score + delta */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 6 }}>
+        {/* Health — 5 bucket traffic lights */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8 }}>
           {delta !== null && delta !== 0 && (
-            <div style={{ display: "flex", alignItems: "center", gap: 2, fontSize: 11, fontWeight: 600, color: deltaColor }}>
-              {delta > 0 ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
+            <div style={{ display: "flex", alignItems: "center", gap: 1, fontSize: 10, fontWeight: 600, color: deltaColor }}>
+              {delta > 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
               {delta > 0 ? `+${delta}` : delta}
             </div>
           )}
-          {score !== null ? (
-            <div style={{
-              display: "inline-flex", flexDirection: "column", alignItems: "center",
-              background: color + "18", border: `1px solid ${color}40`,
-              borderRadius: 8, padding: "3px 9px", minWidth: 48,
-            }}>
-              <span style={{ fontSize: 16, fontWeight: 800, color, letterSpacing: "-0.8px", lineHeight: 1 }}>
-                {Math.round(score)}
-              </span>
-              <span style={{ fontSize: 9, fontWeight: 700, color, letterSpacing: "0.5px", textTransform: "uppercase", marginTop: 1 }}>
-                {score < 50 ? "Critical" : score < 70 ? "At risk" : "OK"}
-              </span>
+          {snap ? (
+            <div style={{ display: "flex", alignItems: "flex-end", gap: 5 }}>
+              {(
+                [
+                  ["scoreMeasurement", "M"] as const,
+                  ["scoreTraffic",     "T"] as const,
+                  ["scoreConversion",  "W"] as const,
+                  ["scoreFunnel",      "F"] as const,
+                  ["scoreEconomics",   "E"] as const,
+                ] as [keyof Snapshot, string][]
+              ).map(([key, initial]) => {
+                const s = snap[key] as number;
+                const dotColor = s >= 70 ? "#22c55e" : s >= 45 ? "#eab308" : "#ef4444";
+                return (
+                  <div key={key} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+                    <div style={{ width: 10, height: 10, borderRadius: "50%", background: dotColor }} />
+                    <span style={{ fontSize: 8, color: "var(--text-faint)", lineHeight: 1 }}>{initial}</span>
+                  </div>
+                );
+              })}
             </div>
           ) : (
             <div style={{ fontSize: 11, color: "var(--text-faint)", fontStyle: "italic" }}>—</div>
@@ -479,8 +487,8 @@ function HomePageInner() {
   }, []);
 
   const scored   = accounts.filter(a => a.snapshots[0]);
-  const critical = scored.filter(a => minScore(a.snapshots[0]) < 50).length;
-  const atRisk   = scored.filter(a => { const s = minScore(a.snapshots[0]); return s >= 50 && s < 70; }).length;
+  const critical = scored.filter(a => minScore(a.snapshots[0]) < 45).length;
+  const atRisk   = scored.filter(a => { const s = minScore(a.snapshots[0]); return s >= 45 && s < 70; }).length;
   const healthy  = scored.filter(a => minScore(a.snapshots[0]) >= 70).length;
 
   const sorted = [...accounts].sort((a, b) => {
@@ -613,8 +621,8 @@ function HomePageInner() {
           </div>
         ) : (
           <div style={{ border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
-            <div style={{ display: "grid", gridTemplateColumns: "36px 1fr 96px 72px 60px 130px 76px", gap: 12, padding: "7px 20px 7px 17px", background: "var(--surface)", borderBottom: "1px solid var(--border)" }}>
-              {["#", "Account / Industry", "Score", "ROAS", "Budget", "Bottleneck", ""].map((h, i) => (
+            <div style={{ display: "grid", gridTemplateColumns: "36px 1fr 160px 72px 60px 130px 76px", gap: 12, padding: "7px 20px 7px 17px", background: "var(--surface)", borderBottom: "1px solid var(--border)" }}>
+              {["#", "Account / Industry", "Health", "ROAS", "Budget", "Bottleneck", ""].map((h, i) => (
                 <span key={i} style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.6px", textTransform: "uppercase", color: "var(--text-faint)", textAlign: i >= 2 && i <= 4 ? "right" : "left" }}>{h}</span>
               ))}
             </div>

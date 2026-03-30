@@ -33,12 +33,12 @@ const BUCKET_CHECKS: Record<string, CheckDef[]> = {
     { id: "cvr_benchmark",  label: "Conversion rate trend",        what: "Your CVR last 14 days vs your own 6-month average — flags real deterioration, not industry comparison",    threshold: "Within 7% of own baseline; or ≥ 60% of industry benchmark if no history" },
     { id: "mobile_speed",   label: "Mobile-friendly click rate",   what: "% of mobile clicks going to mobile-optimised URLs (from Google Ads API). Not a PageSpeed score — run PageSpeed Insights separately for speed.",  threshold: "≥ 70%" },
     { id: "landing_page",   label: "Landing page engagement",      what: "Average pages per session on landing pages (proxy for engagement depth)",  threshold: "Score ≥ 6 / 10" },
-    { id: "bounce_rate",    label: "Bounce rate",                  what: "Estimated % of visitors who left without further interaction (based on pages/session)",  threshold: "< 70%" },
+    { id: "bounce_rate",    label: "Bounce rate",                  what: "% of visitors who left without interaction — only available via GA4 linked to this account", threshold: "< 70% (requires GA4 data)" },
   ],
   FUNNEL: [
     { id: "cpl",            label: "Cost per lead vs target",     what: "Actual CPL vs your target — signals funnel efficiency",  threshold: "Within 10% of target" },
-    { id: "lead_to_sale",   label: "Lead-to-sale rate",           what: "% of leads that eventually close as customers",         threshold: "≥ 20%" },
-    { id: "lead_quality",   label: "Lead quality score",          what: "0–10 rating of whether leads match your ICP",           threshold: "≥ 5 / 10" },
+    { id: "lead_to_sale",   label: "Lead-to-sale rate",           what: "% of leads that eventually close as customers — requires CRM data via offline conversion import", threshold: "≥ 20% (only scored when CRM data available)" },
+    { id: "lead_quality",   label: "Lead quality score",          what: "0–10 rating of whether leads match your ICP — requires CRM scoring integration",           threshold: "≥ 5 / 10 (only scored when CRM data available)" },
     { id: "offline_import", label: "Offline conversion import",   what: "Importing closed deals back into Google Ads to train Smart Bidding on revenue, not just leads", threshold: "Must be active" },
   ],
   ECONOMICS: [
@@ -74,16 +74,14 @@ const BUCKET_ACCENT: Record<string, string> = {
 };
 
 function scoreColor(score: number): string {
-  if (score >= 80) return "#4ade80";
-  if (score >= 60) return "#fbbf24";
-  if (score >= 40) return "#fb923c";
+  if (score >= 70) return "#4ade80";
+  if (score >= 45) return "#fbbf24";
   return "#f87171";
 }
 
 function scoreLabel(score: number): string {
-  if (score >= 80) return "Healthy";
-  if (score >= 60) return "At Risk";
-  if (score >= 40) return "Weak";
+  if (score >= 70) return "Good";
+  if (score >= 45) return "Issues";
   return "Critical";
 }
 
@@ -356,13 +354,13 @@ function BucketCard({ bucket, idx, accountId }: { bucket: BucketData; idx: numbe
             )}
           </div>
 
-          <div style={{ textAlign: "right" }}>
-            <div style={{ fontSize: 24, fontWeight: 800, color, letterSpacing: "-1px", lineHeight: 1 }}>
-              {bucket.score}
-            </div>
-            <div style={{ fontSize: 9, fontWeight: 600, color, letterSpacing: "0.4px", textTransform: "uppercase" }}>
-              {scoreLabel(bucket.score)}
-            </div>
+          <div style={{
+            display: "inline-flex", alignItems: "center", gap: 7,
+            background: color + "18", border: `1px solid ${color}40`,
+            borderRadius: 20, padding: "5px 12px", flexShrink: 0,
+          }}>
+            <div style={{ width: 8, height: 8, borderRadius: "50%", background: color, flexShrink: 0 }} />
+            <span style={{ fontSize: 12, fontWeight: 700, color }}>{scoreLabel(bucket.score)}</span>
           </div>
 
           {open

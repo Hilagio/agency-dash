@@ -234,15 +234,17 @@ function scoreFunnel(s: ConstraintSignals["funnel"]): BucketScore {
     }
   }
 
-  if (s.leadToSaleRate < 0.1) {
+  // leadToSaleRate = 0 means no CRM data — skip entirely (don't penalise for unmeasured data)
+  if (s.leadToSaleRate > 0 && s.leadToSaleRate < 0.1) {
     score -= 25;
     signals.push(`Lead-to-sale rate ${(s.leadToSaleRate * 100).toFixed(1)}% — sales funnel is leaking`);
-  } else if (s.leadToSaleRate < 0.2) {
+  } else if (s.leadToSaleRate > 0 && s.leadToSaleRate < 0.2) {
     score -= 10;
     signals.push(`Lead-to-sale rate ${(s.leadToSaleRate * 100).toFixed(1)}% — below average`);
   }
 
-  if (s.averageLeadQualityScore < 5) {
+  // averageLeadQualityScore = 0 means no CRM data — skip (not a default score)
+  if (s.averageLeadQualityScore > 0 && s.averageLeadQualityScore < 5) {
     score -= 20;
     signals.push(`Lead quality score ${s.averageLeadQualityScore.toFixed(1)}/10 — ads attracting wrong audience`);
   }

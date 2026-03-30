@@ -1,8 +1,9 @@
 /**
  * POST /api/accounts/[id]/pdp-analysis
  *
- * Fetches any product detail page URL and asks Claude to audit it
- * specifically for ecommerce PDP best practices from a paid traffic perspective.
+ * Fetches any product detail page URL and audits it for ecommerce PDP
+ * best practices. Handles JS-rendered pages (Shopify, etc.) by working
+ * from JSON-LD Product schema, meta tags, and detected tools.
  *
  * Body: { url: string }
  */
@@ -10,6 +11,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { prisma } from "@/lib/db";
 import { getAuthContext, unauthorized, forbidden } from "@/lib/auth";
+import { extractPageContext } from "@/lib/pageContext";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -34,8 +36,8 @@ export async function POST(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "Provide a valid product page URL." }, { status: 400 });
   }
 
-  // ── Fetch the product page ─────────────────────────────────────────────────
-  let html: string;
+  // ── Fetch & extract page signals ──────────────────────────────────────────
+  let pageCtx: ReturnType<typeof extractPageContext>;
   try {
     const pageRes = await fetch(url, {
       headers: {
@@ -53,58 +55,56 @@ export async function POST(req: NextRequest, { params }: Params) {
     }
 
     const raw = await pageRes.text();
-    html = raw.slice(0, 60_000);
+    pageCtx = extractPageContext(raw.slice(0, 100_000), url);
+    console.log(`[pdp-analysis] ${url} — jsRendered=${pageCtx.isJsRendered} platform=${pageCtx.platform} tools=${pageCtx.tools.join(",")}`);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ error: `Could not reach ${url}: ${msg}` }, { status: 400 });
   }
 
-  // ── Ask Claude to audit it ────────────────────────────────────────────────
-  const context = [
+  // ── Build Claude prompt ───────────────────────────────────────────────────
+  const clientCtx = [
     account.name && `Client: ${account.name}`,
     account.industry && `Industry: ${account.industry}`,
   ].filter(Boolean).join(" | ");
 
-  const prompt = `You are a senior ecommerce CRO specialist auditing a product detail page (PDP) that receives paid traffic from Google Shopping and Google Ads.
+  const prompt = `You are a senior ecommerce CRO specialist auditing a product detail page (PDP) receiving paid traffic from Google Shopping / Google Ads.
+${clientCtx ? `\nClient context: ${clientCtx}\n` : ""}
+Page signals:
+${pageCtx.summary}
 
-${context ? `Context: ${context}\n` : ""}URL: ${url}
+Audit these 11 PDP areas. For JS-rendered pages where visual layout cannot be assessed, use JSON-LD Product schema, meta tags, and detected third-party tools as evidence. Do not penalise for things you simply cannot see.
 
-HTML:
-\`\`\`html
-${html}
-\`\`\`
+Areas to assess:
+1. Above the fold — product name, price, CTA visible without scrolling?
+2. Product images — count, zoom/360/video signals, quality indicators
+3. Pricing — clear price, sale/was-now anchoring, currency
+4. Add to cart / Buy now — CTA prominence, friction (mandatory login?)
+5. Social proof — reviews, ratings, UGC (check for review tool integrations)
+6. Trust signals — shipping, returns, guarantees, payment icons
+7. Product description — benefits vs specs, scannable, complete
+8. Urgency / scarcity — stock warnings, countdown, "X viewing"
+9. Schema markup — Product structured data present and complete?
+10. Mobile experience — viewport, touch targets, layout signals
+11. Upsell / cross-sell — related / frequently bought together
 
-Audit this product page specifically for ecommerce PDP best practices. Evaluate each of these areas:
+${pageCtx.isJsRendered ? `IMPORTANT: JS-rendered page — body is empty at fetch time. Base assessments on JSON-LD, meta tags, and detected tools: ${pageCtx.tools.join(", ") || "none detected"}. If a review platform is in the tools list, mark social proof as present. Mark checks as "cannot_assess" only when there is truly no signal at all.` : ""}
 
-1. **Above-the-fold**: Is the product name, price, and primary CTA visible without scrolling on mobile?
-2. **Product images**: How many images? Any zoom, 360°, or video signals in the HTML? Adequate alt text?
-3. **Pricing**: Is the price prominent? Any sale/was-now anchoring? Clear currency?
-4. **Add to cart / Buy now**: Is the CTA prominent and above the fold? Sticky on scroll? Any friction (mandatory account login)?
-5. **Social proof**: Star ratings, review count, customer photos, UGC visible on the page?
-6. **Trust signals**: Shipping time/cost, return policy, guarantees, secure payment icons visible?
-7. **Product description**: Clear benefits (not just specs)? Scannable with bullets? Completeness?
-8. **Urgency / scarcity**: Stock level warnings, countdown timers, "X people viewing"?
-9. **Schema markup**: Does the HTML include Product structured data (schema.org/Product)?
-10. **Mobile experience**: Viewport set? Font sizes reasonable? Touch-friendly buttons?
-11. **Upsell / cross-sell**: Frequently bought together, related products visible?
-
-Respond with ONLY valid JSON (no markdown, no explanation):
+Respond with ONLY valid JSON (no markdown):
 {
   "score": <integer 0-100>,
   "checks": [
-    { "area": <short label>, "status": "good"|"warning"|"missing", "note": <1 sentence> }
+    { "area": <short label>, "status": "good"|"warning"|"missing"|"cannot_assess", "note": <1 sentence> }
   ],
-  "issues": [
-    { "severity": "high"|"medium"|"low", "text": <string under 120 chars> }
-  ],
-  "topRecommendation": <single most impactful improvement for this PDP, 1-2 sentences>
+  "issues": [{ "severity": "high"|"medium"|"low", "text": <under 120 chars> }],
+  "topRecommendation": <1-2 sentences — most impactful improvement>
 }
 
-Score guide: 80+ = strong PDP, 60-79 = good with gaps, 40-59 = significant issues hurting conversion, <40 = major problems. Include all 11 areas in checks. Limit issues to the 5 most impactful.`;
+Include all 11 areas in checks. Max 5 issues. Score: 80+ strong, 60-79 gaps, 40-59 significant, <40 major problems.`;
 
   let analysis: {
     score: number;
-    checks: { area: string; status: "good" | "warning" | "missing"; note: string }[];
+    checks: { area: string; status: "good" | "warning" | "missing" | "cannot_assess"; note: string }[];
     issues: { severity: "high" | "medium" | "low"; text: string }[];
     topRecommendation: string;
   };
@@ -131,5 +131,5 @@ Score guide: 80+ = strong PDP, 60-79 = good with gaps, 40-59 = significant issue
     );
   }
 
-  return NextResponse.json(analysis);
+  return NextResponse.json({ ...analysis, isJsRendered: pageCtx.isJsRendered });
 }

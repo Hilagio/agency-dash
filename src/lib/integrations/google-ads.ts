@@ -676,10 +676,9 @@ async function fetchConversionSignals(
     : 0; // 0 = no data
   // Score: 0 = no data, 1.0 pages → 3/10, 2.0 → 6/10, 3.0+ → 9/10
   const landingPageScore = avgPageViews > 0 ? Math.min(10, Math.round(avgPageViews * 3)) : 0;
-  // Bounce-rate proxy: only set when page view data is present and meaningful
-  const bounceRateEstimate = avgPageViews > 0
-    ? (avgPageViews < 1.2 ? 0.75 : avgPageViews < 1.8 ? 0.55 : 0.35)
-    : 0; // 0 = not measured
+  // Bounce rate is not available from Google Ads API — only GA4 has it.
+  // Setting to 0 (no data) to avoid false positives from a heuristic proxy.
+  const bounceRateEstimate = 0;
 
   return {
     conversionRate,
@@ -732,8 +731,8 @@ async function fetchFunnelSignals(customer: Customer): Promise<FunnelSignals> {
   return {
     costPerLead,
     targetCostPerLead: 0, // Set manually or from account config table
-    leadToSaleRate:    0, // Requires CRM data — placeholder until offline imports active
-    averageLeadQualityScore: 5, // Placeholder until CRM scoring available
+    leadToSaleRate:    0, // Requires CRM data — 0 = no data, scorer guards against this
+    averageLeadQualityScore: 0, // Requires CRM data — 0 = no data, scorer guards against this
     offlineConversionImportActive: offlineActions.length > 0,
   };
 }

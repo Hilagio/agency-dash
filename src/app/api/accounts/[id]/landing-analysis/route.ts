@@ -1,17 +1,18 @@
 /**
  * POST /api/accounts/[id]/landing-analysis
  *
- * Fetches the account's landing page HTML and asks Claude to review it for
- * conversion readiness from a Google Ads perspective. Returns a structured
- * CRO assessment with score, issues, strengths, and a top recommendation.
+ * Fetches the account's landing page and asks Claude to review it for
+ * conversion readiness from a Google Ads perspective.
  *
- * No external API key needed — uses the existing Anthropic SDK.
- * Results are not persisted; re-run to refresh.
+ * Handles JS-rendered pages (Shopify, Next.js, etc.) by extracting
+ * JSON-LD structured data, meta tags, and third-party tool signals
+ * rather than relying on body HTML that may be empty.
  */
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { prisma } from "@/lib/db";
 import { getAuthContext, unauthorized, forbidden } from "@/lib/auth";
+import { extractPageContext } from "@/lib/pageContext";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -29,7 +30,6 @@ export async function POST(req: NextRequest, { params }: Params) {
   });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const accountExtra = account as any;
-
   if (!account) return forbidden();
 
   const url = account.landingPageUrl?.trim();
@@ -40,8 +40,8 @@ export async function POST(req: NextRequest, { params }: Params) {
     );
   }
 
-  // ── Fetch the landing page ────────────────────────────────────────────────
-  let html: string;
+  // ── Fetch & extract page signals ──────────────────────────────────────────
+  let pageCtx: ReturnType<typeof extractPageContext>;
   try {
     const pageRes = await fetch(url, {
       headers: {
@@ -49,66 +49,56 @@ export async function POST(req: NextRequest, { params }: Params) {
         "Accept":     "text/html,application/xhtml+xml",
       },
       signal: AbortSignal.timeout(15_000),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      redirect: "follow" as any,
     });
 
     if (!pageRes.ok) {
       return NextResponse.json(
-        { error: `Could not fetch the landing page (HTTP ${pageRes.status}). Check the URL is publicly accessible.` },
+        { error: `Could not fetch the landing page (HTTP ${pageRes.status}).` },
         { status: 400 }
       );
     }
 
     const raw = await pageRes.text();
-    // Keep first 60 KB — the most conversion-relevant content is near the top
-    html = raw.slice(0, 60_000);
+    pageCtx = extractPageContext(raw.slice(0, 100_000), url);
+    console.log(`[landing-analysis] ${url} — jsRendered=${pageCtx.isJsRendered} platform=${pageCtx.platform} tools=${pageCtx.tools.join(",")}`);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error(`[landing-analysis] fetch failed for ${url}:`, msg);
-    return NextResponse.json(
-      { error: `Could not reach ${url}: ${msg}` },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: `Could not reach ${url}: ${msg}` }, { status: 400 });
   }
 
-  // ── Ask Claude to review it ───────────────────────────────────────────────
-  const context = [
+  // ── Build Claude prompt ───────────────────────────────────────────────────
+  const clientCtx = [
     account.name && `Client: ${account.name}`,
     account.industry && `Industry: ${account.industry}`,
     accountExtra.businessModel && `Business model: ${accountExtra.businessModel}`,
   ].filter(Boolean).join(" | ");
 
-  const prompt = `You are a senior CRO (Conversion Rate Optimisation) specialist reviewing a landing page that receives traffic from Google Ads.
+  const prompt = `You are a senior CRO specialist reviewing a landing page for a Google Ads account.
+${clientCtx ? `\nClient context: ${clientCtx}\n` : ""}
+Page signals:
+${pageCtx.summary}
 
-${context ? `Context: ${context}\n` : ""}URL: ${url}
+Review this page for conversion readiness. Evaluate:
+- Value proposition: clear, specific, compelling?
+- Primary CTA: prominent, above the fold, unambiguous?
+- Trust signals: reviews, guarantees, social proof, brand credibility
+- Mobile experience: viewport set, touch-friendly, fast load signals
+- Message match: does the page match likely ad intent?
+- Friction: unnecessary steps, popups, mandatory registration
 
-HTML:
-\`\`\`html
-${html}
-\`\`\`
+${pageCtx.isJsRendered ? "IMPORTANT: This is a JS-rendered page — body content is loaded at runtime. Base visual assessments on JSON-LD, meta tags, and detected tools. Do not penalise for missing visual elements you simply cannot see. If a third-party review platform (e.g. Yotpo, Trustpilot) is detected, treat social proof as present." : ""}
 
-Review this landing page for conversion readiness from a paid traffic perspective. Focus on:
-- Value proposition: is it clear, specific, above the fold?
-- CTA: is there a clear primary action? Is it prominent?
-- Trust signals: reviews, guarantees, logos, social proof
-- Mobile experience: viewport, font sizes, touch targets, layout
-- Page weight signals: excessive scripts, unoptimised images (from <script>, <img> tags)
-- Message match: does it likely match ad intent for the stated industry/model?
-- Friction: popups, mandatory fields, confusing navigation
-
-Respond with ONLY valid JSON matching this exact shape (no markdown, no explanation):
+Respond with ONLY valid JSON (no markdown, no explanation):
 {
   "score": <integer 0-100>,
   "mobileReady": <true|false>,
-  "strengths": [<up to 3 short strings, each under 80 chars>],
-  "issues": [
-    { "severity": "high"|"medium"|"low", "text": <string under 100 chars> }
-  ],
-  "topRecommendation": <single most impactful improvement, 1-2 sentences>
+  "strengths": [<up to 3 strings, each under 80 chars>],
+  "issues": [{ "severity": "high"|"medium"|"low", "text": <under 100 chars> }],
+  "topRecommendation": <1-2 sentences>
 }
 
-Score guide: 80+ = strong CRO, 60-79 = good but fixable gaps, 40-59 = significant issues, <40 = major problems. Limit issues to the 4 most impactful.`;
+Score guide: 80+ strong, 60-79 good with gaps, 40-59 significant issues, <40 major problems. Max 4 issues.`;
 
   let analysis: {
     score: number;
@@ -120,7 +110,7 @@ Score guide: 80+ = strong CRO, 60-79 = good but fixable gaps, 40-59 = significan
 
   try {
     const message = await anthropic.messages.create({
-      model:      "claude-haiku-4-5-20251001",   // fast + cheap for structured extraction
+      model:      "claude-haiku-4-5-20251001",
       max_tokens: 800,
       messages:   [{ role: "user", content: prompt }],
     });
@@ -130,7 +120,6 @@ Score guide: 80+ = strong CRO, 60-79 = good but fixable gaps, 40-59 = significan
       .map(b => (b as { type: "text"; text: string }).text)
       .join("");
 
-    // Strip any accidental markdown fences
     const cleaned = text.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "").trim();
     analysis = JSON.parse(cleaned);
   } catch (err) {
@@ -141,5 +130,5 @@ Score guide: 80+ = strong CRO, 60-79 = good but fixable gaps, 40-59 = significan
     );
   }
 
-  return NextResponse.json(analysis);
+  return NextResponse.json({ ...analysis, isJsRendered: pageCtx.isJsRendered });
 }

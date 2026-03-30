@@ -905,6 +905,7 @@ interface LandingAnalysis {
   strengths: string[];
   issues: { severity: "high" | "medium" | "low"; text: string }[];
   topRecommendation: string;
+  isJsRendered?: boolean;
 }
 
 function LandingAnalysisPanel({ accountId, landingPageUrl }: { accountId: string; landingPageUrl: string | null }) {
@@ -930,8 +931,8 @@ function LandingAnalysisPanel({ accountId, landingPageUrl }: { accountId: string
     }
   };
 
-  const scoreColor = (s: number) => s >= 75 ? "#4ade80" : s >= 50 ? "#fbbf24" : "#f87171";
-  const scoreLabel = (s: number) => s >= 75 ? "Good" : s >= 50 ? "Needs work" : "Poor";
+  const scoreColor = (s: number) => s >= 70 ? "#4ade80" : s >= 45 ? "#fbbf24" : "#f87171";
+  const scoreLabel = (s: number) => s >= 70 ? "Good" : s >= 45 ? "Issues" : "Critical";
   const sevColor = (sev: string) => sev === "high" ? "#f87171" : sev === "medium" ? "#fbbf24" : "var(--text-dim)";
 
   return (
@@ -977,16 +978,24 @@ function LandingAnalysisPanel({ accountId, landingPageUrl }: { accountId: string
 
       {result && (
         <div style={{ marginTop: 14 }}>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 14 }}>
-            <span style={{ fontSize: 40, fontWeight: 800, lineHeight: 1, letterSpacing: "-2px", color: scoreColor(result.score) }}>
-              {result.score}
-            </span>
-            <div>
-              <div style={{ fontSize: 12, fontWeight: 600, color: scoreColor(result.score) }}>{scoreLabel(result.score)}</div>
-              <div style={{ fontSize: 10, color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: "0.4px" }}>
-                CRO score · {result.mobileReady ? "✓ Mobile ready" : "✗ Mobile issues"}
-              </div>
+          {result.isJsRendered && (
+            <div style={{ fontSize: 11, color: "var(--text-faint)", marginBottom: 10, display: "flex", alignItems: "center", gap: 5 }}>
+              <span style={{ color: "#fbbf24" }}>⚡</span>
+              JS-rendered page — analysis based on structured data, meta tags &amp; detected tools
             </div>
+          )}
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+            <div style={{
+              display: "inline-flex", alignItems: "center", gap: 7,
+              background: scoreColor(result.score) + "18", border: `1px solid ${scoreColor(result.score)}40`,
+              borderRadius: 20, padding: "5px 14px",
+            }}>
+              <div style={{ width: 9, height: 9, borderRadius: "50%", background: scoreColor(result.score), flexShrink: 0 }} />
+              <span style={{ fontSize: 13, fontWeight: 700, color: scoreColor(result.score) }}>{scoreLabel(result.score)}</span>
+            </div>
+            <span style={{ fontSize: 11, color: "var(--text-faint)" }}>
+              CRO review · {result.mobileReady ? "✓ Mobile ready" : "✗ Mobile issues"}
+            </span>
           </div>
 
           {result.issues.length > 0 && (
@@ -1036,9 +1045,10 @@ function LandingAnalysisPanel({ accountId, landingPageUrl }: { accountId: string
 
 interface PDPAnalysis {
   score: number;
-  checks: { area: string; status: "good" | "warning" | "missing"; note: string }[];
+  checks: { area: string; status: "good" | "warning" | "missing" | "cannot_assess"; note: string }[];
   issues: { severity: "high" | "medium" | "low"; text: string }[];
   topRecommendation: string;
+  isJsRendered?: boolean;
 }
 
 function PDPAnalysisPanel({ accountId }: { accountId: string }) {
@@ -1068,12 +1078,13 @@ function PDPAnalysisPanel({ accountId }: { accountId: string }) {
     }
   };
 
-  const scoreColor = (s: number) => s >= 75 ? "#4ade80" : s >= 50 ? "#fbbf24" : "#f87171";
-  const scoreLabel = (s: number) => s >= 75 ? "Good" : s >= 50 ? "Needs work" : "Poor";
+  const scoreColor = (s: number) => s >= 70 ? "#4ade80" : s >= 45 ? "#fbbf24" : "#f87171";
+  const scoreLabel = (s: number) => s >= 70 ? "Good" : s >= 45 ? "Issues" : "Critical";
   const sevColor   = (sev: string) => sev === "high" ? "#f87171" : sev === "medium" ? "#fbbf24" : "var(--text-dim)";
   const statusIcon = (st: string) =>
-    st === "good" ? { icon: "✓", color: "#4ade80" }
-    : st === "warning" ? { icon: "!", color: "#fbbf24" }
+    st === "good"           ? { icon: "✓", color: "#4ade80" }
+    : st === "warning"      ? { icon: "!", color: "#fbbf24" }
+    : st === "cannot_assess"? { icon: "?", color: "var(--text-faint)" }
     : { icon: "✗", color: "#f87171" };
 
   return (
@@ -1122,15 +1133,23 @@ function PDPAnalysisPanel({ accountId }: { accountId: string }) {
 
       {result && (
         <div style={{ marginTop: 16 }}>
-          {/* Score */}
-          <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 16 }}>
-            <span style={{ fontSize: 40, fontWeight: 800, lineHeight: 1, letterSpacing: "-2px", color: scoreColor(result.score) }}>
-              {result.score}
-            </span>
-            <div>
-              <div style={{ fontSize: 12, fontWeight: 600, color: scoreColor(result.score) }}>{scoreLabel(result.score)}</div>
-              <div style={{ fontSize: 10, color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: "0.4px" }}>PDP score</div>
+          {result.isJsRendered && (
+            <div style={{ fontSize: 11, color: "var(--text-faint)", marginBottom: 10, display: "flex", alignItems: "center", gap: 5 }}>
+              <span style={{ color: "#fbbf24" }}>⚡</span>
+              JS-rendered page — analysis based on structured data, meta tags &amp; detected tools
             </div>
+          )}
+          {/* Score */}
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+            <div style={{
+              display: "inline-flex", alignItems: "center", gap: 7,
+              background: scoreColor(result.score) + "18", border: `1px solid ${scoreColor(result.score)}40`,
+              borderRadius: 20, padding: "5px 14px",
+            }}>
+              <div style={{ width: 9, height: 9, borderRadius: "50%", background: scoreColor(result.score), flexShrink: 0 }} />
+              <span style={{ fontSize: 13, fontWeight: 700, color: scoreColor(result.score) }}>{scoreLabel(result.score)}</span>
+            </div>
+            <span style={{ fontSize: 11, color: "var(--text-faint)" }}>PDP audit</span>
           </div>
 
           {/* Area checklist */}
