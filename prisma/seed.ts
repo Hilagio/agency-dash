@@ -33,6 +33,7 @@ const acme_signals: ConstraintSignals = {
     impressionShareLost_budget: 0.38,  // ← biggest traffic problem
     impressionShareLost_rank: 0.15,
     clickThroughRate: 0.048,
+    clickThroughRateBaseline: 0.051,
     averageCpc: 2.4,
     searchImpressionShare: 0.47,
     qualityScoreAvg: 7.2,
@@ -40,6 +41,7 @@ const acme_signals: ConstraintSignals = {
   },
   conversion: {
     conversionRate: 0.032,
+    conversionRateBaseline: 0.034,
     industryBenchmarkConversionRate: 0.035,
     landingPageScore: 7,
     mobileSpeedScore: 68,
@@ -55,8 +57,10 @@ const acme_signals: ConstraintSignals = {
   economics: {
     targetRoas: 4.0,
     actualRoas: 3.6,
+    actualRoasBaseline: 3.9,
     targetCpa: 0,
     actualCpa: 0,
+    actualCpaBaseline: 0,
     grossMarginPercent: 0.42,
     ltv: 850,
     budgetUtilizationPercent: 0.88,
@@ -80,6 +84,7 @@ const nova_signals: ConstraintSignals = {
     impressionShareLost_budget: 0.1,
     impressionShareLost_rank: 0.12,
     clickThroughRate: 0.06,
+    clickThroughRateBaseline: 0,
     averageCpc: 1.8,
     searchImpressionShare: 0.78,
     qualityScoreAvg: 8.1,
@@ -87,6 +92,7 @@ const nova_signals: ConstraintSignals = {
   },
   conversion: {
     conversionRate: 0.0,
+    conversionRateBaseline: 0,
     industryBenchmarkConversionRate: 0.025,
     landingPageScore: 6,
     mobileSpeedScore: 74,
@@ -102,8 +108,10 @@ const nova_signals: ConstraintSignals = {
   economics: {
     targetRoas: 5.0,
     actualRoas: 0,
+    actualRoasBaseline: 0,
     targetCpa: 25,
     actualCpa: 0,
+    actualCpaBaseline: 0,
     grossMarginPercent: 0.55,
     ltv: 1200,
     budgetUtilizationPercent: 0.62,

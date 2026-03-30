@@ -38,7 +38,8 @@ export const BUCKET_DESCRIPTIONS: Record<ConstraintBucket, string> = {
 export interface TrafficSignals {
   impressionShareLost_budget: number;      // 0–1
   impressionShareLost_rank: number;        // 0–1
-  clickThroughRate: number;                // e.g. 0.05
+  clickThroughRate: number;                // last 14 days
+  clickThroughRateBaseline: number;        // days 15–180 avg (0 = insufficient history)
   averageCpc: number;                      // absolute value
   searchImpressionShare: number;           // 0–1
   qualityScoreAvg: number;                 // 1–10
@@ -57,11 +58,12 @@ export interface MeasurementSignals {
 }
 
 export interface ConversionSignals {
-  conversionRate: number;                  // 0–1
-  industryBenchmarkConversionRate: number; // 0–1 — already adjusted for country + businessModel
-  landingPageScore: number;                // 1–10 (from Ads API)
-  mobileSpeedScore: number;               // 0–100
-  bounceRateEstimate: number;             // 0–1
+  conversionRate: number;                  // last 14 days CVR
+  conversionRateBaseline: number;          // days 15–180 avg CVR (0 = insufficient history)
+  industryBenchmarkConversionRate: number; // 0–1 — adjusted for country + businessModel (fallback only)
+  landingPageScore: number;                // 1–10 from Ads API (0 = no data)
+  mobileSpeedScore: number;               // 0–100 (0 = not measured)
+  bounceRateEstimate: number;             // 0–1 (0 = not measured)
 }
 
 export interface FunnelSignals {
@@ -74,9 +76,11 @@ export interface FunnelSignals {
 
 export interface EconomicsSignals {
   targetRoas: number;                      // e.g. 4.0
-  actualRoas: number;
+  actualRoas: number;                      // last 14 days
+  actualRoasBaseline: number;              // days 15–180 avg (0 = insufficient history)
   targetCpa: number;
-  actualCpa: number;
+  actualCpa: number;                       // last 14 days
+  actualCpaBaseline: number;               // days 15–180 avg (0 = insufficient history)
   grossMarginPercent: number;              // 0–1
   ltv: number;                             // customer lifetime value (0 = unknown)
   budgetUtilizationPercent: number;        // 0–1 (how much of budget is spent)

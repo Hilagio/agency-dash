@@ -86,12 +86,25 @@ function scoreTraffic(s: ConstraintSignals["traffic"]): BucketScore {
     signals.push(`${pct}% impression share lost to rank — quality or bid issue`);
   }
 
-  if (s.clickThroughRate < 0.02) {
-    score -= 15;
-    signals.push(`CTR ${(s.clickThroughRate * 100).toFixed(1)}% is below 2% threshold — weak ad relevance`);
-  } else if (s.clickThroughRate < 0.04) {
-    score -= 5;
-    signals.push(`CTR ${(s.clickThroughRate * 100).toFixed(1)}% has room to improve`);
+  // CTR: use trend vs own baseline when available; absolute threshold as fallback
+  if (s.clickThroughRateBaseline > 0) {
+    const ctrTrend = s.clickThroughRate / s.clickThroughRateBaseline;
+    if (ctrTrend < 0.7) {
+      score -= 20;
+      signals.push(`CTR down ${Math.round((1 - ctrTrend) * 100)}% vs account's 6-month average — ad relevance deteriorating`);
+    } else if (ctrTrend < 0.85) {
+      score -= 8;
+      signals.push(`CTR down ${Math.round((1 - ctrTrend) * 100)}% vs account's 6-month average — watch trend`);
+    }
+  } else {
+    // Fallback: absolute threshold (no history yet)
+    if (s.clickThroughRate < 0.02) {
+      score -= 15;
+      signals.push(`CTR ${(s.clickThroughRate * 100).toFixed(1)}% — below 2% threshold (no history to compare yet)`);
+    } else if (s.clickThroughRate < 0.04) {
+      score -= 5;
+      signals.push(`CTR ${(s.clickThroughRate * 100).toFixed(1)}% has room to improve`);
+    }
   }
 
   if (s.qualityScoreAvg < 6) {
@@ -124,42 +137,81 @@ function scoreConversion(s: ConstraintSignals["conversion"]): BucketScore {
   const signals: string[] = [];
   let score = 100;
 
-  const cvRatio = s.industryBenchmarkConversionRate > 0
-    ? s.conversionRate / s.industryBenchmarkConversionRate
-    : 1;
-
-  if (cvRatio < 0.5) {
-    score -= 40;
-    signals.push(
-      `CVR ${(s.conversionRate * 100).toFixed(2)}% is <50% of industry benchmark ` +
-      `(${(s.industryBenchmarkConversionRate * 100).toFixed(2)}%) — landing page is the constraint`
-    );
-  } else if (cvRatio < 0.8) {
-    score -= 20;
-    signals.push(
-      `CVR ${(s.conversionRate * 100).toFixed(2)}% is below industry benchmark — needs improvement`
-    );
+  // PRIMARY: self-trend — is CVR deteriorating vs this account's own 6-month average?
+  if (s.conversionRateBaseline > 0) {
+    const cvrTrend = s.conversionRate > 0
+      ? s.conversionRate / s.conversionRateBaseline
+      : 0;
+    if (cvrTrend === 0) {
+      // No conversions at all in the recent window — critical
+      score -= 40;
+      signals.push(`No conversions recorded in the last 14 days — conversion has stopped`);
+    } else if (cvrTrend < 0.6) {
+      score -= 35;
+      signals.push(
+        `CVR down ${Math.round((1 - cvrTrend) * 100)}% vs account's 6-month average ` +
+        `(${(s.conversionRate * 100).toFixed(2)}% vs ${(s.conversionRateBaseline * 100).toFixed(2)}%) — significant deterioration`
+      );
+    } else if (cvrTrend < 0.8) {
+      score -= 15;
+      signals.push(
+        `CVR down ${Math.round((1 - cvrTrend) * 100)}% vs account's 6-month average ` +
+        `(${(s.conversionRate * 100).toFixed(2)}% vs ${(s.conversionRateBaseline * 100).toFixed(2)}%)`
+      );
+    } else if (cvrTrend < 0.93) {
+      score -= 5;
+      signals.push(
+        `CVR slightly below 6-month average (${(s.conversionRate * 100).toFixed(2)}% vs ${(s.conversionRateBaseline * 100).toFixed(2)}%)`
+      );
+    }
+    // cvrTrend ≥ 0.93: stable or improving — no penalty
+  } else {
+    // FALLBACK: industry benchmark — only when no historical data yet
+    const cvRatio = s.industryBenchmarkConversionRate > 0
+      ? s.conversionRate / s.industryBenchmarkConversionRate
+      : 1;
+    if (cvRatio < 0.3) {
+      score -= 20;
+      signals.push(
+        `CVR ${(s.conversionRate * 100).toFixed(2)}% is well below industry benchmark ` +
+        `(${(s.industryBenchmarkConversionRate * 100).toFixed(2)}%) — no history yet to confirm trend`
+      );
+    } else if (cvRatio < 0.6) {
+      score -= 8;
+      signals.push(
+        `CVR ${(s.conversionRate * 100).toFixed(2)}% below industry benchmark ` +
+        `(${(s.industryBenchmarkConversionRate * 100).toFixed(2)}%) — building history to confirm`
+      );
+    }
   }
 
-  if (s.mobileSpeedScore < 50) {
-    score -= 20;
-    signals.push(`Mobile speed score ${s.mobileSpeedScore}/100 — slow pages destroy conversion`);
-  } else if (s.mobileSpeedScore < 70) {
-    score -= 8;
-    signals.push(`Mobile speed score ${s.mobileSpeedScore}/100 — room to improve`);
+  // Mobile-friendly clicks — only penalise when we have real measured data (> 0)
+  // Note: this is % of mobile clicks to mobile-friendly URLs, not a PageSpeed score
+  if (s.mobileSpeedScore > 0) {
+    if (s.mobileSpeedScore < 50) {
+      score -= 15;
+      signals.push(`Mobile-friendly click rate ${s.mobileSpeedScore}% — many mobile visitors reach non-mobile-optimised pages`);
+    } else if (s.mobileSpeedScore < 70) {
+      score -= 5;
+      signals.push(`Mobile-friendly click rate ${s.mobileSpeedScore}% — room to improve mobile experience`);
+    }
   }
 
-  if (s.landingPageScore < 5) {
-    score -= 15;
-    signals.push(`Landing page experience score ${s.landingPageScore}/10 — Google rates it poor`);
-  } else if (s.landingPageScore < 7) {
-    score -= 5;
-    signals.push(`Landing page experience score ${s.landingPageScore}/10 — below average`);
+  // Landing page engagement (pages per session proxy) — only when real data exists (> 0)
+  if (s.landingPageScore > 0) {
+    if (s.landingPageScore < 4) {
+      score -= 10;
+      signals.push(`Landing page engagement score ${s.landingPageScore}/10 — visitors leaving quickly (low pages/session)`);
+    } else if (s.landingPageScore < 6) {
+      score -= 4;
+      signals.push(`Landing page engagement score ${s.landingPageScore}/10 — moderate visitor engagement`);
+    }
   }
 
+  // Bounce rate — only when measured (bounceRateEstimate > 0)
   if (s.bounceRateEstimate > 0.7) {
-    score -= 10;
-    signals.push(`Bounce rate ~${Math.round(s.bounceRateEstimate * 100)}% — visitors not engaging`);
+    score -= 8;
+    signals.push(`Bounce rate ~${Math.round(s.bounceRateEstimate * 100)}% — visitors not engaging with the page`);
   }
 
   return {
@@ -226,6 +278,18 @@ function scoreEconomics(s: ConstraintSignals["economics"]): BucketScore {
     }
   }
 
+  // ROAS trend vs own 6-month baseline (independent of targets)
+  if (s.actualRoasBaseline > 0 && s.actualRoas > 0) {
+    const roasTrend = s.actualRoas / s.actualRoasBaseline;
+    if (roasTrend < 0.7) {
+      score -= 20;
+      signals.push(`ROAS down ${Math.round((1 - roasTrend) * 100)}% vs account's 6-month average (${s.actualRoas.toFixed(1)}x vs ${s.actualRoasBaseline.toFixed(1)}x)`);
+    } else if (roasTrend < 0.85) {
+      score -= 8;
+      signals.push(`ROAS trending down vs 6-month average (${s.actualRoas.toFixed(1)}x vs ${s.actualRoasBaseline.toFixed(1)}x)`);
+    }
+  }
+
   if (s.targetCpa > 0 && s.actualCpa > 0) {
     const cpaRatio = s.actualCpa / s.targetCpa;
     if (cpaRatio > 1.5) {
@@ -234,6 +298,18 @@ function scoreEconomics(s: ConstraintSignals["economics"]): BucketScore {
     } else if (cpaRatio > 1.1) {
       score -= 10;
       signals.push(`CPA ${s.actualCpa.toFixed(0)} slightly above target`);
+    }
+  }
+
+  // CPA trend vs own 6-month baseline
+  if (s.actualCpaBaseline > 0 && s.actualCpa > 0) {
+    const cpaTrend = s.actualCpa / s.actualCpaBaseline;
+    if (cpaTrend > 1.4) {
+      score -= 15;
+      signals.push(`CPA up ${Math.round((cpaTrend - 1) * 100)}% vs account's 6-month average (${s.actualCpa.toFixed(0)} vs ${s.actualCpaBaseline.toFixed(0)})`);
+    } else if (cpaTrend > 1.2) {
+      score -= 6;
+      signals.push(`CPA creeping up vs 6-month average (${s.actualCpa.toFixed(0)} vs ${s.actualCpaBaseline.toFixed(0)})`);
     }
   }
 

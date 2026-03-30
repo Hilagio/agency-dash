@@ -267,6 +267,22 @@ function last90Days(): { start: string; end: string } {
   return { start: fmt(start), end: fmt(end) };
 }
 
+/** Last 14 days — "recent" window for trend scoring */
+function last14Days(): { start: string; end: string } {
+  const fmt = (d: Date) => d.toISOString().slice(0, 10);
+  const end   = new Date(); end.setDate(end.getDate() - 1);  // yesterday (today incomplete)
+  const start = new Date(); start.setDate(start.getDate() - 14);
+  return { start: fmt(start), end: fmt(end) };
+}
+
+/** Days 15–180 — "baseline" window; excludes the recent 14 days so it is unaffected by current issues */
+function days15to180(): { start: string; end: string } {
+  const fmt = (d: Date) => d.toISOString().slice(0, 10);
+  const end   = new Date(); end.setDate(end.getDate() - 15);
+  const start = new Date(); start.setDate(start.getDate() - 180);
+  return { start: fmt(start), end: fmt(end) };
+}
+
 // ─── Measurement signals ──────────────────────────────────────────────────────
 
 async function fetchMeasurementSignals(customer: Customer): Promise<MeasurementSignals> {
@@ -458,7 +474,11 @@ async function fetchMeasurementSignals(customer: Customer): Promise<MeasurementS
 // ─── Traffic signals ──────────────────────────────────────────────────────────
 
 async function fetchTrafficSignals(customer: Customer): Promise<TrafficSignals> {
+  // Impression share metrics are best over a longer window for statistical stability
   const { start, end } = last30Days();
+  // CTR trend: recent 14d vs days 15–180 baseline
+  const { start: r14start, end: r14end } = last14Days();
+  const { start: bstart,   end: bend }   = days15to180();
 
   const rows = await customer.query(`
     SELECT
@@ -546,14 +566,41 @@ async function fetchTrafficSignals(customer: Customer): Promise<TrafficSignals> 
     ? irrelevantCost / totalSearchTermCost
     : 0;
 
+  // ── CTR trend: recent 14d vs days 15–180 baseline ────────────────────────
+  const ctrBaselineRows = await safeQuery(
+    () => customer.query(`
+      SELECT metrics.clicks, metrics.impressions
+      FROM customer
+      WHERE segments.date BETWEEN '${bstart}' AND '${bend}'
+    `),
+    "CTR baseline 15–180d"
+  );
+  const baseImpressions = ctrBaselineRows.reduce((s, r) => s + Number(r.metrics?.impressions ?? 0), 0);
+  const baseClicks      = ctrBaselineRows.reduce((s, r) => s + Number(r.metrics?.clicks ?? 0), 0);
+  const clickThroughRateBaseline = baseImpressions >= 500 ? baseClicks / baseImpressions : 0;
+
+  // Use 14-day window for reported CTR so it matches the trend baseline period
+  const recentCtrRows = await safeQuery(
+    () => customer.query(`
+      SELECT metrics.clicks, metrics.impressions
+      FROM customer
+      WHERE segments.date BETWEEN '${r14start}' AND '${r14end}'
+    `),
+    "CTR recent 14d"
+  );
+  const recentImpressions = recentCtrRows.reduce((s, r) => s + Number(r.metrics?.impressions ?? 0), 0);
+  const recentClicks14    = recentCtrRows.reduce((s, r) => s + Number(r.metrics?.clicks ?? 0), 0);
+  const ctr14 = recentImpressions > 0 ? recentClicks14 / recentImpressions : ctr;
+
   return {
-    impressionShareLost_budget: Math.min(1, avgIsLostBudget),
-    impressionShareLost_rank:   Math.min(1, avgIsLostRank),
-    clickThroughRate:           ctr,
-    averageCpc:                 avgCpc,
-    searchImpressionShare:      Math.min(1, avgIs),
+    impressionShareLost_budget:  Math.min(1, avgIsLostBudget),
+    impressionShareLost_rank:    Math.min(1, avgIsLostRank),
+    clickThroughRate:            ctr14,
+    clickThroughRateBaseline,
+    averageCpc:                  avgCpc,
+    searchImpressionShare:       Math.min(1, avgIs),
     qualityScoreAvg,
-    irrelevantQueryPercent:     Math.min(1, irrelevantQueryPercent),
+    irrelevantQueryPercent:      Math.min(1, irrelevantQueryPercent),
   };
 }
 
@@ -565,59 +612,82 @@ async function fetchConversionSignals(
   country?: string | null,
   businessModel?: string | null,
 ): Promise<ConversionSignals> {
-  const { start, end } = last30Days();
+  const { start: r14start, end: r14end }  = last14Days();
+  const { start: bstart,   end: bend }    = days15to180();
 
-  const rows = await safeQuery(
+  // ── Recent 14-day CVR ──────────────────────────────────────────────────────
+  const recentRows = await safeQuery(
     () => customer.query(`
       SELECT
         metrics.clicks,
         metrics.conversions,
-        landing_page_view.resource_name,
         metrics.mobile_friendly_clicks_percentage
       FROM landing_page_view
-      WHERE segments.date BETWEEN '${start}' AND '${end}'
+      WHERE segments.date BETWEEN '${r14start}' AND '${r14end}'
     `),
-    "landing page conversion signals"
+    "landing page recent 14d"
   );
 
-  const totalClicks      = rows.reduce((s, r) => s + Number(r.metrics?.clicks ?? 0), 0);
-  const totalConversions = rows.reduce((s, r) => s + Number(r.metrics?.conversions ?? 0), 0);
-  const conversionRate   = totalClicks > 0 ? totalConversions / totalClicks : 0;
+  const recentClicks      = recentRows.reduce((s, r) => s + Number(r.metrics?.clicks ?? 0), 0);
+  const recentConversions = recentRows.reduce((s, r) => s + Number(r.metrics?.conversions ?? 0), 0);
+  const conversionRate    = recentClicks > 0 ? recentConversions / recentClicks : 0;
 
-  // Landing page experience — from expanded landing page view
+  // ── Baseline CVR (days 15–180) ────────────────────────────────────────────
+  // Queried from customer (account-level) because landing_page_view data thins out at 180d
+  const baselineRows = await safeQuery(
+    () => customer.query(`
+      SELECT metrics.clicks, metrics.conversions
+      FROM customer
+      WHERE segments.date BETWEEN '${bstart}' AND '${bend}'
+    `),
+    "CVR baseline 15–180d"
+  );
+  const baselineClicks      = baselineRows.reduce((s, r) => s + Number(r.metrics?.clicks ?? 0), 0);
+  const baselineConversions = baselineRows.reduce((s, r) => s + Number(r.metrics?.conversions ?? 0), 0);
+  // Require ≥100 baseline clicks for a statistically meaningful rate
+  const conversionRateBaseline = baselineClicks >= 100
+    ? baselineConversions / baselineClicks
+    : 0;
+
+  // ── Landing page engagement ────────────────────────────────────────────────
+  // Note: Google Ads API does not expose PageSpeed scores; mobile_friendly_clicks_percentage
+  // is the share of mobile clicks that went to a mobile-friendly URL — NOT a speed score.
+  // We surface it as-is but do not pretend it is a speed benchmark.
+  const mobilePercents = recentRows
+    .map((r) => Number(r.metrics?.mobile_friendly_clicks_percentage ?? 0))
+    .filter((v) => v > 0);
+  // 0 = no data (don't fabricate a default that triggers false penalties)
+  const mobileSpeedScore = mobilePercents.length > 0
+    ? Math.round(mobilePercents.reduce((a, b) => a + b, 0) / mobilePercents.length)
+    : 0;
+
+  // Average pages-per-session from the Ads API — only score when real data exists
   const lpRows = await safeQuery(
     () => customer.query(`
-      SELECT
-        ad_group_ad.ad.final_urls,
-        metrics.average_page_views,
-        landing_page_view.unexpanded_final_url
+      SELECT metrics.average_page_views
       FROM landing_page_view
-      WHERE segments.date BETWEEN '${start}' AND '${end}'
+      WHERE segments.date BETWEEN '${r14start}' AND '${r14end}'
     `),
     "landing page views"
   );
-
-  // Google Ads doesn't expose mobile speed score directly via API;
-  // we use mobile-friendly clicks as a proxy (0–100)
-  const mobilePercents = rows
-    .map((r) => Number(r.metrics?.mobile_friendly_clicks_percentage ?? 0))
-    .filter((v) => v > 0);
-  const mobileSpeedScore = mobilePercents.length > 0
-    ? Math.round(mobilePercents.reduce((a, b) => a + b, 0) / mobilePercents.length)
-    : 65; // default
-
-  // Landing page score: approximated from average page views (>1 = engaging)
-  const avgPageViews = lpRows.length > 0
-    ? lpRows.reduce((s, r) => s + Number(r.metrics?.average_page_views ?? 0), 0) / lpRows.length
-    : 1;
-  const landingPageScore = Math.min(10, Math.round(avgPageViews * 2));
+  const realPageViewRows = lpRows.filter(r => Number(r.metrics?.average_page_views ?? 0) > 0);
+  const avgPageViews = realPageViewRows.length > 0
+    ? realPageViewRows.reduce((s, r) => s + Number(r.metrics?.average_page_views ?? 0), 0) / realPageViewRows.length
+    : 0; // 0 = no data
+  // Score: 0 = no data, 1.0 pages → 3/10, 2.0 → 6/10, 3.0+ → 9/10
+  const landingPageScore = avgPageViews > 0 ? Math.min(10, Math.round(avgPageViews * 3)) : 0;
+  // Bounce-rate proxy: only set when page view data is present and meaningful
+  const bounceRateEstimate = avgPageViews > 0
+    ? (avgPageViews < 1.2 ? 0.75 : avgPageViews < 1.8 ? 0.55 : 0.35)
+    : 0; // 0 = not measured
 
   return {
     conversionRate,
+    conversionRateBaseline,
     industryBenchmarkConversionRate: getIndustryCvrBenchmark(industry, country, businessModel),
-    landingPageScore: Math.max(1, landingPageScore),
+    landingPageScore,
     mobileSpeedScore,
-    bounceRateEstimate: avgPageViews < 1.2 ? 0.75 : avgPageViews < 1.5 ? 0.55 : 0.4,
+    bounceRateEstimate,
   };
 }
 
@@ -671,9 +741,10 @@ async function fetchFunnelSignals(customer: Customer): Promise<FunnelSignals> {
 // ─── Economics signals ────────────────────────────────────────────────────────
 
 async function fetchEconomicsSignals(customer: Customer): Promise<EconomicsSignals> {
-  const { start, end } = last30Days();
+  const { start: r14start, end: r14end } = last14Days();
+  const { start: bstart,   end: bend }   = days15to180();
 
-  // Account-level ROAS and budget
+  // ── Recent 14-day performance ─────────────────────────────────────────────
   const rows = await safeQuery(
     () => customer.query(`
       SELECT
@@ -685,19 +756,19 @@ async function fetchEconomicsSignals(customer: Customer): Promise<EconomicsSigna
         campaign.budget_amount_micros
       FROM campaign
       WHERE campaign.status = 'ENABLED'
-        AND segments.date BETWEEN '${start}' AND '${end}'
+        AND segments.date BETWEEN '${r14start}' AND '${r14end}'
     `),
-    "economics campaign rows"
+    "economics campaign rows 14d"
   );
 
-  const totalCost             = rows.reduce((s, r) => s + Number(r.metrics?.cost_micros ?? 0), 0) / 1_000_000;
-  const totalConversionValue  = rows.reduce((s, r) => s + Number(r.metrics?.conversions_value ?? 0), 0);
-  const totalConversions      = rows.reduce((s, r) => s + Number(r.metrics?.conversions ?? 0), 0);
+  const totalCost            = rows.reduce((s, r) => s + Number(r.metrics?.cost_micros ?? 0), 0) / 1_000_000;
+  const totalConversionValue = rows.reduce((s, r) => s + Number(r.metrics?.conversions_value ?? 0), 0);
+  const totalConversions     = rows.reduce((s, r) => s + Number(r.metrics?.conversions ?? 0), 0);
 
   const actualRoas = totalCost > 0 ? totalConversionValue / totalCost : 0;
   const actualCpa  = totalConversions > 0 ? totalCost / totalConversions : 0;
 
-  // Target ROAS — use most common target across campaigns
+  // Target ROAS — average across campaigns
   const roasTargets = rows
     .map((r) => Number(r.campaign?.target_roas?.target_roas ?? 0))
     .filter((v) => v > 0);
@@ -713,34 +784,51 @@ async function fetchEconomicsSignals(customer: Customer): Promise<EconomicsSigna
     ? cpaTargets.reduce((a, b) => a + b, 0) / cpaTargets.length
     : 0;
 
-  // Budget utilization
+  // ── Baseline ROAS/CPA (days 15–180) ──────────────────────────────────────
+  const baselineRows = await safeQuery(
+    () => customer.query(`
+      SELECT metrics.cost_micros, metrics.conversions_value, metrics.conversions
+      FROM customer
+      WHERE segments.date BETWEEN '${bstart}' AND '${bend}'
+    `),
+    "economics baseline 15–180d"
+  );
+  const baseCost  = baselineRows.reduce((s, r) => s + Number(r.metrics?.cost_micros ?? 0), 0) / 1_000_000;
+  const baseValue = baselineRows.reduce((s, r) => s + Number(r.metrics?.conversions_value ?? 0), 0);
+  const baseConv  = baselineRows.reduce((s, r) => s + Number(r.metrics?.conversions ?? 0), 0);
+  // Require ≥€50 spend for a meaningful baseline
+  const actualRoasBaseline = baseCost >= 50 ? (baseCost > 0 ? baseValue / baseCost : 0) : 0;
+  const actualCpaBaseline  = baseCost >= 50 ? (baseConv > 0 ? baseCost / baseConv : 0) : 0;
+
+  // ── Budget utilization (30d for stable reading) ───────────────────────────
+  const { start: b30start, end: b30end } = last30Days();
   const budgetRows = await safeQuery(
     () => customer.query(`
-      SELECT
-        campaign_budget.amount_micros,
-        metrics.cost_micros
+      SELECT campaign_budget.amount_micros, metrics.cost_micros
       FROM campaign
       WHERE campaign.status = 'ENABLED'
-        AND segments.date BETWEEN '${start}' AND '${end}'
+        AND segments.date BETWEEN '${b30start}' AND '${b30end}'
     `),
     "budget utilization"
   );
-
   const totalBudget = budgetRows.reduce(
     (s, r) => s + Number(r.campaign_budget?.amount_micros ?? 0), 0
   ) / 1_000_000;
+  const totalCost30 = budgetRows.reduce((s, r) => s + Number(r.metrics?.cost_micros ?? 0), 0) / 1_000_000;
   const budgetUtilizationPercent = totalBudget > 0
-    ? Math.min(1, totalCost / (totalBudget * 30))
+    ? Math.min(1, totalCost30 / (totalBudget * 30))
     : 0.8;
 
-  // AOV — computed live: conversions_value / conversions
+  // AOV — computed from recent 14-day window
   const avgOrderValue = totalConversions > 0 ? totalConversionValue / totalConversions : 0;
 
   return {
     targetRoas,
     actualRoas,
+    actualRoasBaseline,
     targetCpa,
     actualCpa,
+    actualCpaBaseline,
     grossMarginPercent: 0,   // Requires Shopify/manual input — overridden in snapshot route
     ltv: 0,                  // Requires CRM — overridden in snapshot route if monthlyChurnRate set
     avgOrderValue,
