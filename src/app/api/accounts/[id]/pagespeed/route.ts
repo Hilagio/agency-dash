@@ -2,11 +2,11 @@
  * GET /api/accounts/[id]/pagespeed
  *
  * Runs a Google PageSpeed Insights check against the account's landing page URL.
- * Auth priority:
- *   1. OAuth Bearer token — exchanges the org's stored refresh_token for an access token
- *      using GOOGLE_ADS_CLIENT_ID + GOOGLE_ADS_CLIENT_SECRET (same creds as Google Ads OAuth)
- *   2. PAGESPEED_API_KEY env var — fallback if no OAuth credentials are available
- *   3. Unauthenticated — low rate limit (may 429)
+ *
+ * Auth: PAGESPEED_API_KEY env var (optional but strongly recommended).
+ * The PageSpeed Insights API only accepts API keys — not OAuth Bearer tokens.
+ * Create a free key at: console.cloud.google.com → APIs & Services → Credentials
+ * → Create credentials → API key (restrict it to PageSpeed Insights API only).
  */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
@@ -15,38 +15,6 @@ import { getAuthContext, unauthorized, forbidden } from "@/lib/auth";
 type Params = { params: Promise<{ id: string }> };
 
 const PSI_ENDPOINT = "https://www.googleapis.com/pagespeedonline/v5/runPagespeed";
-
-/** Exchange the org's stored refresh token for a short-lived access token. */
-async function getAccessToken(orgId: string): Promise<string | null> {
-  const clientId     = process.env.GOOGLE_ADS_CLIENT_ID;
-  const clientSecret = process.env.GOOGLE_ADS_CLIENT_SECRET;
-  if (!clientId || !clientSecret) return null;
-
-  const cred = await prisma.oAuthCredential
-    .findUnique({ where: { organizationId: orgId }, select: { refreshToken: true } })
-    .catch(() => null);
-  if (!cred?.refreshToken) return null;
-
-  const res = await fetch("https://oauth2.googleapis.com/token", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      grant_type:    "refresh_token",
-      refresh_token: cred.refreshToken,
-      client_id:     clientId,
-      client_secret: clientSecret,
-    }),
-  });
-
-  if (!res.ok) {
-    console.warn("[pagespeed] Failed to exchange refresh token:", await res.text().catch(() => ""));
-    return null;
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const data: any = await res.json();
-  return data.access_token ?? null;
-}
 
 export async function GET(req: NextRequest, { params }: Params) {
   const ctx = await getAuthContext();
@@ -69,24 +37,16 @@ export async function GET(req: NextRequest, { params }: Params) {
     );
   }
 
-  // Build auth headers — prefer OAuth Bearer over API key over nothing
-  const accessToken = await getAccessToken(ctx.orgId);
-  const apiKey      = process.env.PAGESPEED_API_KEY ?? "";
+  const apiKey = process.env.PAGESPEED_API_KEY ?? "";
+  const keyParam = apiKey ? `&key=${apiKey}` : "";
+  const psiUrl = `${PSI_ENDPOINT}?url=${encodeURIComponent(url)}&strategy=mobile&category=performance${keyParam}`;
 
-  const psiUrl = accessToken || !apiKey
-    ? `${PSI_ENDPOINT}?url=${encodeURIComponent(url)}&strategy=mobile&category=performance`
-    : `${PSI_ENDPOINT}?url=${encodeURIComponent(url)}&strategy=mobile&category=performance&key=${apiKey}`;
-
-  const headers: Record<string, string> = { Accept: "application/json" };
-  if (accessToken) headers["Authorization"] = `Bearer ${accessToken}`;
-
-  const authMode = accessToken ? "OAuth" : apiKey ? "API key" : "unauthenticated";
-  console.log(`[pagespeed] checking ${url} via ${authMode}`);
+  console.log(`[pagespeed] checking ${url} ${apiKey ? "(authenticated)" : "(unauthenticated — may rate limit)"}`);
 
   let psiRes: Response;
   try {
     psiRes = await fetch(psiUrl, {
-      headers,
+      headers: { Accept: "application/json" },
       signal: AbortSignal.timeout(30_000),
     });
   } catch (err) {
@@ -97,10 +57,10 @@ export async function GET(req: NextRequest, { params }: Params) {
 
   if (!psiRes.ok) {
     const body = await psiRes.text().catch(() => "");
-    console.error(`[pagespeed] PSI returned ${psiRes.status} for ${url}:`, body.slice(0, 200));
+    console.error(`[pagespeed] PSI returned ${psiRes.status} for ${url}:`, body.slice(0, 300));
     if (psiRes.status === 429) {
       return NextResponse.json(
-        { error: "Rate limit hit — wait a moment and try again." },
+        { error: "Rate limit hit — add PAGESPEED_API_KEY to Railway env vars. Create a free API key at console.cloud.google.com → APIs & Services → Credentials." },
         { status: 429 }
       );
     }
