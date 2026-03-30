@@ -814,8 +814,10 @@ async function fetchEconomicsSignals(customer: Customer): Promise<EconomicsSigna
     (s, r) => s + Number(r.campaign_budget?.amount_micros ?? 0), 0
   ) / 1_000_000;
   const totalCost30 = budgetRows.reduce((s, r) => s + Number(r.metrics?.cost_micros ?? 0), 0) / 1_000_000;
+  // Query returns one row per campaign per day, so totalBudget is already
+  // sum of dailyBudget × numDays. Dividing spend by this gives utilization %.
   const budgetUtilizationPercent = totalBudget > 0
-    ? Math.min(1, totalCost30 / (totalBudget * 30))
+    ? Math.min(1, totalCost30 / totalBudget)
     : 0.8;
 
   // AOV — computed from recent 14-day window
