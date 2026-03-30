@@ -34,7 +34,9 @@ export async function GET(req: NextRequest, { params }: Params) {
     );
   }
 
-  const psiUrl = `${PSI_ENDPOINT}?url=${encodeURIComponent(url)}&strategy=mobile&category=performance`;
+  const apiKey  = process.env.PAGESPEED_API_KEY ?? "";
+  const keyParam = apiKey ? `&key=${apiKey}` : "";
+  const psiUrl  = `${PSI_ENDPOINT}?url=${encodeURIComponent(url)}&strategy=mobile&category=performance${keyParam}`;
 
   let psiRes: Response;
   try {
@@ -52,6 +54,13 @@ export async function GET(req: NextRequest, { params }: Params) {
   if (!psiRes.ok) {
     const body = await psiRes.text().catch(() => "");
     console.error(`[pagespeed] PSI returned ${psiRes.status} for ${url}:`, body.slice(0, 200));
+    if (psiRes.status === 429) {
+      const hint = apiKey
+        ? "Rate limit hit even with API key — wait a moment and try again."
+        : "Rate limit hit. Add a free PAGESPEED_API_KEY in Railway environment variables to avoid this. " +
+          "Get one at console.cloud.google.com → APIs & Services → PageSpeed Insights API.";
+      return NextResponse.json({ error: hint }, { status: 429 });
+    }
     return NextResponse.json(
       { error: `PageSpeed Insights returned ${psiRes.status}. The URL may be unreachable or blocked.` },
       { status: 502 }
