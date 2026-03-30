@@ -72,56 +72,57 @@ function scoreTraffic(s: ConstraintSignals["traffic"]): BucketScore {
   const signals: string[] = [];
   let score = 100;
 
-  // Budget-constrained IS loss is the clearest traffic constraint
-  if (s.impressionShareLost_budget > 0.3) {
+  // Budget IS loss — only flag when genuinely constraining (> 35%)
+  if (s.impressionShareLost_budget > 0.35) {
     const pct = Math.round(s.impressionShareLost_budget * 100);
     score -= Math.min(35, pct);
-    signals.push(`${pct}% impression share lost to budget — underfunded campaigns`);
+    signals.push(`${pct}% impression share lost to budget — campaigns are underfunded`);
+  } else if (s.impressionShareLost_budget > 0.15) {
+    // Minor IS loss: deduct silently — not worth a red signal
+    score -= Math.round(s.impressionShareLost_budget * 30);
   }
 
-  // Quality-driven IS loss means we're losing to better ads
-  if (s.impressionShareLost_rank > 0.25) {
+  // Rank IS loss — flag when consistently losing to quality/bid (> 30%)
+  if (s.impressionShareLost_rank > 0.3) {
     const pct = Math.round(s.impressionShareLost_rank * 100);
     score -= Math.min(25, pct);
-    signals.push(`${pct}% impression share lost to rank — quality or bid issue`);
+    signals.push(`${pct}% impression share lost to rank — quality score or bid needs attention`);
+  } else if (s.impressionShareLost_rank > 0.15) {
+    score -= Math.round(s.impressionShareLost_rank * 25);
   }
 
-  // CTR: use trend vs own baseline when available; absolute threshold as fallback
+  // CTR: only compare trend vs account's own baseline — no arbitrary absolute threshold
   if (s.clickThroughRateBaseline > 0) {
     const ctrTrend = s.clickThroughRate / s.clickThroughRateBaseline;
-    if (ctrTrend < 0.7) {
+    if (ctrTrend < 0.65) {
       score -= 20;
-      signals.push(`CTR down ${Math.round((1 - ctrTrend) * 100)}% vs account's 6-month average — ad relevance deteriorating`);
-    } else if (ctrTrend < 0.85) {
+      signals.push(`CTR down ${Math.round((1 - ctrTrend) * 100)}% vs account's 6-month average — ads losing relevance`);
+    } else if (ctrTrend < 0.80) {
       score -= 8;
-      signals.push(`CTR down ${Math.round((1 - ctrTrend) * 100)}% vs account's 6-month average — watch trend`);
+      signals.push(`CTR down ${Math.round((1 - ctrTrend) * 100)}% vs account's 6-month average — worth monitoring`);
     }
-  } else {
-    // Fallback: absolute threshold (no history yet)
-    if (s.clickThroughRate < 0.02) {
-      score -= 15;
-      signals.push(`CTR ${(s.clickThroughRate * 100).toFixed(1)}% — below 2% threshold (no history to compare yet)`);
-    } else if (s.clickThroughRate < 0.04) {
-      score -= 5;
-      signals.push(`CTR ${(s.clickThroughRate * 100).toFixed(1)}% has room to improve`);
-    }
+    // Within 20% of own baseline: no signal
   }
+  // No absolute CTR threshold without history — not enough context to flag it
 
-  if (s.qualityScoreAvg < 6) {
-    score -= 15;
-    signals.push(`Avg quality score ${s.qualityScoreAvg.toFixed(1)}/10 — below threshold`);
-  } else if (s.qualityScoreAvg < 7) {
-    score -= 5;
-    signals.push(`Avg quality score ${s.qualityScoreAvg.toFixed(1)}/10 — moderate`);
+  // Quality score — only flag genuinely poor scores (< 5)
+  if (s.qualityScoreAvg < 5) {
+    score -= 20;
+    signals.push(`Avg quality score ${s.qualityScoreAvg.toFixed(1)}/10 — poor ad/keyword/page relevance`);
+  } else if (s.qualityScoreAvg < 6) {
+    score -= 8;
+    signals.push(`Avg quality score ${s.qualityScoreAvg.toFixed(1)}/10 — below average`);
   }
+  // 6-7: deduct silently; 7+: healthy
 
-  if (s.irrelevantQueryPercent > 0.2) {
+  // Irrelevant queries — only flag when material waste (> 25% of budget)
+  if (s.irrelevantQueryPercent > 0.25) {
     const pct = Math.round(s.irrelevantQueryPercent * 100);
     score -= Math.min(20, pct);
-    signals.push(`~${pct}% of spend on irrelevant queries — negative keywords needed`);
+    signals.push(`~${pct}% of spend on non-converting queries — add negative keywords`);
   }
 
-  if (s.searchImpressionShare > 0.7 && s.impressionShareLost_budget < 0.1) {
+  if (s.searchImpressionShare > 0.7 && s.impressionShareLost_budget < 0.15) {
     signals.push("Strong impression share — traffic not the primary constraint");
   }
 
@@ -166,23 +167,19 @@ function scoreConversion(s: ConstraintSignals["conversion"]): BucketScore {
     }
     // cvrTrend ≥ 0.93: stable or improving — no penalty
   } else {
-    // FALLBACK: industry benchmark — only when no historical data yet
+    // FALLBACK: industry benchmark — only when <100 baseline clicks; treat as informational only
+    // Very conservative thresholds since benchmarks don't account for audience or market
     const cvRatio = s.industryBenchmarkConversionRate > 0
       ? s.conversionRate / s.industryBenchmarkConversionRate
       : 1;
-    if (cvRatio < 0.3) {
-      score -= 20;
+    if (cvRatio < 0.2) {
+      // Extremely far below any reasonable benchmark — likely tracking issue or broken funnel
+      score -= 15;
       signals.push(
-        `CVR ${(s.conversionRate * 100).toFixed(2)}% is well below industry benchmark ` +
-        `(${(s.industryBenchmarkConversionRate * 100).toFixed(2)}%) — no history yet to confirm trend`
-      );
-    } else if (cvRatio < 0.6) {
-      score -= 8;
-      signals.push(
-        `CVR ${(s.conversionRate * 100).toFixed(2)}% below industry benchmark ` +
-        `(${(s.industryBenchmarkConversionRate * 100).toFixed(2)}%) — building history to confirm`
+        `CVR ${(s.conversionRate * 100).toFixed(2)}% is very low vs industry benchmark — check conversion tracking`
       );
     }
+    // Above 20% of benchmark: not enough context to flag without own history
   }
 
   // Mobile-friendly clicks — only penalise when we have real measured data (> 0)
@@ -267,49 +264,58 @@ function scoreEconomics(s: ConstraintSignals["economics"]): BucketScore {
   const signals: string[] = [];
   let score = 100;
 
+  // Detect account type: ecommerce has conversion values (AOV > 0) → ROAS is the primary metric.
+  // Lead gen has no conversion value (AOV = 0) → CPA is the primary metric.
+  const isEcommerce = s.avgOrderValue > 0 || s.targetRoas > 0;
+
+  // ── ROAS (ecommerce primary) ───────────────────────────────────────────────
   if (s.targetRoas > 0 && s.actualRoas > 0) {
     const roasRatio = s.actualRoas / s.targetRoas;
     if (roasRatio < 0.7) {
       score -= 35;
-      signals.push(`ROAS ${s.actualRoas.toFixed(1)}x vs target ${s.targetRoas.toFixed(1)}x — not profitable`);
+      signals.push(`ROAS ${s.actualRoas.toFixed(1)}x vs target ${s.targetRoas.toFixed(1)}x — significantly below target`);
     } else if (roasRatio < 0.9) {
       score -= 15;
       signals.push(`ROAS ${s.actualRoas.toFixed(1)}x vs target ${s.targetRoas.toFixed(1)}x — below target`);
     }
+    // Within 10% of target: healthy, no signal
   }
 
-  // ROAS trend vs own 6-month baseline (independent of targets)
+  // ROAS trend vs own 6-month baseline
   if (s.actualRoasBaseline > 0 && s.actualRoas > 0) {
     const roasTrend = s.actualRoas / s.actualRoasBaseline;
-    if (roasTrend < 0.7) {
+    if (roasTrend < 0.65) {
       score -= 20;
-      signals.push(`ROAS down ${Math.round((1 - roasTrend) * 100)}% vs account's 6-month average (${s.actualRoas.toFixed(1)}x vs ${s.actualRoasBaseline.toFixed(1)}x)`);
-    } else if (roasTrend < 0.85) {
+      signals.push(`ROAS down ${Math.round((1 - roasTrend) * 100)}% vs 6-month average (${s.actualRoas.toFixed(1)}x vs ${s.actualRoasBaseline.toFixed(1)}x)`);
+    } else if (roasTrend < 0.80) {
       score -= 8;
       signals.push(`ROAS trending down vs 6-month average (${s.actualRoas.toFixed(1)}x vs ${s.actualRoasBaseline.toFixed(1)}x)`);
     }
+    // Within 20% of own baseline: normal variation, no signal
   }
 
-  if (s.targetCpa > 0 && s.actualCpa > 0) {
-    const cpaRatio = s.actualCpa / s.targetCpa;
-    if (cpaRatio > 1.5) {
-      score -= 25;
-      signals.push(`CPA ${s.actualCpa.toFixed(0)} is ${Math.round((cpaRatio - 1) * 100)}% over target`);
-    } else if (cpaRatio > 1.1) {
-      score -= 10;
-      signals.push(`CPA ${s.actualCpa.toFixed(0)} slightly above target`);
+  // ── CPA (lead gen primary — skip for ecommerce where ROAS governs) ─────────
+  if (!isEcommerce) {
+    if (s.targetCpa > 0 && s.actualCpa > 0) {
+      const cpaRatio = s.actualCpa / s.targetCpa;
+      if (cpaRatio > 1.5) {
+        score -= 25;
+        signals.push(`CPA ${s.actualCpa.toFixed(0)} is ${Math.round((cpaRatio - 1) * 100)}% over target`);
+      } else if (cpaRatio > 1.15) {
+        score -= 10;
+        signals.push(`CPA ${s.actualCpa.toFixed(0)} slightly above target`);
+      }
     }
-  }
 
-  // CPA trend vs own 6-month baseline
-  if (s.actualCpaBaseline > 0 && s.actualCpa > 0) {
-    const cpaTrend = s.actualCpa / s.actualCpaBaseline;
-    if (cpaTrend > 1.4) {
-      score -= 15;
-      signals.push(`CPA up ${Math.round((cpaTrend - 1) * 100)}% vs account's 6-month average (${s.actualCpa.toFixed(0)} vs ${s.actualCpaBaseline.toFixed(0)})`);
-    } else if (cpaTrend > 1.2) {
-      score -= 6;
-      signals.push(`CPA creeping up vs 6-month average (${s.actualCpa.toFixed(0)} vs ${s.actualCpaBaseline.toFixed(0)})`);
+    if (s.actualCpaBaseline > 0 && s.actualCpa > 0) {
+      const cpaTrend = s.actualCpa / s.actualCpaBaseline;
+      if (cpaTrend > 1.5) {
+        score -= 15;
+        signals.push(`CPA up ${Math.round((cpaTrend - 1) * 100)}% vs 6-month average (${s.actualCpa.toFixed(0)} vs ${s.actualCpaBaseline.toFixed(0)})`);
+      } else if (cpaTrend > 1.3) {
+        score -= 6;
+        // Minor CPA drift: deduct silently — not worth a red signal on its own
+      }
     }
   }
 

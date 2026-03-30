@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, RefreshCw, MessageSquare, ListChecks, BarChart2, Loader2, Search, BookOpen, ClipboardList, Send, Pencil, X, CheckSquare, Sparkles, Package, Gauge } from "lucide-react";
+import { ArrowLeft, RefreshCw, MessageSquare, ListChecks, BarChart2, Loader2, Search, BookOpen, ClipboardList, Send, Pencil, X, CheckSquare, Sparkles, Package, Brain } from "lucide-react";
 import { ScoreBuckets } from "@/components/ScoreBuckets";
 import { ScoreHistory } from "@/components/ScoreHistory";
 import { ActionList } from "@/components/ActionList";
@@ -897,22 +897,19 @@ function IntelligencePanel({ accountId }: { accountId: string }) {
   );
 }
 
-// ─── PageSpeed Panel ──────────────────────────────────────────────────────────
+// ─── Landing Page AI Analysis Panel ──────────────────────────────────────────
 
-interface PageSpeedResult {
-  url: string;
-  performanceScore: number;
-  lcp:        string | null;
-  cls:        string | null;
-  fid:        string | null;
-  ttfb:       string | null;
-  speedIndex: string | null;
-  opportunities: { id: string; title: string; savings: string | null }[];
+interface LandingAnalysis {
+  score: number;
+  mobileReady: boolean;
+  strengths: string[];
+  issues: { severity: "high" | "medium" | "low"; text: string }[];
+  topRecommendation: string;
 }
 
-function PageSpeedPanel({ accountId, landingPageUrl }: { accountId: string; landingPageUrl: string | null }) {
+function LandingAnalysisPanel({ accountId, landingPageUrl }: { accountId: string; landingPageUrl: string | null }) {
   const [loading, setLoading] = useState(false);
-  const [result,  setResult]  = useState<PageSpeedResult | null>(null);
+  const [result,  setResult]  = useState<LandingAnalysis | null>(null);
   const [error,   setError]   = useState<string | null>(null);
 
   if (!landingPageUrl) return null;
@@ -922,9 +919,9 @@ function PageSpeedPanel({ accountId, landingPageUrl }: { accountId: string; land
     setError(null);
     setResult(null);
     try {
-      const res  = await fetch(`/api/accounts/${accountId}/pagespeed`);
+      const res  = await fetch(`/api/accounts/${accountId}/landing-analysis`, { method: "POST" });
       const data = await res.json();
-      if (!res.ok) { setError(data.error ?? "PageSpeed check failed"); return; }
+      if (!res.ok) { setError(data.error ?? "Analysis failed"); return; }
       setResult(data);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Request failed");
@@ -933,10 +930,9 @@ function PageSpeedPanel({ accountId, landingPageUrl }: { accountId: string; land
     }
   };
 
-  const scoreColor = (s: number) =>
-    s >= 90 ? "#4ade80" : s >= 50 ? "#fbbf24" : "#f87171";
-  const scoreLabel = (s: number) =>
-    s >= 90 ? "Good" : s >= 50 ? "Needs improvement" : "Poor";
+  const scoreColor = (s: number) => s >= 75 ? "#4ade80" : s >= 50 ? "#fbbf24" : "#f87171";
+  const scoreLabel = (s: number) => s >= 75 ? "Good" : s >= 50 ? "Needs work" : "Poor";
+  const sevColor = (sev: string) => sev === "high" ? "#f87171" : sev === "medium" ? "#fbbf24" : "var(--text-dim)";
 
   return (
     <div style={{
@@ -945,12 +941,12 @@ function PageSpeedPanel({ accountId, landingPageUrl }: { accountId: string; land
     }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <Gauge size={13} style={{ color: "var(--text-dim)" }} />
+          <Brain size={13} style={{ color: "var(--text-dim)" }} />
           <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.8px", textTransform: "uppercase", color: "var(--text-dim)" }}>
-            PageSpeed
+            Landing Page Analysis
           </span>
           <span style={{ fontSize: 11, color: "var(--text-faint)" }}>
-            mobile · {landingPageUrl.replace(/^https?:\/\//, "").replace(/\/$/, "")}
+            AI · CRO review
           </span>
         </div>
         <button
@@ -960,79 +956,74 @@ function PageSpeedPanel({ accountId, landingPageUrl }: { accountId: string; land
             display: "flex", alignItems: "center", gap: 5,
             background: "transparent", border: "1px solid var(--border-2)",
             borderRadius: 6, padding: "4px 10px",
-            fontSize: 11, fontWeight: 500, color: loading ? "var(--text-faint)" : "var(--text-muted)",
+            fontSize: 11, fontWeight: 500,
+            color: loading ? "var(--text-faint)" : "var(--text-muted)",
             cursor: loading ? "default" : "pointer",
           }}
         >
           {loading
-            ? <><Loader2 size={11} className="animate-spin" /> Checking…</>
-            : <><RefreshCw size={11} /> {result ? "Re-check" : "Check now"}</>}
+            ? <><Loader2 size={11} className="animate-spin" /> Analysing…</>
+            : <><Sparkles size={11} /> {result ? "Re-analyse" : "Analyse"}</>}
         </button>
       </div>
 
       {!result && !error && !loading && (
         <p style={{ fontSize: 12, color: "var(--text-faint)", marginTop: 10, lineHeight: 1.5 }}>
-          Runs Google PageSpeed Insights against your landing page (mobile). Takes ~10 seconds. No API key needed.
+          Claude fetches your landing page and reviews it for conversion readiness — value prop, CTA, trust signals, mobile experience. Takes ~10s.
         </p>
       )}
 
-      {error && (
-        <p style={{ fontSize: 12, color: "#f87171", marginTop: 10 }}>{error}</p>
-      )}
+      {error && <p style={{ fontSize: 12, color: "#f87171", marginTop: 10 }}>{error}</p>}
 
       {result && (
         <div style={{ marginTop: 14 }}>
-          {/* Score badge */}
-          <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 14 }}>
-            <span style={{
-              fontSize: 40, fontWeight: 800, lineHeight: 1, letterSpacing: "-2px",
-              color: scoreColor(result.performanceScore),
-            }}>
-              {result.performanceScore}
+          <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 14 }}>
+            <span style={{ fontSize: 40, fontWeight: 800, lineHeight: 1, letterSpacing: "-2px", color: scoreColor(result.score) }}>
+              {result.score}
             </span>
             <div>
-              <div style={{ fontSize: 12, fontWeight: 600, color: scoreColor(result.performanceScore) }}>
-                {scoreLabel(result.performanceScore)}
-              </div>
+              <div style={{ fontSize: 12, fontWeight: 600, color: scoreColor(result.score) }}>{scoreLabel(result.score)}</div>
               <div style={{ fontSize: 10, color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: "0.4px" }}>
-                Performance score
+                CRO score · {result.mobileReady ? "✓ Mobile ready" : "✗ Mobile issues"}
               </div>
             </div>
           </div>
 
-          {/* Core Web Vitals */}
-          <div style={{ display: "flex", gap: 20, flexWrap: "wrap", marginBottom: result.opportunities.length > 0 ? 14 : 0 }}>
-            {[
-              { label: "LCP",   value: result.lcp,        hint: "Largest contentful paint" },
-              { label: "CLS",   value: result.cls,        hint: "Cumulative layout shift" },
-              { label: "TTFB",  value: result.ttfb,       hint: "Server response time" },
-              { label: "Speed", value: result.speedIndex, hint: "Speed index" },
-            ].filter(m => m.value).map(m => (
-              <div key={m.label}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-2)", letterSpacing: "-0.3px", lineHeight: 1 }}>
-                  {m.value}
-                </div>
-                <div style={{ fontSize: 10, color: "var(--text-faint)", marginTop: 2, textTransform: "uppercase", letterSpacing: "0.4px" }}>
-                  {m.label}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Top opportunities */}
-          {result.opportunities.length > 0 && (
-            <div style={{ borderTop: "1px solid var(--border)", paddingTop: 10 }}>
-              <div style={{ fontSize: 10, fontWeight: 600, color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: "0.4px", marginBottom: 6 }}>
-                Top opportunities
-              </div>
-              {result.opportunities.map(o => (
-                <div key={o.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, paddingBottom: 4 }}>
-                  <span style={{ fontSize: 11, color: "var(--text-dim)", lineHeight: 1.4 }}>{o.title}</span>
-                  {o.savings && (
-                    <span style={{ fontSize: 10, color: "#fbbf24", flexShrink: 0 }}>{o.savings}</span>
-                  )}
+          {result.issues.length > 0 && (
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 10, fontWeight: 600, color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: "0.4px", marginBottom: 6 }}>Issues</div>
+              {result.issues.map((issue, i) => (
+                <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start", paddingBottom: 5, fontSize: 12 }}>
+                  <span style={{ color: sevColor(issue.severity), fontWeight: 700, flexShrink: 0, marginTop: 1 }}>
+                    {issue.severity === "high" ? "●" : issue.severity === "medium" ? "◐" : "○"}
+                  </span>
+                  <span style={{ color: "var(--text-dim)", lineHeight: 1.4 }}>{issue.text}</span>
                 </div>
               ))}
+            </div>
+          )}
+
+          {result.strengths.length > 0 && (
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 10, fontWeight: 600, color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: "0.4px", marginBottom: 6 }}>Strengths</div>
+              {result.strengths.map((s, i) => (
+                <div key={i} style={{ display: "flex", gap: 8, paddingBottom: 4, fontSize: 12 }}>
+                  <span style={{ color: "#4ade80" }}>✓</span>
+                  <span style={{ color: "var(--text-dim)" }}>{s}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {result.topRecommendation && (
+            <div style={{
+              background: "rgba(192,132,252,0.06)", border: "1px solid rgba(192,132,252,0.2)",
+              borderRadius: 8, padding: "10px 12px",
+            }}>
+              <div style={{ fontSize: 10, fontWeight: 600, color: "#c084fc", textTransform: "uppercase", letterSpacing: "0.4px", marginBottom: 4 }}>
+                Top recommendation
+              </div>
+              <p style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.55, margin: 0 }}>{result.topRecommendation}</p>
             </div>
           )}
         </div>
@@ -1375,8 +1366,8 @@ export default function AccountPage() {
                     Bucket health
                   </span>
                 </div>
-                {/* PageSpeed — inline check, no API key required */}
-                <PageSpeedPanel accountId={id} landingPageUrl={account.landingPageUrl ?? null} />
+                {/* Landing page AI CRO review */}
+                <LandingAnalysisPanel accountId={id} landingPageUrl={account.landingPageUrl ?? null} />
 
                 <ScoreBuckets buckets={buckets} accountId={id} />
 
