@@ -537,9 +537,25 @@ async function fetchTrafficSignals(customer: Customer): Promise<TrafficSignals> 
   const qsValues = qsRows
     .map((r) => Number(r.ad_group_criterion?.quality_info?.quality_score ?? 0))
     .filter((v) => v > 0);
+  const qualityScoreCount = qsValues.length;
   const qualityScoreAvg = qsValues.length > 0
     ? qsValues.reduce((a, b) => a + b, 0) / qsValues.length
     : 7; // default if no data
+
+  // Product disapproval rate — relevant for Shopping / PMax feed-only accounts
+  const allProductRows = await safeQuery(
+    () => customer.query(`
+      SELECT shopping_product.item_id, shopping_product.status
+      FROM shopping_product
+    `),
+    "product statuses"
+  );
+  const totalProducts      = allProductRows.length;
+  const disapprovedProducts = allProductRows.filter(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (r) => (r as any).shopping_product?.status === "DISAPPROVED"
+  ).length;
+  const productDisapprovalRate = totalProducts > 0 ? disapprovedProducts / totalProducts : 0;
 
   // Irrelevant query estimate — search terms with 0 conversions & low QS
   const searchTermRows = await safeQuery(
@@ -600,6 +616,8 @@ async function fetchTrafficSignals(customer: Customer): Promise<TrafficSignals> 
     averageCpc:                  avgCpc,
     searchImpressionShare:       Math.min(1, avgIs),
     qualityScoreAvg,
+    qualityScoreCount,
+    productDisapprovalRate,
     irrelevantQueryPercent:      Math.min(1, irrelevantQueryPercent),
   };
 }

@@ -24,9 +24,9 @@ const BUCKET_CHECKS: Record<string, CheckDef[]> = {
   ],
   TRAFFIC: [
     { id: "is_budget",    label: "Budget impression share loss", what: "% of auctions lost because daily budget ran out",        threshold: "< 30% lost" },
-    { id: "is_rank",      label: "Rank impression share loss",   what: "% of auctions lost due to low quality score or bid",     threshold: "< 25% lost" },
+    { id: "is_rank",      label: "Rank impression share loss",   what: "% of auctions lost due to low bid or ad relevance",      threshold: "< 25% lost" },
     { id: "ctr",          label: "Click-through rate",           what: "Clicks ÷ impressions — proxy for ad relevance",          threshold: "≥ 2%" },
-    { id: "quality_score",label: "Average quality score",        what: "Google's 1–10 rating of ad + keyword + page relevance",  threshold: "≥ 7 / 10" },
+    { id: "feed_health",  label: "Product feed health",          what: "% of products disapproved in Merchant Center — disapproved products don't serve in Shopping or PMax", threshold: "< 5% disapproved" },
     { id: "irrel_queries",label: "Irrelevant query spend",       what: "Estimated % of budget on searches that won't convert",   threshold: "< 20% wasted" },
   ],
   CONVERSION: [
@@ -95,7 +95,7 @@ const CHECK_KEYWORDS: Record<string, string[]> = {
   is_budget:          ["lost to budget", "impression share lost to budget"],
   is_rank:            ["lost to rank", "impression share lost to rank"],
   ctr:                ["ctr"],
-  quality_score:      ["quality score"],
+  feed_health:        ["disapproved", "feed health"],
   irrel_queries:      ["irrelevant queries", "irrelevant query"],
   cvr_benchmark:      ["cvr", "conversion rate", "industry benchmark", "no conversions recorded"],
   mobile_speed:       ["mobile-friendly click rate", "mobile speed"],

@@ -86,7 +86,7 @@ function scoreTraffic(s: ConstraintSignals["traffic"]): BucketScore {
   if (s.impressionShareLost_rank > 0.3) {
     const pct = Math.round(s.impressionShareLost_rank * 100);
     score -= Math.min(25, pct);
-    signals.push(`${pct}% impression share lost to rank — quality score or bid needs attention`);
+    signals.push(`${pct}% impression share lost to rank — bid amount or ad relevance needs attention`);
   } else if (s.impressionShareLost_rank > 0.15) {
     score -= Math.round(s.impressionShareLost_rank * 25);
   }
@@ -105,15 +105,30 @@ function scoreTraffic(s: ConstraintSignals["traffic"]): BucketScore {
   }
   // No absolute CTR threshold without history — not enough context to flag it
 
-  // Quality score — only flag genuinely poor scores (< 5)
-  if (s.qualityScoreAvg < 5) {
-    score -= 20;
-    signals.push(`Avg quality score ${s.qualityScoreAvg.toFixed(1)}/10 — poor ad/keyword/page relevance`);
-  } else if (s.qualityScoreAvg < 6) {
-    score -= 8;
-    signals.push(`Avg quality score ${s.qualityScoreAvg.toFixed(1)}/10 — below average`);
+  // Quality score (Search/DSA) vs feed health (Shopping/PMax) — mutually exclusive
+  if (s.qualityScoreCount > 0) {
+    // Search account: evaluate QS from keyword data
+    if (s.qualityScoreAvg < 5) {
+      score -= 20;
+      signals.push(`Avg quality score ${s.qualityScoreAvg.toFixed(1)}/10 — poor ad/keyword/page relevance`);
+    } else if (s.qualityScoreAvg < 6) {
+      score -= 8;
+      signals.push(`Avg quality score ${s.qualityScoreAvg.toFixed(1)}/10 — below average`);
+    }
+    // 6–7: deduct silently; 7+: healthy
+  } else {
+    // Feed-only account (Shopping / PMax): use product disapproval rate instead
+    if (s.productDisapprovalRate > 0.2) {
+      const pct = Math.round(s.productDisapprovalRate * 100);
+      score -= Math.min(25, Math.round(pct * 1.2));
+      signals.push(`${pct}% of products disapproved in Merchant Center — feed health issues reducing reach`);
+    } else if (s.productDisapprovalRate > 0.05) {
+      const pct = Math.round(s.productDisapprovalRate * 100);
+      score -= 10;
+      signals.push(`${pct}% of products disapproved — fix feed issues to improve reach`);
+    }
+    // < 5%: healthy, no signal
   }
-  // 6-7: deduct silently; 7+: healthy
 
   // Irrelevant queries — only flag when material waste (> 25% of budget)
   if (s.irrelevantQueryPercent > 0.25) {

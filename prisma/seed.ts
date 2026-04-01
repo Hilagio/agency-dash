@@ -37,6 +37,8 @@ const acme_signals: ConstraintSignals = {
     averageCpc: 2.4,
     searchImpressionShare: 0.47,
     qualityScoreAvg: 7.2,
+    qualityScoreCount: 120,
+    productDisapprovalRate: 0,
     irrelevantQueryPercent: 0.22,
   },
   conversion: {
@@ -88,6 +90,8 @@ const nova_signals: ConstraintSignals = {
     averageCpc: 1.8,
     searchImpressionShare: 0.78,
     qualityScoreAvg: 8.1,
+    qualityScoreCount: 0,
+    productDisapprovalRate: 0.03,
     irrelevantQueryPercent: 0.08,
   },
   conversion: {

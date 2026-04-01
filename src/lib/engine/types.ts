@@ -43,6 +43,8 @@ export interface TrafficSignals {
   averageCpc: number;                      // absolute value
   searchImpressionShare: number;           // 0–1
   qualityScoreAvg: number;                 // 1–10
+  qualityScoreCount: number;               // 0 = no keywords / feed-only account
+  productDisapprovalRate: number;          // 0–1 (disapproved ÷ total products; 0 = no shopping data)
   irrelevantQueryPercent: number;          // 0–1 (estimated % of budget wasted)
 }
 

@@ -148,7 +148,7 @@ const trafficRules: RuleSet = (s) => {
     });
   }
 
-  if (t.qualityScoreAvg < 6) {
+  if (t.qualityScoreCount > 0 && t.qualityScoreAvg < 6) {
     recs.push({
       bucket: "TRAFFIC",
       title: "Improve ad relevance to raise Quality Score",
@@ -159,6 +159,22 @@ const trafficRules: RuleSet = (s) => {
       effort: "MEDIUM",
       safeToAutomate: false,
       actionType: "IMPROVE_QUALITY_SCORE",
+      isEscalation: false,
+    });
+  }
+
+  if (t.productDisapprovalRate > 0.05) {
+    const pct = Math.round(t.productDisapprovalRate * 100);
+    recs.push({
+      bucket: "TRAFFIC",
+      title: "Fix disapproved products in Merchant Center",
+      description:
+        `${pct}% of products are disapproved and not serving. Review Merchant Center diagnostics — ` +
+        "common causes: missing GTINs, policy violations, price mismatches between feed and landing page.",
+      impact: "HIGH",
+      effort: "MEDIUM",
+      safeToAutomate: false,
+      actionType: "FIX_FEED_DISAPPROVALS",
       isEscalation: false,
     });
   }
