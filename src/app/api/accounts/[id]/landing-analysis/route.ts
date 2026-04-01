@@ -45,15 +45,27 @@ export async function POST(req: NextRequest, { params }: Params) {
   try {
     const pageRes = await fetch(url, {
       headers: {
-        "User-Agent": "Mozilla/5.0 (compatible; AgencyDash/1.0; CRO-Audit)",
-        "Accept":     "text/html,application/xhtml+xml",
+        "User-Agent":                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "Accept":                    "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+        "Accept-Language":           "en-US,en;q=0.9",
+        "Accept-Encoding":           "gzip, deflate, br",
+        "Cache-Control":             "no-cache",
+        "Pragma":                    "no-cache",
+        "Sec-Fetch-Dest":            "document",
+        "Sec-Fetch-Mode":            "navigate",
+        "Sec-Fetch-Site":            "none",
+        "Sec-Fetch-User":            "?1",
+        "Upgrade-Insecure-Requests": "1",
       },
       signal: AbortSignal.timeout(15_000),
     });
 
     if (!pageRes.ok) {
+      const hint = pageRes.status === 403
+        ? "The site is blocking automated requests (bot protection). Check if the store is password-protected."
+        : "Check the URL is publicly accessible.";
       return NextResponse.json(
-        { error: `Could not fetch the landing page (HTTP ${pageRes.status}).` },
+        { error: `HTTP ${pageRes.status} — ${hint}` },
         { status: 400 }
       );
     }
