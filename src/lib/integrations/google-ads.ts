@@ -1034,7 +1034,8 @@ export interface SearchTermRow {
   campaignName: string;
   clicks:       number;
   conversions:  number;
-  costEur:      number; // cost in account currency
+  costEur:      number; // 0 for PMax — cost not available per-term
+  source:       "search" | "pmax"; // "search" = Search + STD Shopping via search_term_view
   recommendation: "EXCLUDE" | "WATCH" | "KEEP";
 }
 
@@ -1042,15 +1043,21 @@ export interface SearchTermRow {
 //   EXCLUDE — zero conversions and spent > €30: meaningful budget leak worth acting on
 //   WATCH   — zero conversions and spent > €5:  accumulating spend, keep an eye on it
 //   KEEP    — has conversions or minimal spend: leave alone
-const EXCLUDE_COST_THRESHOLD = 30;
-const WATCH_COST_THRESHOLD   = 5;
+const EXCLUDE_COST_THRESHOLD  = 30;
+const WATCH_COST_THRESHOLD    = 5;
+// PMax: no cost per term — use click volume as proxy for wasted reach
+const PMAX_EXCLUDE_CLICKS     = 30;
+const PMAX_WATCH_CLICKS       = 10;
+// Cap insight categories fetched per PMax campaign to keep API calls bounded
+const PMAX_MAX_INSIGHTS       = 150;
 
 export async function fetchSearchTermReport(customerId: string, orgId?: string): Promise<SearchTermRow[]> {
   const client   = getClient();
   const customer = await getCustomer(client, customerId, orgId);
-  const { start, end } = last90Days(); // 90-day window for meaningful spend signal
+  const { start, end } = last90Days();
 
-  const rows = await safeQuery(
+  // ── 1. Search + Standard Shopping via search_term_view ────────────────────
+  const searchRows = await safeQuery(
     () => customer.query(`
       SELECT
         search_term_view.search_term,
@@ -1068,29 +1075,106 @@ export async function fetchSearchTermReport(customerId: string, orgId?: string):
     "search term report"
   );
 
-  return rows
+  const searchTerms: SearchTermRow[] = searchRows
     .map((r): SearchTermRow => {
       const clicks      = Number(r.metrics?.clicks      ?? 0);
       const conversions = Number(r.metrics?.conversions  ?? 0);
       const costEur     = Number(r.metrics?.cost_micros  ?? 0) / 1_000_000;
-
-      // Cost-based thresholds: only flag when there's meaningful spend to recover
       const recommendation: SearchTermRow["recommendation"] =
         conversions === 0 && costEur >= EXCLUDE_COST_THRESHOLD ? "EXCLUDE" :
         conversions === 0 && costEur >= WATCH_COST_THRESHOLD   ? "WATCH"   : "KEEP";
-
       return {
         searchTerm:   r.search_term_view?.search_term ?? "",
         campaignId:   String(r.campaign?.id   ?? ""),
         campaignName: r.campaign?.name ?? "Unknown campaign",
-        clicks,
-        conversions,
-        costEur,
+        clicks, conversions, costEur,
+        source: "search",
         recommendation,
       };
     })
-    .filter(r => r.searchTerm.length > 0)
-    .sort((a, b) => b.costEur - a.costEur); // highest spend first
+    .filter(r => r.searchTerm.length > 0);
+
+  // ── 2. Performance Max via campaign_search_term_insight ───────────────────
+  // PMax terms are not in search_term_view; they require per-campaign queries.
+  // Google does not expose cost per search term for PMax, so we use click
+  // volume as the exclusion signal instead.
+  const pmaxCampaigns = await safeQuery(
+    () => customer.query(`
+      SELECT campaign.id, campaign.name
+      FROM campaign
+      WHERE campaign.status = 'ENABLED'
+        AND campaign.advertising_channel_type = 'PERFORMANCE_MAX'
+    `),
+    "pmax campaigns"
+  );
+
+  const pmaxTerms: SearchTermRow[] = [];
+
+  for (const camp of pmaxCampaigns) {
+    const campaignId   = String(camp.campaign?.id   ?? "");
+    const campaignName = String(camp.campaign?.name ?? "Unknown PMax campaign");
+    if (!campaignId) continue;
+
+    // Query all insight categories for this campaign with their search terms.
+    // Filter by campaign_id only (not insight_id) — returns all categories.
+    const insightRows = await safeQuery(
+      () => customer.query(`
+        SELECT
+          campaign_search_term_insight.id,
+          campaign_search_term_insight.category_label,
+          segments.search_term,
+          metrics.clicks,
+          metrics.impressions,
+          metrics.conversions,
+          metrics.conversions_value
+        FROM campaign_search_term_insight
+        WHERE campaign_search_term_insight.campaign_id = ${campaignId}
+          AND segments.date BETWEEN '${start}' AND '${end}'
+          AND metrics.clicks >= 1
+        LIMIT ${PMAX_MAX_INSIGHTS}
+      `),
+      `pmax insights campaign ${campaignId}`
+    );
+
+    for (const r of insightRows) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const searchTerm  = (r as any).segments?.search_term ?? "";
+      const clicks      = Number(r.metrics?.clicks      ?? 0);
+      const conversions = Number(r.metrics?.conversions  ?? 0);
+      if (!searchTerm) continue;
+
+      const recommendation: SearchTermRow["recommendation"] =
+        conversions === 0 && clicks >= PMAX_EXCLUDE_CLICKS ? "EXCLUDE" :
+        conversions === 0 && clicks >= PMAX_WATCH_CLICKS   ? "WATCH"   : "KEEP";
+
+      pmaxTerms.push({
+        searchTerm,
+        campaignId,
+        campaignName,
+        clicks,
+        conversions,
+        costEur: 0, // not available per-term for PMax
+        source: "pmax",
+        recommendation,
+      });
+    }
+  }
+
+  // Deduplicate: if a term appears in both search and PMax, keep both (different campaigns)
+  const all = [...searchTerms, ...pmaxTerms];
+
+  // Sort: Search/Shopping by cost desc, PMax by clicks desc; interleave by putting
+  // high-signal terms first regardless of source
+  return all.sort((a, b) => {
+    // EXCLUDE > WATCH > KEEP
+    const recOrder = { EXCLUDE: 0, WATCH: 1, KEEP: 2 };
+    const recDiff  = recOrder[a.recommendation] - recOrder[b.recommendation];
+    if (recDiff !== 0) return recDiff;
+    // Within same recommendation: sort by costEur (search) or clicks (pmax)
+    if (a.source === "search" && b.source === "search") return b.costEur - a.costEur;
+    if (a.source === "pmax"   && b.source === "pmax")   return b.clicks  - a.clicks;
+    return b.costEur - a.costEur; // search terms with cost first
+  });
 }
 
 export async function isGoogleAdsConfigured(orgId?: string): Promise<boolean> {

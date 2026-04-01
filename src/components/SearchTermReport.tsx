@@ -10,6 +10,7 @@ interface SearchTermRow {
   clicks:         number;
   conversions:    number;
   costEur:        number;
+  source:         "search" | "pmax";
   recommendation: "EXCLUDE" | "WATCH" | "KEEP";
 }
 
@@ -93,10 +94,12 @@ export function SearchTermReport({ accountId }: { accountId: string }) {
   if (!rows) return null;
 
   // Summary stats
-  const excludeRows = rows.filter(r => r.recommendation === "EXCLUDE");
-  const watchRows   = rows.filter(r => r.recommendation === "WATCH");
-  const keepRows    = rows.filter(r => r.recommendation === "KEEP");
-  const wastedTotal = excludeRows.reduce((s, r) => s + r.costEur, 0);
+  const excludeRows  = rows.filter(r => r.recommendation === "EXCLUDE");
+  const watchRows    = rows.filter(r => r.recommendation === "WATCH");
+  const keepRows     = rows.filter(r => r.recommendation === "KEEP");
+  const hasPmax      = rows.some(r => r.source === "pmax");
+  // Wasted cost only applies to Search/Shopping — PMax has no per-term cost data
+  const wastedTotal  = excludeRows.filter(r => r.source === "search").reduce((s, r) => s + r.costEur, 0);
 
   // Group by campaign
   const byFilter = filter === "ALL" ? rows : rows.filter(r => r.recommendation === filter);
@@ -119,9 +122,9 @@ export function SearchTermReport({ accountId }: { accountId: string }) {
       <div style={{ display: "flex", gap: 16, marginBottom: 20, flexWrap: "wrap", alignItems: "center" }}>
         <div style={{ display: "flex", gap: 12 }}>
           {[
-            { rec: "EXCLUDE" as const, count: excludeRows.length, extra: `€${wastedTotal.toFixed(0)} spent, 0 conv.` },
-            { rec: "WATCH"   as const, count: watchRows.length,   extra: "€5–30 spent, worth watching" },
-            { rec: "KEEP"    as const, count: keepRows.length,     extra: "converting or minimal spend" },
+            { rec: "EXCLUDE" as const, count: excludeRows.length, extra: wastedTotal > 0 ? `€${wastedTotal.toFixed(0)} wasted (Search/Shopping)` : "0 conversions, high clicks" },
+            { rec: "WATCH"   as const, count: watchRows.length,   extra: "accumulating spend or clicks" },
+            { rec: "KEEP"    as const, count: keepRows.length,     extra: "converting or low volume" },
           ].map(({ rec, count, extra }) => {
             const s = REC_STYLE[rec];
             return (
@@ -163,12 +166,24 @@ export function SearchTermReport({ accountId }: { accountId: string }) {
       {wastedTotal > 0 && filter !== "KEEP" && (
         <div style={{
           background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.15)",
-          borderRadius: 8, padding: "10px 16px", marginBottom: 16,
+          borderRadius: 8, padding: "10px 16px", marginBottom: 12,
           fontSize: 12, color: "#ef4444", display: "flex", alignItems: "center", gap: 8,
         }}>
           <AlertTriangle size={13} />
-          <strong>€{wastedTotal.toFixed(2)}</strong> spent over 90 days on queries with zero conversions and {">"}€30 each.
+          <strong>€{wastedTotal.toFixed(2)}</strong> spent over 90 days on Search / Shopping queries with zero conversions.
           Adding these as negative keywords stops future spend immediately.
+        </div>
+      )}
+
+      {hasPmax && filter !== "KEEP" && (
+        <div style={{
+          background: "rgba(234,179,8,0.05)", border: "1px solid rgba(234,179,8,0.15)",
+          borderRadius: 8, padding: "10px 16px", marginBottom: 16,
+          fontSize: 12, color: "#ca8a04", display: "flex", alignItems: "center", gap: 8,
+        }}>
+          <Eye size={13} />
+          PMax terms show clicks &amp; conversions only — Google does not expose cost per search term for Performance Max.
+          Use click volume as the exclusion signal.
         </div>
       )}
 
@@ -191,10 +206,13 @@ export function SearchTermReport({ accountId }: { accountId: string }) {
               padding: "10px 16px", background: "var(--surface)",
               borderBottom: "1px solid var(--border)",
             }}>
-              <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-2)" }}>{campaign.name}</span>
+                {campaign.terms[0]?.source === "pmax" && (
+                  <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.4px", textTransform: "uppercase", background: "rgba(139,92,246,0.12)", color: "#a78bfa", border: "1px solid rgba(139,92,246,0.25)", padding: "1px 6px", borderRadius: 10 }}>PMax</span>
+                )}
                 {campaign.wastedCost > 0 && (
-                  <span style={{ fontSize: 11, color: "#ef4444", marginLeft: 10 }}>
+                  <span style={{ fontSize: 11, color: "#ef4444" }}>
                     €{campaign.wastedCost.toFixed(2)} wasted
                   </span>
                 )}
@@ -240,8 +258,12 @@ export function SearchTermReport({ accountId }: { accountId: string }) {
                       }}>
                         {row.conversions > 0 ? row.conversions.toFixed(1) : "—"}
                       </td>
-                      <td style={{ padding: "8px 16px", fontSize: 12, color: row.recommendation === "EXCLUDE" ? "#ef4444" : "var(--text-muted)", textAlign: "right", fontWeight: row.recommendation === "EXCLUDE" ? 600 : 400 }}>
-                        €{row.costEur.toFixed(2)}
+                      <td style={{ padding: "8px 16px", fontSize: 12, textAlign: "right",
+                        color: row.source === "pmax" ? "var(--text-faint)" : row.recommendation === "EXCLUDE" ? "#ef4444" : "var(--text-muted)",
+                        fontWeight: row.source !== "pmax" && row.recommendation === "EXCLUDE" ? 600 : 400,
+                        fontStyle: row.source === "pmax" ? "italic" : "normal",
+                      }}>
+                        {row.source === "pmax" ? "—" : `€${row.costEur.toFixed(2)}`}
                       </td>
                       <td style={{ padding: "8px 16px", textAlign: "right" }}>
                         <span style={{
