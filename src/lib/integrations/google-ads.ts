@@ -1195,6 +1195,45 @@ export async function fetchSearchTermReport(customerId: string, orgId?: string):
   });
 }
 
+/**
+ * Returns a map of product item_id → spend in micros over the last 30 days.
+ * Used to enrich price competitiveness rows with actual ad spend.
+ */
+export async function fetchProductSpend(
+  customerId: string,
+  orgId?: string
+): Promise<Map<string, number>> {
+  const spendMap = new Map<string, number>();
+  try {
+    const client   = getClient();
+    const customer = await getCustomer(client, customerId, orgId);
+    const { start, end } = last30Days();
+
+    const rows = await safeQuery(
+      () => customer.query(`
+        SELECT
+          segments.product_item_id,
+          metrics.cost_micros
+        FROM shopping_performance_view
+        WHERE segments.date BETWEEN '${start}' AND '${end}'
+          AND metrics.cost_micros > 0
+      `),
+      "product spend"
+    );
+
+    for (const r of rows) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const itemId = String((r as any).segments?.product_item_id ?? "");
+      const cost   = Number(r.metrics?.cost_micros ?? 0);
+      if (!itemId) continue;
+      spendMap.set(itemId, (spendMap.get(itemId) ?? 0) + cost);
+    }
+  } catch (err) {
+    console.warn("[google-ads] product spend fetch failed:", err instanceof Error ? err.message : err);
+  }
+  return spendMap;
+}
+
 export async function isGoogleAdsConfigured(orgId?: string): Promise<boolean> {
   const hasEnvToken = !!(
     process.env.GOOGLE_ADS_DEVELOPER_TOKEN &&

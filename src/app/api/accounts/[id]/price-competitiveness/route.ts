@@ -16,6 +16,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getMerchantCenterIds, fetchPriceCompetitiveness } from "@/lib/integrations/merchant-center";
+import { fetchProductSpend } from "@/lib/integrations/google-ads";
 import { getAuthContext, unauthorized, forbidden } from "@/lib/auth";
 
 type Params = { params: Promise<{ id: string }> };
@@ -46,19 +47,27 @@ export async function GET(_req: NextRequest, { params }: Params) {
     return NextResponse.json({ noMerchantCenter: true, products: [] });
   }
 
-  // 2. Fetch price competitiveness from the first linked Merchant Center
-  //    (most accounts have exactly one; multi-MC is rare but we handle it gracefully)
+  // 2. Fetch price competitiveness + product spend in parallel
   try {
-    const result = await fetchPriceCompetitiveness(merchantIds[0], ctx.orgId);
+    const [result, spendMap] = await Promise.all([
+      fetchPriceCompetitiveness(merchantIds[0], ctx.orgId),
+      fetchProductSpend(account.googleAdsId, ctx.orgId),
+    ]);
 
     if (result.scopeMissing) {
       return NextResponse.json({ scopeMissing: true, products: [] });
     }
 
+    // Merge spend data into each product row
+    const products = result.products.map(p => ({
+      ...p,
+      spendMicros: spendMap.get(p.itemId) ?? 0,
+    }));
+
     return NextResponse.json({
-      merchantId: result.merchantId,
-      products:   result.products,
-      scopeMissing: false,
+      merchantId:       result.merchantId,
+      products,
+      scopeMissing:     false,
       noMerchantCenter: false,
     });
   } catch (err) {

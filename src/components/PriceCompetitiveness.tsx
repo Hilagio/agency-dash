@@ -1,32 +1,85 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, AlertTriangle, TrendingUp, TrendingDown, Minus, RefreshCw, ExternalLink } from "lucide-react";
+import { Loader2, AlertTriangle, TrendingUp, TrendingDown, Minus, RefreshCw, ExternalLink, Download } from "lucide-react";
 
 interface PriceCompRow {
-  itemId:           string;
-  title:            string;
-  brand:            string;
-  yourPriceMicros:  number;
-  benchmarkMicros:  number;
-  currencyCode:     string;
-  countryCode:      string;
-  priceDiffPercent: number;
-  status:           "competitive" | "above" | "well_above" | "below";
+  itemId:               string;
+  title:                string;
+  brand:                string;
+  yourPriceMicros:      number;
+  salePriceMicros:      number;
+  effectivePriceMicros: number;
+  benchmarkMicros:      number;
+  currencyCode:         string;
+  countryCode:          string;
+  priceDiffPercent:     number;
+  status:               "competitive" | "above" | "well_above" | "below";
+  spendMicros:          number;
 }
 
 interface ApiResponse {
-  merchantId?:      string;
-  products?:        PriceCompRow[];
-  scopeMissing?:    boolean;
+  merchantId?:       string;
+  products?:         PriceCompRow[];
+  scopeMissing?:     boolean;
   noMerchantCenter?: boolean;
-  error?:           string;
+  error?:            string;
 }
 
 function microsToPrice(micros: number, currency: string): string {
   const amount = micros / 1_000_000;
   const sym = currency === "EUR" ? "€" : currency === "GBP" ? "£" : currency === "USD" ? "$" : currency + " ";
   return `${sym}${amount.toFixed(2)}`;
+}
+
+function exportXml(products: PriceCompRow[], merchantId: string) {
+  const now = new Date().toISOString().split("T")[0];
+
+  const escXml = (s: string) =>
+    s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+  const rows = products.map(p => {
+    const effectivePrice = (p.effectivePriceMicros / 1_000_000).toFixed(2);
+    const regularPrice   = (p.yourPriceMicros / 1_000_000).toFixed(2);
+    const benchPrice     = (p.benchmarkMicros / 1_000_000).toFixed(2);
+    const spend          = (p.spendMicros / 1_000_000).toFixed(2);
+    const onSale         = p.salePriceMicros > 0 && p.salePriceMicros < p.yourPriceMicros;
+    return [
+      `    <product>`,
+      `      <id>${escXml(p.itemId)}</id>`,
+      `      <title>${escXml(p.title)}</title>`,
+      `      <brand>${escXml(p.brand)}</brand>`,
+      `      <country>${escXml(p.countryCode)}</country>`,
+      `      <regularPrice currency="${escXml(p.currencyCode)}">${regularPrice}</regularPrice>`,
+      onSale ? `      <salePrice currency="${escXml(p.currencyCode)}">${(p.salePriceMicros / 1_000_000).toFixed(2)}</salePrice>` : "",
+      `      <effectivePrice currency="${escXml(p.currencyCode)}">${effectivePrice}</effectivePrice>`,
+      `      <benchmarkPrice currency="${escXml(p.currencyCode)}">${benchPrice}</benchmarkPrice>`,
+      `      <priceDiffPercent>${p.priceDiffPercent > 0 ? "+" : ""}${p.priceDiffPercent.toFixed(1)}</priceDiffPercent>`,
+      `      <status>${p.status}</status>`,
+      p.spendMicros > 0 ? `      <adSpend currency="${escXml(p.currencyCode)}" period="last30d">${spend}</adSpend>` : "",
+      `    </product>`,
+    ].filter(Boolean).join("\n");
+  }).join("\n");
+
+  const xml = [
+    `<?xml version="1.0" encoding="UTF-8"?>`,
+    `<priceCompetitivenessReport>`,
+    `  <generated>${now}</generated>`,
+    `  <merchantId>${escXml(merchantId)}</merchantId>`,
+    `  <note>benchmarkPrice = Google median competitor price. effectivePrice = sale price if active, otherwise regularPrice. adSpend = Google Ads spend on this product over the last 30 days.</note>`,
+    `  <products>`,
+    rows,
+    `  </products>`,
+    `</priceCompetitivenessReport>`,
+  ].join("\n");
+
+  const blob = new Blob([xml], { type: "application/xml" });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement("a");
+  a.href     = url;
+  a.download = `price-competitiveness-${now}.xml`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 const STATUS_CONFIG = {
@@ -36,7 +89,7 @@ const STATUS_CONFIG = {
   well_above:  { color: "#ef4444", bg: "rgba(239,68,68,0.08)",  border: "rgba(239,68,68,0.2)",  label: "Too high",   icon: TrendingUp    },
 } as const;
 
-type SortKey = "priceDiffPercent" | "yourPrice" | "benchmarkPrice" | "title";
+type SortKey = "priceDiffPercent" | "yourPrice" | "benchmarkPrice" | "title" | "spend";
 type FilterKey = "all" | "above" | "well_above" | "competitive" | "below";
 
 export function PriceCompetitiveness({ accountId }: { accountId: string }) {
@@ -116,10 +169,11 @@ export function PriceCompetitiveness({ accountId }: { accountId: string }) {
 
   // ── Summary counts ───────────────────────────────────────────────────────────
 
-  const wellAboveCount  = products.filter(p => p.status === "well_above").length;
-  const aboveCount      = products.filter(p => p.status === "above").length;
-  const competCount     = products.filter(p => p.status === "competitive").length;
-  const belowCount      = products.filter(p => p.status === "below").length;
+  const wellAboveCount = products.filter(p => p.status === "well_above").length;
+  const aboveCount     = products.filter(p => p.status === "above").length;
+  const competCount    = products.filter(p => p.status === "competitive").length;
+  const belowCount     = products.filter(p => p.status === "below").length;
+  const hasSpend       = products.some(p => p.spendMicros > 0);
 
   // ── Filter + sort ────────────────────────────────────────────────────────────
 
@@ -127,9 +181,10 @@ export function PriceCompetitiveness({ accountId }: { accountId: string }) {
 
   visible.sort((a, b) => {
     let va: number, vb: number;
-    if (sort === "priceDiffPercent") { va = a.priceDiffPercent; vb = b.priceDiffPercent; }
-    else if (sort === "yourPrice")   { va = a.yourPriceMicros;  vb = b.yourPriceMicros;  }
-    else if (sort === "benchmarkPrice") { va = a.benchmarkMicros; vb = b.benchmarkMicros; }
+    if (sort === "priceDiffPercent")  { va = a.priceDiffPercent;    vb = b.priceDiffPercent;    }
+    else if (sort === "yourPrice")    { va = a.effectivePriceMicros; vb = b.effectivePriceMicros; }
+    else if (sort === "benchmarkPrice") { va = a.benchmarkMicros;   vb = b.benchmarkMicros;     }
+    else if (sort === "spend")        { va = a.spendMicros;         vb = b.spendMicros;         }
     else { return sortDir === "desc" ? b.title.localeCompare(a.title) : a.title.localeCompare(b.title); }
     return sortDir === "desc" ? vb - va : va - vb;
   });
@@ -140,10 +195,15 @@ export function PriceCompetitiveness({ accountId }: { accountId: string }) {
   };
   const sortIcon = (key: SortKey) => sort === key ? (sortDir === "desc" ? " ↓" : " ↑") : "";
 
+  // Grid: product | your price | benchmark | gap % | spend (conditional) | status
+  const gridCols = hasSpend
+    ? "1fr 110px 110px 75px 90px 80px"
+    : "1fr 110px 110px 75px 80px";
+
   return (
     <div>
 
-      {/* Summary bar */}
+      {/* Toolbar: filter chips + export */}
       <div style={{ display: "flex", gap: 10, marginBottom: 18, flexWrap: "wrap", alignItems: "center" }}>
         {([
           ["well_above", `Too high (${wellAboveCount})`],
@@ -151,7 +211,7 @@ export function PriceCompetitiveness({ accountId }: { accountId: string }) {
           ["competitive",`Competitive (${competCount})`],
           ["below",      `Below mkt (${belowCount})`],
         ] as [FilterKey, string][]).map(([key, label]) => {
-          const cfg = key === "all" ? null : STATUS_CONFIG[key as keyof typeof STATUS_CONFIG];
+          const cfg = STATUS_CONFIG[key as keyof typeof STATUS_CONFIG];
           const isActive = filter === key;
           return (
             <button
@@ -160,9 +220,9 @@ export function PriceCompetitiveness({ accountId }: { accountId: string }) {
               style={{
                 fontSize: 11, fontWeight: 500,
                 padding: "5px 12px", borderRadius: 6, cursor: "pointer",
-                border:      `1px solid ${isActive && cfg ? cfg.border : "var(--border-2)"}`,
-                background:  isActive && cfg ? cfg.bg : "transparent",
-                color:       isActive && cfg ? cfg.color : "var(--text-muted)",
+                border:     `1px solid ${isActive ? cfg.border : "var(--border-2)"}`,
+                background: isActive ? cfg.bg : "transparent",
+                color:      isActive ? cfg.color : "var(--text-muted)",
               }}
             >
               {label}
@@ -170,16 +230,28 @@ export function PriceCompetitiveness({ accountId }: { accountId: string }) {
           );
         })}
 
-        <button
-          onClick={load}
-          style={{
-            marginLeft: "auto", display: "flex", alignItems: "center", gap: 5,
-            background: "var(--surface)", border: "1px solid var(--border-2)",
-            borderRadius: 7, color: "var(--text-dim)", fontSize: 11, padding: "5px 10px", cursor: "pointer",
-          }}
-        >
-          <RefreshCw size={11} /> Refresh
-        </button>
+        <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
+          <button
+            onClick={() => exportXml(visible, data.merchantId ?? "")}
+            style={{
+              display: "flex", alignItems: "center", gap: 5,
+              background: "var(--surface)", border: "1px solid var(--border-2)",
+              borderRadius: 7, color: "var(--text-dim)", fontSize: 11, padding: "5px 10px", cursor: "pointer",
+            }}
+          >
+            <Download size={11} /> Export XML
+          </button>
+          <button
+            onClick={load}
+            style={{
+              display: "flex", alignItems: "center", gap: 5,
+              background: "var(--surface)", border: "1px solid var(--border-2)",
+              borderRadius: 7, color: "var(--text-dim)", fontSize: 11, padding: "5px 10px", cursor: "pointer",
+            }}
+          >
+            <RefreshCw size={11} /> Refresh
+          </button>
+        </div>
       </div>
 
       {/* Alert: products priced too high */}
@@ -200,7 +272,7 @@ export function PriceCompetitiveness({ accountId }: { accountId: string }) {
         borderRadius: 8, padding: "9px 14px", marginBottom: 14,
         fontSize: 11, color: "var(--text-muted)",
       }}>
-        Benchmark = median competitor price reported by Google for your country. Requires ≥3 competitor data points per product.
+        Benchmark = median competitor price reported by Google. Gap % is calculated against your <strong>effective price</strong> (sale price if active). Spend = last 30 days Google Ads.
       </div>
 
       {visible.length === 0 ? (
@@ -211,17 +283,17 @@ export function PriceCompetitiveness({ accountId }: { accountId: string }) {
         <div style={{ border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
           {/* Table header */}
           <div style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 100px 100px 90px 80px",
+            display: "grid", gridTemplateColumns: gridCols,
             gap: 8, padding: "7px 16px",
             background: "var(--surface)", borderBottom: "1px solid var(--border)",
           }}>
             {[
-              { key: "title",          label: "Product"    },
-              { key: "yourPrice",      label: "Your price" },
-              { key: "benchmarkPrice", label: "Benchmark"  },
-              { key: "priceDiffPercent", label: "Gap %"    },
-              { key: null,             label: "Status"     },
+              { key: "title",           label: "Product"    },
+              { key: "yourPrice",       label: "Your price" },
+              { key: "benchmarkPrice",  label: "Benchmark"  },
+              { key: "priceDiffPercent",label: "Gap %"      },
+              ...(hasSpend ? [{ key: "spend", label: "Spend 30d" }] : []),
+              { key: null,              label: "Status"     },
             ].map(({ key, label }, i) => (
               <span
                 key={i}
@@ -242,15 +314,15 @@ export function PriceCompetitiveness({ accountId }: { accountId: string }) {
 
           {/* Rows */}
           {visible.map((p, i) => {
-            const cfg = STATUS_CONFIG[p.status];
-            const Icon = cfg.icon;
+            const cfg    = STATUS_CONFIG[p.status];
+            const Icon   = cfg.icon;
+            const onSale = p.salePriceMicros > 0 && p.salePriceMicros < p.yourPriceMicros;
             const isAtRisk = p.status === "well_above";
             return (
               <div
                 key={`${p.itemId}-${p.countryCode}`}
                 style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 100px 100px 90px 80px",
+                  display: "grid", gridTemplateColumns: gridCols,
                   gap: 8, padding: "9px 16px",
                   borderBottom: i < visible.length - 1 ? "1px solid var(--border)" : "none",
                   background: "var(--bg)",
@@ -262,16 +334,26 @@ export function PriceCompetitiveness({ accountId }: { accountId: string }) {
                   <div style={{ fontSize: 12, fontWeight: 500, color: "var(--text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {p.title || p.itemId}
                   </div>
-                  {p.brand && (
-                    <div style={{ fontSize: 10, color: "var(--text-faint)", marginTop: 1 }}>
-                      {p.brand} · {p.itemId}{p.countryCode ? ` · ${p.countryCode}` : ""}
-                    </div>
-                  )}
+                  <div style={{ fontSize: 10, color: "var(--text-faint)", marginTop: 1 }}>
+                    {[p.brand, p.itemId, p.countryCode].filter(Boolean).join(" · ")}
+                  </div>
                 </div>
 
-                {/* Your price */}
-                <div style={{ textAlign: "right", fontSize: 12, color: "var(--text-muted)", display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
-                  {microsToPrice(p.yourPriceMicros, p.currencyCode)}
+                {/* Your price (effective) */}
+                <div style={{ textAlign: "right", fontSize: 12, display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 4 }}>
+                  <span style={{ color: "var(--text-muted)" }}>
+                    {microsToPrice(p.effectivePriceMicros, p.currencyCode)}
+                  </span>
+                  {onSale && (
+                    <span style={{
+                      fontSize: 9, fontWeight: 700, letterSpacing: "0.3px",
+                      background: "rgba(34,197,94,0.1)", color: "#22c55e",
+                      border: "1px solid rgba(34,197,94,0.2)",
+                      padding: "1px 5px", borderRadius: 4,
+                    }}>
+                      SALE
+                    </span>
+                  )}
                 </div>
 
                 {/* Benchmark */}
@@ -288,6 +370,15 @@ export function PriceCompetitiveness({ accountId }: { accountId: string }) {
                   <Icon size={11} />
                   {p.priceDiffPercent > 0 ? "+" : ""}{p.priceDiffPercent.toFixed(1)}%
                 </div>
+
+                {/* Spend (conditional column) */}
+                {hasSpend && (
+                  <div style={{ textAlign: "right", fontSize: 12, color: "var(--text-dim)", display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
+                    {p.spendMicros > 0
+                      ? microsToPrice(p.spendMicros, p.currencyCode)
+                      : <span style={{ color: "var(--text-faint)", fontStyle: "italic" }}>—</span>}
+                  </div>
+                )}
 
                 {/* Status badge */}
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
