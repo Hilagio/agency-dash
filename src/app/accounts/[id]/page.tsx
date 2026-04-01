@@ -11,6 +11,7 @@ import { ChatAssistant } from "@/components/ChatAssistant";
 import { SearchTermReport } from "@/components/SearchTermReport";
 import { PlaybookView } from "@/components/PlaybookView";
 import { ProductPerformance } from "@/components/ProductPerformance";
+import { PriceCompetitiveness } from "@/components/PriceCompetitiveness";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { BUCKET_LABELS } from "@/lib/engine/types";
 
@@ -1601,6 +1602,16 @@ export default function AccountPage() {
               </span>
             </div>
             <ProductPerformance accountId={id} currency={account.currency} />
+
+            <div style={{ marginTop: 32, marginBottom: 16, display: "flex", alignItems: "baseline", gap: 8 }}>
+              <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.8px", textTransform: "uppercase", color: "var(--text-dim)" }}>
+                Price competitiveness
+              </span>
+              <span style={{ fontSize: 11, color: "var(--text-faint)" }}>
+                Your price vs median competitor · via Merchant Center
+              </span>
+            </div>
+            <PriceCompetitiveness accountId={id} />
           </>
         )}
 

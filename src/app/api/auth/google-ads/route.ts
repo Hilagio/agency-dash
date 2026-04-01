@@ -16,6 +16,7 @@ function getOrigin(req: NextRequest): string {
 
 const SCOPES = [
   "https://www.googleapis.com/auth/adwords",
+  "https://www.googleapis.com/auth/content", // Merchant Center — price competitiveness
 ].join(" ");
 
 export async function GET(req: NextRequest) {
