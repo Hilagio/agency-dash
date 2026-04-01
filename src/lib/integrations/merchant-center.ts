@@ -146,17 +146,15 @@ export async function fetchPriceCompetitiveness(
     throw err;
   }
 
-  // Merchant Center Reports API — PriceCompetitivenessProductView
-  // sale_price_micros is available in product_view when a sale price is set.
-  // Google's benchmark comparison already uses the effective (lowest) price,
-  // so we fetch both and display accordingly.
+  // sale_price_micros is not available in PriceCompetitivenessProductView —
+  // Google's benchmark already compares against the effective (lowest) price,
+  // so we just use price_micros as reported.
   const query = [
     "SELECT",
     "  product_view.id,",
     "  product_view.title,",
     "  product_view.brand,",
     "  product_view.price_micros,",
-    "  product_view.sale_price_micros,",
     "  product_view.currency_code,",
     "  price_competitiveness.benchmark_price_micros,",
     "  price_competitiveness.benchmark_price_currency_code,",
@@ -198,23 +196,18 @@ export async function fetchPriceCompetitiveness(
       const rawId       = r.productView?.id ?? "";
       const title       = r.productView?.title ?? "";
       const brand       = r.productView?.brand ?? "";
-      const regularMicros  = Number(r.productView?.priceMicros ?? 0);
-      const saleMicros     = Number(r.productView?.salePriceMicros ?? 0);
-      // Effective price = sale price if active and lower, otherwise regular price.
-      // Google's benchmark comparison already uses the effective price, so we match.
-      const effectiveMicros = saleMicros > 0 && saleMicros < regularMicros ? saleMicros : regularMicros;
+      const priceMicros = Number(r.productView?.priceMicros ?? 0);
       const benchMicros = Number(r.priceCompetitiveness?.benchmarkPriceMicros ?? 0);
-      const currency   = r.productView?.currencyCode ?? r.priceCompetitiveness?.benchmarkPriceCurrencyCode ?? "EUR";
-      const country    = r.priceCompetitiveness?.countryCode ?? "";
+      const currency    = r.productView?.currencyCode ?? r.priceCompetitiveness?.benchmarkPriceCurrencyCode ?? "EUR";
+      const country     = r.priceCompetitiveness?.countryCode ?? "";
 
-      if (!rawId || effectiveMicros === 0 || benchMicros === 0) return null;
+      if (!rawId || priceMicros === 0 || benchMicros === 0) return null;
 
       // Extract item_id from resource name like "online:en:GB:ABC123"
       const parts  = rawId.split(":");
       const itemId = parts[parts.length - 1] ?? rawId;
 
-      // Gap is calculated against effective price so it matches what Google sees
-      const diffPct = ((effectiveMicros - benchMicros) / benchMicros) * 100;
+      const diffPct = ((priceMicros - benchMicros) / benchMicros) * 100;
 
       const status: PriceCompRow["status"] =
         diffPct > 15  ? "well_above" :
@@ -226,9 +219,9 @@ export async function fetchPriceCompetitiveness(
         itemId,
         title,
         brand,
-        yourPriceMicros:      regularMicros,
-        salePriceMicros:      saleMicros,
-        effectivePriceMicros: effectiveMicros,
+        yourPriceMicros:      priceMicros,
+        salePriceMicros:      0, // not available in PriceCompetitivenessProductView
+        effectivePriceMicros: priceMicros,
         benchmarkMicros:      benchMicros,
         currencyCode:         currency,
         countryCode:          country,
@@ -246,12 +239,11 @@ export async function fetchPriceCompetitiveness(
 
 interface MerchantReportRow {
   productView?: {
-    id?:              string;
-    title?:           string;
-    brand?:           string;
-    priceMicros?:     string | number;
-    salePriceMicros?: string | number;
-    currencyCode?:    string;
+    id?:          string;
+    title?:       string;
+    brand?:       string;
+    priceMicros?: string | number;
+    currencyCode?: string;
   };
   priceCompetitiveness?: {
     benchmarkPriceMicros?:        string | number;
