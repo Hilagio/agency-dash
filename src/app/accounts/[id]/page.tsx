@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, RefreshCw, MessageSquare, ListChecks, BarChart2, Loader2, Search, BookOpen, ClipboardList, Send, Pencil, X, CheckSquare, Sparkles, Package, Brain } from "lucide-react";
+import { ArrowLeft, RefreshCw, MessageSquare, ListChecks, BarChart2, Loader2, Search, BookOpen, ClipboardList, Send, Pencil, X, CheckSquare, Sparkles, Package, Brain, FlaskConical } from "lucide-react";
 import { ScoreBuckets } from "@/components/ScoreBuckets";
 import { ScoreHistory } from "@/components/ScoreHistory";
 import { ActionList } from "@/components/ActionList";
@@ -13,10 +13,11 @@ import { PlaybookView } from "@/components/PlaybookView";
 import { ProductPerformance } from "@/components/ProductPerformance";
 import { PriceCompetitiveness } from "@/components/PriceCompetitiveness";
 import { PersonaView } from "@/components/PersonaView";
+import { MetricExplorer } from "@/components/MetricExplorer";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { BUCKET_LABELS } from "@/lib/engine/types";
 
-type Tab = "overview" | "actions" | "products" | "search-terms" | "persona" | "playbook" | "chat" | "notes" | "sops";
+type Tab = "overview" | "actions" | "products" | "search-terms" | "persona" | "explorer" | "playbook" | "chat" | "notes" | "sops";
 
 interface Note {
   id: string;
@@ -1349,8 +1350,9 @@ export default function AccountPage() {
     { key: "actions",       label: "Actions",      icon: <ListChecks   size={14} />, badge: pendingActions.length },
     { key: "products",      label: "Products",     icon: <Package      size={14} /> },
     { key: "search-terms",  label: "Search terms", icon: <Search       size={14} /> },
-    { key: "persona",       label: "Audience",     icon: <Brain        size={14} /> },
-    { key: "playbook",      label: "Playbook",     icon: <BookOpen     size={14} /> },
+    { key: "persona",       label: "Audience",     icon: <Brain          size={14} /> },
+    { key: "explorer",      label: "Explorer",     icon: <FlaskConical   size={14} /> },
+    { key: "playbook",      label: "Playbook",     icon: <BookOpen       size={14} /> },
     { key: "chat",          label: "AI Advisor",   icon: <MessageSquare size={14} /> },
     { key: "sops",          label: "SOPs",         icon: <CheckSquare   size={14} /> },
     { key: "notes",         label: "Change log",   icon: <ClipboardList size={14} /> },
@@ -1642,6 +1644,20 @@ export default function AccountPage() {
               </span>
             </div>
             <PersonaView accountId={id} currency={account.currency} />
+          </>
+        )}
+
+        {tab === "explorer" && (
+          <>
+            <div style={{ marginBottom: 16, display: "flex", alignItems: "baseline", gap: 8 }}>
+              <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.8px", textTransform: "uppercase", color: "var(--text-dim)" }}>
+                Metrics explorer
+              </span>
+              <span style={{ fontSize: 11, color: "var(--text-faint)" }}>
+                Every metric, every dimension — sort and correlate
+              </span>
+            </div>
+            <MetricExplorer accountId={id} />
           </>
         )}
 
