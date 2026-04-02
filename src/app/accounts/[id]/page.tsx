@@ -563,6 +563,43 @@ interface AccountTargets {
   monthlyChurnRate:   number | null;
 }
 
+interface SpendPoint { month: string; spend: number; roas: number | null; cpa: number | null }
+
+// Fit a power-law efficiency curve to real monthly spend/ROAS data.
+// Returns the exponent `k` for efficiency(x) = x^k, where x = spend / medianSpend.
+// Negative k = diminishing returns (ROAS drops as spend rises).
+// Falls back to k = -0.28 (generic assumption) if data is insufficient.
+function fitEfficiencyCurve(points: SpendPoint[], useRoas: boolean): number {
+  const valid = points.filter(p => p.spend > 0 && (useRoas ? p.roas : p.cpa) != null);
+  if (valid.length < 4) return -0.28; // not enough data — use generic
+
+  const spends   = valid.map(p => p.spend);
+  const medSpend = spends.sort((a, b) => a - b)[Math.floor(spends.length / 2)];
+  if (medSpend === 0) return -0.28;
+
+  // Fit log(efficiency) = k * log(x) via least-squares, where efficiency = roas / medRoas
+  const efficiencies = useRoas
+    ? valid.map(p => p.roas!)
+    : valid.map(p => 1 / p.cpa!); // higher 1/CPA = better efficiency
+
+  const medEff = efficiencies.sort((a, b) => a - b)[Math.floor(efficiencies.length / 2)];
+  if (medEff === 0) return -0.28;
+
+  const logPairs = valid.map((p, i) => ({
+    logX: Math.log(p.spend / medSpend),
+    logY: Math.log(efficiencies[i] / medEff),
+  })).filter(p => isFinite(p.logX) && isFinite(p.logY) && Math.abs(p.logX) > 0.05);
+
+  if (logPairs.length < 3) return -0.28;
+
+  const sumXX = logPairs.reduce((s, p) => s + p.logX * p.logX, 0);
+  const sumXY = logPairs.reduce((s, p) => s + p.logX * p.logY, 0);
+  const k = sumXY / sumXX;
+
+  // Clamp to a sane range: at most flat (0) to aggressively diminishing (-0.6)
+  return Math.max(-0.6, Math.min(0, k));
+}
+
 function AccountTargetsPanel({
   accountId,
   currency,
@@ -575,6 +612,17 @@ function AccountTargetsPanel({
   onSaved: (v: AccountTargets) => void;
 }) {
   const [editing, setEditing] = useState(false);
+  const [curvePoints, setCurvePoints] = useState<SpendPoint[] | null>(null);
+
+  useEffect(() => {
+    if (initial.monthlyBudget == null) return;
+    if (initial.targetRoas == null && initial.targetCpa == null) return;
+    fetch(`/api/accounts/${accountId}/spend-curve`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.points) setCurvePoints(d.points); })
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accountId]);
   const initVals = () => ({
     monthlyBudget:      initial.monthlyBudget      != null ? String(initial.monthlyBudget)                        : "",
     targetRoas:         initial.targetRoas         != null ? String(initial.targetRoas)                          : "",
@@ -727,31 +775,41 @@ function AccountTargetsPanel({
 
       {/* Budget projection — only when both budget and a return target are set */}
       {!editing && initial.monthlyBudget != null && (initial.targetRoas != null || initial.targetCpa != null) && (() => {
-        const budget = initial.monthlyBudget!;
-        // Diminishing returns: efficiency decays as spend scales.
-        // Model: at 1x budget → full efficiency; at 2x → 85%; at 3x → 72%; at 4x → 62%
-        // Formula: efficiency(x) = x^-0.28 (power law decay, calibrated to those anchors)
+        const budget    = initial.monthlyBudget!;
+        const useRoas   = initial.targetRoas != null;
+        const k         = fitEfficiencyCurve(curvePoints ?? [], useRoas);
+        const hasReal   = curvePoints != null && curvePoints.length >= 4;
+
         const budgetPoints = [0.5, 0.75, 1, 1.5, 2, 3];
         const rows = budgetPoints.map(multiplier => {
-          const spend = Math.round(budget * multiplier);
-          const efficiency = Math.pow(multiplier, -0.28); // 1.0 at 1x, ~0.82 at 2x, ~0.72 at 3x
-          const clampedEfficiency = Math.min(1.2, efficiency); // allow slight upside at low spend
-          let returnLabel = "";
-          let returnVal = 0;
-          if (initial.targetRoas != null) {
-            returnVal = Math.round(spend * initial.targetRoas! * clampedEfficiency);
-            returnLabel = `${currSym}${returnVal.toLocaleString()} revenue`;
-          } else if (initial.targetCpa != null) {
-            returnVal = Math.round(spend / initial.targetCpa! * clampedEfficiency);
-            returnLabel = `${returnVal} conversions`;
+          const spend      = Math.round(budget * multiplier);
+          // efficiency(x) = x^k, clamped: allow up to 1.2 below baseline, minimum 0.4
+          const efficiency = Math.min(1.2, Math.max(0.4, Math.pow(multiplier, k)));
+          let returnLabel  = "";
+          if (useRoas) {
+            const rev = Math.round(spend * initial.targetRoas! * efficiency);
+            returnLabel = `${currSym}${rev.toLocaleString()} revenue`;
+          } else {
+            const conv = Math.round(spend / initial.targetCpa! * efficiency);
+            returnLabel = `${conv} conversions`;
           }
-          const isBase = multiplier === 1;
-          return { spend, returnLabel, returnVal, efficiency: clampedEfficiency, isBase, multiplier };
+          return { spend, returnLabel, efficiency, isBase: multiplier === 1, multiplier };
         });
+
         return (
           <div style={{ marginTop: 16, borderTop: "1px solid var(--border)", paddingTop: 14 }}>
-            <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.6px", textTransform: "uppercase", color: "var(--text-faint)", marginBottom: 10 }}>
-              Budget scenarios · diminishing returns modelled
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+              <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.6px", textTransform: "uppercase", color: "var(--text-faint)" }}>
+                Budget scenarios · diminishing returns modelled
+              </div>
+              <div style={{
+                fontSize: 9, fontWeight: 600, padding: "1px 6px", borderRadius: 10,
+                background: hasReal ? "rgba(34,197,94,0.1)" : "rgba(234,179,8,0.1)",
+                color: hasReal ? "#16a34a" : "#ca8a04",
+                border: `1px solid ${hasReal ? "rgba(34,197,94,0.2)" : "rgba(234,179,8,0.2)"}`,
+              }}>
+                {hasReal ? `Fitted on ${curvePoints!.length}mo real data` : "Generic curve — not enough history"}
+              </div>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 6 }}>
               {rows.map(r => (
@@ -769,7 +827,9 @@ function AccountTargetsPanel({
               ))}
             </div>
             <div style={{ fontSize: 10, color: "var(--text-very-dim)", marginTop: 8 }}>
-              Based on {initial.targetRoas != null ? `${initial.targetRoas}x target ROAS` : `${currSym}${initial.targetCpa} target CPA`} at baseline budget. Efficiency decay assumes typical market saturation curve.
+              {hasReal
+                ? `Curve fitted on ${curvePoints!.length} months of this account's actual spend vs. ${useRoas ? "ROAS" : "CPA"} data (k=${k.toFixed(2)}).`
+                : `Based on ${useRoas ? `${initial.targetRoas}x target ROAS` : `${currSym}${initial.targetCpa} target CPA`} at baseline. Less than 4 months of data — using generic saturation curve.`}
             </div>
           </div>
         );

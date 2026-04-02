@@ -91,8 +91,7 @@ Key live metrics (last 30 days):
   Actual ROAS: ${e.actualRoas.toFixed(2)}x | Target ROAS: ${e.targetRoas > 0 ? e.targetRoas.toFixed(2) + "x" : "not set"}
   Budget utilisation: ${Math.round(e.budgetUtilizationPercent * 100)}%
   Conversion tracking active: ${m.conversionTrackingActive ? "Yes" : "NO — CRITICAL"}
-  Enhanced conversions: ${m.hasEnhancedConversions ? "Yes" : "No"}
-  GA4 linked: ${m.hasGa4Linked ? "Yes" : "No"}`;
+  Enhanced conversions: ${m.hasEnhancedConversions ? "Yes" : "No"}`;
   }
 
   // SOPs context

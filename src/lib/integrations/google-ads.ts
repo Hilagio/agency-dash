@@ -302,24 +302,33 @@ async function fetchMeasurementSignals(customer: Customer): Promise<MeasurementS
   );
   const conversionTrackingActive = activeConversions.length > 0;
 
-  // Check for enhanced conversions — must actually have the setting enabled,
-  // not just be of WEBPAGE type (which is necessary but not sufficient).
+  // Check for enhanced conversions — check ALL enabled conversion action types,
+  // not just WEBPAGE. Shopify pixel, server-side, and GA4-imported conversions
+  // use different types but can still have EC enabled. If no WEBPAGE actions exist
+  // at all we cannot confirm EC status, so we treat it as unknown (not flagged).
   const ecActions = await safeQuery(
     () => customer.query(`
       SELECT
         conversion_action.id,
+        conversion_action.type,
         conversion_action.enhanced_conversions_settings.enabled
       FROM conversion_action
       WHERE conversion_action.status = 'ENABLED'
-        AND conversion_action.type = 'WEBPAGE'
     `),
     "enhanced conversions settings"
+  );
+  const webpageActions = ecActions.filter(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (r) => (r.conversion_action as any)?.type === "WEBPAGE"
   );
   const ecEnabledActions = ecActions.filter(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (r) => (r.conversion_action as any)?.enhanced_conversions_settings?.enabled === true
   );
-  const hasEnhancedConversions = ecEnabledActions.length > 0;
+  // Only flag as missing if we found WEBPAGE actions and none have EC enabled.
+  // If there are no WEBPAGE actions, tracking is via a different mechanism
+  // (server-side, GA4 import, etc.) and we can't determine EC status reliably.
+  const hasEnhancedConversions = ecEnabledActions.length > 0 || webpageActions.length === 0;
 
   // Detect enhanced conversion degradation — EC is enabled but conversion volume
   // for those specific actions has dropped significantly vs baseline.

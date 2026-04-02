@@ -51,10 +51,6 @@ function scoreMeasurement(s: ConstraintSignals["measurement"]): BucketScore {
       signals.push(`Conversion volume ${dropPct}% below recent baseline — watch for tracking issues`);
     }
   }
-  if (!s.hasGa4Linked) {
-    score -= 5;
-    signals.push("GA4 not linked — audience and engagement data missing");
-  }
   if (s.dateLagDays > 7) {
     score -= 5;
     signals.push(`Attribution lag ${s.dateLagDays}d — recent data unreliable`);

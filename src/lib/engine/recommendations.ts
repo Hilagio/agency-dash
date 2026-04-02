@@ -93,20 +93,6 @@ const measurementRules: RuleSet = (s) => {
     });
   }
 
-  if (!m.hasGa4Linked) {
-    recs.push({
-      bucket: "MEASUREMENT",
-      title: "Link GA4 to Google Ads",
-      description:
-        "GA4 linking unlocks audience lists, engagement signals, and cross-channel attribution. " +
-        "5-minute setup with no risk.",
-      impact: "MEDIUM",
-      effort: "EASY",
-      safeToAutomate: false,
-      actionType: "LINK_GA4",
-      isEscalation: false,
-    });
-  }
 
   return recs;
 };

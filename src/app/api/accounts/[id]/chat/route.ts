@@ -51,7 +51,6 @@ function buildSignalContext(signals: ConstraintSignals, currency: string): strin
     lines.push(`  ⚠ Enhanced conversions degraded (conversion volume dropped ≥40%)`);
   }
   lines.push(`  Tag coverage: ${pct(m.tagCoveragePercent)}`);
-  lines.push(`  GA4 linked: ${m.hasGa4Linked ? "yes" : "no"}`);
   lines.push(`  Merchant Center linked: ${m.hasMerchantCenterLinked ? "yes" : "no"}`);
   lines.push(`  Attribution lag: ${m.dateLagDays.toFixed(1)} days`);
 
