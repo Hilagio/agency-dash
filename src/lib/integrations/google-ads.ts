@@ -591,7 +591,9 @@ async function fetchTrafficSignals(customer: Customer): Promise<TrafficSignals> 
     ? pmaxDisplayYoutubeCost / pmaxTotalCost
     : 0;
 
-  // Quality Score — average across active keywords
+  // Quality Score — average across active keywords in SEARCH campaigns only.
+  // Excluding Display/PMax keywords which receive artificially low QS (1–3)
+  // and would drag the average down without being actionable.
   const qsRows = await safeQuery(
     () => customer.query(`
       SELECT
@@ -599,6 +601,9 @@ async function fetchTrafficSignals(customer: Customer): Promise<TrafficSignals> 
       FROM ad_group_criterion
       WHERE ad_group_criterion.type = 'KEYWORD'
         AND ad_group_criterion.status = 'ENABLED'
+        AND campaign.advertising_channel_type = 'SEARCH'
+        AND campaign.status = 'ENABLED'
+        AND ad_group.status = 'ENABLED'
         AND ad_group_criterion.quality_info.quality_score IS NOT NULL
     `),
     "quality scores"
@@ -610,7 +615,7 @@ async function fetchTrafficSignals(customer: Customer): Promise<TrafficSignals> 
   const qualityScoreCount = qsValues.length;
   const qualityScoreAvg = qsValues.length > 0
     ? qsValues.reduce((a, b) => a + b, 0) / qsValues.length
-    : 7; // default if no data
+    : 7; // default if no Search campaigns
 
   // Product disapproval rate — relevant for Shopping / PMax feed-only accounts
   const allProductRows = await safeQuery(
