@@ -6,8 +6,8 @@ import Link from "next/link";
 import { BUCKET_LABELS } from "@/lib/engine/types";
 import {
   Zap, RefreshCw, Loader2, Plus, AlertTriangle, TrendingUp,
-  BookOpen, ListChecks, TrendingDown, Pencil, Check, X, Settings, LogOut,
-  Trash2, Search,
+  BookOpen, ListChecks, TrendingDown, Check, X, Settings, LogOut,
+  Trash2, Search, ChevronUp, ChevronDown, ChevronsUpDown,
 } from "lucide-react";
 import { AccountImporter } from "@/components/AccountImporter";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -95,141 +95,129 @@ function LoginPage() {
   );
 }
 
-// ─── Industry inline editor ───────────────────────────────────────────────────
+// ─── Sort header ──────────────────────────────────────────────────────────────
 
-const INDUSTRY_OPTIONS = [
-  "ecommerce","fashion","optics","beauty","horeca","food","electronics","furniture",
-  "automotive","health","dental","fitness","travel","home_improvement","cleaning",
-  "education","driving_school","b2b","saas","technology","finance","legal","real_estate",
-];
+const COLS = "28px 1fr 48px 136px 68px 58px 116px 72px";
 
-function IndustryEditor({ accountId, current, onSaved }: { accountId: string; current: string | null; onSaved: (v: string | null) => void }) {
-  const [open, setOpen]   = useState(false);
-  const [value, setValue] = useState(current ?? "");
-
-  const save = async () => {
-    await fetch(`/api/accounts/${accountId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ industry: value || null }),
-    });
-    onSaved(value || null);
-    setOpen(false);
-  };
-
-  if (!open) {
-    return (
-      <button
-        onClick={e => { e.preventDefault(); setOpen(true); }}
-        style={{
-          display: "inline-flex", alignItems: "center", gap: 4,
-          background: "none", border: "none", cursor: "pointer",
-          color: current ? "var(--text-faint)" : "#f97316",
-          fontSize: 10, padding: 0,
-        }}
-      >
-        {current
-          ? <><span>{current}</span><Pencil size={9} /></>
-          : <><span style={{ fontWeight: 600 }}>Set industry</span><Pencil size={9} /></>}
-      </button>
-    );
-  }
-
+function SortHeader({ label, col, sortBy, sortDir, onSort, align = "left" }: {
+  label: string;
+  col: "score" | "name" | "roas" | "budget" | "bucket";
+  sortBy: string;
+  sortDir: "asc" | "desc";
+  onSort: (col: "score" | "name" | "roas" | "budget" | "bucket") => void;
+  align?: "left" | "right" | "center";
+}) {
+  const active = sortBy === col;
+  const Icon = active ? (sortDir === "asc" ? ChevronUp : ChevronDown) : ChevronsUpDown;
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 4 }} onClick={e => e.preventDefault()}>
-      <select
-        value={value}
-        onChange={e => setValue(e.target.value)}
-        autoFocus
-        style={{
-          fontSize: 11, padding: "2px 6px", borderRadius: 5,
-          border: "1px solid var(--border-2)", background: "var(--surface)",
-          color: "var(--text-2)", outline: "none",
-        }}
-      >
-        <option value="">— none —</option>
-        {INDUSTRY_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
-      </select>
-      <button onClick={save} style={{ background: "none", border: "none", cursor: "pointer", color: "#22c55e", display: "flex" }}><Check size={13} /></button>
-      <button onClick={() => setOpen(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", display: "flex" }}><X size={13} /></button>
-    </div>
+    <button
+      onClick={() => onSort(col)}
+      style={{
+        display: "flex", alignItems: "center", gap: 3,
+        justifyContent: align === "right" ? "flex-end" : align === "center" ? "center" : "flex-start",
+        background: "none", border: "none", cursor: "pointer", padding: 0,
+        fontSize: 10, fontWeight: 600, letterSpacing: "0.6px", textTransform: "uppercase",
+        color: active ? "var(--text-3)" : "var(--text-faint)",
+        transition: "color 0.15s",
+      }}
+      onMouseEnter={e => (e.currentTarget.style.color = "var(--text-3)")}
+      onMouseLeave={e => (e.currentTarget.style.color = active ? "var(--text-3)" : "var(--text-faint)")}
+    >
+      {align === "right" && <Icon size={9} />}
+      {label}
+      {align !== "right" && <Icon size={9} />}
+    </button>
   );
 }
 
 // ─── Account row ──────────────────────────────────────────────────────────────
 
 function AccountRow({
-  account, index, scoring, onRescore, onIndustryUpdate, onRemove,
+  account, index, scoring, onRescore, onRemove,
 }: {
   account:   Account;
   index:     number;
   scoring:   boolean;
   onRescore: (id: string, e: React.MouseEvent) => void;
-  onIndustryUpdate: (id: string, industry: string | null) => void;
   onRemove:  (id: string) => void;
 }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [removing, setRemoving]           = useState(false);
-  const snap  = account.snapshots[0];
-  const score = snap ? minScore(snap) : null;
-  const color = score !== null ? scoreColor(score) : "var(--text-dim)";
-  const delta = account.scoreDelta;
+  const snap   = account.snapshots[0];
+  const score  = snap ? minScore(snap) : null;
+  const delta  = account.scoreDelta;
   const bucket = snap?.governingConstraint as ConstraintBucket | undefined;
 
-  const severityBar = score !== null && score < 50 ? "#ef4444"
-    : score !== null && score < 70 ? "#eab308"
-    : null;
+  const isCritical = score !== null && score < 45;
+  const isAtRisk   = score !== null && score >= 45 && score < 70;
+
+  const accentColor = isCritical ? "#ef4444" : isAtRisk ? "#eab308" : null;
 
   const deltaColor = delta === null ? "var(--text-faint)"
     : delta > 0  ? "#22c55e"
     : delta < 0  ? "#ef4444"
     : "var(--text-faint)";
 
+  const rowBg        = isCritical ? "rgba(239,68,68,0.04)" : "var(--bg)";
+  const rowBgHover   = isCritical ? "rgba(239,68,68,0.07)" : "var(--surface)";
+
   return (
     <Link href={`/accounts/${account.id}`} style={{ textDecoration: "none", display: "block" }}>
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "36px 1fr 160px 72px 60px 130px 76px",
+          gridTemplateColumns: COLS,
           alignItems: "center",
           gap: 12,
-          padding: "11px 20px 11px 17px",
+          padding: "10px 16px 10px 0",
           borderBottom: "1px solid var(--border)",
-          background: "var(--bg)",
+          background: rowBg,
           cursor: "pointer",
           transition: "background 0.1s",
-          borderLeft: severityBar ? `3px solid ${severityBar}` : "3px solid transparent",
+          borderLeft: accentColor ? `3px solid ${accentColor}` : "3px solid transparent",
         }}
-        onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = "var(--surface)"}
-        onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = "var(--bg)"}
+        onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = rowBgHover}
+        onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = rowBg}
       >
         {/* Rank */}
-        <span style={{ fontSize: 12, color: "var(--text-faint)", textAlign: "center" }}>{index + 1}</span>
+        <span style={{ fontSize: 11, color: "var(--text-faint)", textAlign: "center", paddingLeft: 14 }}>{index + 1}</span>
 
-        {/* Name + industry editor */}
+        {/* Name */}
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: isCritical ? "#f87171" : "var(--text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {account.name}
           </div>
-          <div style={{ marginTop: 2 }}>
-            <IndustryEditor
-              accountId={account.id}
-              current={account.industry}
-              onSaved={v => onIndustryUpdate(account.id, v)}
-            />
-          </div>
+          {account.industry && (
+            <div style={{ fontSize: 10, color: "var(--text-faint)", marginTop: 1 }}>{account.industry}</div>
+          )}
         </div>
 
-        {/* Health — 5 bucket traffic lights */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8 }}>
+        {/* Score badge */}
+        <div style={{ textAlign: "center" }}>
+          {score !== null ? (
+            <span style={{
+              display: "inline-block",
+              fontSize: 12, fontWeight: 700, letterSpacing: "-0.3px",
+              color: scoreColor(score),
+              background: scoreColor(score) + "18",
+              padding: "2px 6px", borderRadius: 6,
+              minWidth: 32, textAlign: "center",
+            }}>
+              {score}
+            </span>
+          ) : <span style={{ fontSize: 11, color: "var(--text-faint)" }}>—</span>}
+        </div>
+
+        {/* Health — 5 bucket dots + delta */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 7 }}>
           {delta !== null && delta !== 0 && (
             <div style={{ display: "flex", alignItems: "center", gap: 1, fontSize: 10, fontWeight: 600, color: deltaColor }}>
-              {delta > 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
+              {delta > 0 ? <TrendingUp size={9} /> : <TrendingDown size={9} />}
               {delta > 0 ? `+${delta}` : delta}
             </div>
           )}
           {snap ? (
-            <div style={{ display: "flex", alignItems: "flex-end", gap: 5 }}>
+            <div style={{ display: "flex", alignItems: "flex-end", gap: 4 }}>
               {(
                 [
                   ["scoreMeasurement", "M"] as const,
@@ -242,9 +230,9 @@ function AccountRow({
                 const s = snap[key] as number;
                 const dotColor = s >= 70 ? "#22c55e" : s >= 45 ? "#eab308" : "#ef4444";
                 return (
-                  <div key={key} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
-                    <div style={{ width: 10, height: 10, borderRadius: "50%", background: dotColor }} />
-                    <span style={{ fontSize: 8, color: "var(--text-faint)", lineHeight: 1 }}>{initial}</span>
+                  <div key={key} title={`${initial}: ${Math.round(s)}`} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+                    <div style={{ width: 9, height: 9, borderRadius: "50%", background: dotColor }} />
+                    <span style={{ fontSize: 7, color: "var(--text-faint)", lineHeight: 1 }}>{initial}</span>
                   </div>
                 );
               })}
@@ -257,23 +245,17 @@ function AccountRow({
         {/* ROAS */}
         <div style={{ textAlign: "right" }}>
           {snap && snap.roas > 0 ? (
-            <>
-              <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-2)", letterSpacing: "-0.3px" }}>{fmt(snap.roas)}x</div>
-              <div style={{ fontSize: 10, color: "var(--text-faint)" }}>ROAS</div>
-            </>
-          ) : <div style={{ fontSize: 11, color: "var(--text-faint)" }}>—</div>}
+            <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-2)", letterSpacing: "-0.3px" }}>{fmt(snap.roas)}x</span>
+          ) : <span style={{ fontSize: 11, color: "var(--text-faint)" }}>—</span>}
         </div>
 
         {/* Budget util */}
         <div style={{ textAlign: "right" }}>
           {snap && snap.budgetUtil > 0 ? (
-            <>
-              <div style={{ fontSize: 12, fontWeight: 600, letterSpacing: "-0.3px", color: snap.budgetUtil > 0.9 ? "#22c55e" : snap.budgetUtil > 0.6 ? "var(--text-2)" : "#ef4444" }}>
-                {Math.round(snap.budgetUtil * 100)}%
-              </div>
-              <div style={{ fontSize: 10, color: "var(--text-faint)" }}>budget</div>
-            </>
-          ) : <div style={{ fontSize: 11, color: "var(--text-faint)" }}>—</div>}
+            <span style={{ fontSize: 12, fontWeight: 600, letterSpacing: "-0.3px", color: snap.budgetUtil > 0.9 ? "#22c55e" : snap.budgetUtil > 0.6 ? "var(--text-2)" : "#ef4444" }}>
+              {Math.round(snap.budgetUtil * 100)}%
+            </span>
+          ) : <span style={{ fontSize: 11, color: "var(--text-faint)" }}>—</span>}
         </div>
 
         {/* Constraint */}
@@ -291,7 +273,7 @@ function AccountRow({
           )}
         </div>
 
-        {/* Actions: rescore + remove */}
+        {/* Actions */}
         <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 4 }}
           onClick={e => { e.preventDefault(); e.stopPropagation(); }}>
           {confirmDelete ? (
@@ -299,8 +281,7 @@ function AccountRow({
               <span style={{ fontSize: 11, color: "var(--text-dim)", whiteSpace: "nowrap" }}>Remove?</span>
               <button
                 onClick={async e => {
-                  e.preventDefault();
-                  e.stopPropagation();
+                  e.preventDefault(); e.stopPropagation();
                   setRemoving(true);
                   await fetch(`/api/accounts/${account.id}`, { method: "DELETE" });
                   onRemove(account.id);
@@ -439,6 +420,9 @@ function HomePageInner() {
   const [importStep, setImportStep]           = useState("");
   const [sessionUser, setSessionUser]         = useState<SessionUser | null>(null);
   const [search, setSearch]                   = useState("");
+  const [sortBy, setSortBy]     = useState<"score" | "name" | "roas" | "budget" | "bucket">("score");
+  const [sortDir, setSortDir]   = useState<"asc" | "desc">("asc");
+  const [filterBucket, setFilterBucket] = useState<ConstraintBucket | null>(null);
   const autoImportAttempted = useRef(false);
 
   const loadAccounts = useCallback(async () => {
@@ -518,13 +502,14 @@ function HomePageInner() {
     } finally { setScoringAll(false); setScoringProgress(null); }
   };
 
-  const handleIndustryUpdate = useCallback((id: string, industry: string | null) => {
-    setAccounts(prev => prev.map(a => a.id === id ? { ...a, industry } : a));
-  }, []);
-
   const handleRemove = useCallback((id: string) => {
     setAccounts(prev => prev.filter(a => a.id !== id));
   }, []);
+
+  const toggleSort = (col: typeof sortBy) => {
+    if (sortBy === col) setSortDir(d => d === "asc" ? "desc" : "asc");
+    else { setSortBy(col); setSortDir(col === "score" ? "asc" : "desc"); }
+  };
 
   const scored   = accounts.filter(a => a.snapshots[0]);
   const critical = scored.filter(a => minScore(a.snapshots[0]) < 45).length;
@@ -534,10 +519,31 @@ function HomePageInner() {
   const q = search.trim().toLowerCase();
   const sorted = [...accounts]
     .filter(a => !q || a.name.toLowerCase().includes(q) || (a.industry ?? "").toLowerCase().includes(q))
+    .filter(a => !filterBucket || a.snapshots[0]?.governingConstraint === filterBucket)
     .sort((a, b) => {
-      const sa = a.snapshots[0] ? minScore(a.snapshots[0]) : 101;
-      const sb = b.snapshots[0] ? minScore(b.snapshots[0]) : 101;
-      return sa - sb;
+      const dir = sortDir === "asc" ? 1 : -1;
+      if (sortBy === "score") {
+        const sa = a.snapshots[0] ? minScore(a.snapshots[0]) : 101;
+        const sb = b.snapshots[0] ? minScore(b.snapshots[0]) : 101;
+        return (sa - sb) * dir;
+      }
+      if (sortBy === "name") return a.name.localeCompare(b.name) * dir;
+      if (sortBy === "roas") {
+        const ra = a.snapshots[0]?.roas ?? -1;
+        const rb = b.snapshots[0]?.roas ?? -1;
+        return (ra - rb) * dir;
+      }
+      if (sortBy === "budget") {
+        const ba = a.snapshots[0]?.budgetUtil ?? -1;
+        const bb = b.snapshots[0]?.budgetUtil ?? -1;
+        return (ba - bb) * dir;
+      }
+      if (sortBy === "bucket") {
+        const ba = a.snapshots[0]?.governingConstraint ?? "ZZZ";
+        const bb = b.snapshots[0]?.governingConstraint ?? "ZZZ";
+        return ba.localeCompare(bb) * dir;
+      }
+      return 0;
     });
 
   if (connected === null) return (
@@ -639,15 +645,37 @@ function HomePageInner() {
 
         {/* Stats bar */}
         {scored.length > 0 && (
-          <div style={{ display: "flex", gap: 20, marginBottom: 16, padding: "12px 20px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, alignItems: "center" }}>
+          <div style={{ display: "flex", gap: 16, marginBottom: 12, padding: "10px 20px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, alignItems: "center", flexWrap: "wrap" }}>
             <Stat label="Total" value={accounts.length} color="var(--text-muted)" />
             <div style={{ width: 1, background: "var(--border)", alignSelf: "stretch" }} />
             <Stat label="Critical" value={critical} color="#ef4444" />
             <Stat label="At risk" value={atRisk} color="#eab308" />
             <Stat label="Healthy" value={healthy} color="#22c55e" />
-            <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6 }}>
-              <TrendingUp size={13} style={{ color: "var(--text-dim)" }} />
-              <span style={{ fontSize: 12, color: "var(--text-dim)" }}>{scored.length} scored</span>
+            <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+              {/* Bucket filter chips */}
+              {(Object.keys(BUCKET_COLOR) as ConstraintBucket[])
+                .filter(b => accounts.some(a => a.snapshots[0]?.governingConstraint === b))
+                .map(b => (
+                  <button
+                    key={b}
+                    onClick={() => setFilterBucket(filterBucket === b ? null : b)}
+                    style={{
+                      fontSize: 10, fontWeight: 600, letterSpacing: "0.4px", textTransform: "uppercase",
+                      color: filterBucket === b ? "#fff" : BUCKET_COLOR[b],
+                      background: filterBucket === b ? BUCKET_COLOR[b] : BUCKET_COLOR[b] + "18",
+                      border: `1px solid ${BUCKET_COLOR[b]}40`,
+                      padding: "3px 9px", borderRadius: 20, cursor: "pointer",
+                      transition: "background 0.15s, color 0.15s",
+                    }}
+                  >
+                    {BUCKET_LABELS[b]}
+                  </button>
+                ))}
+              {filterBucket && (
+                <button onClick={() => setFilterBucket(null)} style={{ fontSize: 10, color: "var(--text-dim)", background: "none", border: "1px solid var(--border-2)", borderRadius: 20, padding: "3px 8px", cursor: "pointer" }}>
+                  Clear
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -702,10 +730,16 @@ function HomePageInner() {
           </div>
         ) : (
           <div style={{ border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
-            <div style={{ display: "grid", gridTemplateColumns: "36px 1fr 160px 72px 60px 130px 76px", gap: 12, padding: "7px 20px 7px 17px", background: "var(--surface)", borderBottom: "1px solid var(--border)" }}>
-              {["#", "Account / Industry", "Health", "ROAS", "Budget", "Bottleneck", ""].map((h, i) => (
-                <span key={i} style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.6px", textTransform: "uppercase", color: "var(--text-faint)", textAlign: i >= 2 && i <= 4 ? "right" : "left" }}>{h}</span>
-              ))}
+            {/* Sortable header */}
+            <div style={{ display: "grid", gridTemplateColumns: COLS, gap: 12, padding: "7px 16px 7px 0", background: "var(--surface)", borderBottom: "1px solid var(--border)" }}>
+              <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.6px", textTransform: "uppercase", color: "var(--text-faint)", paddingLeft: 14 }}>#</span>
+              <SortHeader label="Account" col="name" sortBy={sortBy} sortDir={sortDir} onSort={toggleSort} />
+              <SortHeader label="Score" col="score" sortBy={sortBy} sortDir={sortDir} onSort={toggleSort} align="center" />
+              <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.6px", textTransform: "uppercase", color: "var(--text-faint)", textAlign: "right" }}>Health</span>
+              <SortHeader label="ROAS" col="roas" sortBy={sortBy} sortDir={sortDir} onSort={toggleSort} align="right" />
+              <SortHeader label="Budget" col="budget" sortBy={sortBy} sortDir={sortDir} onSort={toggleSort} align="right" />
+              <SortHeader label="Bottleneck" col="bucket" sortBy={sortBy} sortDir={sortDir} onSort={toggleSort} />
+              <span />
             </div>
 
             {sorted.map((account, idx) => (
@@ -715,7 +749,6 @@ function HomePageInner() {
                 index={idx}
                 scoring={scoring === account.id}
                 onRescore={runScore}
-                onIndustryUpdate={handleIndustryUpdate}
                 onRemove={handleRemove}
               />
             ))}
