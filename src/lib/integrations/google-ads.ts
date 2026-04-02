@@ -1318,6 +1318,25 @@ export interface DemographicRow {
   convValue:    number;
 }
 
+// Google Ads API returns numeric enum IDs — map to human-readable labels
+const DEVICE_LABELS: Record<string, string> = {
+  "0": "Unspecified", "1": "Other",   "2": "Mobile",
+  "3": "Tablet",      "4": "Desktop", "5": "Other", "6": "Connected TV",
+};
+const AGE_LABELS: Record<string, string> = {
+  "503001": "18–24", "503002": "25–34", "503003": "35–44",
+  "503004": "45–54", "503005": "55–64", "503006": "65+",
+  "503999": "Undetermined",
+};
+const GENDER_LABELS: Record<string, string> = {
+  "10": "Male", "11": "Undetermined", "20": "Female",
+};
+const INCOME_LABELS: Record<string, string> = {
+  "510001": "Lower 50%", "510002": "41–50%", "510003": "31–40%",
+  "510004": "21–30%",    "510005": "11–20%", "510006": "Top 10%",
+  "510000": "Undetermined",
+};
+
 export async function fetchDemographics(
   customerId: string,
   orgId?: string
@@ -1349,9 +1368,9 @@ export async function fetchDemographics(
   const deviceMap = new Map<string, DemographicRow>();
   for (const r of deviceRows) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const device = String((r as any).segments?.device ?? "UNKNOWN");
+    const device = String((r as any).segments?.device ?? "0");
     const existing = deviceMap.get(device) ?? {
-      dimension: "device", label: device,
+      dimension: "device", label: DEVICE_LABELS[device] ?? device,
       clicks: 0, impressions: 0, conversions: 0, costMicros: 0, convValue: 0,
     };
     existing.clicks      += Number(r.metrics?.clicks ?? 0);
@@ -1382,9 +1401,9 @@ export async function fetchDemographics(
   const ageMap = new Map<string, DemographicRow>();
   for (const r of ageRows) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const age = String((r as any).ad_group_criterion?.age_range?.type ?? "UNKNOWN");
+    const age = String((r as any).ad_group_criterion?.age_range?.type ?? "503999");
     const existing = ageMap.get(age) ?? {
-      dimension: "age", label: age,
+      dimension: "age", label: AGE_LABELS[age] ?? age,
       clicks: 0, impressions: 0, conversions: 0, costMicros: 0, convValue: 0,
     };
     existing.clicks      += Number(r.metrics?.clicks ?? 0);
@@ -1415,9 +1434,9 @@ export async function fetchDemographics(
   const genderMap = new Map<string, DemographicRow>();
   for (const r of genderRows) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const gender = String((r as any).ad_group_criterion?.gender?.type ?? "UNKNOWN");
+    const gender = String((r as any).ad_group_criterion?.gender?.type ?? "11");
     const existing = genderMap.get(gender) ?? {
-      dimension: "gender", label: gender,
+      dimension: "gender", label: GENDER_LABELS[gender] ?? gender,
       clicks: 0, impressions: 0, conversions: 0, costMicros: 0, convValue: 0,
     };
     existing.clicks      += Number(r.metrics?.clicks ?? 0);
@@ -1584,8 +1603,8 @@ export async function fetchPersonaData(
   const incomeMap = new Map<string, IncomeRow>();
   for (const r of incomeRaw) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const raw = String((r as any).ad_group_criterion?.income_range?.type ?? "UNKNOWN");
-    const label = raw.replace("INCOME_RANGE_", "").replace(/_/g, "–").replace("UP", "+");
+    const raw = String((r as any).ad_group_criterion?.income_range?.type ?? "510000");
+    const label = INCOME_LABELS[raw] ?? raw.replace("INCOME_RANGE_", "").replace(/_/g, "–").replace("UP", "+");
     const existing = incomeMap.get(label) ?? { label, clicks: 0, conversions: 0, costMicros: 0, convValue: 0 };
     existing.clicks      += Number(r.metrics?.clicks ?? 0);
     existing.conversions += Number(r.metrics?.conversions ?? 0);

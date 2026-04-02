@@ -44,7 +44,8 @@ export async function GET(req: NextRequest, { params }: Params) {
     refresh_token:     refreshToken,
   });
 
-  // Last 12 full months (exclude current partial month)
+  // Last 12 full months — use segments.date and aggregate to YYYY-MM client-side.
+  // segments.month is unreliable with date-range filters in some API versions.
   const now = new Date();
   const endDate = new Date(now.getFullYear(), now.getMonth(), 0); // last day of prev month
   const startDate = new Date(endDate.getFullYear() - 1, endDate.getMonth() + 1, 1);
@@ -53,7 +54,7 @@ export async function GET(req: NextRequest, { params }: Params) {
   try {
     const rows = await customer.query(`
       SELECT
-        segments.month,
+        segments.date,
         metrics.cost_micros,
         metrics.conversions_value,
         metrics.conversions
@@ -62,11 +63,12 @@ export async function GET(req: NextRequest, { params }: Params) {
         AND segments.date BETWEEN '${fmt(startDate)}' AND '${fmt(endDate)}'
     `);
 
-    // Aggregate by month
+    // Aggregate by month (YYYY-MM) client-side
     const byMonth = new Map<string, { spend: number; value: number; conversions: number }>();
     for (const row of rows) {
-      const month = String(row.segments?.month ?? "").slice(0, 7); // "YYYY-MM"
-      if (!month) continue;
+      const date  = String(row.segments?.date ?? "");
+      const month = date.slice(0, 7); // "YYYY-MM"
+      if (!month || month.length < 7) continue;
       const spend = Number(row.metrics?.cost_micros ?? 0) / 1_000_000;
       const value = Number(row.metrics?.conversions_value ?? 0);
       const conv  = Number(row.metrics?.conversions ?? 0);
