@@ -95,6 +95,9 @@ export async function GET(req: NextRequest) {
     name:   user.name ?? null,
   });
 
-  const destination = membership ? next : "/onboard";
+  // If next points to an invite, always go there — even for new users with no org yet.
+  // The invite handler will add them to the org and set a proper session.
+  const isInviteUrl = next.startsWith("/api/invite/");
+  const destination = (membership || isInviteUrl) ? next : "/onboard";
   return NextResponse.redirect(`${origin}${destination}`);
 }
