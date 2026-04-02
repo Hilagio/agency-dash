@@ -105,9 +105,15 @@ function scoreTraffic(s: ConstraintSignals["traffic"]): BucketScore {
     if (s.impressionShareLost_rank > 0.5) {
       const pct = Math.round(s.impressionShareLost_rank * 100);
       score -= Math.min(25, Math.round((pct - 50) * 1.5));
-      const msg = s.qualityScoreCount > 0
-        ? `${pct}% impression share lost to rank — review keyword bids and ad relevance`
-        : `${pct}% impression share lost to rank — check feed title quality and product pricing vs competitors`;
+      let msg: string;
+      if (s.qualityScoreCount === 0) {
+        msg = `${pct}% impression share lost to rank — check feed title quality and product pricing vs competitors`;
+      } else if (s.qualityScoreAvg >= 7) {
+        // High QS means Google rates the ad/keyword/page well — rank loss is bid-driven
+        msg = `${pct}% IS lost to rank with QS ${s.qualityScoreAvg.toFixed(1)}/10 — rank loss is bid competitiveness, not quality. Test bid increases on high-intent queries`;
+      } else {
+        msg = `${pct}% impression share lost to rank — review keyword bids and ad relevance (QS ${s.qualityScoreAvg.toFixed(1)}/10)`;
+      }
       signals.push(msg);
     } else if (s.impressionShareLost_rank > 0.3) {
       score -= Math.round((s.impressionShareLost_rank - 0.3) * 20);
@@ -122,9 +128,15 @@ function scoreTraffic(s: ConstraintSignals["traffic"]): BucketScore {
     const ctrTrend = s.clickThroughRate / s.clickThroughRateBaseline;
     if (ctrTrend < 0.5) {
       score -= 20;
-      const msg = s.qualityScoreCount > 0
-        ? `CTR down ${Math.round((1 - ctrTrend) * 100)}% vs 6-month average — review ad copy and keyword match types`
-        : `CTR down ${Math.round((1 - ctrTrend) * 100)}% vs 6-month average — check feed title relevance; seasonal shifts can cause this`;
+      let msg: string;
+      if (s.qualityScoreCount === 0) {
+        msg = `CTR down ${Math.round((1 - ctrTrend) * 100)}% vs 6-month average — check feed title relevance; seasonal shifts can cause this`;
+      } else if (s.qualityScoreAvg >= 7) {
+        // High QS means ad relevance is not the problem — look elsewhere
+        msg = `CTR down ${Math.round((1 - ctrTrend) * 100)}% vs 6-month average with QS ${s.qualityScoreAvg.toFixed(1)}/10 — ad quality is not the issue; check top-of-page rate, query mix shift, or creative fatigue`;
+      } else {
+        msg = `CTR down ${Math.round((1 - ctrTrend) * 100)}% vs 6-month average — review ad copy and keyword match types`;
+      }
       signals.push(msg);
     } else if (ctrTrend < 0.70) {
       score -= 8;

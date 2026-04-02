@@ -166,12 +166,18 @@ const trafficRules: RuleSet = (s) => {
   }
 
   if (t.clickThroughRate < 0.02) {
+    const highQs = t.qualityScoreCount > 0 && t.qualityScoreAvg >= 7;
     recs.push({
       bucket: "TRAFFIC",
-      title: "Rewrite ads — CTR below 2%",
-      description:
-        "Low CTR signals poor ad-to-intent match. Test new headlines with clearer value prop, " +
-        "add price, social proof, or urgency. Use RSA asset performance data to drop weak assets.",
+      title: highQs
+        ? "CTR below 2% — investigate top-of-page rate and query mix"
+        : "Rewrite ads — CTR below 2%",
+      description: highQs
+        ? `CTR is low but QS is ${t.qualityScoreAvg.toFixed(1)}/10, so ad relevance is not the problem. ` +
+          "Likely causes: losing top-of-page placement to higher bids, query mix shifting toward broader intent, or creative fatigue on specific assets. " +
+          "Check Auction Insights for top-of-page rate, segment search terms by intent cluster, and review impression share by position."
+        : "Low CTR signals poor ad-to-intent match. Test new headlines with clearer value prop, " +
+          "add price, social proof, or urgency. Use RSA asset performance data to drop weak assets.",
       impact: "MEDIUM",
       effort: "MEDIUM",
       safeToAutomate: false,
@@ -181,14 +187,25 @@ const trafficRules: RuleSet = (s) => {
   }
 
   if (t.impressionShareLost_rank > 0.25) {
+    const highQs   = t.qualityScoreCount > 0 && t.qualityScoreAvg >= 7;
+    const noQsData = t.qualityScoreCount === 0;
+    const pct      = Math.round(t.impressionShareLost_rank * 100);
     recs.push({
       bucket: "TRAFFIC",
-      title: "Address rank-based impression share loss",
-      description:
-        `${Math.round(t.impressionShareLost_rank * 100)}% IS lost to rank. ` +
-        "This is usually Quality Score, not bids. Fix QS first before raising bids.",
+      title: highQs
+        ? `${pct}% IS lost to rank — bid competitiveness issue, not quality`
+        : "Address rank-based impression share loss",
+      description: highQs
+        ? `Losing ${pct}% of impression share to rank with QS ${t.qualityScoreAvg.toFixed(1)}/10. ` +
+          "Strong Quality Score means Google rates your ads highly — the auctions you're losing are price-driven, not quality-driven. " +
+          "Test bid increases on your highest-intent keywords. Review Auction Insights to identify which competitors are outbidding you. " +
+          "Consider tROAS/tCPA relaxation on constrained campaigns to let Smart Bidding bid more aggressively."
+        : noQsData
+          ? `${pct}% IS lost to rank. For Shopping/PMax accounts this is typically feed quality or product pricing vs competitors. Improve feed titles and check price competitiveness.`
+          : `${pct}% IS lost to rank with QS ${t.qualityScoreAvg.toFixed(1)}/10. ` +
+            "Both quality and bids may be limiting rank. Tighten ad group themes first, then test bid increases on improved groups.",
       impact: "MEDIUM",
-      effort: "MEDIUM",
+      effort: highQs ? "EASY" : "MEDIUM",
       safeToAutomate: false,
       actionType: "IMPROVE_RANK",
       isEscalation: false,
