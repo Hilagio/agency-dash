@@ -72,29 +72,50 @@ function scoreTraffic(s: ConstraintSignals["traffic"]): BucketScore {
   const signals: string[] = [];
   let score = 100;
 
-  // Budget IS loss — only flag when genuinely constraining (> 35%)
-  if (s.impressionShareLost_budget > 0.35) {
-    const pct = Math.round(s.impressionShareLost_budget * 100);
-    score -= Math.min(35, pct);
-    signals.push(`${pct}% impression share lost to budget — campaigns are underfunded`);
-  } else if (s.impressionShareLost_budget > 0.15) {
-    // Minor IS loss: deduct silently — not worth a red signal
-    score -= Math.round(s.impressionShareLost_budget * 30);
+  // ── PMax Display/YouTube spend leak ──────────────────────────────────────
+  // For feed-only PMax, spend should go to Shopping and Search intent queries.
+  // CONTENT (Display) and YOUTUBE_WATCH/SEARCH spend is unexpected and usually
+  // means Google is broadening beyond the feed — wasting budget on low-intent placements.
+  if (s.isPmaxPrimary && s.pmaxDisplayYoutubePercent > 0.1) {
+    const pct = Math.round(s.pmaxDisplayYoutubePercent * 100);
+    if (s.pmaxDisplayYoutubePercent > 0.25) {
+      score -= Math.min(30, Math.round(pct * 1.2));
+      signals.push(`${pct}% of PMax spend going to Display/YouTube — feed-only campaigns shouldn't serve here; Google is broadening beyond the product feed`);
+    } else {
+      score -= 12;
+      signals.push(`${pct}% of PMax spend on Display/YouTube — monitor; feed-only campaigns ideally stay in Shopping/Search`);
+    }
   }
 
-  // Rank IS loss — for Shopping/PMax (no QS keywords) this means product-level
-  // competitiveness, not bid or ad relevance. Only flag when genuinely severe (> 50%).
-  // 30–50% lost to rank is common on PMax and not necessarily actionable.
-  if (s.impressionShareLost_rank > 0.5) {
-    const pct = Math.round(s.impressionShareLost_rank * 100);
-    score -= Math.min(25, Math.round((pct - 50) * 1.5));
-    const msg = s.qualityScoreCount > 0
-      ? `${pct}% impression share lost to rank — review keyword bids and ad relevance`
-      : `${pct}% impression share lost to rank — check feed title quality and product pricing vs competitors`;
-    signals.push(msg);
-  } else if (s.impressionShareLost_rank > 0.3) {
-    // 30–50%: deduct silently — common for PMax/Shopping, not a red signal
-    score -= Math.round((s.impressionShareLost_rank - 0.3) * 20);
+  // ── Impression share signals (Search/Shopping campaigns only) ────────────
+  // IS metrics are only valid for Search and Standard Shopping campaigns.
+  // PMax campaigns return 0 for these fields — if the account is PMax-primary
+  // and has no Search/Shopping campaigns, IS signals are not applicable.
+  const hasSearchShoppingCampaigns = s.searchImpressionShare > 0 ||
+    s.impressionShareLost_budget > 0 || s.impressionShareLost_rank > 0;
+
+  if (hasSearchShoppingCampaigns) {
+    // Budget IS loss — only flag when genuinely constraining (> 35%)
+    if (s.impressionShareLost_budget > 0.35) {
+      const pct = Math.round(s.impressionShareLost_budget * 100);
+      score -= Math.min(35, pct);
+      signals.push(`${pct}% impression share lost to budget — Search/Shopping campaigns are underfunded`);
+    } else if (s.impressionShareLost_budget > 0.15) {
+      score -= Math.round(s.impressionShareLost_budget * 30);
+    }
+
+    // Rank IS loss — only flag when genuinely severe (> 50%).
+    // 30–50% lost to rank is common and not necessarily actionable.
+    if (s.impressionShareLost_rank > 0.5) {
+      const pct = Math.round(s.impressionShareLost_rank * 100);
+      score -= Math.min(25, Math.round((pct - 50) * 1.5));
+      const msg = s.qualityScoreCount > 0
+        ? `${pct}% impression share lost to rank — review keyword bids and ad relevance`
+        : `${pct}% impression share lost to rank — check feed title quality and product pricing vs competitors`;
+      signals.push(msg);
+    } else if (s.impressionShareLost_rank > 0.3) {
+      score -= Math.round((s.impressionShareLost_rank - 0.3) * 20);
+    }
   }
 
   // CTR: compare trend vs account's own 15–180d baseline.
@@ -153,7 +174,7 @@ function scoreTraffic(s: ConstraintSignals["traffic"]): BucketScore {
     signals.push(`~${pct}% of query spend has no conversion history — review search terms report for clear irrelevancies`);
   }
 
-  if (s.searchImpressionShare > 0.7 && s.impressionShareLost_budget < 0.15) {
+  if (hasSearchShoppingCampaigns && s.searchImpressionShare > 0.7 && s.impressionShareLost_budget < 0.15) {
     signals.push("Strong impression share — traffic not the primary constraint");
   }
 

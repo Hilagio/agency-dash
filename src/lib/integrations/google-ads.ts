@@ -474,52 +474,113 @@ async function fetchMeasurementSignals(customer: Customer): Promise<MeasurementS
 // ─── Traffic signals ──────────────────────────────────────────────────────────
 
 async function fetchTrafficSignals(customer: Customer): Promise<TrafficSignals> {
-  // Impression share metrics are best over a longer window for statistical stability
   const { start, end } = last30Days();
-  // CTR trend: recent 14d vs days 15–180 baseline
   const { start: r14start, end: r14end } = last14Days();
   const { start: bstart,   end: bend }   = days15to180();
 
-  const rows = await customer.query(`
-    SELECT
-      metrics.search_impression_share,
-      metrics.search_budget_lost_impression_share,
-      metrics.search_rank_lost_impression_share,
-      metrics.clicks,
-      metrics.impressions,
-      metrics.ctr,
-      metrics.average_cpc,
-      campaign.status
-    FROM campaign
-    WHERE campaign.status = 'ENABLED'
-      AND segments.date BETWEEN '${start}' AND '${end}'
-  `);
+  // ── Search/Shopping campaigns: IS metrics are only valid for these types ──
+  // PMax campaigns return 0 for search_impression_share — averaging them in
+  // produces misleading values. Query Search + Shopping only.
+  const searchShoppingRows = await safeQuery(
+    () => customer.query(`
+      SELECT
+        metrics.search_impression_share,
+        metrics.search_budget_lost_impression_share,
+        metrics.search_rank_lost_impression_share,
+        metrics.clicks,
+        metrics.impressions,
+        metrics.cost_micros,
+        metrics.average_cpc
+      FROM campaign
+      WHERE campaign.status = 'ENABLED'
+        AND campaign.advertising_channel_type IN ('SEARCH', 'SHOPPING')
+        AND segments.date BETWEEN '${start}' AND '${end}'
+    `),
+    "IS metrics search/shopping"
+  );
 
-  // Aggregate across all enabled campaigns
-  let totalClicks = 0;
-  let totalImpressions = 0;
-  let totalCost = 0;
-  let isLostBudgetSum = 0;
-  let isLostRankSum = 0;
-  let isSum = 0;
-  let rowCount = 0;
+  // ── All campaigns: for account-level CTR and total spend ──────────────────
+  const allCampaignRows = await safeQuery(
+    () => customer.query(`
+      SELECT
+        metrics.clicks,
+        metrics.impressions,
+        metrics.cost_micros,
+        campaign.advertising_channel_type
+      FROM campaign
+      WHERE campaign.status = 'ENABLED'
+        AND segments.date BETWEEN '${start}' AND '${end}'
+    `),
+    "all campaign spend"
+  );
 
-  for (const r of rows) {
+  // ── PMax channel breakdown: detect Display/YouTube spend ─────────────────
+  // segments.ad_network_type shows where PMax actually served:
+  //   SEARCH, SEARCH_PARTNERS = intent-based (expected for feed-only)
+  //   CONTENT = Display Network (unexpected for feed-only — money leak)
+  //   YOUTUBE_WATCH, YOUTUBE_SEARCH = YouTube (unexpected for feed-only)
+  const pmaxChannelRows = await safeQuery(
+    () => customer.query(`
+      SELECT
+        segments.ad_network_type,
+        metrics.cost_micros
+      FROM campaign
+      WHERE campaign.status = 'ENABLED'
+        AND campaign.advertising_channel_type = 'PERFORMANCE_MAX'
+        AND segments.date BETWEEN '${start}' AND '${end}'
+    `),
+    "pmax channel breakdown"
+  );
+
+  // Aggregate IS metrics (Search/Shopping only)
+  let isLostBudgetSum = 0, isLostRankSum = 0, isSum = 0, isRowCount = 0;
+  let ssClicks = 0, ssImpressions = 0, ssCost = 0;
+  for (const r of searchShoppingRows) {
     const m = r.metrics ?? {};
+    ssClicks      += Number(m.clicks ?? 0);
+    ssImpressions += Number(m.impressions ?? 0);
+    ssCost        += Number(m.cost_micros ?? 0) / 1_000_000;
+    isLostBudgetSum += Number(m.search_budget_lost_impression_share ?? 0);
+    isLostRankSum   += Number(m.search_rank_lost_impression_share   ?? 0);
+    isSum           += Number(m.search_impression_share             ?? 0);
+    isRowCount++;
+  }
+  const avgIsLostBudget = isRowCount > 0 ? isLostBudgetSum / isRowCount : 0;
+  const avgIsLostRank   = isRowCount > 0 ? isLostRankSum   / isRowCount : 0;
+  const avgIs           = isRowCount > 0 ? isSum           / isRowCount : 0;
+
+  // Account-level totals (all campaigns)
+  let totalClicks = 0, totalImpressions = 0, totalCost = 0, pmaxCost = 0;
+  for (const r of allCampaignRows) {
+    const m   = r.metrics ?? {};
+    const cost = Number(m.cost_micros ?? 0) / 1_000_000;
     totalClicks      += Number(m.clicks ?? 0);
     totalImpressions += Number(m.impressions ?? 0);
-    totalCost        += Number(m.cost_micros ?? 0) / 1_000_000;
-    isLostBudgetSum  += Number(m.search_budget_lost_impression_share ?? 0);
-    isLostRankSum    += Number(m.search_rank_lost_impression_share ?? 0);
-    isSum            += Number(m.search_impression_share ?? 0);
-    rowCount++;
+    totalCost        += cost;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if ((r.campaign as any)?.advertising_channel_type === "PERFORMANCE_MAX") {
+      pmaxCost += cost;
+    }
   }
+  const ctr    = totalImpressions > 0 ? totalClicks / totalImpressions : 0;
+  const avgCpc = totalClicks > 0 ? totalCost / totalClicks : 0;
 
-  const avgIsLostBudget = rowCount > 0 ? isLostBudgetSum / rowCount : 0;
-  const avgIsLostRank   = rowCount > 0 ? isLostRankSum   / rowCount : 0;
-  const avgIs           = rowCount > 0 ? isSum           / rowCount : 0;
-  const ctr             = totalImpressions > 0 ? totalClicks / totalImpressions : 0;
-  const avgCpc          = totalClicks > 0 ? totalCost / totalClicks : 0;
+  // PMax presence and channel breakdown
+  const isPmaxPrimary = totalCost > 0 && pmaxCost / totalCost > 0.5;
+  let pmaxTotalCost = 0, pmaxDisplayYoutubeCost = 0;
+  for (const r of pmaxChannelRows) {
+    const cost    = Number(r.metrics?.cost_micros ?? 0) / 1_000_000;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const network = String((r.segments as any)?.ad_network_type ?? "");
+    pmaxTotalCost += cost;
+    // CONTENT = Display Network; YOUTUBE_WATCH / YOUTUBE_SEARCH = YouTube
+    if (network === "CONTENT" || network === "YOUTUBE_WATCH" || network === "YOUTUBE_SEARCH") {
+      pmaxDisplayYoutubeCost += cost;
+    }
+  }
+  const pmaxDisplayYoutubePercent = pmaxTotalCost > 0
+    ? pmaxDisplayYoutubeCost / pmaxTotalCost
+    : 0;
 
   // Quality Score — average across active keywords
   const qsRows = await safeQuery(
@@ -619,6 +680,8 @@ async function fetchTrafficSignals(customer: Customer): Promise<TrafficSignals> 
     qualityScoreCount,
     productDisapprovalRate,
     irrelevantQueryPercent:      Math.min(1, irrelevantQueryPercent),
+    isPmaxPrimary,
+    pmaxDisplayYoutubePercent:   Math.min(1, pmaxDisplayYoutubePercent),
   };
 }
 

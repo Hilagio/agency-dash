@@ -36,16 +36,19 @@ export const BUCKET_DESCRIPTIONS: Record<ConstraintBucket, string> = {
 // What the Google Ads API / Merchant Center provides.
 
 export interface TrafficSignals {
-  impressionShareLost_budget: number;      // 0–1
-  impressionShareLost_rank: number;        // 0–1
-  clickThroughRate: number;                // last 14 days
+  impressionShareLost_budget: number;      // 0–1 (Search/Shopping campaigns only — 0 if no such campaigns)
+  impressionShareLost_rank: number;        // 0–1 (Search/Shopping campaigns only — 0 if no such campaigns)
+  clickThroughRate: number;                // last 14 days (account-level)
   clickThroughRateBaseline: number;        // days 15–180 avg (0 = insufficient history)
   averageCpc: number;                      // absolute value
-  searchImpressionShare: number;           // 0–1
+  searchImpressionShare: number;           // 0–1 (Search/Shopping only)
   qualityScoreAvg: number;                 // 1–10
   qualityScoreCount: number;               // 0 = no keywords / feed-only account
   productDisapprovalRate: number;          // 0–1 (disapproved ÷ total products; 0 = no shopping data)
-  irrelevantQueryPercent: number;          // 0–1 (estimated % of budget wasted)
+  irrelevantQueryPercent: number;          // 0–1 (Search/Shopping search_term_view only; excludes PMax)
+  // ── PMax-specific ──────────────────────────────────────────────────────────
+  isPmaxPrimary: boolean;                  // PMax > 50% of account spend
+  pmaxDisplayYoutubePercent: number;       // 0–1, share of PMax spend on Display+YouTube (0 = no pmax / no data)
 }
 
 export interface MeasurementSignals {
