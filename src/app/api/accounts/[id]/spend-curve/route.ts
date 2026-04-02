@@ -88,7 +88,18 @@ export async function GET(req: NextRequest, { params }: Params) {
         conversions: Math.round(m.conversions),
       }));
 
-    return NextResponse.json({ points });
+    // Also return latest snapshot signals so the frontend can estimate k from
+    // IS-lost-to-budget, CTR, CVR when there are fewer than 4 months of data.
+    const latestSnapshot = await prisma.constraintSnapshot.findFirst({
+      where:   { accountId: id },
+      orderBy: { createdAt: "desc" },
+    });
+    let signals: Record<string, unknown> | null = null;
+    if (latestSnapshot?.rawSignals) {
+      try { signals = JSON.parse(latestSnapshot.rawSignals); } catch { /* ignore */ }
+    }
+
+    return NextResponse.json({ points, signals });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ error: msg }, { status: 502 });

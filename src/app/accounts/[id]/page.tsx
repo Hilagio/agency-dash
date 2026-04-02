@@ -565,39 +565,122 @@ interface AccountTargets {
 
 interface SpendPoint { month: string; spend: number; roas: number | null; cpa: number | null }
 
+// Signals from the latest constraint snapshot — used for signal-based k estimation
+interface LatestSignals {
+  traffic?: {
+    impressionShareLost_budget?: number;
+    searchImpressionShare?: number;
+    clickThroughRate?: number;
+    clickThroughRateBaseline?: number;
+  };
+  conversion?: {
+    conversionRate?: number;
+    conversionRateBaseline?: number;
+  };
+}
+
+// Estimate k from current account signals when historical data is insufficient.
+// Logic: how much headroom does this account have before hitting saturation?
+//
+// High IS-lost-to-budget (> 30%) → account is demand-constrained, not supply-constrained.
+//   Scaling budget recovers lost impressions → relatively flat curve (k ≈ -0.08)
+//
+// Medium IS-lost-to-budget (10–30%) → some headroom left (k ≈ -0.15)
+//
+// Low IS-lost-to-budget (< 10%) + strong IS → account is near saturation,
+//   further spend reaches lower-intent queries → steeper curve (k ≈ -0.30 to -0.40)
+//
+// CTR well below baseline → traffic quality already degrading at current spend (k steeper)
+// CVR well below baseline → landing page bottleneck, not spend, limits returns (k steeper)
+function estimateKFromSignals(signals: LatestSignals | null): { k: number; reason: string } {
+  if (!signals?.traffic) return { k: -0.28, reason: "no signals — generic curve" };
+
+  const isLostBudget = signals.traffic.impressionShareLost_budget ?? 0;
+  const searchIS     = signals.traffic.searchImpressionShare ?? 0;
+  const ctr          = signals.traffic.clickThroughRate ?? 0;
+  const ctrBase      = signals.traffic.clickThroughRateBaseline ?? 0;
+  const cvr          = signals.conversion?.conversionRate ?? 0;
+  const cvrBase      = signals.conversion?.conversionRateBaseline ?? 0;
+
+  let k = -0.20; // starting point
+  const reasons: string[] = [];
+
+  // Budget headroom: high IS-lost-to-budget = scaling stays efficient
+  if (isLostBudget > 0.35) {
+    k += 0.14; // flatter — lots of demand not being captured yet
+    reasons.push(`${Math.round(isLostBudget * 100)}% IS lost to budget → room to scale`);
+  } else if (isLostBudget > 0.15) {
+    k += 0.07;
+    reasons.push(`${Math.round(isLostBudget * 100)}% IS lost to budget → moderate headroom`);
+  } else if (searchIS > 0.6) {
+    k -= 0.10; // high IS already captured → approaching saturation
+    reasons.push(`${Math.round(searchIS * 100)}% IS already captured → near saturation`);
+  }
+
+  // CTR degradation: if CTR is well below baseline, quality is already slipping
+  if (ctrBase > 0 && ctr > 0 && ctr / ctrBase < 0.75) {
+    k -= 0.08;
+    reasons.push("CTR below baseline → traffic quality degrading");
+  }
+
+  // CVR degradation: if CVR is below baseline, scaling hits worse traffic first
+  if (cvrBase > 0 && cvr > 0 && cvr / cvrBase < 0.80) {
+    k -= 0.07;
+    reasons.push("CVR below baseline → conversion quality dropping");
+  }
+
+  return {
+    k: Math.max(-0.55, Math.min(-0.05, k)),
+    reason: reasons.join("; ") || "signal-based estimate",
+  };
+}
+
 // Fit a power-law efficiency curve to real monthly spend/ROAS data.
 // Returns the exponent `k` for efficiency(x) = x^k, where x = spend / medianSpend.
 // Negative k = diminishing returns (ROAS drops as spend rises).
-// Falls back to k = -0.28 (generic assumption) if data is insufficient.
-function fitEfficiencyCurve(points: SpendPoint[], useRoas: boolean): number {
+// Falls back to signal-based estimate, then generic -0.28 if no signals available.
+function fitEfficiencyCurve(
+  points: SpendPoint[],
+  useRoas: boolean,
+  signals: LatestSignals | null
+): { k: number; source: "historical" | "signals" | "generic"; label: string } {
   const valid = points.filter(p => p.spend > 0 && (useRoas ? p.roas : p.cpa) != null);
-  if (valid.length < 4) return -0.28; // not enough data — use generic
 
-  const spends   = valid.map(p => p.spend);
-  const medSpend = spends.sort((a, b) => a - b)[Math.floor(spends.length / 2)];
-  if (medSpend === 0) return -0.28;
+  if (valid.length >= 4) {
+    const spends   = [...valid.map(p => p.spend)].sort((a, b) => a - b);
+    const medSpend = spends[Math.floor(spends.length / 2)];
+    if (medSpend === 0) return fitEfficiencyCurve([], useRoas, signals);
 
-  // Fit log(efficiency) = k * log(x) via least-squares, where efficiency = roas / medRoas
-  const efficiencies = useRoas
-    ? valid.map(p => p.roas!)
-    : valid.map(p => 1 / p.cpa!); // higher 1/CPA = better efficiency
+    const efficiencies = useRoas
+      ? valid.map(p => p.roas!)
+      : valid.map(p => 1 / p.cpa!);
 
-  const medEff = efficiencies.sort((a, b) => a - b)[Math.floor(efficiencies.length / 2)];
-  if (medEff === 0) return -0.28;
+    const sortedEff = [...efficiencies].sort((a, b) => a - b);
+    const medEff = sortedEff[Math.floor(sortedEff.length / 2)];
+    if (medEff === 0) return fitEfficiencyCurve([], useRoas, signals);
 
-  const logPairs = valid.map((p, i) => ({
-    logX: Math.log(p.spend / medSpend),
-    logY: Math.log(efficiencies[i] / medEff),
-  })).filter(p => isFinite(p.logX) && isFinite(p.logY) && Math.abs(p.logX) > 0.05);
+    const logPairs = valid.map((p, i) => ({
+      logX: Math.log(p.spend / medSpend),
+      logY: Math.log(efficiencies[i] / medEff),
+    })).filter(p => isFinite(p.logX) && isFinite(p.logY) && Math.abs(p.logX) > 0.05);
 
-  if (logPairs.length < 3) return -0.28;
+    if (logPairs.length >= 3) {
+      const sumXX = logPairs.reduce((s, p) => s + p.logX * p.logX, 0);
+      const sumXY = logPairs.reduce((s, p) => s + p.logX * p.logY, 0);
+      const k = Math.max(-0.6, Math.min(0, sumXY / sumXX));
+      return { k, source: "historical", label: `${valid.length}mo real data` };
+    }
+  }
 
-  const sumXX = logPairs.reduce((s, p) => s + p.logX * p.logX, 0);
-  const sumXY = logPairs.reduce((s, p) => s + p.logX * p.logY, 0);
-  const k = sumXY / sumXX;
+  // Signal-based fallback — uses IS, CTR, CVR from latest snapshot
+  if (signals?.traffic) {
+    const { k, reason } = estimateKFromSignals(signals);
+    const monthCount = valid.length;
+    const prefix = monthCount > 0 ? `${monthCount}mo data + ` : "";
+    return { k, source: "signals", label: `${prefix}${reason}` };
+  }
 
-  // Clamp to a sane range: at most flat (0) to aggressively diminishing (-0.6)
-  return Math.max(-0.6, Math.min(0, k));
+  return { k: -0.28, source: "generic", label: "generic curve — no account data" };
 }
 
 function AccountTargetsPanel({
@@ -612,14 +695,27 @@ function AccountTargetsPanel({
   onSaved: (v: AccountTargets) => void;
 }) {
   const [editing, setEditing] = useState(false);
-  const [curvePoints, setCurvePoints] = useState<SpendPoint[] | null>(null);
+  const [curvePoints,   setCurvePoints]   = useState<SpendPoint[] | null>(null);
+  const [curveSignals,  setCurveSignals]  = useState<LatestSignals | null>(null);
+  const [actualRoas,    setActualRoas]    = useState<number | null>(null);
+  const [actualCpa,     setActualCpa]     = useState<number | null>(null);
 
   useEffect(() => {
     if (initial.monthlyBudget == null) return;
     if (initial.targetRoas == null && initial.targetCpa == null) return;
     fetch(`/api/accounts/${accountId}/spend-curve`)
       .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d?.points) setCurvePoints(d.points); })
+      .then(d => {
+        if (!d) return;
+        if (d.points) setCurvePoints(d.points);
+        if (d.signals) setCurveSignals(d.signals);
+        // Derive actual ROAS/CPA from the most recent month with data
+        if (d.points?.length > 0) {
+          const last = [...d.points].sort((a: SpendPoint, b: SpendPoint) => b.month.localeCompare(a.month))[0];
+          if (last.roas != null) setActualRoas(last.roas);
+          if (last.cpa  != null) setActualCpa(last.cpa);
+        }
+      })
       .catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accountId]);
@@ -775,42 +871,92 @@ function AccountTargetsPanel({
 
       {/* Budget projection — only when both budget and a return target are set */}
       {!editing && initial.monthlyBudget != null && (initial.targetRoas != null || initial.targetCpa != null) && (() => {
-        const budget    = initial.monthlyBudget!;
-        const useRoas   = initial.targetRoas != null;
-        const k         = fitEfficiencyCurve(curvePoints ?? [], useRoas);
-        const hasReal   = curvePoints != null && curvePoints.length >= 4;
+        const budget  = initial.monthlyBudget!;
+        const useRoas = initial.targetRoas != null;
+        const { k, source, label } = fitEfficiencyCurve(curvePoints ?? [], useRoas, curveSignals);
 
-        const budgetPoints = [0.5, 0.75, 1, 1.5, 2, 3];
-        const rows = budgetPoints.map(multiplier => {
+        // Actual vs target gap
+        const targetRoas = initial.targetRoas;
+        const targetCpa  = initial.targetCpa;
+        const roasGapPct = (actualRoas != null && targetRoas != null && targetRoas > 0)
+          ? ((actualRoas - targetRoas) / targetRoas) * 100 : null;
+        const cpaGapPct  = (actualCpa != null && targetCpa != null && targetCpa > 0)
+          ? ((targetCpa - actualCpa) / targetCpa) * 100 : null; // positive = better than target
+
+        const sourceColor  = source === "historical" ? "#16a34a" : source === "signals" ? "#2563eb" : "#ca8a04";
+        const sourceBg     = source === "historical" ? "rgba(34,197,94,0.1)" : source === "signals" ? "rgba(37,99,235,0.1)" : "rgba(234,179,8,0.1)";
+        const sourceBorder = source === "historical" ? "rgba(34,197,94,0.2)" : source === "signals" ? "rgba(37,99,235,0.2)" : "rgba(234,179,8,0.2)";
+
+        const budgetMultipliers = [0.5, 0.75, 1, 1.5, 2, 3];
+        const rows = budgetMultipliers.map(multiplier => {
           const spend      = Math.round(budget * multiplier);
-          // efficiency(x) = x^k, clamped: allow up to 1.2 below baseline, minimum 0.4
           const efficiency = Math.min(1.2, Math.max(0.4, Math.pow(multiplier, k)));
+          // Use actual ROAS as baseline if available, else target
+          const baseRoas   = actualRoas ?? targetRoas ?? 1;
+          const baseCpa    = actualCpa  ?? targetCpa  ?? 1;
           let returnLabel  = "";
           if (useRoas) {
-            const rev = Math.round(spend * initial.targetRoas! * efficiency);
-            returnLabel = `${currSym}${rev.toLocaleString()} revenue`;
+            returnLabel = `${currSym}${Math.round(spend * baseRoas * efficiency).toLocaleString()} rev.`;
           } else {
-            const conv = Math.round(spend / initial.targetCpa! * efficiency);
-            returnLabel = `${conv} conversions`;
+            returnLabel = `${Math.round(spend / baseCpa * efficiency)} conv.`;
           }
           return { spend, returnLabel, efficiency, isBase: multiplier === 1, multiplier };
         });
 
         return (
           <div style={{ marginTop: 16, borderTop: "1px solid var(--border)", paddingTop: 14 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+            {/* Header row */}
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
               <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.6px", textTransform: "uppercase", color: "var(--text-faint)" }}>
-                Budget scenarios · diminishing returns modelled
+                Budget scenarios
               </div>
-              <div style={{
-                fontSize: 9, fontWeight: 600, padding: "1px 6px", borderRadius: 10,
-                background: hasReal ? "rgba(34,197,94,0.1)" : "rgba(234,179,8,0.1)",
-                color: hasReal ? "#16a34a" : "#ca8a04",
-                border: `1px solid ${hasReal ? "rgba(34,197,94,0.2)" : "rgba(234,179,8,0.2)"}`,
-              }}>
-                {hasReal ? `Fitted on ${curvePoints!.length}mo real data` : "Generic curve — not enough history"}
+              <div style={{ fontSize: 9, fontWeight: 600, padding: "1px 6px", borderRadius: 10, background: sourceBg, color: sourceColor, border: `1px solid ${sourceBorder}` }}>
+                {label}
               </div>
+
+              {/* Actual vs target ROAS/CPA */}
+              {useRoas && actualRoas != null && targetRoas != null && (
+                <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontSize: 11, color: "var(--text-faint)" }}>Actual ROAS:</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: roasGapPct != null && roasGapPct >= 0 ? "#22c55e" : "#ef4444", letterSpacing: "-0.3px" }}>
+                    {actualRoas.toFixed(1)}x
+                  </span>
+                  <span style={{ fontSize: 10, color: "var(--text-faint)" }}>vs</span>
+                  <span style={{ fontSize: 11, color: "var(--text-dim)" }}>{targetRoas}x target</span>
+                  {roasGapPct != null && (
+                    <span style={{
+                      fontSize: 10, fontWeight: 600, padding: "1px 6px", borderRadius: 10,
+                      background: roasGapPct >= 0 ? "rgba(34,197,94,0.1)" : "rgba(239,68,68,0.1)",
+                      color: roasGapPct >= 0 ? "#16a34a" : "#ef4444",
+                      border: `1px solid ${roasGapPct >= 0 ? "rgba(34,197,94,0.2)" : "rgba(239,68,68,0.2)"}`,
+                    }}>
+                      {roasGapPct >= 0 ? "+" : ""}{roasGapPct.toFixed(0)}%
+                    </span>
+                  )}
+                </div>
+              )}
+              {!useRoas && actualCpa != null && targetCpa != null && (
+                <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontSize: 11, color: "var(--text-faint)" }}>Actual CPA:</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: cpaGapPct != null && cpaGapPct >= 0 ? "#22c55e" : "#ef4444", letterSpacing: "-0.3px" }}>
+                    {currSym}{actualCpa.toFixed(0)}
+                  </span>
+                  <span style={{ fontSize: 10, color: "var(--text-faint)" }}>vs</span>
+                  <span style={{ fontSize: 11, color: "var(--text-dim)" }}>{currSym}{targetCpa} target</span>
+                  {cpaGapPct != null && (
+                    <span style={{
+                      fontSize: 10, fontWeight: 600, padding: "1px 6px", borderRadius: 10,
+                      background: cpaGapPct >= 0 ? "rgba(34,197,94,0.1)" : "rgba(239,68,68,0.1)",
+                      color: cpaGapPct >= 0 ? "#16a34a" : "#ef4444",
+                      border: `1px solid ${cpaGapPct >= 0 ? "rgba(34,197,94,0.2)" : "rgba(239,68,68,0.2)"}`,
+                    }}>
+                      {cpaGapPct >= 0 ? "+" : ""}{cpaGapPct.toFixed(0)}%
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
+
             <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 6 }}>
               {rows.map(r => (
                 <div key={r.multiplier} style={{
@@ -827,9 +973,7 @@ function AccountTargetsPanel({
               ))}
             </div>
             <div style={{ fontSize: 10, color: "var(--text-very-dim)", marginTop: 8 }}>
-              {hasReal
-                ? `Curve fitted on ${curvePoints!.length} months of this account's actual spend vs. ${useRoas ? "ROAS" : "CPA"} data (k=${k.toFixed(2)}).`
-                : `Based on ${useRoas ? `${initial.targetRoas}x target ROAS` : `${currSym}${initial.targetCpa} target CPA`} at baseline. Less than 4 months of data — using generic saturation curve.`}
+              Returns based on {actualRoas != null ? "actual" : "target"} {useRoas ? `${(actualRoas ?? targetRoas)?.toFixed(1)}x ROAS` : `${currSym}${(actualCpa ?? targetCpa)?.toFixed(0)} CPA`} · k={k.toFixed(2)} · {label}
             </div>
           </div>
         );
