@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft, Loader2, Building2, Users, Mail, Shield,
-  Trash2, RefreshCw, Check, Copy, Link2, Zap, LogOut,
+  Trash2, RefreshCw, Check, Copy, Zap, LogOut, BookOpen, ChevronDown, ChevronUp,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -30,6 +30,20 @@ interface Org {
   name:    string;
   slug:    string;
   members: Member[];
+}
+
+interface NotionPage {
+  id:    string;
+  title: string;
+  url:   string;
+}
+
+interface NotionStatus {
+  connected:       boolean;
+  workspaceName?:  string;
+  selectedPageIds?: string[];
+  lastSyncedAt?:   string;
+  cachedPages?:    { pageId: string; title: string; fetchedAt: string }[];
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -102,16 +116,28 @@ export default function SettingsPage() {
   // Role change / remove
   const [removingId, setRemovingId] = useState<string | null>(null);
 
+  // Notion
+  const [notionStatus, setNotionStatus]       = useState<NotionStatus | null>(null);
+  const [notionToken, setNotionToken]         = useState("");
+  const [notionConnecting, setNotionConnecting] = useState(false);
+  const [notionError, setNotionError]         = useState<string | null>(null);
+  const [notionPages, setNotionPages]         = useState<NotionPage[] | null>(null);
+  const [notionLoadingPages, setNotionLoadingPages] = useState(false);
+  const [notionSelectedIds, setNotionSelectedIds]   = useState<string[]>([]);
+  const [notionSyncing, setNotionSyncing]     = useState(false);
+  const [notionShowPages, setNotionShowPages] = useState(false);
+
   // Session info (from /api/org which returns current user implicitly)
   const [myUserId, setMyUserId] = useState<string | null>(null);
   const [myRole, setMyRole]     = useState<string | null>(null);
 
   const load = async () => {
-    const [orgRes, inviteRes, adsRes, meRes] = await Promise.all([
+    const [orgRes, inviteRes, adsRes, meRes, notionRes] = await Promise.all([
       fetch("/api/org"),
       fetch("/api/org/invites").catch(() => null),
       fetch("/api/auth/google-ads/status"),
       fetch("/api/auth/me"),
+      fetch("/api/integrations/notion"),
     ]);
 
     if (orgRes.ok) {
@@ -129,6 +155,11 @@ export default function SettingsPage() {
     if (meRes.ok) {
       const { user } = await meRes.json() as { user: { userId: string } | null };
       if (user) setMyUserId(user.userId);
+    }
+    if (notionRes.ok) {
+      const n: NotionStatus = await notionRes.json();
+      setNotionStatus(n);
+      if (n.selectedPageIds) setNotionSelectedIds(n.selectedPageIds);
     }
     setLoading(false);
   };
@@ -203,6 +234,68 @@ export default function SettingsPage() {
   const disconnectAds = async () => {
     await fetch("/api/auth/google-ads/disconnect", { method: "POST" });
     setAdsConnected(false);
+  };
+
+  const connectNotion = async () => {
+    if (!notionToken.trim()) return;
+    setNotionConnecting(true);
+    setNotionError(null);
+    const res = await fetch("/api/integrations/notion", {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ token: notionToken.trim() }),
+    });
+    if (!res.ok) {
+      const j = await res.json();
+      setNotionError(j.error ?? "Failed to connect");
+    } else {
+      const n = await res.json();
+      setNotionStatus({ connected: true, workspaceName: n.workspaceName, selectedPageIds: [] });
+      setNotionToken("");
+      loadNotionPages();
+    }
+    setNotionConnecting(false);
+  };
+
+  const loadNotionPages = async () => {
+    setNotionLoadingPages(true);
+    setNotionShowPages(true);
+    const res = await fetch("/api/integrations/notion/pages");
+    if (res.ok) {
+      const { pages } = await res.json();
+      setNotionPages(pages);
+    }
+    setNotionLoadingPages(false);
+  };
+
+  const saveNotionPages = async (ids: string[]) => {
+    setNotionSelectedIds(ids);
+    await fetch("/api/integrations/notion", {
+      method:  "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ selectedPageIds: ids }),
+    });
+  };
+
+  const syncNotion = async () => {
+    setNotionSyncing(true);
+    const res = await fetch("/api/integrations/notion/sync", { method: "POST" });
+    if (res.ok) {
+      const { synced } = await res.json();
+      const updated: NotionStatus = await fetch("/api/integrations/notion").then(r => r.json());
+      setNotionStatus(updated);
+      if (updated.selectedPageIds) setNotionSelectedIds(updated.selectedPageIds);
+      alert(`Synced ${synced} page${synced !== 1 ? "s" : ""} successfully.`);
+    }
+    setNotionSyncing(false);
+  };
+
+  const disconnectNotion = async () => {
+    await fetch("/api/integrations/notion", { method: "DELETE" });
+    setNotionStatus({ connected: false });
+    setNotionPages(null);
+    setNotionSelectedIds([]);
+    setNotionShowPages(false);
   };
 
   if (loading) {
@@ -297,6 +390,130 @@ export default function SettingsPage() {
               <a href="/api/auth/google-ads" style={{ fontSize: 12, color: "#fff", background: "#1d4ed8", border: "none", borderRadius: 7, padding: "6px 14px", textDecoration: "none", fontWeight: 600 }}>
                 Connect MCC
               </a>
+            </div>
+          )}
+        </Card>
+
+        {/* ── Notion Knowledge Base ────────────────────────────────────── */}
+        <Card title="Notion Knowledge Base" icon={<BookOpen size={15} />}>
+          {notionStatus?.connected ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {/* Connected header */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#22c55e" }} />
+                  <span style={{ fontSize: 13, color: "var(--text-2)" }}>
+                    {notionStatus.workspaceName ? `Connected · ${notionStatus.workspaceName}` : "Connected"}
+                  </span>
+                  {notionStatus.lastSyncedAt && (
+                    <span style={{ fontSize: 11, color: "var(--text-faint)" }}>
+                      · synced {fmtDate(notionStatus.lastSyncedAt)}
+                    </span>
+                  )}
+                </div>
+                <div style={{ display: "flex", gap: 6 }}>
+                  <button
+                    onClick={syncNotion}
+                    disabled={notionSyncing || notionSelectedIds.length === 0}
+                    style={{ fontSize: 12, color: "var(--text-dim)", background: "none", border: "1px solid var(--border-2)", borderRadius: 7, padding: "5px 10px", cursor: notionSyncing || notionSelectedIds.length === 0 ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: 5 }}
+                  >
+                    {notionSyncing ? <Loader2 size={11} className="animate-spin" /> : <RefreshCw size={11} />}
+                    {notionSyncing ? "Syncing…" : "Sync now"}
+                  </button>
+                  <button
+                    onClick={disconnectNotion}
+                    style={{ fontSize: 12, color: "#ef4444", background: "none", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 7, padding: "5px 10px", cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}
+                  >
+                    <Trash2 size={11} /> Disconnect
+                  </button>
+                </div>
+              </div>
+
+              {/* Selected pages summary */}
+              {notionStatus.cachedPages && notionStatus.cachedPages.length > 0 && (
+                <div style={{ fontSize: 12, color: "var(--text-faint)" }}>
+                  {notionStatus.cachedPages.length} page{notionStatus.cachedPages.length !== 1 ? "s" : ""} in AI context:{" "}
+                  <span style={{ color: "var(--text-2)" }}>
+                    {notionStatus.cachedPages.map(p => p.title).join(", ")}
+                  </span>
+                </div>
+              )}
+
+              {/* Page picker toggle */}
+              <button
+                onClick={() => { setNotionShowPages(!notionShowPages); if (!notionPages) loadNotionPages(); }}
+                style={{ fontSize: 12, color: "var(--text-dim)", background: "var(--bg)", border: "1px solid var(--border-2)", borderRadius: 8, padding: "7px 12px", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, width: "fit-content" }}
+              >
+                {notionShowPages ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                {notionShowPages ? "Hide page selector" : "Select pages to include"}
+              </button>
+
+              {/* Page list */}
+              {notionShowPages && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  {notionLoadingPages ? (
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-faint)" }}>
+                      <Loader2 size={12} className="animate-spin" /> Loading pages…
+                    </div>
+                  ) : notionPages && notionPages.length > 0 ? (
+                    <>
+                      <p style={{ fontSize: 11, color: "var(--text-faint)", marginBottom: 4 }}>
+                        Select pages to pull into the AI knowledge base. Sync after changes.
+                      </p>
+                      {notionPages.map(page => (
+                        <label key={page.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", borderRadius: 7, cursor: "pointer", background: notionSelectedIds.includes(page.id) ? "rgba(29,78,216,0.08)" : "transparent", border: `1px solid ${notionSelectedIds.includes(page.id) ? "rgba(29,78,216,0.25)" : "transparent"}` }}>
+                          <input
+                            type="checkbox"
+                            checked={notionSelectedIds.includes(page.id)}
+                            onChange={e => {
+                              const next = e.target.checked
+                                ? [...notionSelectedIds, page.id]
+                                : notionSelectedIds.filter(id => id !== page.id);
+                              saveNotionPages(next);
+                            }}
+                            style={{ accentColor: "#1d4ed8", width: 13, height: 13, flexShrink: 0 }}
+                          />
+                          <span style={{ fontSize: 13, color: "var(--text-2)" }}>{page.title}</span>
+                        </label>
+                      ))}
+                    </>
+                  ) : (
+                    <p style={{ fontSize: 12, color: "var(--text-faint)" }}>
+                      No pages found. Make sure your integration has been shared with the pages in Notion.
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <p style={{ fontSize: 13, color: "var(--text-dim)", margin: 0 }}>
+                Connect your Notion workspace to pull FAQs, strategy docs, and SOPs into the AI context.
+                Create an{" "}
+                <a href="https://www.notion.so/my-integrations" target="_blank" rel="noopener noreferrer" style={{ color: "#3b82f6" }}>
+                  internal integration
+                </a>{" "}
+                in Notion, copy the token, and paste it below.
+              </p>
+              <div style={{ display: "flex", gap: 8 }}>
+                <input
+                  type="password"
+                  value={notionToken}
+                  onChange={e => setNotionToken(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && connectNotion()}
+                  placeholder="ntn_xxxx… or secret_xxxx…"
+                  style={{ flex: 1, padding: "8px 12px", borderRadius: 8, border: "1px solid var(--border-2)", background: "var(--bg)", color: "var(--text)", fontSize: 13, outline: "none", fontFamily: "monospace" }}
+                />
+                <button
+                  onClick={connectNotion}
+                  disabled={notionConnecting || !notionToken.trim()}
+                  style={{ padding: "8px 14px", borderRadius: 8, background: notionConnecting || !notionToken.trim() ? "var(--surface-2)" : "#1d4ed8", border: "none", color: notionConnecting || !notionToken.trim() ? "var(--text-faint)" : "#fff", fontSize: 13, fontWeight: 600, cursor: notionConnecting || !notionToken.trim() ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" }}
+                >
+                  {notionConnecting ? <Loader2 size={13} className="animate-spin" /> : null}
+                  {notionConnecting ? "Connecting…" : "Connect"}
+                </button>
+              </div>
+              {notionError && <p style={{ fontSize: 12, color: "#ef4444", margin: 0 }}>{notionError}</p>}
             </div>
           )}
         </Card>

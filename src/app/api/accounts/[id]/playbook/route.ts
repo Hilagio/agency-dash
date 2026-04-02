@@ -26,7 +26,7 @@ export async function POST(_req: NextRequest, { params }: Params) {
 
   const { id } = await params;
 
-  const [account, snapshot, sops] = await Promise.all([
+  const [account, snapshot, sops, notionConn] = await Promise.all([
     prisma.account.findFirst({ where: { id, organizationId: ctx.orgId } }),
     prisma.constraintSnapshot.findFirst({
       where: { accountId: id },
@@ -34,6 +34,10 @@ export async function POST(_req: NextRequest, { params }: Params) {
       include: { actions: { orderBy: { impact: "asc" } } },
     }),
     prisma.agencySop.findMany({ where: { organizationId: ctx.orgId, isActive: true }, orderBy: { createdAt: "asc" } }),
+    prisma.notionConnection.findUnique({
+      where:   { organizationId: ctx.orgId },
+      include: { pageCache: { orderBy: { fetchedAt: "desc" } } },
+    }),
   ]);
 
   if (!account) return forbidden();
@@ -102,13 +106,18 @@ Key live metrics (last 30 days):
     ? `\nCLIENT BRIEF (provided by agency):\n${account.clientContext}\n`
     : "";
 
+  const notionContext = notionConn && notionConn.pageCache.length > 0
+    ? `\nAGENCY KNOWLEDGE BASE (from Notion — treat as authoritative reference):\n` +
+      notionConn.pageCache.map(p => `--- ${p.title} ---\n${p.content}`).join("\n\n").slice(0, 5000) + "\n"
+    : "";
+
   const systemPrompt = `You are a senior Google Ads optimization specialist writing a concrete, actionable playbook for a client account. You do NOT give generic advice — every recommendation references the specific data and signals provided.
 
 Write in a direct, confident tone — like a playbook from an expert who has already diagnosed the problem. No fluff, no "it depends", no "consider" — tell them exactly what to do and why.
 
 ${AGENCY_PHILOSOPHY}
 
-${clientBriefContext}${sopContext}
+${clientBriefContext}${notionContext}${sopContext}
 IMPORTANT: If the account is ecommerce (Shopping/PMax), adapt all advice to feed-based campaigns:
 - "Rewrite ads" → "Improve product feed titles/descriptions to match search intent"
 - "CTR issues" → "Feed title mismatch or pricing issue vs competitors"

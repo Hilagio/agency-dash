@@ -1,11 +1,13 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Send, Loader2 } from "lucide-react";
+import { Send, Loader2, ThumbsUp, ThumbsDown, Check } from "lucide-react";
 
 interface Message {
-  role: "user" | "assistant";
-  content: string;
+  role:      "user" | "assistant";
+  content:   string;
+  messageId?: string; // set on assistant messages once streaming completes
+  streaming?: boolean;
 }
 
 interface Props {
@@ -153,28 +155,55 @@ const QUICK_PROMPTS = [
 export function ChatAssistant({ accountId, constraintBucket, constraintReason }: Props) {
   const [messages, setMessages] = useState<Message[]>([
     {
-      role: "assistant",
+      role:    "assistant",
       content: `Analyzing this account through its governing constraint: **${constraintBucket}**\n\n_${constraintReason}_\n\nWhat would you like to work through?`,
     },
   ]);
-  const [input, setInput] = useState("");
+  const [input, setInput]       = useState("");
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [streaming, setStreaming] = useState(false);
-  const bottomRef = useRef<HTMLDivElement>(null);
+
+  // Feedback state: keyed by messageId
+  const [feedbackGiven, setFeedbackGiven] = useState<Record<string, "up" | "down">>({});
+  const [correctionOpen, setCorrectionOpen] = useState<string | null>(null); // messageId
+  const [correctionText, setCorrectionText] = useState("");
+  const [correctionSent, setCorrectionSent] = useState<Record<string, boolean>>({});
+
+  // Track the last user message for attaching to feedback
+  const lastUserMessageRef = useRef<string>("");
+
+  const bottomRef   = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  const submitFeedback = async (messageId: string, rating: "up" | "down", correction?: string) => {
+    const questionText = lastUserMessageRef.current;
+    setFeedbackGiven(prev => ({ ...prev, [messageId]: rating }));
+    if (rating === "up") setCorrectionOpen(null);
+    await fetch(`/api/accounts/${accountId}/chat/feedback`, {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ messageId, rating, correction, questionText }),
+    });
+    if (correction) {
+      setCorrectionSent(prev => ({ ...prev, [messageId]: true }));
+      setCorrectionOpen(null);
+      setCorrectionText("");
+    }
+  };
+
   const send = async (text?: string) => {
     const userMessage = (text ?? input).trim();
     if (!userMessage || streaming) return;
 
+    lastUserMessageRef.current = userMessage;
     setInput("");
     setMessages((prev) => [...prev, { role: "user", content: userMessage }]);
     setStreaming(true);
-    setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
+    setMessages((prev) => [...prev, { role: "assistant", content: "", streaming: true }]);
 
     try {
       const res = await fetch(`/api/accounts/${accountId}/chat`, {
@@ -209,7 +238,21 @@ export function ChatAssistant({ accountId, constraintBucket, constraintReason }:
               return updated;
             });
           }
-          if (data.done && data.sessionId) setSessionId(data.sessionId);
+          if (data.done && data.sessionId) {
+            setSessionId(data.sessionId);
+            // Mark message as done (streaming: false) and attach messageId
+            if (data.messageId) {
+              setMessages(prev => {
+                const updated = [...prev];
+                updated[updated.length - 1] = {
+                  ...updated[updated.length - 1],
+                  messageId: data.messageId,
+                  streaming: false,
+                };
+                return updated;
+              });
+            }
+          }
           if (data.error) {
             setMessages((prev) => {
               const updated = [...prev];
@@ -245,15 +288,7 @@ export function ChatAssistant({ accountId, constraintBucket, constraintReason }:
       <div style={{ flex: 1, overflowY: "auto", padding: "20px 20px 0" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           {messages.map((msg, i) => (
-            <div
-              key={i}
-              style={{
-                display: "flex",
-                flexDirection: msg.role === "user" ? "row-reverse" : "row",
-                alignItems: "flex-start",
-                gap: 10,
-              }}
-            >
+            <div key={i} style={{ display: "flex", flexDirection: msg.role === "user" ? "row-reverse" : "row", alignItems: "flex-start", gap: 10 }}>
               {/* Avatar */}
               <div style={{
                 width: 26, height: 26, borderRadius: "50%", flexShrink: 0,
@@ -266,22 +301,86 @@ export function ChatAssistant({ accountId, constraintBucket, constraintReason }:
                 {msg.role === "assistant" ? "AI" : "U"}
               </div>
 
-              {/* Bubble */}
-              <div style={{
-                maxWidth: "82%",
-                background: msg.role === "user" ? "#1d4ed8" : "var(--surface)",
-                border: msg.role === "user" ? "none" : "1px solid var(--surface-3)",
-                borderRadius: msg.role === "user" ? "14px 14px 4px 14px" : "14px 14px 14px 4px",
-                padding: "10px 14px",
-              }}>
-                {msg.content
-                  ? (msg.role === "assistant"
-                      ? renderMarkdown(msg.content)
-                      : <p style={{ fontSize: 13, color: "#fff", lineHeight: 1.6, margin: 0 }}>{msg.content}</p>)
-                  : <span style={{ fontSize: 13, color: "var(--text-dim)" }}>
-                      <Loader2 size={12} className="animate-spin" style={{ display: "inline", marginRight: 6 }} />
-                      Thinking…
-                    </span>}
+              {/* Bubble + feedback */}
+              <div style={{ maxWidth: "82%", display: "flex", flexDirection: "column", gap: 4 }}>
+                <div style={{
+                  background: msg.role === "user" ? "#1d4ed8" : "var(--surface)",
+                  border: msg.role === "user" ? "none" : "1px solid var(--surface-3)",
+                  borderRadius: msg.role === "user" ? "14px 14px 4px 14px" : "14px 14px 14px 4px",
+                  padding: "10px 14px",
+                }}>
+                  {msg.content
+                    ? (msg.role === "assistant"
+                        ? renderMarkdown(msg.content)
+                        : <p style={{ fontSize: 13, color: "#fff", lineHeight: 1.6, margin: 0 }}>{msg.content}</p>)
+                    : <span style={{ fontSize: 13, color: "var(--text-dim)" }}>
+                        <Loader2 size={12} className="animate-spin" style={{ display: "inline", marginRight: 6 }} />
+                        Thinking…
+                      </span>}
+                </div>
+
+                {/* Feedback row — only on completed assistant messages */}
+                {msg.role === "assistant" && msg.messageId && !msg.streaming && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                      {feedbackGiven[msg.messageId] ? (
+                        <span style={{ fontSize: 11, color: feedbackGiven[msg.messageId] === "up" ? "#22c55e" : "var(--text-faint)" }}>
+                          {feedbackGiven[msg.messageId] === "up" ? "Helpful" : "Noted — thanks for the correction"}
+                        </span>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => submitFeedback(msg.messageId!, "up")}
+                            title="Helpful"
+                            style={{ padding: "3px 7px", borderRadius: 6, background: "none", border: "1px solid var(--border-2)", color: "var(--text-faint)", cursor: "pointer", display: "flex", alignItems: "center", gap: 3, fontSize: 11 }}
+                            onMouseEnter={e => (e.currentTarget.style.color = "#22c55e")}
+                            onMouseLeave={e => (e.currentTarget.style.color = "var(--text-faint)")}
+                          >
+                            <ThumbsUp size={11} /> Helpful
+                          </button>
+                          <button
+                            onClick={() => setCorrectionOpen(correctionOpen === msg.messageId ? null : msg.messageId!)}
+                            title="Needs correction"
+                            style={{ padding: "3px 7px", borderRadius: 6, background: "none", border: "1px solid var(--border-2)", color: "var(--text-faint)", cursor: "pointer", display: "flex", alignItems: "center", gap: 3, fontSize: 11 }}
+                            onMouseEnter={e => (e.currentTarget.style.color = "#f97316")}
+                            onMouseLeave={e => (e.currentTarget.style.color = "var(--text-faint)")}
+                          >
+                            <ThumbsDown size={11} /> Correct this
+                          </button>
+                        </>
+                      )}
+                    </div>
+
+                    {/* Correction input */}
+                    {correctionOpen === msg.messageId && (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6, padding: "8px 10px", background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: 10 }}>
+                        <p style={{ fontSize: 11, color: "var(--text-faint)", margin: 0 }}>What should the correct answer be? This improves future responses.</p>
+                        <textarea
+                          value={correctionText}
+                          onChange={e => setCorrectionText(e.target.value)}
+                          placeholder="The correct approach is…"
+                          rows={2}
+                          style={{ resize: "none", background: "var(--bg)", border: "1px solid var(--border-2)", borderRadius: 7, color: "var(--text-2)", fontSize: 12, padding: "7px 10px", outline: "none", fontFamily: "inherit", lineHeight: 1.5 }}
+                        />
+                        <div style={{ display: "flex", gap: 6 }}>
+                          <button
+                            onClick={() => submitFeedback(msg.messageId!, "down", correctionText)}
+                            disabled={!correctionText.trim()}
+                            style={{ padding: "5px 12px", borderRadius: 7, background: correctionText.trim() ? "#1d4ed8" : "var(--surface-2)", border: "none", color: correctionText.trim() ? "#fff" : "var(--text-faint)", fontSize: 12, cursor: correctionText.trim() ? "pointer" : "not-allowed", display: "flex", alignItems: "center", gap: 5 }}
+                          >
+                            {correctionSent[msg.messageId!] ? <><Check size={11} /> Saved</> : "Submit correction"}
+                          </button>
+                          <button
+                            onClick={() => { submitFeedback(msg.messageId!, "down"); setCorrectionOpen(null); }}
+                            style={{ padding: "5px 10px", borderRadius: 7, background: "none", border: "1px solid var(--border-2)", color: "var(--text-faint)", fontSize: 12, cursor: "pointer" }}
+                          >
+                            Skip
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           ))}

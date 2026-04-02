@@ -224,13 +224,16 @@ function buildSystemPrompt(params: {
   searchTerms:         SearchTermRow[];
   clientContext:       string | null;
   sopContext:          string;
+  notionContext:       string;
+  correctionContext:   string;
+  globalPatternContext: string;
 }): string {
   const {
     accountName, currency, industry, country, businessModel, monthlyBudget,
     targetRoas, targetCpa, grossMarginPercent,
     governingConstraint, constraintReason, bucketScores, allActions, signals,
     demographics, searchTerms,
-    clientContext, sopContext,
+    clientContext, sopContext, notionContext, correctionContext, globalPatternContext,
   } = params;
 
   const bucketSummary = Object.entries(bucketScores)
@@ -260,8 +263,11 @@ function buildSystemPrompt(params: {
   const signalContext = signals ? "\n\n" + buildSignalContext(signals, currency) : "";
   const demoContext   = buildDemographicsContext(demographics, currency);
   const stContext     = buildSearchTermContext(searchTerms, currency);
-  const clientBriefSection = clientContext ? `\n\nCLIENT BRIEF:\n${clientContext}` : "";
-  const sopSection = sopContext ? `\n\n${sopContext}` : "";
+  const clientBriefSection    = clientContext        ? `\n\nCLIENT BRIEF:\n${clientContext}` : "";
+  const sopSection            = sopContext           ? `\n\n${sopContext}` : "";
+  const notionSection         = notionContext        ? `\n\n${notionContext}` : "";
+  const correctionSection     = correctionContext    ? `\n\n${correctionContext}` : "";
+  const globalPatternSection  = globalPatternContext ? `\n\n${globalPatternContext}` : "";
 
   return `You are an expert senior Google Ads specialist embedded in an agency performance platform. You have full access to this account's data — it was fetched directly from Google Ads API and Merchant Center moments before this conversation. Never say you lack access to Google Ads data; everything you need is already provided below.
 
@@ -292,7 +298,7 @@ YOUR BEHAVIOUR:
 - Flag client escalations clearly (website changes, CRM setup, offline conversion import).
 - For Shopping/PMax: think feed quality, product segmentation, asset group performance — not keyword QS.
 - Be direct. Skip preamble. One problem → one cause → one fix.
-- For price competitiveness and competitor pricing: that data is in the Products tab of this account.`;
+- For price competitiveness and competitor pricing: that data is in the Products tab of this account.${notionSection}${correctionSection}${globalPatternSection}`;
 }
 
 // ─── Route handler ─────────────────────────────────────────────────────────────
@@ -308,9 +314,18 @@ export async function POST(req: NextRequest, { params }: Params) {
   };
 
   // Load everything in parallel
-  const [account, sops] = await Promise.all([
+  const [account, sops, notionConn, learnedPatterns] = await Promise.all([
     prisma.account.findFirst({ where: { id, organizationId: ctx.orgId } }),
     prisma.agencySop.findMany({ where: { organizationId: ctx.orgId, isActive: true }, orderBy: { createdAt: "asc" } }),
+    prisma.notionConnection.findUnique({
+      where:   { organizationId: ctx.orgId },
+      include: { pageCache: { orderBy: { fetchedAt: "desc" } } },
+    }),
+    prisma.learnedPattern.findMany({
+      where: { isActive: true, OR: [{ orgId: ctx.orgId }, { orgId: null }] },
+      orderBy: { seenCount: "desc" },
+      take: 20,
+    }),
   ]);
 
   if (!account) return forbidden();
@@ -377,6 +392,32 @@ export async function POST(req: NextRequest, { params }: Params) {
     ? `AGENCY SOPs (always follow these):\n${sops.map(s => `--- ${s.title} ---\n${s.content}`).join("\n\n").slice(0, 4000)}`
     : "";
 
+  // Notion knowledge base: pages the org has synced
+  const notionContext = notionConn && notionConn.pageCache.length > 0
+    ? `AGENCY KNOWLEDGE BASE (from Notion — treat as authoritative reference):\n` +
+      notionConn.pageCache
+        .map(p => `--- ${p.title} ---\n${p.content}`)
+        .join("\n\n")
+        .slice(0, 6000)
+    : "";
+
+  // Learned patterns: org-specific corrections + global patterns promoted from cross-org feedback
+  const orgCorrections = await prisma.chatFeedback.findMany({
+    where:   { orgId: ctx.orgId, rating: "down", correction: { not: null } },
+    orderBy: { createdAt: "desc" },
+    take:    10,
+  });
+  const correctionContext = orgCorrections.length > 0
+    ? `TEAM FEEDBACK — PREVIOUSLY CORRECTED PATTERNS (prioritise these):\n` +
+      orgCorrections
+        .map(f => `- ${f.questionText ? `Q: "${f.questionText.slice(0, 80)}" → ` : ""}Correction: ${f.correction}`)
+        .join("\n")
+    : "";
+  const globalPatternContext = learnedPatterns.length > 0
+    ? `LEARNED PATTERNS (validated across accounts):\n` +
+      learnedPatterns.map(p => `- [${p.questionType}] ${p.pattern}`).join("\n")
+    : "";
+
   const systemPrompt = buildSystemPrompt({
     accountName:         account.name,
     currency:            account.currency,
@@ -400,8 +441,11 @@ export async function POST(req: NextRequest, { params }: Params) {
     signals,
     demographics,
     searchTerms,
-    clientContext: account.clientContext ?? null,
+    clientContext:        account.clientContext ?? null,
     sopContext,
+    notionContext,
+    correctionContext,
+    globalPatternContext,
   });
 
   const history = (session.messages ?? []).map(m => ({
@@ -434,12 +478,12 @@ export async function POST(req: NextRequest, { params }: Params) {
           }
         }
 
-        await prisma.chatMessage.create({
+        const assistantMessage = await prisma.chatMessage.create({
           data: { sessionId: session!.id, role: "assistant", content: fullResponse },
         });
 
         controller.enqueue(
-          encoder.encode(`data: ${JSON.stringify({ done: true, sessionId: session!.id })}\n\n`)
+          encoder.encode(`data: ${JSON.stringify({ done: true, sessionId: session!.id, messageId: assistantMessage.id })}\n\n`)
         );
         controller.close();
       } catch (err) {

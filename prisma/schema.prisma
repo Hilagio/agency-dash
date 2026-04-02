@@ -20,6 +20,7 @@ model Organization {
   accounts   Account[]
   sops       AgencySop[]
   oauthCred  OAuthCredential?
+  notion     NotionConnection?
 }
 
 // ─── Users ────────────────────────────────────────────────────────────────────
@@ -192,6 +193,57 @@ model AgencySop {
   updatedAt      DateTime @updatedAt
 
   progress AccountSopProgress[]
+}
+
+// ─── Notion Integration ───────────────────────────────────────────────────────
+
+model NotionConnection {
+  id             String       @id @default(cuid())
+  organizationId String       @unique
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  accessToken    String       // Notion internal integration token
+  workspaceName  String?
+  selectedPageIds String      @default("[]") // JSON: page IDs to pull into AI context
+  lastSyncedAt   DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  pageCache NotionPageCache[]
+}
+
+model NotionPageCache {
+  id           String           @id @default(cuid())
+  connectionId String
+  connection   NotionConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  pageId       String
+  title        String
+  content      String           // plain text extracted from Notion blocks
+  fetchedAt    DateTime         @default(now())
+
+  @@unique([connectionId, pageId])
+}
+
+// ─── AI Feedback & Learning ───────────────────────────────────────────────────
+
+model ChatFeedback {
+  id           String   @id @default(cuid())
+  messageId    String   // ChatMessage.id this feedback is about
+  orgId        String
+  rating       String   // "up" | "down"
+  correction   String?  // what the correct answer should have been
+  questionText String?  // the user question that preceded this answer
+  createdAt    DateTime @default(now())
+}
+
+model LearnedPattern {
+  id           String   @id @default(cuid())
+  orgId        String?  // null = global (all orgs); set = org-specific
+  questionType String   // short label, e.g. "ROAS drop diagnosis"
+  pattern      String   // the correct approach / answer pattern
+  seenCount    Int      @default(1)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
 // ─── Account Notes / Change Log ───────────────────────────────────────────────

@@ -23,7 +23,13 @@ export async function POST(_req: NextRequest, { params }: Params) {
 
   const { id } = await params;
 
-  const account = await prisma.account.findFirst({ where: { id, organizationId: ctx.orgId } });
+  const [account, notionConn] = await Promise.all([
+    prisma.account.findFirst({ where: { id, organizationId: ctx.orgId } }),
+    prisma.notionConnection.findUnique({
+      where:   { organizationId: ctx.orgId },
+      include: { pageCache: { orderBy: { fetchedAt: "desc" } } },
+    }),
+  ]);
   if (!account) return forbidden();
 
   const snapshot = await prisma.constraintSnapshot.findFirst({
@@ -94,6 +100,11 @@ export async function POST(_req: NextRequest, { params }: Params) {
     ? `\nCLIENT BRIEF:\n${account.clientContext}`
     : "";
 
+  const notionContext = notionConn && notionConn.pageCache.length > 0
+    ? `\nAGENCY KNOWLEDGE BASE (from Notion):\n` +
+      notionConn.pageCache.map(p => `--- ${p.title} ---\n${p.content}`).join("\n\n").slice(0, 4000)
+    : "";
+
   const prompt = `You are a senior Google Ads strategist. Write a tight intelligence brief for this account — the kind a good analyst would send to a client manager before a weekly call.
 
 ACCOUNT: ${account.name}
@@ -107,7 +118,7 @@ ${bucketBlock}
 LIVE METRICS: ${metricsBlock || "not available"}
 
 ACCOUNT TARGETS: ${targetsBlock}
-${clientBrief}
+${clientBrief}${notionContext}
 
 Write exactly 4–5 sentences. Cover:
 1. What the actual problem is (use numbers — "CTR is 1.7%, about half the ${account.industry ?? "industry"} benchmark" not "CTR is low")
