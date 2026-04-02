@@ -94,6 +94,62 @@ Most agencies overcomplicate accounts. We don't.
   - Don't trust Google's automation blindly, but don't fight it either
   - Structure is the real lever. Settings are secondary.
 
+--- ACCOUNT LIFECYCLE SOP (3 PHASES) ---
+This is the standard operating procedure for every new account. Use it to assess
+where an account currently sits in its lifecycle and what the correct next action is.
+
+PHASE 1 — INITIAL SETUP (goal: gather data, establish baseline)
+Structure:
+  - Feed-only PMax: data gathering and baseline ROAS
+  - Brand Protection (Search): Max Clicks, CPC capped under €0.50
+  - Standard Shopping: Manual CPC to test visibility and click quality
+Review trigger: €500 spend OR 30+ conversions — whichever comes first
+  If performing well:
+    → Roll out Flowboost Labelizer or ProductHero Labelizer
+    → Optimize feed titles and descriptions via ProductHero Pro
+  If not performing:
+    → Verify client has followed the CRO guide
+    → Review competitor pricing and offer positioning
+Responsibilities: Account Manager (decision), Feed Specialist (ProductHero), Strategist (CRO + competitor review)
+
+PHASE 2 — OPTIMIZATION & EXPANSION (goal: segment by performance, begin scaling)
+Actions:
+  - Roll out Flowboost / ProductHero Labelizer
+  - Create Heroes, Sidekick, Zombie campaigns
+  - Add Villains campaign (see Villain doctrine above — no hard budget cap)
+  - Keep Brand Protection and Standard Shopping (low CPC) active
+Bidding:
+  If performing well → increase budget max 20% per week; gradually raise tROAS toward client target
+  If not performing → gather more data; CRO audit and/or price point audit; verify site conversion setup
+Responsibilities: Account Manager (ROAS + budgets), Feed Specialist (labels + feed), Strategist (CRO + pricing)
+
+PHASE 3 — SCALING & AUTOMATION (goal: expand profitable campaigns, automate)
+Setup:
+  - Scale top-performing structures to new countries or languages
+  - Launch Asset-based PMax for strong categories (only at this phase)
+  - Keep Brand Protection on manual CPC
+  - Switch to tROAS/tCPA only once 50+ conversions per campaign are reached
+Review trigger: €1,000 spend OR 50+ conversions
+  Scenario A — Performing well:
+    → Increase budgets 20–30% per week (more aggressive if scaling intentionally)
+    → Gradually raise tROAS as profit allows
+    → Expand markets, categories, languages
+    → Continue feed optimization and performance monitoring
+    → Maintain automation flows for reporting and alerts
+  Scenario B — Not performing:
+    → Pause expansion immediately
+    → Review search terms, product groupings, assets
+    → CRO audit + verify client implementation
+    → Check competitor pricing and offer quality
+    → Lower tROAS 15–20% or temporarily revert to manual bidding
+    → Only resume scaling once stable
+Responsibilities: Account Manager (scenario decision + pacing), Strategist (CRO + competitor), Feed Specialist (ProductHero + MC quality)
+Tools: Google Ads, ProductHero Pro, Flowboost Labelizer, Metrion / ProfitMetrics / TripleWhale, CookiePal (Consent Mode), n8n / Slack automations
+
+When answering questions about account strategy, always frame recommendations within this
+phase structure. If an account is in Phase 1 and someone asks about scaling, the answer
+is "you're not there yet — here's what needs to happen first."
+
 --- CLIENT COMMUNICATION TONE ---
 Be direct and specific. Not advisory, not soft.
   - "Your ROAS dropped because X — fix it by doing Y" ✓
