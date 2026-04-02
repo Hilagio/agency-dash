@@ -605,6 +605,7 @@ async function fetchTrafficSignals(customer: Customer): Promise<TrafficSignals> 
         AND campaign.status = 'ENABLED'
         AND ad_group.status = 'ENABLED'
         AND ad_group_criterion.quality_info.quality_score IS NOT NULL
+      LIMIT 5000
     `),
     "quality scores"
   );
@@ -617,11 +618,14 @@ async function fetchTrafficSignals(customer: Customer): Promise<TrafficSignals> 
     ? qsValues.reduce((a, b) => a + b, 0) / qsValues.length
     : 7; // default if no Search campaigns
 
-  // Product disapproval rate — relevant for Shopping / PMax feed-only accounts
+  // Product disapproval rate — relevant for Shopping / PMax feed-only accounts.
+  // Capped at 10 000 rows to avoid loading entire large catalogues into memory.
+  // Sampling 10k products is more than sufficient for a meaningful disapproval rate.
   const allProductRows = await safeQuery(
     () => customer.query(`
       SELECT shopping_product.item_id, shopping_product.status
       FROM shopping_product
+      LIMIT 10000
     `),
     "product statuses"
   );
@@ -632,7 +636,8 @@ async function fetchTrafficSignals(customer: Customer): Promise<TrafficSignals> 
   ).length;
   const productDisapprovalRate = totalProducts > 0 ? disapprovedProducts / totalProducts : 0;
 
-  // Irrelevant query estimate — search terms with 0 conversions & low QS
+  // Irrelevant query estimate — search terms with 0 conversions.
+  // Capped at 5 000 rows; raise click threshold to reduce set size.
   const searchTermRows = await safeQuery(
     () => customer.query(`
       SELECT
@@ -642,7 +647,8 @@ async function fetchTrafficSignals(customer: Customer): Promise<TrafficSignals> 
         metrics.cost_micros
       FROM search_term_view
       WHERE segments.date BETWEEN '${start}' AND '${end}'
-        AND metrics.clicks > 5
+        AND metrics.clicks > 10
+      LIMIT 5000
     `),
     "search terms"
   );
@@ -719,6 +725,7 @@ async function fetchConversionSignals(
         metrics.mobile_friendly_clicks_percentage
       FROM landing_page_view
       WHERE segments.date BETWEEN '${r14start}' AND '${r14end}'
+      LIMIT 2000
     `),
     "landing page recent 14d"
   );
@@ -762,6 +769,7 @@ async function fetchConversionSignals(
       SELECT metrics.average_page_views
       FROM landing_page_view
       WHERE segments.date BETWEEN '${r14start}' AND '${r14end}'
+      LIMIT 2000
     `),
     "landing page views"
   );
@@ -961,13 +969,14 @@ export async function fetchGoogleAdsSignals(
     if (country) console.log(`[google-ads] auto-detected country=${country} from tz=${tz}`);
   }
 
-  const [measurement, traffic, conversion, funnel, economics] = await Promise.all([
-    fetchMeasurementSignals(customer),
-    fetchTrafficSignals(customer),
-    fetchConversionSignals(customer, industry, country, businessModel),
-    fetchFunnelSignals(customer),
-    fetchEconomicsSignals(customer),
-  ]);
+  // Sequential — not parallel — so each fetch's rows are GC'd before the next
+  // begins. Parallel execution keeps all 5 datasets in memory simultaneously
+  // which caused OOM crashes on Railway when scoring many accounts.
+  const measurement = await fetchMeasurementSignals(customer);
+  const traffic     = await fetchTrafficSignals(customer);
+  const conversion  = await fetchConversionSignals(customer, industry, country, businessModel);
+  const funnel      = await fetchFunnelSignals(customer);
+  const economics   = await fetchEconomicsSignals(customer);
 
   console.log(`[google-ads] fetchGoogleAdsSignals done for ${customerId} country=${country ?? "(unknown)"} businessModel=${businessModel ?? "(unset)"}`);
   return { measurement, traffic, conversion, funnel, economics };

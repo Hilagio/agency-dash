@@ -26,8 +26,14 @@ export async function POST() {
     select: { id: true, name: true, googleAdsId: true, industry: true },
   });
 
-  const results = await Promise.allSettled(
-    accounts.map(async (account) => {
+  // Sequential — never parallel — to avoid OOM on Railway.
+  // Each account's Google Ads rows are fetched, processed, and GC'd before
+  // the next account begins.
+  const succeeded: string[] = [];
+  const failed: { name: string; error: string }[] = [];
+
+  for (const account of accounts) {
+    try {
       const signals = await fetchGoogleAdsSignals(account.googleAdsId, account.industry, ctx.orgId);
       const result  = scoreConstraints(signals);
 
@@ -59,20 +65,14 @@ export async function POST() {
         },
       });
 
-      return account.name;
-    })
-  );
-
-  const succeeded = results.filter((r) => r.status === "fulfilled").map((r) => (r as PromiseFulfilledResult<string>).value);
-  const failed    = results
-    .map((r, i) => ({ r, account: accounts[i] }))
-    .filter(({ r }) => r.status === "rejected")
-    .map(({ r, account }) => ({
-      name: account.name,
-      error: (r as PromiseRejectedResult).reason instanceof Error
-        ? (r as PromiseRejectedResult).reason.message
-        : String((r as PromiseRejectedResult).reason),
-    }));
+      succeeded.push(account.name);
+    } catch (err) {
+      failed.push({
+        name:  account.name,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
 
   return NextResponse.json({ succeeded, failed }, { status: 200 });
 }
