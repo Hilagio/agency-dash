@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, RefreshCw, MessageSquare, ListChecks, BarChart2, Loader2, Search, BookOpen, ClipboardList, Send, Pencil, X, CheckSquare, Sparkles, Package, Brain, FlaskConical } from "lucide-react";
+import { ArrowLeft, RefreshCw, MessageSquare, ListChecks, BarChart2, Loader2, Search, BookOpen, ClipboardList, Send, Pencil, X, CheckSquare, Sparkles, Package, Brain, FlaskConical, Zap } from "lucide-react";
 import { ScoreBuckets } from "@/components/ScoreBuckets";
 import { ScoreHistory } from "@/components/ScoreHistory";
 import { ActionList } from "@/components/ActionList";
@@ -388,16 +388,20 @@ interface Account {
 
 function ClientContextPanel({
   accountId,
+  landingPageUrl,
   initial,
   onSaved,
 }: {
-  accountId: string;
-  initial: string | null;
-  onSaved: (value: string) => void;
+  accountId:      string;
+  landingPageUrl: string | null;
+  initial:        string | null;
+  onSaved:        (value: string) => void;
 }) {
-  const [editing, setEditing] = useState(false);
-  const [value, setValue] = useState(initial ?? "");
-  const [saving, setSaving] = useState(false);
+  const [editing,   setEditing]   = useState(false);
+  const [value,     setValue]     = useState(initial ?? "");
+  const [saving,    setSaving]    = useState(false);
+  const [crawling,  setCrawling]  = useState(false);
+  const [crawlErr,  setCrawlErr]  = useState<string | null>(null);
 
   const save = async () => {
     setSaving(true);
@@ -414,6 +418,23 @@ function ClientContextPanel({
   const cancel = () => {
     setValue(initial ?? "");
     setEditing(false);
+    setCrawlErr(null);
+  };
+
+  const generateFromWebsite = async () => {
+    setCrawling(true);
+    setCrawlErr(null);
+    try {
+      const res = await fetch(`/api/accounts/${accountId}/crawl-brief`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Failed");
+      setValue(data.brief);
+      setEditing(true);
+    } catch (e) {
+      setCrawlErr(e instanceof Error ? e.message : "Could not generate brief");
+    } finally {
+      setCrawling(false);
+    }
   };
 
   return (
@@ -425,27 +446,49 @@ function ClientContextPanel({
         <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.8px", textTransform: "uppercase", color: "var(--text-dim)" }}>
           Account Brief · AI Context
         </span>
-        {!editing && (
-          <button
-            onClick={() => setEditing(true)}
-            style={{
-              display: "flex", alignItems: "center", gap: 4,
-              background: "transparent", border: "none", cursor: "pointer",
-              color: "var(--text-faint)", fontSize: 11, padding: "2px 4px",
-            }}
-          >
-            <Pencil size={10} /> {value ? "Edit" : "Add brief"}
-          </button>
-        )}
-        {editing && (
-          <button
-            onClick={cancel}
-            style={{ background: "transparent", border: "none", cursor: "pointer", color: "var(--text-faint)", display: "flex" }}
-          >
-            <X size={12} />
-          </button>
-        )}
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {!editing && landingPageUrl && (
+            <button
+              onClick={generateFromWebsite}
+              disabled={crawling}
+              style={{
+                display: "flex", alignItems: "center", gap: 4,
+                background: "transparent", border: "1px solid var(--border-2)",
+                borderRadius: 6, cursor: crawling ? "not-allowed" : "pointer",
+                color: "var(--text-dim)", fontSize: 11, padding: "3px 8px",
+                opacity: crawling ? 0.6 : 1,
+              }}
+            >
+              {crawling ? <Loader2 size={10} className="animate-spin" /> : <Zap size={10} />}
+              {crawling ? "Crawling…" : "Generate from website"}
+            </button>
+          )}
+          {!editing && (
+            <button
+              onClick={() => setEditing(true)}
+              style={{
+                display: "flex", alignItems: "center", gap: 4,
+                background: "transparent", border: "none", cursor: "pointer",
+                color: "var(--text-faint)", fontSize: 11, padding: "2px 4px",
+              }}
+            >
+              <Pencil size={10} /> {value ? "Edit" : "Add brief"}
+            </button>
+          )}
+          {editing && (
+            <button
+              onClick={cancel}
+              style={{ background: "transparent", border: "none", cursor: "pointer", color: "var(--text-faint)", display: "flex" }}
+            >
+              <X size={12} />
+            </button>
+          )}
+        </div>
       </div>
+
+      {crawlErr && (
+        <p style={{ fontSize: 11, color: "#ef4444", margin: "0 0 8px" }}>{crawlErr}</p>
+      )}
 
       {!editing && value && (
         <p style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.7, whiteSpace: "pre-wrap", margin: 0 }}>
@@ -455,7 +498,9 @@ function ClientContextPanel({
 
       {!editing && !value && (
         <p style={{ fontSize: 12, color: "var(--text-faint)", lineHeight: 1.7, margin: 0 }}>
-          No brief yet — add context so the AI gives better advice: what the client sells, landing page URL, target CPA/ROAS, key USPs.
+          {landingPageUrl
+            ? <>No brief yet — klik <strong style={{ color: "var(--text-dim)" }}>Generate from website</strong> om automatisch te vullen, of voeg handmatig toe.</>
+            : "No brief yet — add context so the AI gives better advice: what the client sells, landing page URL, target CPA/ROAS, key USPs."}
         </p>
       )}
 
@@ -464,7 +509,7 @@ function ClientContextPanel({
           <textarea
             value={value}
             onChange={e => setValue(e.target.value)}
-            placeholder={"What does this client sell?\nLanding page URL?\nTarget CPA / ROAS?\nKey USPs and differentiators?\nSeasonal or promotional context?"}
+            placeholder={"What does this client sell?\nTarget audience?\nKey USPs and differentiators?\nSeasonal or promotional context?"}
             rows={5}
             style={{
               width: "100%", background: "var(--bg)", border: "1px solid var(--border-2)",
@@ -1614,6 +1659,7 @@ export default function AccountPage() {
                 {/* Account Brief — feeds AI context */}
                 <ClientContextPanel
                   accountId={id}
+                  landingPageUrl={account.landingPageUrl ?? null}
                   initial={account.clientContext}
                   onSaved={(v) => setAccount(prev => prev ? { ...prev, clientContext: v } : prev)}
                 />
