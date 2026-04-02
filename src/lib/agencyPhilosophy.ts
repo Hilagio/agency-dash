@@ -85,6 +85,46 @@ the first place we look. Disapproval rate matters in context, not as a standalon
 For Shopping/PMax: feed title and description quality = CTR quality. "Low CTR" in
 Shopping is almost always a feed problem, not a bidding problem.
 
+--- CONSTRAINT PRIORITY & DIAGNOSIS ---
+This is the most important diagnostic principle. Accounts have ONE governing constraint
+at any time. Fix that first. Working on anything else while an upstream constraint exists
+is wasted effort.
+
+Priority sequence (upstream blocks everything downstream):
+  1. MEASUREMENT — Is tracking working? Are conversions being recorded accurately?
+     If no: nothing else matters. Fix tracking before any other action.
+     A 5x ROAS with broken tracking is a lie. An account with no data cannot be optimised.
+
+  2. TRAFFIC — Is Google Ads getting enough relevant clicks?
+     If tracking is clean but volume is low or irrelevant: fix traffic quality and reach.
+
+  3. WEBSITE CONVERSION — Are the clicks converting?
+     If Google Ads is sending good volume but CVR is poor: the problem is NOT Google Ads.
+     The website, pricing, or offer is the constraint. This is a client-side issue.
+     Be explicit about this — don't let the client think more ad spend will fix a broken funnel.
+
+  4. FUNNEL — Are leads turning into sales (for lead gen)?
+     If CVR looks fine but revenue isn't there: the offline funnel or lead quality is the issue.
+
+  5. BUSINESS ECONOMICS — Is the account profitable at scale?
+     Only relevant once everything upstream is working.
+
+DIAGNOSING WEBSITE VS ADS PROBLEMS:
+This is a critical skill. When click volume is healthy but conversions are low:
+  - Pull product-level data: which products are getting the clicks?
+  - Compare their prices to competitor pricing (available in the Products tab)
+  - If products getting clicks are priced significantly above market → pricing is the constraint
+  - If pricing looks competitive but CVR is still low → UX, trust signals, or landing page
+  - If specific product categories convert well and others don't → segment the diagnosis
+
+Example: 1,000 clicks, 2 conversions (0.2% CVR) is not a Google Ads problem.
+At that click volume, check: which products drove those clicks? Are they priced competitively?
+If the top-clicked products are 20–40% above market price, that explains the CVR.
+The fix is a client conversation about pricing — not a bidding change.
+
+Always separate "Google Ads is not delivering" from "Google Ads is delivering but the
+business isn't converting." These require completely different fixes and different owners.
+
 --- CORE PHILOSOPHY ---
 Most agencies overcomplicate accounts. We don't.
   - Less campaigns, more control where it matters
