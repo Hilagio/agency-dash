@@ -1383,3 +1383,282 @@ export async function isGoogleAdsConfigured(orgId?: string): Promise<boolean> {
   }
   return false;
 }
+
+// ─── Persona Data ─────────────────────────────────────────────────────────────
+
+export interface GeoRow {
+  criterionId: number;
+  name:        string;  // resolved from geo_target_constant
+  countryCode: string;
+  targetType:  string;  // Country | Region | City etc.
+  clicks:       number;
+  conversions:  number;
+  costMicros:   number;
+  convValue:    number;
+}
+
+export interface IncomeRow {
+  label:       string;  // INCOME_RANGE_0_50 etc.
+  clicks:       number;
+  conversions:  number;
+  costMicros:   number;
+  convValue:    number;
+}
+
+export interface ParentalRow {
+  label:       string;  // PARENT / NOT_A_PARENT / UNDETERMINED
+  clicks:       number;
+  conversions:  number;
+  costMicros:   number;
+  convValue:    number;
+}
+
+export interface DayHourRow {
+  dimension: "day" | "hour";
+  label:     string;  // MON / TUE … or "0"–"23"
+  clicks:       number;
+  conversions:  number;
+  costMicros:   number;
+}
+
+export interface AudienceInterestRow {
+  name:       string;
+  type:       string;  // USER_INTEREST | USER_LIST | CUSTOM_AUDIENCE etc.
+  clicks:     number;
+  conversions: number;
+  costMicros: number;
+  convValue:  number;
+}
+
+export interface PersonaData {
+  demographics:   DemographicRow[];
+  income:         IncomeRow[];
+  parental:       ParentalRow[];
+  geo:            GeoRow[];
+  dayHour:        DayHourRow[];
+  interests:      AudienceInterestRow[];
+}
+
+export async function fetchPersonaData(
+  customerId: string,
+  orgId?: string
+): Promise<PersonaData> {
+  const client   = getClient();
+  const customer = await getCustomer(client, customerId, orgId);
+  const { start, end } = last30Days();
+
+  // Run all queries in parallel
+  const [
+    demographicRows,
+    incomeRaw,
+    parentalRaw,
+    dayRaw,
+    hourRaw,
+    audienceRaw,
+  ] = await Promise.all([
+    // Demographics (age, gender, device) — reuse existing fetcher
+    fetchDemographics(customerId, orgId).catch((): DemographicRow[] => []),
+
+    // Income range
+    safeQuery(() => customer.query(`
+      SELECT ad_group_criterion.income_range.type,
+             metrics.clicks, metrics.impressions, metrics.conversions,
+             metrics.cost_micros, metrics.conversions_value
+      FROM income_range_view
+      WHERE segments.date BETWEEN '${start}' AND '${end}'
+    `), "income range"),
+
+    // Parental status
+    safeQuery(() => customer.query(`
+      SELECT ad_group_criterion.parental_status.type,
+             metrics.clicks, metrics.impressions, metrics.conversions,
+             metrics.cost_micros, metrics.conversions_value
+      FROM parental_status_view
+      WHERE segments.date BETWEEN '${start}' AND '${end}'
+    `), "parental status"),
+
+    // Day of week
+    safeQuery(() => customer.query(`
+      SELECT segments.day_of_week,
+             metrics.clicks, metrics.conversions, metrics.cost_micros
+      FROM customer
+      WHERE segments.date BETWEEN '${start}' AND '${end}'
+    `), "day of week"),
+
+    // Hour of day
+    safeQuery(() => customer.query(`
+      SELECT segments.hour,
+             metrics.clicks, metrics.conversions, metrics.cost_micros
+      FROM customer
+      WHERE segments.date BETWEEN '${start}' AND '${end}'
+    `), "hour of day"),
+
+    // Audience / interest performance from ad group audience view
+    safeQuery(() => customer.query(`
+      SELECT ad_group_criterion.type,
+             ad_group_criterion.user_interest.user_interest_category,
+             ad_group_criterion.user_list.user_list,
+             ad_group_criterion.display_name,
+             metrics.clicks, metrics.conversions,
+             metrics.cost_micros, metrics.conversions_value
+      FROM ad_group_audience_view
+      WHERE segments.date BETWEEN '${start}' AND '${end}'
+        AND metrics.impressions > 0
+      LIMIT 200
+    `), "audience interests"),
+  ]);
+
+  // ── Income ───────────────────────────────────────────────────────────────────
+  const incomeMap = new Map<string, IncomeRow>();
+  for (const r of incomeRaw) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const raw = String((r as any).ad_group_criterion?.income_range?.type ?? "UNKNOWN");
+    const label = raw.replace("INCOME_RANGE_", "").replace(/_/g, "–").replace("UP", "+");
+    const existing = incomeMap.get(label) ?? { label, clicks: 0, conversions: 0, costMicros: 0, convValue: 0 };
+    existing.clicks      += Number(r.metrics?.clicks ?? 0);
+    existing.conversions += Number(r.metrics?.conversions ?? 0);
+    existing.costMicros  += Number(r.metrics?.cost_micros ?? 0);
+    existing.convValue   += Number(r.metrics?.conversions_value ?? 0);
+    incomeMap.set(label, existing);
+  }
+
+  // ── Parental ─────────────────────────────────────────────────────────────────
+  const parentalMap = new Map<string, ParentalRow>();
+  for (const r of parentalRaw) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const raw = String((r as any).ad_group_criterion?.parental_status?.type ?? "UNKNOWN");
+    const label = raw === "PARENT" ? "Parent" : raw === "NOT_A_PARENT" ? "Not a parent" : "Unknown";
+    const existing = parentalMap.get(label) ?? { label, clicks: 0, conversions: 0, costMicros: 0, convValue: 0 };
+    existing.clicks      += Number(r.metrics?.clicks ?? 0);
+    existing.conversions += Number(r.metrics?.conversions ?? 0);
+    existing.costMicros  += Number(r.metrics?.cost_micros ?? 0);
+    existing.convValue   += Number(r.metrics?.conversions_value ?? 0);
+    parentalMap.set(label, existing);
+  }
+
+  // ── Day of week ──────────────────────────────────────────────────────────────
+  const dayMap = new Map<string, DayHourRow>();
+  const DAY_ORDER = ["MONDAY","TUESDAY","WEDNESDAY","THURSDAY","FRIDAY","SATURDAY","SUNDAY"];
+  for (const r of dayRaw) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const label = String((r as any).segments?.day_of_week ?? "UNKNOWN");
+    const existing = dayMap.get(label) ?? { dimension: "day", label, clicks: 0, conversions: 0, costMicros: 0 };
+    existing.clicks      += Number(r.metrics?.clicks ?? 0);
+    existing.conversions += Number(r.metrics?.conversions ?? 0);
+    existing.costMicros  += Number(r.metrics?.cost_micros ?? 0);
+    dayMap.set(label, existing);
+  }
+  const days = DAY_ORDER
+    .map(d => dayMap.get(d))
+    .filter((d): d is DayHourRow => d !== undefined && d.clicks > 0);
+
+  // ── Hour of day ──────────────────────────────────────────────────────────────
+  const hourMap = new Map<number, DayHourRow>();
+  for (const r of hourRaw) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const h = Number((r as any).segments?.hour ?? -1);
+    if (h < 0) continue;
+    const existing = hourMap.get(h) ?? { dimension: "hour", label: String(h), clicks: 0, conversions: 0, costMicros: 0 };
+    existing.clicks      += Number(r.metrics?.clicks ?? 0);
+    existing.conversions += Number(r.metrics?.conversions ?? 0);
+    existing.costMicros  += Number(r.metrics?.cost_micros ?? 0);
+    hourMap.set(h, existing);
+  }
+  const hours = Array.from({ length: 24 }, (_, h) => hourMap.get(h) ?? { dimension: "hour" as const, label: String(h), clicks: 0, conversions: 0, costMicros: 0 });
+
+  // ── Audiences / Interests ────────────────────────────────────────────────────
+  const audienceMap = new Map<string, AudienceInterestRow>();
+  for (const r of audienceRaw) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rc  = r as any;
+    const type = String(rc.ad_group_criterion?.type ?? "UNKNOWN");
+    const name = rc.ad_group_criterion?.display_name
+      ?? rc.ad_group_criterion?.user_interest?.user_interest_category
+      ?? rc.ad_group_criterion?.user_list?.user_list
+      ?? "Unknown audience";
+    const key = `${type}::${name}`;
+    const existing = audienceMap.get(key) ?? { name: String(name), type, clicks: 0, conversions: 0, costMicros: 0, convValue: 0 };
+    existing.clicks      += Number(r.metrics?.clicks ?? 0);
+    existing.conversions += Number(r.metrics?.conversions ?? 0);
+    existing.costMicros  += Number(r.metrics?.cost_micros ?? 0);
+    existing.convValue   += Number(r.metrics?.conversions_value ?? 0);
+    audienceMap.set(key, existing);
+  }
+  const interests = Array.from(audienceMap.values())
+    .filter(a => !["UNKNOWN", "KEYWORD", "NEGATIVE"].includes(a.type) && a.clicks > 0)
+    .sort((a, b) => b.costMicros - a.costMicros)
+    .slice(0, 30);
+
+  // ── Geographic ───────────────────────────────────────────────────────────────
+  // Query user_location_view for where users actually were (not targeted)
+  const geoRaw = await safeQuery(() => customer.query(`
+    SELECT user_location_view.country_criterion_id,
+           user_location_view.targeting_location,
+           metrics.clicks, metrics.conversions,
+           metrics.cost_micros, metrics.conversions_value
+    FROM user_location_view
+    WHERE segments.date BETWEEN '${start}' AND '${end}'
+      AND user_location_view.targeting_location = false
+      AND metrics.clicks > 0
+    ORDER BY metrics.cost_micros DESC
+    LIMIT 50
+  `), "user location");
+
+  // Collect unique criterion IDs to resolve names
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const criterionIds = [...new Set(geoRaw.map(r => Number((r as any).user_location_view?.country_criterion_id ?? 0)).filter(Boolean))];
+
+  let geoNameMap = new Map<number, { name: string; countryCode: string; targetType: string }>();
+  if (criterionIds.length > 0) {
+    const nameRows = await safeQuery(() => customer.query(`
+      SELECT geo_target_constant.id, geo_target_constant.name,
+             geo_target_constant.country_code, geo_target_constant.target_type,
+             geo_target_constant.canonical_name
+      FROM geo_target_constant
+      WHERE geo_target_constant.id IN (${criterionIds.slice(0, 20).join(",")})
+    `), "geo target names");
+    for (const nr of nameRows) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const nrc = nr as any;
+      const id = Number(nrc.geo_target_constant?.id ?? 0);
+      if (id) geoNameMap.set(id, {
+        name:       String(nrc.geo_target_constant?.canonical_name ?? nrc.geo_target_constant?.name ?? id),
+        countryCode: String(nrc.geo_target_constant?.country_code ?? ""),
+        targetType:  String(nrc.geo_target_constant?.target_type ?? ""),
+      });
+    }
+  }
+
+  const geoMap = new Map<number, GeoRow>();
+  for (const r of geoRaw) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rc = r as any;
+    const criterionId = Number(rc.user_location_view?.country_criterion_id ?? 0);
+    if (!criterionId) continue;
+    const meta = geoNameMap.get(criterionId);
+    const existing = geoMap.get(criterionId) ?? {
+      criterionId,
+      name:        meta?.name ?? `Location ${criterionId}`,
+      countryCode: meta?.countryCode ?? "",
+      targetType:  meta?.targetType ?? "",
+      clicks: 0, conversions: 0, costMicros: 0, convValue: 0,
+    };
+    existing.clicks      += Number(r.metrics?.clicks ?? 0);
+    existing.conversions += Number(r.metrics?.conversions ?? 0);
+    existing.costMicros  += Number(r.metrics?.cost_micros ?? 0);
+    existing.convValue   += Number(r.metrics?.conversions_value ?? 0);
+    geoMap.set(criterionId, existing);
+  }
+  const geo = Array.from(geoMap.values())
+    .sort((a, b) => b.costMicros - a.costMicros)
+    .slice(0, 20);
+
+  return {
+    demographics: demographicRows,
+    income:       Array.from(incomeMap.values()).filter(r => r.clicks > 0 && !r.label.includes("UNKNOWN")),
+    parental:     Array.from(parentalMap.values()).filter(r => r.clicks > 0 && r.label !== "Unknown"),
+    geo,
+    dayHour:      [...days, ...hours],
+    interests,
+  };
+}

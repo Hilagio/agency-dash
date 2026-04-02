@@ -12,10 +12,11 @@ import { SearchTermReport } from "@/components/SearchTermReport";
 import { PlaybookView } from "@/components/PlaybookView";
 import { ProductPerformance } from "@/components/ProductPerformance";
 import { PriceCompetitiveness } from "@/components/PriceCompetitiveness";
+import { PersonaView } from "@/components/PersonaView";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { BUCKET_LABELS } from "@/lib/engine/types";
 
-type Tab = "overview" | "actions" | "products" | "search-terms" | "playbook" | "chat" | "notes" | "sops";
+type Tab = "overview" | "actions" | "products" | "search-terms" | "persona" | "playbook" | "chat" | "notes" | "sops";
 
 interface Note {
   id: string;
@@ -1348,6 +1349,7 @@ export default function AccountPage() {
     { key: "actions",       label: "Actions",      icon: <ListChecks   size={14} />, badge: pendingActions.length },
     { key: "products",      label: "Products",     icon: <Package      size={14} /> },
     { key: "search-terms",  label: "Search terms", icon: <Search       size={14} /> },
+    { key: "persona",       label: "Audience",     icon: <Brain        size={14} /> },
     { key: "playbook",      label: "Playbook",     icon: <BookOpen     size={14} /> },
     { key: "chat",          label: "AI Advisor",   icon: <MessageSquare size={14} /> },
     { key: "sops",          label: "SOPs",         icon: <CheckSquare   size={14} /> },
@@ -1626,6 +1628,20 @@ export default function AccountPage() {
               </span>
             </div>
             <SearchTermReport accountId={id} />
+          </>
+        )}
+
+        {tab === "persona" && (
+          <>
+            <div style={{ marginBottom: 16, display: "flex", alignItems: "baseline", gap: 8 }}>
+              <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.8px", textTransform: "uppercase", color: "var(--text-dim)" }}>
+                Target audience
+              </span>
+              <span style={{ fontSize: 11, color: "var(--text-faint)" }}>
+                Device · Age · Gender · Income · Geo · Interests · Behaviour — last 30 days
+              </span>
+            </div>
+            <PersonaView accountId={id} currency={account.currency} />
           </>
         )}
 
