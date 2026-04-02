@@ -40,6 +40,8 @@ const acme_signals: ConstraintSignals = {
     qualityScoreCount: 120,
     productDisapprovalRate: 0,
     irrelevantQueryPercent: 0.22,
+    isPmaxPrimary: false,
+    pmaxDisplayYoutubePercent: 0,
   },
   conversion: {
     conversionRate: 0.032,
@@ -93,6 +95,8 @@ const nova_signals: ConstraintSignals = {
     qualityScoreCount: 0,
     productDisapprovalRate: 0.03,
     irrelevantQueryPercent: 0.08,
+    isPmaxPrimary: false,
+    pmaxDisplayYoutubePercent: 0,
   },
   conversion: {
     conversionRate: 0.0,
