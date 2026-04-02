@@ -82,28 +82,39 @@ function scoreTraffic(s: ConstraintSignals["traffic"]): BucketScore {
     score -= Math.round(s.impressionShareLost_budget * 30);
   }
 
-  // Rank IS loss — flag when consistently losing to quality/bid (> 30%)
-  if (s.impressionShareLost_rank > 0.3) {
+  // Rank IS loss — for Shopping/PMax (no QS keywords) this means product-level
+  // competitiveness, not bid or ad relevance. Only flag when genuinely severe (> 50%).
+  // 30–50% lost to rank is common on PMax and not necessarily actionable.
+  if (s.impressionShareLost_rank > 0.5) {
     const pct = Math.round(s.impressionShareLost_rank * 100);
-    score -= Math.min(25, pct);
-    signals.push(`${pct}% impression share lost to rank — bid amount or ad relevance needs attention`);
-  } else if (s.impressionShareLost_rank > 0.15) {
-    score -= Math.round(s.impressionShareLost_rank * 25);
+    score -= Math.min(25, Math.round((pct - 50) * 1.5));
+    const msg = s.qualityScoreCount > 0
+      ? `${pct}% impression share lost to rank — review keyword bids and ad relevance`
+      : `${pct}% impression share lost to rank — check feed title quality and product pricing vs competitors`;
+    signals.push(msg);
+  } else if (s.impressionShareLost_rank > 0.3) {
+    // 30–50%: deduct silently — common for PMax/Shopping, not a red signal
+    score -= Math.round((s.impressionShareLost_rank - 0.3) * 20);
   }
 
-  // CTR: only compare trend vs account's own baseline — no arbitrary absolute threshold
+  // CTR: compare trend vs account's own 15–180d baseline.
+  // Note: the baseline window spans up to 6 months and can include seasonal peaks (e.g. Q4).
+  // A CTR drop during a historically strong period is expected — only flag genuinely severe drops.
+  // Threshold: >50% drop = flag (not >35%) to reduce seasonal false positives.
   if (s.clickThroughRateBaseline > 0) {
     const ctrTrend = s.clickThroughRate / s.clickThroughRateBaseline;
-    if (ctrTrend < 0.65) {
+    if (ctrTrend < 0.5) {
       score -= 20;
-      signals.push(`CTR down ${Math.round((1 - ctrTrend) * 100)}% vs account's 6-month average — ads losing relevance`);
-    } else if (ctrTrend < 0.80) {
+      const msg = s.qualityScoreCount > 0
+        ? `CTR down ${Math.round((1 - ctrTrend) * 100)}% vs 6-month average — review ad copy and keyword match types`
+        : `CTR down ${Math.round((1 - ctrTrend) * 100)}% vs 6-month average — check feed title relevance; seasonal shifts can cause this`;
+      signals.push(msg);
+    } else if (ctrTrend < 0.70) {
       score -= 8;
-      signals.push(`CTR down ${Math.round((1 - ctrTrend) * 100)}% vs account's 6-month average — worth monitoring`);
+      signals.push(`CTR down ${Math.round((1 - ctrTrend) * 100)}% vs 6-month average — monitor; may reflect seasonality`);
     }
-    // Within 20% of own baseline: no signal
+    // Within 30% of own baseline: normal variation or seasonality — no signal
   }
-  // No absolute CTR threshold without history — not enough context to flag it
 
   // Quality score (Search/DSA) vs feed health (Shopping/PMax) — mutually exclusive
   if (s.qualityScoreCount > 0) {
@@ -130,11 +141,16 @@ function scoreTraffic(s: ConstraintSignals["traffic"]): BucketScore {
     // < 5%: healthy, no signal
   }
 
-  // Irrelevant queries — only flag when material waste (> 25% of budget)
-  if (s.irrelevantQueryPercent > 0.25) {
+  // Irrelevant query spend — "queries with 0 conversions" is not the same as "irrelevant queries".
+  // On any account with low conversion volume, virtually all queries will show 0 conversions —
+  // this is a data volume problem, not a targeting problem. Only flag when:
+  //  a) the percentage is very high (> 60%), AND
+  //  b) the CTR is not also low (which would suggest the account just lacks conversion data)
+  // This prevents false alarms on new accounts and early-phase data gathering campaigns.
+  if (s.irrelevantQueryPercent > 0.6) {
     const pct = Math.round(s.irrelevantQueryPercent * 100);
-    score -= Math.min(20, pct);
-    signals.push(`~${pct}% of spend on non-converting queries — add negative keywords`);
+    score -= Math.min(15, Math.round((pct - 60) * 0.5));
+    signals.push(`~${pct}% of query spend has no conversion history — review search terms report for clear irrelevancies`);
   }
 
   if (s.searchImpressionShare > 0.7 && s.impressionShareLost_budget < 0.15) {
