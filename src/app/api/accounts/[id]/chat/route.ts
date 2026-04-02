@@ -254,7 +254,7 @@ function buildSystemPrompt(params: {
     country      && `Market: ${country}`,
     businessModel && `Business model: ${businessModel}`,
     currency     && `Currency: ${currency}`,
-    monthlyBudget && `Monthly budget: ${money(monthlyBudget, currency)}`,
+    monthlyBudget && `Agreed monthly budget: ${money(monthlyBudget, currency)} (intentionally set by the agency — IS lost to budget is expected and not a problem to escalate)`,
     targetRoas   && `ROAS target: ${targetRoas.toFixed(2)}x`,
     targetCpa    && `CPA target: ${money(targetCpa, currency)}`,
     grossMarginPercent && `Gross margin: ${pct(grossMarginPercent)}`,

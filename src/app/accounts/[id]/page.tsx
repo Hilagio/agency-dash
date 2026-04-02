@@ -508,6 +508,7 @@ function ClientContextPanel({
 // ECONOMICS scoring.
 
 interface AccountTargets {
+  monthlyBudget:      number | null;
   targetRoas:         number | null;
   targetCpa:          number | null;
   grossMarginPercent: number | null;
@@ -530,6 +531,7 @@ function AccountTargetsPanel({
 }) {
   const [editing, setEditing] = useState(false);
   const initVals = () => ({
+    monthlyBudget:      initial.monthlyBudget      != null ? String(initial.monthlyBudget)                        : "",
     targetRoas:         initial.targetRoas         != null ? String(initial.targetRoas)                          : "",
     targetCpa:          initial.targetCpa          != null ? String(initial.targetCpa)                           : "",
     grossMarginPercent: initial.grossMarginPercent != null ? String(Math.round(initial.grossMarginPercent * 100)) : "",
@@ -543,14 +545,16 @@ function AccountTargetsPanel({
 
   const currSym = currency === "EUR" ? "€" : currency === "GBP" ? "£" : "$";
 
-  const hasAny = initial.targetRoas != null || initial.targetCpa != null || initial.grossMarginPercent != null
-    || !!initial.landingPageUrl || !!initial.country || !!initial.businessModel || initial.monthlyChurnRate != null;
+  const hasAny = initial.monthlyBudget != null || initial.targetRoas != null || initial.targetCpa != null
+    || initial.grossMarginPercent != null || !!initial.landingPageUrl || !!initial.country
+    || !!initial.businessModel || initial.monthlyChurnRate != null;
 
   const save = async () => {
     setSaving(true);
     const body: AccountTargets = {
-      targetRoas:         vals.targetRoas         !== "" ? parseFloat(vals.targetRoas)         : null,
-      targetCpa:          vals.targetCpa          !== "" ? parseFloat(vals.targetCpa)          : null,
+      monthlyBudget:      vals.monthlyBudget      !== "" ? parseFloat(vals.monthlyBudget)         : null,
+      targetRoas:         vals.targetRoas         !== "" ? parseFloat(vals.targetRoas)             : null,
+      targetCpa:          vals.targetCpa          !== "" ? parseFloat(vals.targetCpa)              : null,
       grossMarginPercent: vals.grossMarginPercent !== "" ? parseFloat(vals.grossMarginPercent) / 100 : null,
       landingPageUrl:     vals.landingPageUrl.trim() || null,
       country:            vals.country.trim().toUpperCase() || null,
@@ -610,6 +614,12 @@ function AccountTargetsPanel({
 
       {!editing && hasAny && (
         <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
+          {initial.monthlyBudget != null && (
+            <div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text-2)", letterSpacing: "-0.5px", lineHeight: 1 }}>{currSym}{initial.monthlyBudget.toLocaleString()}</div>
+              <div style={{ fontSize: 10, color: "var(--text-faint)", marginTop: 2, textTransform: "uppercase", letterSpacing: "0.4px" }}>Monthly Budget</div>
+            </div>
+          )}
           {initial.targetRoas != null && (
             <div>
               <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text-2)", letterSpacing: "-0.5px", lineHeight: 1 }}>{initial.targetRoas}x</div>
@@ -670,8 +680,74 @@ function AccountTargetsPanel({
         </div>
       )}
 
+      {/* Budget projection — only when both budget and a return target are set */}
+      {!editing && initial.monthlyBudget != null && (initial.targetRoas != null || initial.targetCpa != null) && (() => {
+        const budget = initial.monthlyBudget!;
+        // Diminishing returns: efficiency decays as spend scales.
+        // Model: at 1x budget → full efficiency; at 2x → 85%; at 3x → 72%; at 4x → 62%
+        // Formula: efficiency(x) = x^-0.28 (power law decay, calibrated to those anchors)
+        const budgetPoints = [0.5, 0.75, 1, 1.5, 2, 3];
+        const rows = budgetPoints.map(multiplier => {
+          const spend = Math.round(budget * multiplier);
+          const efficiency = Math.pow(multiplier, -0.28); // 1.0 at 1x, ~0.82 at 2x, ~0.72 at 3x
+          const clampedEfficiency = Math.min(1.2, efficiency); // allow slight upside at low spend
+          let returnLabel = "";
+          let returnVal = 0;
+          if (initial.targetRoas != null) {
+            returnVal = Math.round(spend * initial.targetRoas! * clampedEfficiency);
+            returnLabel = `${currSym}${returnVal.toLocaleString()} revenue`;
+          } else if (initial.targetCpa != null) {
+            returnVal = Math.round(spend / initial.targetCpa! * clampedEfficiency);
+            returnLabel = `${returnVal} conversions`;
+          }
+          const isBase = multiplier === 1;
+          return { spend, returnLabel, returnVal, efficiency: clampedEfficiency, isBase, multiplier };
+        });
+        return (
+          <div style={{ marginTop: 16, borderTop: "1px solid var(--border)", paddingTop: 14 }}>
+            <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.6px", textTransform: "uppercase", color: "var(--text-faint)", marginBottom: 10 }}>
+              Budget scenarios · diminishing returns modelled
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 6 }}>
+              {rows.map(r => (
+                <div key={r.multiplier} style={{
+                  background: r.isBase ? "rgba(59,130,246,0.1)" : "var(--bg)",
+                  border: `1px solid ${r.isBase ? "rgba(59,130,246,0.3)" : "var(--border)"}`,
+                  borderRadius: 8, padding: "10px 8px", textAlign: "center",
+                }}>
+                  <div style={{ fontSize: 11, color: "var(--text-faint)", marginBottom: 4 }}>{r.multiplier}x</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-2)", letterSpacing: "-0.3px" }}>{currSym}{r.spend.toLocaleString()}</div>
+                  <div style={{ fontSize: 10, color: "var(--text-faint)", margin: "3px 0" }}>/mo</div>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: r.isBase ? "#60a5fa" : "var(--text-muted)", marginTop: 4 }}>{r.returnLabel}</div>
+                  <div style={{ fontSize: 9, color: "var(--text-faint)", marginTop: 2 }}>{Math.round(r.efficiency * 100)}% eff.</div>
+                </div>
+              ))}
+            </div>
+            <div style={{ fontSize: 10, color: "var(--text-very-dim)", marginTop: 8 }}>
+              Based on {initial.targetRoas != null ? `${initial.targetRoas}x target ROAS` : `${currSym}${initial.targetCpa} target CPA`} at baseline budget. Efficiency decay assumes typical market saturation curve.
+            </div>
+          </div>
+        );
+      })()}
+
       {editing && (
         <>
+          {/* Monthly budget — full width, prominent */}
+          <label style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 12 }}>
+            <span style={{ fontSize: 10, color: "var(--text-faint)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.4px" }}>Agreed Monthly Budget</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--bg)", border: "1px solid var(--border-2)", borderRadius: 7, padding: "6px 10px" }}>
+              <span style={{ fontSize: 11, color: "var(--text-faint)" }}>{currSym}</span>
+              <input
+                type="number" step="100" min="0" placeholder="e.g. 3000"
+                value={vals.monthlyBudget}
+                onChange={e => setVals(v => ({ ...v, monthlyBudget: e.target.value }))}
+                style={{ flex: 1, background: "transparent", border: "none", outline: "none", color: "var(--text)", fontSize: 13, fontFamily: "inherit", minWidth: 0 }}
+              />
+              <span style={{ fontSize: 11, color: "var(--text-faint)" }}>/mo</span>
+            </div>
+            <span style={{ fontSize: 10, color: "var(--text-very-dim)" }}>Approved client budget — prevents budget IS loss being flagged as a constraint</span>
+          </label>
+
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
             <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
               <span style={{ fontSize: 10, color: "var(--text-faint)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.4px" }}>Target ROAS</span>
@@ -1523,6 +1599,7 @@ export default function AccountPage() {
                   accountId={id}
                   currency={account.currency}
                   initial={{
+                    monthlyBudget:      account.monthlyBudget,
                     targetRoas:         account.targetRoas,
                     targetCpa:          account.targetCpa,
                     grossMarginPercent: account.grossMarginPercent,
