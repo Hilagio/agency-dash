@@ -293,12 +293,13 @@ function AccountRow({
 
         {/* Actions: rescore + remove */}
         <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 4 }}
-          onClick={e => e.preventDefault()}>
+          onClick={e => { e.preventDefault(); e.stopPropagation(); }}>
           {confirmDelete ? (
             <>
               <span style={{ fontSize: 11, color: "var(--text-dim)", whiteSpace: "nowrap" }}>Remove?</span>
               <button
                 onClick={async e => {
+                  e.preventDefault();
                   e.stopPropagation();
                   setRemoving(true);
                   await fetch(`/api/accounts/${account.id}`, { method: "DELETE" });
@@ -310,7 +311,7 @@ function AccountRow({
                 {removing ? <Loader2 size={10} className="animate-spin" /> : <Check size={10} />}
               </button>
               <button
-                onClick={e => { e.stopPropagation(); setConfirmDelete(false); }}
+                onClick={e => { e.preventDefault(); e.stopPropagation(); setConfirmDelete(false); }}
                 style={{ padding: "3px 6px", borderRadius: 5, background: "none", border: "1px solid var(--border-2)", color: "var(--text-faint)", fontSize: 11, cursor: "pointer", display: "flex", alignItems: "center" }}
               >
                 <X size={10} />
@@ -327,7 +328,7 @@ function AccountRow({
                 {scoring ? "…" : "Rescore"}
               </button>
               <button
-                onClick={e => { e.stopPropagation(); setConfirmDelete(true); }}
+                onClick={e => { e.preventDefault(); e.stopPropagation(); setConfirmDelete(true); }}
                 title="Remove account"
                 style={{ padding: "4px 6px", borderRadius: 6, background: "none", border: "1px solid var(--border-2)", color: "var(--text-faint)", cursor: "pointer", display: "flex", alignItems: "center", opacity: 0.5 }}
                 onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.opacity = "1"; (e.currentTarget as HTMLButtonElement).style.color = "#ef4444"; (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(239,68,68,0.3)"; }}
