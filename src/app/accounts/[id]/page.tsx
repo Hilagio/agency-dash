@@ -972,7 +972,144 @@ function AccountTargetsPanel({
                 </div>
               ))}
             </div>
-            <div style={{ fontSize: 10, color: "var(--text-very-dim)", marginTop: 8 }}>
+            {/* SVG chart — real dots + fitted curve + target line */}
+            {useRoas && (curvePoints ?? []).filter(p => p.roas != null && p.spend > 0).length > 0 && (() => {
+              const validPts = (curvePoints ?? []).filter(p => p.roas != null && p.spend > 0);
+              const baseRoas = actualRoas ?? targetRoas ?? 1;
+              const maxSpend = budget * 3.2;
+
+              // Chart dimensions
+              const W = 560; const H = 180;
+              const PAD = { top: 16, right: 24, bottom: 32, left: 48 };
+              const cW = W - PAD.left - PAD.right;
+              const cH = H - PAD.top  - PAD.bottom;
+
+              // Axis ranges
+              const allRoas   = validPts.map(p => p.roas!);
+              const roasMin   = Math.max(0, Math.min(...allRoas) * 0.7);
+              const roasMax   = Math.max(...allRoas, targetRoas ?? 0) * 1.25;
+              const spendMin  = 0;
+
+              const sx = (spend: number) => PAD.left + (spend / maxSpend) * cW;
+              const sy = (roas: number)  => PAD.top  + cH - ((roas - roasMin) / (roasMax - roasMin)) * cH;
+
+              // Fitted curve — 60 points from 0.3x to 3x budget
+              const curvePts: [number, number][] = [];
+              for (let i = 0; i <= 60; i++) {
+                const spendX = budget * (0.3 + (i / 60) * 2.7);
+                const eff    = Math.min(1.2, Math.max(0.4, Math.pow(spendX / budget, k)));
+                const roasY  = baseRoas * eff;
+                curvePts.push([sx(spendX), sy(roasY)]);
+              }
+              const curvePath = curvePts.map((p, i) => `${i === 0 ? "M" : "L"}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(" ");
+
+              // Y-axis ticks
+              const yTicks = 4;
+              const yTickVals = Array.from({ length: yTicks + 1 }, (_, i) =>
+                roasMin + (roasMax - roasMin) * (i / yTicks)
+              );
+
+              // X-axis ticks — round spend values
+              const xTickSpends = [0.5, 1, 1.5, 2, 2.5, 3].map(m => budget * m);
+
+              return (
+                <div style={{ marginTop: 16, overflowX: "auto" }}>
+                  <svg width={W} height={H} style={{ display: "block", maxWidth: "100%" }}>
+                    {/* Grid lines */}
+                    {yTickVals.map((v, i) => (
+                      <line key={i}
+                        x1={PAD.left} y1={sy(v)} x2={PAD.left + cW} y2={sy(v)}
+                        stroke="var(--border)" strokeWidth={0.5} strokeDasharray={i === 0 ? "0" : "3,3"}
+                      />
+                    ))}
+
+                    {/* Target ROAS line */}
+                    {targetRoas != null && targetRoas >= roasMin && targetRoas <= roasMax && (
+                      <>
+                        <line
+                          x1={PAD.left} y1={sy(targetRoas)} x2={PAD.left + cW} y2={sy(targetRoas)}
+                          stroke="#22c55e" strokeWidth={1.5} strokeDasharray="5,4" opacity={0.7}
+                        />
+                        <text x={PAD.left + cW - 2} y={sy(targetRoas) - 4}
+                          fontSize={9} fill="#22c55e" textAnchor="end" opacity={0.8}>
+                          target {targetRoas}x
+                        </text>
+                      </>
+                    )}
+
+                    {/* Current budget vertical line */}
+                    <line
+                      x1={sx(budget)} y1={PAD.top} x2={sx(budget)} y2={PAD.top + cH}
+                      stroke="#3b82f6" strokeWidth={1} strokeDasharray="4,3" opacity={0.5}
+                    />
+                    <text x={sx(budget) + 4} y={PAD.top + 10}
+                      fontSize={9} fill="#60a5fa" opacity={0.8}>now</text>
+
+                    {/* Fitted curve */}
+                    <path d={curvePath} fill="none" stroke="#3b82f6" strokeWidth={2} opacity={0.7} />
+
+                    {/* Curve fill (gradient area under curve) */}
+                    <defs>
+                      <linearGradient id="curveGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.15} />
+                        <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <path
+                      d={`${curvePath} L${(PAD.left + cW).toFixed(1)},${(PAD.top + cH).toFixed(1)} L${PAD.left.toFixed(1)},${(PAD.top + cH).toFixed(1)} Z`}
+                      fill="url(#curveGrad)"
+                    />
+
+                    {/* Real data dots */}
+                    {validPts.map((p, i) => {
+                      const x = sx(p.spend);
+                      const y = sy(p.roas!);
+                      if (x < PAD.left || x > PAD.left + cW) return null;
+                      return (
+                        <g key={i}>
+                          <circle cx={x} cy={y} r={4} fill="#f97316" stroke="var(--surface)" strokeWidth={1.5} />
+                          <title>{p.month}: {currSym}{p.spend.toLocaleString()} → {p.roas!.toFixed(1)}x ROAS</title>
+                        </g>
+                      );
+                    })}
+
+                    {/* Y-axis labels */}
+                    {yTickVals.map((v, i) => (
+                      <text key={i} x={PAD.left - 6} y={sy(v) + 3}
+                        fontSize={9} fill="var(--text-faint)" textAnchor="end">
+                        {v.toFixed(1)}x
+                      </text>
+                    ))}
+
+                    {/* X-axis labels */}
+                    {xTickSpends.map((s, i) => (
+                      <text key={i} x={sx(s)} y={H - 6}
+                        fontSize={9} fill="var(--text-faint)" textAnchor="middle">
+                        {currSym}{s >= 1000 ? `${(s/1000).toFixed(0)}k` : s.toFixed(0)}
+                      </text>
+                    ))}
+
+                    {/* Axis lines */}
+                    <line x1={PAD.left} y1={PAD.top} x2={PAD.left} y2={PAD.top + cH} stroke="var(--border)" strokeWidth={1} />
+                    <line x1={PAD.left} y1={PAD.top + cH} x2={PAD.left + cW} y2={PAD.top + cH} stroke="var(--border)" strokeWidth={1} />
+
+                    {/* Legend */}
+                    <circle cx={PAD.left + 4} cy={PAD.top + 4} r={3} fill="#f97316" />
+                    <text x={PAD.left + 12} y={PAD.top + 8} fontSize={9} fill="var(--text-faint)">Actual monthly ROAS</text>
+                    <line x1={PAD.left + 90} y1={PAD.top + 5} x2={PAD.left + 106} y2={PAD.top + 5} stroke="#3b82f6" strokeWidth={2} />
+                    <text x={PAD.left + 110} y={PAD.top + 8} fontSize={9} fill="var(--text-faint)">Fitted curve</text>
+                    {targetRoas != null && (
+                      <>
+                        <line x1={PAD.left + 168} y1={PAD.top + 5} x2={PAD.left + 184} y2={PAD.top + 5} stroke="#22c55e" strokeWidth={1.5} strokeDasharray="4,3" />
+                        <text x={PAD.left + 188} y={PAD.top + 8} fontSize={9} fill="var(--text-faint)">Target</text>
+                      </>
+                    )}
+                  </svg>
+                </div>
+              );
+            })()}
+
+            <div style={{ fontSize: 10, color: "var(--text-very-dim)", marginTop: 6 }}>
               Returns based on {actualRoas != null ? "actual" : "target"} {useRoas ? `${(actualRoas ?? targetRoas)?.toFixed(1)}x ROAS` : `${currSym}${(actualCpa ?? targetCpa)?.toFixed(0)} CPA`} · k={k.toFixed(2)} · {label}
             </div>
           </div>
