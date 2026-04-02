@@ -1234,6 +1234,132 @@ export async function fetchProductSpend(
   return spendMap;
 }
 
+// ─── Demographics ─────────────────────────────────────────────────────────────
+
+export interface DemographicRow {
+  dimension: string; // "device" | "age" | "gender"
+  label:     string; // e.g. "MOBILE", "AGE_25_34", "FEMALE"
+  clicks:       number;
+  impressions:  number;
+  conversions:  number;
+  costMicros:   number;
+  convValue:    number;
+}
+
+export async function fetchDemographics(
+  customerId: string,
+  orgId?: string
+): Promise<DemographicRow[]> {
+  const client   = getClient();
+  const customer = await getCustomer(client, customerId, orgId);
+  const { start, end } = last30Days();
+
+  const results: DemographicRow[] = [];
+
+  // Device split — from campaign segmented by device
+  const deviceRows = await safeQuery(
+    () => customer.query(`
+      SELECT
+        segments.device,
+        metrics.clicks,
+        metrics.impressions,
+        metrics.conversions,
+        metrics.cost_micros,
+        metrics.conversions_value
+      FROM campaign
+      WHERE campaign.status = 'ENABLED'
+        AND segments.date BETWEEN '${start}' AND '${end}'
+    `),
+    "device demographics"
+  );
+
+  // Aggregate by device
+  const deviceMap = new Map<string, DemographicRow>();
+  for (const r of deviceRows) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const device = String((r as any).segments?.device ?? "UNKNOWN");
+    const existing = deviceMap.get(device) ?? {
+      dimension: "device", label: device,
+      clicks: 0, impressions: 0, conversions: 0, costMicros: 0, convValue: 0,
+    };
+    existing.clicks      += Number(r.metrics?.clicks ?? 0);
+    existing.impressions += Number(r.metrics?.impressions ?? 0);
+    existing.conversions += Number(r.metrics?.conversions ?? 0);
+    existing.costMicros  += Number(r.metrics?.cost_micros ?? 0);
+    existing.convValue   += Number(r.metrics?.conversions_value ?? 0);
+    deviceMap.set(device, existing);
+  }
+  results.push(...deviceMap.values());
+
+  // Age range
+  const ageRows = await safeQuery(
+    () => customer.query(`
+      SELECT
+        ad_group_criterion.age_range.type,
+        metrics.clicks,
+        metrics.impressions,
+        metrics.conversions,
+        metrics.cost_micros,
+        metrics.conversions_value
+      FROM age_range_view
+      WHERE segments.date BETWEEN '${start}' AND '${end}'
+    `),
+    "age demographics"
+  );
+
+  const ageMap = new Map<string, DemographicRow>();
+  for (const r of ageRows) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const age = String((r as any).ad_group_criterion?.age_range?.type ?? "UNKNOWN");
+    const existing = ageMap.get(age) ?? {
+      dimension: "age", label: age,
+      clicks: 0, impressions: 0, conversions: 0, costMicros: 0, convValue: 0,
+    };
+    existing.clicks      += Number(r.metrics?.clicks ?? 0);
+    existing.impressions += Number(r.metrics?.impressions ?? 0);
+    existing.conversions += Number(r.metrics?.conversions ?? 0);
+    existing.costMicros  += Number(r.metrics?.cost_micros ?? 0);
+    existing.convValue   += Number(r.metrics?.conversions_value ?? 0);
+    ageMap.set(age, existing);
+  }
+  results.push(...ageMap.values());
+
+  // Gender
+  const genderRows = await safeQuery(
+    () => customer.query(`
+      SELECT
+        ad_group_criterion.gender.type,
+        metrics.clicks,
+        metrics.impressions,
+        metrics.conversions,
+        metrics.cost_micros,
+        metrics.conversions_value
+      FROM gender_view
+      WHERE segments.date BETWEEN '${start}' AND '${end}'
+    `),
+    "gender demographics"
+  );
+
+  const genderMap = new Map<string, DemographicRow>();
+  for (const r of genderRows) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const gender = String((r as any).ad_group_criterion?.gender?.type ?? "UNKNOWN");
+    const existing = genderMap.get(gender) ?? {
+      dimension: "gender", label: gender,
+      clicks: 0, impressions: 0, conversions: 0, costMicros: 0, convValue: 0,
+    };
+    existing.clicks      += Number(r.metrics?.clicks ?? 0);
+    existing.impressions += Number(r.metrics?.impressions ?? 0);
+    existing.conversions += Number(r.metrics?.conversions ?? 0);
+    existing.costMicros  += Number(r.metrics?.cost_micros ?? 0);
+    existing.convValue   += Number(r.metrics?.conversions_value ?? 0);
+    genderMap.set(gender, existing);
+  }
+  results.push(...genderMap.values());
+
+  return results.filter(r => r.clicks > 0 || r.impressions > 0);
+}
+
 export async function isGoogleAdsConfigured(orgId?: string): Promise<boolean> {
   const hasEnvToken = !!(
     process.env.GOOGLE_ADS_DEVELOPER_TOKEN &&

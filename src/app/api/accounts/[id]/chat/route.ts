@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { prisma } from "@/lib/db";
 import { BUCKET_LABELS, BUCKET_DESCRIPTIONS, ConstraintSignals } from "@/lib/engine/types";
+import { fetchDemographics, fetchSearchTermReport, DemographicRow, SearchTermRow } from "@/lib/integrations/google-ads";
 import { getAuthContext, unauthorized, forbidden } from "@/lib/auth";
 
 type Params = { params: Promise<{ id: string }> };
@@ -142,6 +143,59 @@ function buildSignalContext(signals: ConstraintSignals, currency: string): strin
 
 // ─── System prompt builder ─────────────────────────────────────────────────────
 
+function buildDemographicsContext(rows: DemographicRow[], currency: string): string {
+  if (rows.length === 0) return "";
+  const lines = ["\nDEMOGRAPHICS (last 30 days):"];
+
+  const totalCost = rows.filter(r => r.dimension === "device").reduce((s, r) => s + r.costMicros, 0);
+  const fmt = (r: DemographicRow) => {
+    const costEur  = (r.costMicros / 1_000_000).toFixed(2);
+    const ctr      = r.impressions > 0 ? ((r.clicks / r.impressions) * 100).toFixed(2) : "0";
+    const cvr      = r.clicks > 0 ? ((r.conversions / r.clicks) * 100).toFixed(2) : "0";
+    const costShare = totalCost > 0 ? ((r.costMicros / totalCost) * 100).toFixed(0) : "?";
+    const roas     = r.costMicros > 0 && r.convValue > 0
+      ? ` ROAS: ${(r.convValue / (r.costMicros / 1_000_000)).toFixed(2)}x`
+      : "";
+    return `  ${r.label.replace("AGE_RANGE_", "").replace("_", "–")}: spend ${costShare}% (${money(parseFloat(costEur), currency)}), CTR ${ctr}%, CVR ${cvr}%, conv ${r.conversions.toFixed(1)}${roas}`;
+  };
+
+  const devices = rows.filter(r => r.dimension === "device").sort((a, b) => b.costMicros - a.costMicros);
+  const ages    = rows.filter(r => r.dimension === "age").sort((a, b) => b.costMicros - a.costMicros);
+  const genders = rows.filter(r => r.dimension === "gender").sort((a, b) => b.costMicros - a.costMicros);
+
+  if (devices.length) { lines.push("Device:"); devices.forEach(r => lines.push(fmt(r))); }
+  if (ages.length)    { lines.push("Age:"); ages.forEach(r => lines.push(fmt(r))); }
+  if (genders.length) { lines.push("Gender:"); genders.forEach(r => lines.push(fmt(r))); }
+
+  return lines.join("\n");
+}
+
+function buildSearchTermContext(rows: SearchTermRow[], currency: string): string {
+  if (rows.length === 0) return "";
+  const excludes = rows.filter(r => r.recommendation === "EXCLUDE").slice(0, 15);
+  const watches  = rows.filter(r => r.recommendation === "WATCH").slice(0, 10);
+  const lines    = ["\nSEARCH TERMS (last 90 days — top issues):"];
+
+  if (excludes.length) {
+    lines.push(`EXCLUDE candidates (0 conv, high spend):`);
+    excludes.forEach(r => {
+      const cost = r.source === "search" ? ` ${money(r.costEur, currency)}` : ` ${r.clicks} clicks`;
+      lines.push(`  "${r.searchTerm}" [${r.campaignName}]${cost}`);
+    });
+  }
+  if (watches.length) {
+    lines.push(`WATCH (0 conv, accumulating spend):`);
+    watches.forEach(r => {
+      const cost = r.source === "search" ? ` ${money(r.costEur, currency)}` : ` ${r.clicks} clicks`;
+      lines.push(`  "${r.searchTerm}" [${r.campaignName}]${cost}`);
+    });
+  }
+  if (excludes.length === 0 && watches.length === 0) {
+    lines.push("  No high-waste search terms detected.");
+  }
+  return lines.join("\n");
+}
+
 function buildSystemPrompt(params: {
   accountName:         string;
   currency:            string;
@@ -157,6 +211,8 @@ function buildSystemPrompt(params: {
   bucketScores:        Record<string, number>;
   allActions:          Array<{ title: string; description: string; impact: string; effort: string; bucket: string }>;
   signals:             ConstraintSignals | null;
+  demographics:        DemographicRow[];
+  searchTerms:         SearchTermRow[];
   clientContext:       string | null;
   sopContext:          string;
 }): string {
@@ -164,6 +220,7 @@ function buildSystemPrompt(params: {
     accountName, currency, industry, country, businessModel, monthlyBudget,
     targetRoas, targetCpa, grossMarginPercent,
     governingConstraint, constraintReason, bucketScores, allActions, signals,
+    demographics, searchTerms,
     clientContext, sopContext,
   } = params;
 
@@ -192,13 +249,17 @@ function buildSystemPrompt(params: {
   ].filter(Boolean).join("\n");
 
   const signalContext = signals ? "\n\n" + buildSignalContext(signals, currency) : "";
+  const demoContext   = buildDemographicsContext(demographics, currency);
+  const stContext     = buildSearchTermContext(searchTerms, currency);
   const clientBriefSection = clientContext ? `\n\nCLIENT BRIEF:\n${clientContext}` : "";
   const sopSection = sopContext ? `\n\n${sopContext}` : "";
 
-  return `You are an expert senior Google Ads specialist working inside an agency performance platform. You have deep expertise in Search, Shopping, Performance Max, and feed-based campaigns. You use data to drive specific, actionable decisions — not generic advice.
+  return `You are an expert senior Google Ads specialist embedded in an agency performance platform. You have full access to this account's data — it was fetched directly from Google Ads API and Merchant Center moments before this conversation. Never say you lack access to Google Ads data; everything you need is already provided below.
 
 ACCOUNT: ${accountName}
 ${accountMeta}
+
+DATA SOURCE: All metrics below are pulled live from this account's Google Ads API. You have the actual numbers — use them. If a specific dimension isn't listed (e.g. a specific campaign's day-parting), say you don't have that level of detail in the current context rather than saying you have no Google Ads access.
 
 CONSTRAINT FRAMEWORK:
 Accounts are systems with one governing constraint at any time. Fix the constraint first, then re-score. The sequence is: Measurement → Traffic → Website Conversion → Funnel → Business Economics. Fixing a downstream issue while an upstream constraint exists wastes time.
@@ -211,17 +272,16 @@ ${bucketSummary}
 
 RECOMMENDED ACTIONS (prioritised):
 ${actionSummary}
-${signalContext}${clientBriefSection}${sopSection}
+${signalContext}${demoContext}${stContext}${clientBriefSection}${sopSection}
 
 YOUR BEHAVIOUR:
-- Give specific numbers in every diagnosis. Say "CTR dropped from 2.8% to 1.1%" not "CTR is low".
-- When you don't have a specific data point, say so — don't invent or estimate.
-- Every answer must anchor to the governing constraint unless the question is clearly about a different bucket and the user explicitly asks.
-- If a fix requires client action (website change, CRM setup, offline conversion import), flag it as a CLIENT ESCALATION.
-- If something is a quick agency-side fix, say it clearly and concisely.
-- For Shopping/PMax accounts: think in terms of feed quality, product segmentation, and asset group performance — not keyword-level QS.
-- Be direct. Skip preamble. One problem → one cause → one fix per response.
-- If asked about price competitiveness or competitor pricing: that data is available in the Products tab of this account — direct the specialist there.`;
+- You have real account data. Use specific numbers in every response: "CTR dropped from 2.8% to 1.1%" not "CTR is low".
+- If a metric isn't in the data above, say "I don't have that breakdown in the current context" — never say you lack Google Ads access.
+- Anchor every answer to the governing constraint unless the user explicitly asks about a different bucket.
+- Flag client escalations clearly (website changes, CRM setup, offline conversion import).
+- For Shopping/PMax: think feed quality, product segmentation, asset group performance — not keyword QS.
+- Be direct. Skip preamble. One problem → one cause → one fix.
+- For price competitiveness and competitor pricing: that data is in the Products tab of this account.`;
 }
 
 // ─── Route handler ─────────────────────────────────────────────────────────────
@@ -241,6 +301,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     prisma.account.findFirst({ where: { id, organizationId: ctx.orgId } }),
     prisma.agencySop.findMany({ where: { organizationId: ctx.orgId, isActive: true }, orderBy: { createdAt: "asc" } }),
   ]);
+
   if (!account) return forbidden();
 
   const snapshot = await prisma.constraintSnapshot.findFirst({
@@ -284,6 +345,15 @@ export async function POST(req: NextRequest, { params }: Params) {
     // If parsing fails, continue without signal detail — prompt degrades gracefully
   }
 
+  // Fetch live demographics + search terms in parallel (non-blocking — fail gracefully)
+  const googleAdsId = account.googleAdsId;
+  const [demographics, searchTerms]: [DemographicRow[], SearchTermRow[]] = googleAdsId
+    ? await Promise.all([
+        fetchDemographics(googleAdsId, ctx.orgId).catch((): DemographicRow[] => []),
+        fetchSearchTermReport(googleAdsId, ctx.orgId).catch((): SearchTermRow[] => []),
+      ])
+    : [[], []];
+
   const bucketScores: Record<string, number> = {
     MEASUREMENT: snapshot.scoreMeasurement,
     TRAFFIC:     snapshot.scoreTraffic,
@@ -317,6 +387,8 @@ export async function POST(req: NextRequest, { params }: Params) {
       bucket:      a.bucket,
     })),
     signals,
+    demographics,
+    searchTerms,
     clientContext: account.clientContext ?? null,
     sopContext,
   });
