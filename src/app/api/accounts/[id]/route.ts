@@ -1,5 +1,6 @@
 /**
  * PATCH /api/accounts/[id] — update account fields
+ * DELETE /api/accounts/[id] — remove account and all related data
  */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
@@ -50,4 +51,29 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   });
 
   return NextResponse.json(account);
+}
+
+export async function DELETE(_req: NextRequest, { params }: Params) {
+  const ctx = await getAuthContext();
+  if (!ctx) return unauthorized();
+
+  const { id } = await params;
+
+  const existing = await prisma.account.findFirst({ where: { id, organizationId: ctx.orgId } });
+  if (!existing) return forbidden();
+
+  // Delete in dependency order (no cascade configured in schema)
+  await prisma.$transaction([
+    prisma.chatMessage.deleteMany({
+      where: { session: { accountId: id } },
+    }),
+    prisma.chatSession.deleteMany({ where: { accountId: id } }),
+    prisma.accountNote.deleteMany({ where: { accountId: id } }),
+    prisma.accountSopProgress.deleteMany({ where: { accountId: id } }),
+    prisma.actionRecommendation.deleteMany({ where: { accountId: id } }),
+    prisma.constraintSnapshot.deleteMany({ where: { accountId: id } }),
+    prisma.account.delete({ where: { id } }),
+  ]);
+
+  return NextResponse.json({ ok: true });
 }

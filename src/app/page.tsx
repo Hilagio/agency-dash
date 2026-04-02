@@ -7,6 +7,7 @@ import { BUCKET_LABELS } from "@/lib/engine/types";
 import {
   Zap, RefreshCw, Loader2, Plus, AlertTriangle, TrendingUp,
   BookOpen, ListChecks, TrendingDown, Pencil, Check, X, Settings, LogOut,
+  Trash2, Search,
 } from "lucide-react";
 import { AccountImporter } from "@/components/AccountImporter";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -158,14 +159,17 @@ function IndustryEditor({ accountId, current, onSaved }: { accountId: string; cu
 // ─── Account row ──────────────────────────────────────────────────────────────
 
 function AccountRow({
-  account, index, scoring, onRescore, onIndustryUpdate,
+  account, index, scoring, onRescore, onIndustryUpdate, onRemove,
 }: {
   account:   Account;
   index:     number;
   scoring:   boolean;
   onRescore: (id: string, e: React.MouseEvent) => void;
   onIndustryUpdate: (id: string, industry: string | null) => void;
+  onRemove:  (id: string) => void;
 }) {
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [removing, setRemoving]           = useState(false);
   const snap  = account.snapshots[0];
   const score = snap ? minScore(snap) : null;
   const color = score !== null ? scoreColor(score) : "var(--text-dim)";
@@ -287,22 +291,52 @@ function AccountRow({
           )}
         </div>
 
-        {/* Rescore */}
-        <div style={{ display: "flex", justifyContent: "flex-end" }}>
-          <button
-            onClick={e => onRescore(account.id, e)}
-            disabled={scoring}
-            style={{
-              display: "flex", alignItems: "center", gap: 4,
-              background: "transparent", border: "1px solid var(--border-2)",
-              borderRadius: 6, color: "var(--text-dim)", fontSize: 11,
-              padding: "4px 10px", cursor: scoring ? "not-allowed" : "pointer",
-              opacity: scoring ? 0.4 : 1,
-            }}
-          >
-            {scoring ? <Loader2 size={10} className="animate-spin" /> : <RefreshCw size={10} />}
-            {scoring ? "…" : "Rescore"}
-          </button>
+        {/* Actions: rescore + remove */}
+        <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 4 }}
+          onClick={e => e.preventDefault()}>
+          {confirmDelete ? (
+            <>
+              <span style={{ fontSize: 11, color: "var(--text-dim)", whiteSpace: "nowrap" }}>Remove?</span>
+              <button
+                onClick={async e => {
+                  e.stopPropagation();
+                  setRemoving(true);
+                  await fetch(`/api/accounts/${account.id}`, { method: "DELETE" });
+                  onRemove(account.id);
+                }}
+                disabled={removing}
+                style={{ padding: "3px 8px", borderRadius: 5, background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.3)", color: "#ef4444", fontSize: 11, cursor: "pointer", display: "flex", alignItems: "center", gap: 3 }}
+              >
+                {removing ? <Loader2 size={10} className="animate-spin" /> : <Check size={10} />}
+              </button>
+              <button
+                onClick={e => { e.stopPropagation(); setConfirmDelete(false); }}
+                style={{ padding: "3px 6px", borderRadius: 5, background: "none", border: "1px solid var(--border-2)", color: "var(--text-faint)", fontSize: 11, cursor: "pointer", display: "flex", alignItems: "center" }}
+              >
+                <X size={10} />
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={e => onRescore(account.id, e)}
+                disabled={scoring}
+                style={{ display: "flex", alignItems: "center", gap: 4, background: "transparent", border: "1px solid var(--border-2)", borderRadius: 6, color: "var(--text-dim)", fontSize: 11, padding: "4px 10px", cursor: scoring ? "not-allowed" : "pointer", opacity: scoring ? 0.4 : 1 }}
+              >
+                {scoring ? <Loader2 size={10} className="animate-spin" /> : <RefreshCw size={10} />}
+                {scoring ? "…" : "Rescore"}
+              </button>
+              <button
+                onClick={e => { e.stopPropagation(); setConfirmDelete(true); }}
+                title="Remove account"
+                style={{ padding: "4px 6px", borderRadius: 6, background: "none", border: "1px solid var(--border-2)", color: "var(--text-faint)", cursor: "pointer", display: "flex", alignItems: "center", opacity: 0.5 }}
+                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.opacity = "1"; (e.currentTarget as HTMLButtonElement).style.color = "#ef4444"; (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(239,68,68,0.3)"; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.opacity = "0.5"; (e.currentTarget as HTMLButtonElement).style.color = "var(--text-faint)"; (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--border-2)"; }}
+              >
+                <Trash2 size={10} />
+              </button>
+            </>
+          )}
         </div>
       </div>
     </Link>
@@ -403,6 +437,7 @@ function HomePageInner() {
   const [autoImportError, setAutoImportError] = useState<string | null>(null);
   const [importStep, setImportStep]           = useState("");
   const [sessionUser, setSessionUser]         = useState<SessionUser | null>(null);
+  const [search, setSearch]                   = useState("");
   const autoImportAttempted = useRef(false);
 
   const loadAccounts = useCallback(async () => {
@@ -486,16 +521,23 @@ function HomePageInner() {
     setAccounts(prev => prev.map(a => a.id === id ? { ...a, industry } : a));
   }, []);
 
+  const handleRemove = useCallback((id: string) => {
+    setAccounts(prev => prev.filter(a => a.id !== id));
+  }, []);
+
   const scored   = accounts.filter(a => a.snapshots[0]);
   const critical = scored.filter(a => minScore(a.snapshots[0]) < 45).length;
   const atRisk   = scored.filter(a => { const s = minScore(a.snapshots[0]); return s >= 45 && s < 70; }).length;
   const healthy  = scored.filter(a => minScore(a.snapshots[0]) >= 70).length;
 
-  const sorted = [...accounts].sort((a, b) => {
-    const sa = a.snapshots[0] ? minScore(a.snapshots[0]) : 101;
-    const sb = b.snapshots[0] ? minScore(b.snapshots[0]) : 101;
-    return sa - sb;
-  });
+  const q = search.trim().toLowerCase();
+  const sorted = [...accounts]
+    .filter(a => !q || a.name.toLowerCase().includes(q) || (a.industry ?? "").toLowerCase().includes(q))
+    .sort((a, b) => {
+      const sa = a.snapshots[0] ? minScore(a.snapshots[0]) : 101;
+      const sb = b.snapshots[0] ? minScore(b.snapshots[0]) : 101;
+      return sa - sb;
+    });
 
   if (connected === null) return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -609,6 +651,35 @@ function HomePageInner() {
           </div>
         )}
 
+        {/* Search */}
+        {accounts.length > 0 && (
+          <div style={{ position: "relative", marginBottom: 12 }}>
+            <Search size={13} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--text-faint)", pointerEvents: "none" }} />
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search accounts…"
+              style={{
+                width: "100%", boxSizing: "border-box",
+                padding: "8px 12px 8px 34px",
+                background: "var(--surface)", border: "1px solid var(--border-2)",
+                borderRadius: 8, color: "var(--text-2)", fontSize: 13, outline: "none",
+                fontFamily: "inherit",
+              }}
+              onFocus={e => (e.currentTarget.style.borderColor = "var(--border-3)")}
+              onBlur={e => (e.currentTarget.style.borderColor = "var(--border-2)")}
+            />
+            {search && (
+              <button
+                onClick={() => setSearch("")}
+                style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", display: "flex", padding: 2 }}
+              >
+                <X size={12} />
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Table */}
         {loading ? (
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, padding: "60px 0", color: "var(--text-dim)", fontSize: 13 }}>
@@ -616,8 +687,17 @@ function HomePageInner() {
           </div>
         ) : sorted.length === 0 ? (
           <div style={{ border: "1px dashed var(--border-3)", borderRadius: 12, padding: "48px 32px", textAlign: "center" }}>
-            <p style={{ color: "var(--text-dim)", fontSize: 14, marginBottom: 6 }}>No accounts yet.</p>
-            <p style={{ color: "var(--text-faint)", fontSize: 12 }}>Click <strong>Add accounts</strong> to import from your Google Ads MCC.</p>
+            {search ? (
+              <>
+                <p style={{ color: "var(--text-dim)", fontSize: 14, marginBottom: 6 }}>No accounts match &ldquo;{search}&rdquo;</p>
+                <button onClick={() => setSearch("")} style={{ fontSize: 12, color: "#3b82f6", background: "none", border: "none", cursor: "pointer" }}>Clear search</button>
+              </>
+            ) : (
+              <>
+                <p style={{ color: "var(--text-dim)", fontSize: 14, marginBottom: 6 }}>No accounts yet.</p>
+                <p style={{ color: "var(--text-faint)", fontSize: 12 }}>Click <strong>Add accounts</strong> to import from your Google Ads MCC.</p>
+              </>
+            )}
           </div>
         ) : (
           <div style={{ border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
@@ -635,6 +715,7 @@ function HomePageInner() {
                 scoring={scoring === account.id}
                 onRescore={runScore}
                 onIndustryUpdate={handleIndustryUpdate}
+                onRemove={handleRemove}
               />
             ))}
           </div>
