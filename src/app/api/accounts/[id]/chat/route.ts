@@ -89,7 +89,7 @@ function buildSignalContext(signals: ConstraintSignals, currency: string): strin
     lines.push(`  Landing page score: ${score(c.landingPageScore)}`);
   }
   if (c.mobileSpeedScore > 0) {
-    lines.push(`  Mobile-friendly click rate: ${c.mobileSpeedScore}%`);
+    lines.push(`  Mobile-friendly click rate: ${c.mobileSpeedScore}% (% of mobile clicks going to a mobile-optimised URL — source: Google Ads API. This is NOT a PageSpeed score; run PageSpeed Insights separately for actual load speed.)`);
   }
   if (c.bounceRateEstimate > 0) {
     lines.push(`  Bounce rate: ${pct(c.bounceRateEstimate)}`);
@@ -159,9 +159,17 @@ function buildDemographicsContext(rows: DemographicRow[], currency: string): str
     return `  ${r.label.replace("AGE_RANGE_", "").replace("_", "–")}: spend ${costShare}% (${money(parseFloat(costEur), currency)}), CTR ${ctr}%, CVR ${cvr}%, conv ${r.conversions.toFixed(1)}${roas}`;
   };
 
-  const devices = rows.filter(r => r.dimension === "device").sort((a, b) => b.costMicros - a.costMicros);
-  const ages    = rows.filter(r => r.dimension === "age").sort((a, b) => b.costMicros - a.costMicros);
-  const genders = rows.filter(r => r.dimension === "gender").sort((a, b) => b.costMicros - a.costMicros);
+  // UNKNOWN = Google couldn't determine the dimension (common for PMax / broad match).
+  // It's not actionable so exclude it from the context — the specialist knows it exists.
+  const SKIP = new Set(["UNKNOWN", "UNDETERMINED", "UNSPECIFIED"]);
+  const known = (r: DemographicRow) => !SKIP.has(r.label);
+
+  const devices = rows.filter(r => r.dimension === "device" && known(r)).sort((a, b) => b.costMicros - a.costMicros);
+  const ages    = rows.filter(r => r.dimension === "age"    && known(r)).sort((a, b) => b.costMicros - a.costMicros);
+  const genders = rows.filter(r => r.dimension === "gender" && known(r)).sort((a, b) => b.costMicros - a.costMicros);
+
+  // Note for the model: UNKNOWN entries are omitted (expected for PMax/broad)
+  lines.push("(UNKNOWN entries omitted — normal for PMax and broad match campaigns)");
 
   if (devices.length) { lines.push("Device:"); devices.forEach(r => lines.push(fmt(r))); }
   if (ages.length)    { lines.push("Age:"); ages.forEach(r => lines.push(fmt(r))); }
