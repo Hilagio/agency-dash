@@ -18,7 +18,7 @@ interface Props {
 
 // ─── Markdown renderer ────────────────────────────────────────────────────────
 
-function renderMarkdown(content: string): React.ReactNode {
+function renderMarkdown(content: string, streaming?: boolean): React.ReactNode {
   const lines = content.split("\n");
   const nodes: React.ReactNode[] = [];
   let i = 0;
@@ -26,13 +26,33 @@ function renderMarkdown(content: string): React.ReactNode {
   while (i < lines.length) {
     const line = lines[i];
 
-    // Heading
-    if (line.startsWith("### ")) {
-      nodes.push(<p key={i} style={{ fontWeight: 700, color: "var(--text-3)", fontSize: 13, marginTop: 12, marginBottom: 4 }}>{line.slice(4)}</p>);
+    // H1
+    if (line.startsWith("# ") && !line.startsWith("## ")) {
+      nodes.push(
+        <p key={i} style={{ fontWeight: 700, color: "var(--text)", fontSize: 16, marginTop: 16, marginBottom: 6, lineHeight: 1.3 }}>
+          {inlineMarkdown(line.slice(2))}
+        </p>
+      );
       i++; continue;
     }
-    if (line.startsWith("## ")) {
-      nodes.push(<p key={i} style={{ fontWeight: 700, color: "var(--text-2)", fontSize: 14, marginTop: 14, marginBottom: 4 }}>{line.slice(3)}</p>);
+
+    // H2
+    if (line.startsWith("## ") && !line.startsWith("### ")) {
+      nodes.push(
+        <p key={i} style={{ fontWeight: 700, color: "var(--text-2)", fontSize: 14, marginTop: 16, marginBottom: 4, lineHeight: 1.4 }}>
+          {inlineMarkdown(line.slice(3))}
+        </p>
+      );
+      i++; continue;
+    }
+
+    // H3
+    if (line.startsWith("### ")) {
+      nodes.push(
+        <p key={i} style={{ fontWeight: 600, color: "var(--text-3)", fontSize: 12, marginTop: 12, marginBottom: 3, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+          {inlineMarkdown(line.slice(4))}
+        </p>
+      );
       i++; continue;
     }
 
@@ -65,9 +85,9 @@ function renderMarkdown(content: string): React.ReactNode {
         i++;
       }
       nodes.push(
-        <ul key={i} style={{ paddingLeft: 18, margin: "6px 0", display: "flex", flexDirection: "column", gap: 3 }}>
+        <ul key={i} style={{ paddingLeft: 18, margin: "6px 0", display: "flex", flexDirection: "column", gap: 4 }}>
           {items.map((item, j) => (
-            <li key={j} style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.6, listStyleType: "disc" }}>
+            <li key={j} style={{ fontSize: 13, color: "var(--text-2)", lineHeight: 1.65, listStyleType: "disc" }}>
               {inlineMarkdown(item)}
             </li>
           ))}
@@ -84,9 +104,9 @@ function renderMarkdown(content: string): React.ReactNode {
         i++;
       }
       nodes.push(
-        <ol key={i} style={{ paddingLeft: 20, margin: "6px 0", display: "flex", flexDirection: "column", gap: 3 }}>
+        <ol key={i} style={{ paddingLeft: 20, margin: "6px 0", display: "flex", flexDirection: "column", gap: 4 }}>
           {items.map((item, j) => (
-            <li key={j} style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.6, listStyleType: "decimal" }}>
+            <li key={j} style={{ fontSize: 13, color: "var(--text-2)", lineHeight: 1.65, listStyleType: "decimal" }}>
               {inlineMarkdown(item)}
             </li>
           ))}
@@ -97,23 +117,34 @@ function renderMarkdown(content: string): React.ReactNode {
 
     // Horizontal rule
     if (line === "---" || line === "***") {
-      nodes.push(<hr key={i} style={{ border: "none", borderTop: "1px solid var(--surface-3)", margin: "10px 0" }} />);
+      nodes.push(<hr key={i} style={{ border: "none", borderTop: "1px solid var(--surface-3)", margin: "12px 0" }} />);
       i++; continue;
     }
 
     // Empty line = spacing
     if (line.trim() === "") {
-      nodes.push(<div key={i} style={{ height: 6 }} />);
+      nodes.push(<div key={i} style={{ height: 8 }} />);
       i++; continue;
     }
 
     // Regular paragraph
     nodes.push(
-      <p key={i} style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.7, margin: 0 }}>
+      <p key={i} style={{ fontSize: 13, color: "var(--text-2)", lineHeight: 1.75, margin: 0 }}>
         {inlineMarkdown(line)}
       </p>
     );
     i++;
+  }
+
+  // Streaming cursor at end
+  if (streaming) {
+    nodes.push(
+      <span key="cursor" style={{
+        display: "inline-block", width: 2, height: 13, background: "#60a5fa",
+        marginLeft: 2, verticalAlign: "middle",
+        animation: "chat-blink 0.9s step-start infinite",
+      }} />
+    );
   }
 
   return <>{nodes}</>;
@@ -123,10 +154,10 @@ function inlineMarkdown(text: string): React.ReactNode {
   const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`|_[^_]+_)/);
   return parts.map((part, i) => {
     if (part.startsWith("**") && part.endsWith("**")) {
-      return <strong key={i} style={{ color: "var(--text-3)", fontWeight: 600 }}>{part.slice(2, -2)}</strong>;
+      return <strong key={i} style={{ color: "var(--text)", fontWeight: 600 }}>{part.slice(2, -2)}</strong>;
     }
     if ((part.startsWith("*") && part.endsWith("*")) || (part.startsWith("_") && part.endsWith("_"))) {
-      return <em key={i} style={{ color: "var(--text-muted)" }}>{part.slice(1, -1)}</em>;
+      return <em key={i} style={{ color: "var(--text-2)", fontStyle: "italic" }}>{part.slice(1, -1)}</em>;
     }
     if (part.startsWith("`") && part.endsWith("`")) {
       return (
@@ -231,9 +262,12 @@ export function ChatAssistant({ accountId, constraintBucket, constraintReason }:
           if (data.text) {
             setMessages((prev) => {
               const updated = [...prev];
+              const last = updated[updated.length - 1];
               updated[updated.length - 1] = {
+                ...last,
                 role: "assistant",
-                content: updated[updated.length - 1].content + data.text,
+                content: last.content + data.text,
+                streaming: true,
               };
               return updated;
             });
@@ -294,7 +328,7 @@ export function ChatAssistant({ accountId, constraintBucket, constraintReason }:
                 width: 26, height: 26, borderRadius: "50%", flexShrink: 0,
                 display: "flex", alignItems: "center", justifyContent: "center",
                 fontSize: 10, fontWeight: 700,
-                background: msg.role === "assistant" ? "#1d4ed8" : "var(--surface-3)",
+                background: msg.role === "assistant" ? "var(--btn-primary)" : "var(--surface-3)",
                 color: msg.role === "assistant" ? "#fff" : "var(--text-muted)",
                 marginTop: 2,
               }}>
@@ -302,16 +336,16 @@ export function ChatAssistant({ accountId, constraintBucket, constraintReason }:
               </div>
 
               {/* Bubble + feedback */}
-              <div style={{ maxWidth: "82%", display: "flex", flexDirection: "column", gap: 4 }}>
+              <div style={{ maxWidth: msg.role === "assistant" ? "92%" : "78%", minWidth: 0, flex: msg.role === "assistant" ? 1 : undefined, display: "flex", flexDirection: "column", gap: 4 }}>
                 <div style={{
-                  background: msg.role === "user" ? "#1d4ed8" : "var(--surface)",
+                  background: msg.role === "user" ? "var(--btn-primary)" : "var(--surface)",
                   border: msg.role === "user" ? "none" : "1px solid var(--surface-3)",
                   borderRadius: msg.role === "user" ? "14px 14px 4px 14px" : "14px 14px 14px 4px",
-                  padding: "10px 14px",
+                  padding: msg.role === "assistant" ? "12px 16px" : "10px 14px",
                 }}>
                   {msg.content
                     ? (msg.role === "assistant"
-                        ? renderMarkdown(msg.content)
+                        ? renderMarkdown(msg.content, msg.streaming)
                         : <p style={{ fontSize: 13, color: "#fff", lineHeight: 1.6, margin: 0 }}>{msg.content}</p>)
                     : <span style={{ fontSize: 13, color: "var(--text-dim)" }}>
                         <Loader2 size={12} className="animate-spin" style={{ display: "inline", marginRight: 6 }} />
@@ -366,7 +400,7 @@ export function ChatAssistant({ accountId, constraintBucket, constraintReason }:
                           <button
                             onClick={() => submitFeedback(msg.messageId!, "down", correctionText)}
                             disabled={!correctionText.trim()}
-                            style={{ padding: "5px 12px", borderRadius: 7, background: correctionText.trim() ? "#1d4ed8" : "var(--surface-2)", border: "none", color: correctionText.trim() ? "#fff" : "var(--text-faint)", fontSize: 12, cursor: correctionText.trim() ? "pointer" : "not-allowed", display: "flex", alignItems: "center", gap: 5 }}
+                            style={{ padding: "5px 12px", borderRadius: 7, background: correctionText.trim() ? "var(--btn-primary)" : "var(--surface-2)", border: "none", color: correctionText.trim() ? "#fff" : "var(--text-faint)", fontSize: 12, cursor: correctionText.trim() ? "pointer" : "not-allowed", display: "flex", alignItems: "center", gap: 5 }}
                           >
                             {correctionSent[msg.messageId!] ? <><Check size={11} /> Saved</> : "Submit correction"}
                           </button>
@@ -446,7 +480,7 @@ export function ChatAssistant({ accountId, constraintBucket, constraintReason }:
             disabled={!input.trim() || streaming}
             style={{
               width: 38, height: 38, borderRadius: 10, border: "none",
-              background: input.trim() && !streaming ? "#1d4ed8" : "var(--surface-2)",
+              background: input.trim() && !streaming ? "var(--btn-primary)" : "var(--surface-2)",
               color: input.trim() && !streaming ? "#fff" : "var(--text-faint)",
               display: "flex", alignItems: "center", justifyContent: "center",
               cursor: input.trim() && !streaming ? "pointer" : "not-allowed",

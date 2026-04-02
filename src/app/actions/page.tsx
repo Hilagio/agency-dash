@@ -138,7 +138,7 @@ function ActionCard({ action, onDismiss, onApprove }: {
               onClick={() => onApprove(action.id)}
               style={{
                 display: "flex", alignItems: "center", gap: 5,
-                background: "#1d4ed8", border: "none", borderRadius: 6,
+                background: "var(--btn-primary)", border: "none", borderRadius: 6,
                 color: "#fff", fontSize: 12, fontWeight: 600, padding: "6px 14px", cursor: "pointer",
               }}
             >
@@ -251,7 +251,7 @@ export default function ActionsPage() {
                   style={{
                     padding: "5px 14px", borderRadius: 20, fontSize: 12, fontWeight: 500,
                     cursor: "pointer",
-                    background: filter === key ? "#1d4ed8" : "var(--surface)",
+                    background: filter === key ? "var(--btn-primary)" : "var(--surface)",
                     color:      filter === key ? "#fff"    : "var(--text-muted)",
                     border:     filter === key ? "none"    : "1px solid var(--border-2)",
                   }}

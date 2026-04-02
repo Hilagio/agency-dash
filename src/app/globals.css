@@ -2,49 +2,55 @@
 
 /* ─── Dark theme (default) ─────────────────────────────────────────────────── */
 :root {
-  --bg:            #060606;
-  --bg-deep:       #020202;
-  --surface:       #0e0e0e;
-  --surface-hover: #131313;
-  --surface-2:     #161616;
-  --surface-3:     #1a1a1a;
-  --border:        rgba(255, 255, 255, 0.07);
-  --border-2:      rgba(255, 255, 255, 0.12);
-  --border-3:      rgba(255, 255, 255, 0.18);
-  --text:          #f0f0f0;
-  --text-2:        #d4d4d4;
-  --text-3:        #a0a0a0;
-  --text-muted:    #707070;
-  --text-dim:      #505050;
-  --text-very-dim: #383838;
-  --text-faint:    #282828;
-  --header-bg:     rgba(6, 6, 6, 0.92);
-  --input-bg:      #0a0a0a;
-  --accent:        #e8e8e8;
-  --accent-blue:   #3b82f6;
-  --accent-dim:    rgba(255, 255, 255, 0.04);
+  --bg:            #080a12;
+  --bg-deep:       #050609;
+  --surface:       #0d0f1a;
+  --surface-hover: #111424;
+  --surface-2:     #14172a;
+  --surface-3:     #191d33;
+  --border:        rgba(99, 102, 241, 0.10);
+  --border-2:      rgba(120, 124, 255, 0.16);
+  --border-3:      rgba(140, 144, 255, 0.24);
+  --text:          #f0f0f8;
+  --text-2:        #d4d4e8;
+  --text-3:        #9898b8;
+  --text-muted:    #6868a0;
+  --text-dim:      #484870;
+  --text-very-dim: #343455;
+  --text-faint:    #252540;
+  --header-bg:     rgba(8, 10, 18, 0.92);
+  --input-bg:      #0a0c16;
+  --accent:        #e8e8f8;
+  --accent-blue:   #6366f1;
+  --accent-dim:    rgba(99, 102, 241, 0.06);
+  --btn-primary:   #5558e3;
+  --btn-primary-hover: #6366f1;
 }
 
 /* ─── Light theme ───────────────────────────────────────────────────────────── */
 :root.light {
-  --bg:            #f0f0f0;
-  --bg-deep:       #e8e8e8;
+  --bg:            #f4f4f8;
+  --bg-deep:       #ebebf2;
   --surface:       #ffffff;
-  --surface-hover: #fafafa;
-  --surface-2:     #f4f4f4;
-  --surface-3:     #ebebeb;
-  --border:        rgba(0, 0, 0, 0.07);
-  --border-2:      rgba(0, 0, 0, 0.11);
-  --border-3:      rgba(0, 0, 0, 0.17);
-  --text:          #0a0a0a;
-  --text-2:        #1a1a1a;
-  --text-3:        #383838;
-  --text-muted:    #666666;
-  --text-dim:      #888888;
-  --text-very-dim: #999999;
-  --text-faint:    #aaaaaa;
-  --header-bg:     rgba(240, 240, 240, 0.92);
-  --input-bg:      #fafafa;
+  --surface-hover: #fafafd;
+  --surface-2:     #f2f2f8;
+  --surface-3:     #e8e8f2;
+  --border:        rgba(99, 102, 241, 0.10);
+  --border-2:      rgba(99, 102, 241, 0.16);
+  --border-3:      rgba(99, 102, 241, 0.24);
+  --text:          #0a0a14;
+  --text-2:        #1a1a2e;
+  --text-3:        #38385a;
+  --text-muted:    #666688;
+  --text-dim:      #888899;
+  --text-very-dim: #9999aa;
+  --text-faint:    #aaaacc;
+  --header-bg:     rgba(244, 244, 248, 0.92);
+  --input-bg:      #fafafd;
+  --accent-blue:   #6366f1;
+  --accent-dim:    rgba(99, 102, 241, 0.06);
+  --btn-primary:   #5558e3;
+  --btn-primary-hover: #6366f1;
 }
 
 body {
@@ -54,6 +60,11 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   letter-spacing: -0.01em;
+  /* Subtle ambient radial glow in top-left */
+  background-image:
+    radial-gradient(ellipse 80% 50% at 10% 0%, rgba(99, 102, 241, 0.07) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 90% 100%, rgba(139, 92, 246, 0.05) 0%, transparent 55%);
+  background-attachment: fixed;
 }
 
 /* ─── Global interactive states ──────────────────────────────────────────────── */
@@ -69,4 +80,11 @@ button, [role="button"] {
 ::selection {
   background: rgba(59, 130, 246, 0.3);
   color: var(--text);
+}
+
+
+/* ─── Chat streaming cursor ──────────────────────────────────────────────── */
+@keyframes chat-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
 }

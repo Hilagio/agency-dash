@@ -181,7 +181,7 @@ export function PlaybookView({ accountId, accountName, hasSnapshot }: Props) {
         </p>
         <button onClick={generate} style={{
           display: "inline-flex", alignItems: "center", gap: 8,
-          background: "#1d4ed8", border: "none", borderRadius: 8,
+          background: "var(--btn-primary)", border: "none", borderRadius: 8,
           color: "#fff", fontSize: 13, fontWeight: 600, padding: "10px 24px", cursor: "pointer",
         }}>
           <BookOpen size={14} /> Generate playbook for {accountName}

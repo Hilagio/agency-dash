@@ -285,7 +285,7 @@ function NotesLog({ accountId }: { accountId: string }) {
             disabled={saving || !content.trim()}
             style={{
               display: "flex", alignItems: "center", gap: 5,
-              background: "#1d4ed8", border: "none", borderRadius: 6,
+              background: "var(--btn-primary)", border: "none", borderRadius: 6,
               color: "#fff", fontSize: 12, fontWeight: 600,
               padding: "6px 14px", cursor: saving || !content.trim() ? "not-allowed" : "pointer",
               opacity: saving || !content.trim() ? 0.5 : 1,
@@ -533,7 +533,7 @@ function ClientContextPanel({
               onClick={save}
               disabled={saving}
               style={{
-                background: "#1d4ed8", border: "none", borderRadius: 6,
+                background: "var(--btn-primary)", border: "none", borderRadius: 6,
                 color: "#fff", fontSize: 11, fontWeight: 600,
                 padding: "5px 14px", cursor: saving ? "not-allowed" : "pointer",
                 opacity: saving ? 0.6 : 1,
@@ -1257,7 +1257,7 @@ function AccountTargetsPanel({
             <button
               onClick={save}
               disabled={saving}
-              style={{ background: "#1d4ed8", border: "none", borderRadius: 6, color: "#fff", fontSize: 11, fontWeight: 600, padding: "5px 14px", cursor: saving ? "not-allowed" : "pointer", opacity: saving ? 0.6 : 1 }}
+              style={{ background: "var(--btn-primary)", border: "none", borderRadius: 6, color: "#fff", fontSize: 11, fontWeight: 600, padding: "5px 14px", cursor: saving ? "not-allowed" : "pointer", opacity: saving ? 0.6 : 1 }}
             >
               {saving ? "Saving…" : "Save targets"}
             </button>
@@ -1969,7 +1969,7 @@ export default function AccountPage() {
                   disabled={rescoring}
                   style={{
                     display: "inline-flex", alignItems: "center", gap: 8,
-                    background: "#1d4ed8", border: "none", borderRadius: 8,
+                    background: "var(--btn-primary)", border: "none", borderRadius: 8,
                     color: "#fff", fontSize: 13, fontWeight: 600,
                     padding: "10px 22px", cursor: rescoring ? "not-allowed" : "pointer",
                     opacity: rescoring ? 0.6 : 1,

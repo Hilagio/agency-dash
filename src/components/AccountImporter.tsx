@@ -122,7 +122,7 @@ export function AccountImporter({ onImported, onClose, onAuthFailed }: Props) {
               disabled={importingAll}
               style={{
                 display: "flex", alignItems: "center", gap: 5,
-                background: "#1d4ed8", border: "none", borderRadius: 7,
+                background: "var(--btn-primary)", border: "none", borderRadius: 7,
                 color: "#fff", fontSize: 11, fontWeight: 500,
                 padding: "4px 10px", cursor: importingAll ? "not-allowed" : "pointer",
                 opacity: importingAll ? 0.6 : 1,
@@ -166,7 +166,7 @@ export function AccountImporter({ onImported, onClose, onAuthFailed }: Props) {
             href="/api/auth/google-ads"
             style={{
               display: "inline-flex", alignItems: "center", gap: 6,
-              background: "#1d4ed8", borderRadius: 8, color: "#fff",
+              background: "var(--btn-primary)", borderRadius: 8, color: "#fff",
               fontSize: 13, fontWeight: 500, padding: "8px 16px",
               textDecoration: "none",
             }}
@@ -264,7 +264,7 @@ export function AccountImporter({ onImported, onClose, onAuthFailed }: Props) {
                       disabled={importing === account.googleAdsId}
                       style={{
                         display: "flex", alignItems: "center", gap: 5,
-                        background: "#1d4ed8", borderRadius: 7, color: "#fff",
+                        background: "var(--btn-primary)", borderRadius: 7, color: "#fff",
                         fontSize: 12, fontWeight: 500, padding: "5px 12px",
                         border: "none", cursor: importing === account.googleAdsId ? "not-allowed" : "pointer",
                         opacity: importing === account.googleAdsId ? 0.5 : 1,

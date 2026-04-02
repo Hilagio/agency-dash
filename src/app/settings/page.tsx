@@ -66,7 +66,7 @@ function Avatar({ name, image, size = 28 }: { name: string | null; image?: strin
   return (
     <div style={{
       width: size, height: size, borderRadius: "50%",
-      background: "linear-gradient(135deg, #3b82f6, #8b5cf6)",
+      background: "linear-gradient(135deg, #6366f1, #a855f7)",
       display: "flex", alignItems: "center", justifyContent: "center",
       fontSize: size * 0.36, fontWeight: 700, color: "#fff", flexShrink: 0,
     }}>{initials}</div>
@@ -345,7 +345,7 @@ export default function SettingsPage() {
                   color: "var(--text)", fontSize: 14, outline: "none",
                 }}
               />
-              <button onClick={saveName} disabled={nameSaving} style={{ padding: "8px 14px", borderRadius: 8, background: "#1d4ed8", border: "none", color: "#fff", fontSize: 13, cursor: "pointer" }}>
+              <button onClick={saveName} disabled={nameSaving} style={{ padding: "8px 14px", borderRadius: 8, background: "var(--btn-primary)", border: "none", color: "#fff", fontSize: 13, cursor: "pointer" }}>
                 {nameSaving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
               </button>
               <button onClick={() => setEditingName(false)} style={{ padding: "8px 10px", borderRadius: 8, background: "var(--surface-2)", border: "1px solid var(--border-2)", color: "var(--text-dim)", fontSize: 13, cursor: "pointer" }}>
@@ -387,7 +387,7 @@ export default function SettingsPage() {
           ) : (
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <span style={{ fontSize: 13, color: "var(--text-dim)" }}>Not connected</span>
-              <a href="/api/auth/google-ads" style={{ fontSize: 12, color: "#fff", background: "#1d4ed8", border: "none", borderRadius: 7, padding: "6px 14px", textDecoration: "none", fontWeight: 600 }}>
+              <a href="/api/auth/google-ads" style={{ fontSize: 12, color: "#fff", background: "var(--btn-primary)", border: "none", borderRadius: 7, padding: "6px 14px", textDecoration: "none", fontWeight: 600 }}>
                 Connect MCC
               </a>
             </div>
@@ -471,7 +471,7 @@ export default function SettingsPage() {
                                 : notionSelectedIds.filter(id => id !== page.id);
                               saveNotionPages(next);
                             }}
-                            style={{ accentColor: "#1d4ed8", width: 13, height: 13, flexShrink: 0 }}
+                            style={{ accentColor: "var(--btn-primary)", width: 13, height: 13, flexShrink: 0 }}
                           />
                           <span style={{ fontSize: 13, color: "var(--text-2)" }}>{page.title}</span>
                         </label>
@@ -507,7 +507,7 @@ export default function SettingsPage() {
                 <button
                   onClick={connectNotion}
                   disabled={notionConnecting || !notionToken.trim()}
-                  style={{ padding: "8px 14px", borderRadius: 8, background: notionConnecting || !notionToken.trim() ? "var(--surface-2)" : "#1d4ed8", border: "none", color: notionConnecting || !notionToken.trim() ? "var(--text-faint)" : "#fff", fontSize: 13, fontWeight: 600, cursor: notionConnecting || !notionToken.trim() ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" }}
+                  style={{ padding: "8px 14px", borderRadius: 8, background: notionConnecting || !notionToken.trim() ? "var(--surface-2)" : "var(--btn-primary)", border: "none", color: notionConnecting || !notionToken.trim() ? "var(--text-faint)" : "#fff", fontSize: 13, fontWeight: 600, cursor: notionConnecting || !notionToken.trim() ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" }}
                 >
                   {notionConnecting ? <Loader2 size={13} className="animate-spin" /> : null}
                   {notionConnecting ? "Connecting…" : "Connect"}
@@ -586,7 +586,7 @@ export default function SettingsPage() {
                 disabled={inviting || !inviteEmail.trim()}
                 style={{
                   padding: "8px 14px", borderRadius: 8,
-                  background: inviting || !inviteEmail.trim() ? "var(--surface-2)" : "#1d4ed8",
+                  background: inviting || !inviteEmail.trim() ? "var(--surface-2)" : "var(--btn-primary)",
                   border: "none", color: inviting || !inviteEmail.trim() ? "var(--text-faint)" : "#fff",
                   fontSize: 13, fontWeight: 600, cursor: inviting || !inviteEmail.trim() ? "not-allowed" : "pointer",
                   display: "flex", alignItems: "center", gap: 6,

@@ -566,7 +566,7 @@ export function ActionList({ actions, accountId, onTabChange, onStatusChange, on
                       <button
                         onClick={() => onStatusChange?.(action.id, "APPROVED")}
                         style={{
-                          background: "#1d4ed8", border: "none", borderRadius: 7,
+                          background: "var(--btn-primary)", border: "none", borderRadius: 7,
                           color: "#fff", fontSize: 11, fontWeight: 500,
                           padding: "5px 12px", cursor: "pointer",
                         }}

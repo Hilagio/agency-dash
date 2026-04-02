@@ -53,8 +53,8 @@ export default function OnboardPage() {
                   <div style={{
                     width: 22, height: 22, borderRadius: "50%", fontSize: 11, fontWeight: 700,
                     display: "flex", alignItems: "center", justifyContent: "center",
-                    background: done ? "#4ade80" : active ? "#1d4ed8" : "var(--surface)",
-                    border: `2px solid ${done ? "#4ade80" : active ? "#1d4ed8" : "var(--border-2)"}`,
+                    background: done ? "#4ade80" : active ? "var(--btn-primary)" : "var(--surface)",
+                    border: `2px solid ${done ? "#4ade80" : active ? "var(--btn-primary)" : "var(--border-2)"}`,
                     color: done || active ? "#fff" : "var(--text-faint)",
                   }}>
                     {done ? "✓" : i + 1}
@@ -106,7 +106,7 @@ export default function OnboardPage() {
               disabled={saving || !orgName.trim()}
               style={{
                 width: "100%", padding: "12px", borderRadius: 10,
-                background: saving || !orgName.trim() ? "var(--surface-2)" : "#1d4ed8",
+                background: saving || !orgName.trim() ? "var(--surface-2)" : "var(--btn-primary)",
                 border: "none", color: saving || !orgName.trim() ? "var(--text-faint)" : "#fff",
                 fontSize: 14, fontWeight: 600, cursor: saving || !orgName.trim() ? "not-allowed" : "pointer",
                 display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
@@ -146,7 +146,7 @@ export default function OnboardPage() {
               style={{
                 display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
                 width: "100%", padding: "12px", borderRadius: 10,
-                background: "#1d4ed8", border: "none", color: "#fff",
+                background: "var(--btn-primary)", border: "none", color: "#fff",
                 fontSize: 14, fontWeight: 600, textDecoration: "none",
                 boxSizing: "border-box",
               }}

@@ -92,7 +92,7 @@ export default function SopsPage() {
           onClick={() => setShowForm(!showForm)}
           style={{
             display: "flex", alignItems: "center", gap: 6,
-            background: "#1d4ed8", border: "none", borderRadius: 7,
+            background: "var(--btn-primary)", border: "none", borderRadius: 7,
             color: "#fff", fontSize: 12, fontWeight: 600, padding: "6px 14px", cursor: "pointer",
           }}
         >
@@ -156,7 +156,7 @@ Include: account structure guidelines, bidding strategy rules, campaign naming c
                 Cancel
               </button>
               <button onClick={save} disabled={saving || !title.trim() || !content.trim()} style={{
-                background: saving || !title.trim() || !content.trim() ? "var(--surface-2)" : "#1d4ed8",
+                background: saving || !title.trim() || !content.trim() ? "var(--surface-2)" : "var(--btn-primary)",
                 border: "none", borderRadius: 7,
                 color: saving || !title.trim() || !content.trim() ? "var(--text-dim)" : "#fff",
                 fontSize: 12, fontWeight: 600, padding: "6px 14px",
