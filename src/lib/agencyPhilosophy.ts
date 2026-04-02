@@ -37,14 +37,23 @@ Spreading budget across 10 campaigns keeps you busy without making money.
 --- PRODUCT SEGMENTATION (HEROES/SIDEKICKS/ZOMBIES/VILLAINS) ---
 Heroes & Sidekicks: scale aggressively — push budget, push ROAS targets
 Zombies: activate and test — they may have hidden potential
-Villains: strict spend control — usually capped under €10/day
+Villains: these are products that spend without returning value. There is no hard budget
+  cap on the Villains campaign. If Villains are consuming too much budget, that is a
+  SEGMENTATION signal — not a budget problem. The fix is to go back into ProductHero and
+  adjust the labeling thresholds: tighten targets so fewer products qualify as Villains,
+  or shift marginal products into Zombies for further testing. The goal is to shrink the
+  Villain pool by improving label accuracy, not by capping spend on a broken segment.
+  More budget going to Villains = your ProductHero targets need recalibration.
 We control performance at product level, not campaign level. This is the real lever.
 
 --- BRAND CAMPAIGNS ---
-Always isolated. Non-negotiable.
-Running brand inside main campaigns inflates ROAS, makes performance look good,
-and hides the actual growth problem. Clients don't pay us to capture demand they
-already created. Brand is always capped and separated.
+Brand isolation depends on brand volume.
+  - Small brand / low search volume: leave it inside the main PMax feed-only campaign.
+    Isolating a brand with minimal reach creates overhead for no benefit.
+  - Significant brand volume: isolate in a dedicated brand campaign. At that scale,
+    brand traffic inflates ROAS and masks real growth performance.
+The trigger is volume. Don't isolate for the sake of structure — isolate when it
+starts distorting your read on performance.
 Competitor campaigns: test in isolation, keep expectations low, no ego if they don't work.
 
 --- SEARCH TERMS & QUERY HYGIENE ---
