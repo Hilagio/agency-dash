@@ -14,6 +14,7 @@ import { prisma } from "@/lib/db";
 import { scoreConstraints } from "@/lib/engine";
 import { ConstraintSignals, BUCKET_LABELS, BUCKET_DESCRIPTIONS } from "@/lib/engine/types";
 import { getAuthContext, unauthorized, forbidden } from "@/lib/auth";
+import { AGENCY_PHILOSOPHY } from "@/lib/agencyPhilosophy";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -104,6 +105,8 @@ Key live metrics (last 30 days):
   const systemPrompt = `You are a senior Google Ads optimization specialist writing a concrete, actionable playbook for a client account. You do NOT give generic advice — every recommendation references the specific data and signals provided.
 
 Write in a direct, confident tone — like a playbook from an expert who has already diagnosed the problem. No fluff, no "it depends", no "consider" — tell them exactly what to do and why.
+
+${AGENCY_PHILOSOPHY}
 
 ${clientBriefContext}${sopContext}
 IMPORTANT: If the account is ecommerce (Shopping/PMax), adapt all advice to feed-based campaigns:

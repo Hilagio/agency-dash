@@ -11,6 +11,7 @@ import { prisma } from "@/lib/db";
 import { scoreConstraints } from "@/lib/engine";
 import { ConstraintSignals, BUCKET_LABELS } from "@/lib/engine/types";
 import { getAuthContext, unauthorized, forbidden } from "@/lib/auth";
+import { AGENCY_PHILOSOPHY } from "@/lib/agencyPhilosophy";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -124,7 +125,7 @@ No bullet points. No headers. No platitudes. Write in plain text, analyst tone.`
         const aiStream = await client.messages.stream({
           model: "claude-sonnet-4-6",
           max_tokens: 400,
-          system: "You are a direct, data-driven Google Ads analyst. You write sharp, specific briefs. You never use generic advice. You always cite actual numbers.",
+          system: `You are a direct, data-driven Google Ads analyst. You write sharp, specific briefs. You never use generic advice. You always cite actual numbers.\n\n${AGENCY_PHILOSOPHY}`,
           messages: [{ role: "user", content: prompt }],
         });
 

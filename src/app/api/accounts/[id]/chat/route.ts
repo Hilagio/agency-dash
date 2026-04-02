@@ -12,6 +12,7 @@ import { prisma } from "@/lib/db";
 import { BUCKET_LABELS, BUCKET_DESCRIPTIONS, ConstraintSignals } from "@/lib/engine/types";
 import { fetchDemographics, fetchSearchTermReport, DemographicRow, SearchTermRow } from "@/lib/integrations/google-ads";
 import { getAuthContext, unauthorized, forbidden } from "@/lib/auth";
+import { AGENCY_PHILOSOPHY } from "@/lib/agencyPhilosophy";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -263,6 +264,8 @@ function buildSystemPrompt(params: {
   const sopSection = sopContext ? `\n\n${sopContext}` : "";
 
   return `You are an expert senior Google Ads specialist embedded in an agency performance platform. You have full access to this account's data — it was fetched directly from Google Ads API and Merchant Center moments before this conversation. Never say you lack access to Google Ads data; everything you need is already provided below.
+
+${AGENCY_PHILOSOPHY}
 
 ACCOUNT: ${accountName}
 ${accountMeta}
