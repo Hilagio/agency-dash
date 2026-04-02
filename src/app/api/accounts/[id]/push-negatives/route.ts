@@ -57,12 +57,14 @@ export async function POST(req: NextRequest, { params }: Params) {
     }
   }
 
-  // Build Google Ads customer client
-  const cred = await prisma.oAuthCredential.findUnique({ where: { id: "singleton" } });
+  // Build Google Ads customer client — same credential lookup as google-ads.ts
+  const cred = await prisma.oAuthCredential.findUnique({ where: { organizationId: ctx.orgId } }).catch(() => null)
+    ?? await prisma.oAuthCredential.findFirst().catch(() => null);
   const refreshToken = cred?.refreshToken ?? process.env.GOOGLE_ADS_REFRESH_TOKEN;
   if (!refreshToken) {
     return NextResponse.json({ error: "Google Ads not connected" }, { status: 503 });
   }
+  const loginCustomerId = cred?.loginCustomerId ?? process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID ?? undefined;
 
   const client = new GoogleAdsApi({
     client_id:       process.env.GOOGLE_ADS_CLIENT_ID!,
@@ -71,7 +73,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   });
   const customer = client.Customer({
     customer_id:       account.googleAdsId,
-    login_customer_id: process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID || undefined,
+    login_customer_id: loginCustomerId,
     refresh_token:     refreshToken,
   });
 

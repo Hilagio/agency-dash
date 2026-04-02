@@ -27,7 +27,8 @@ export async function GET(req: NextRequest, { params }: Params) {
   });
   if (!account) return forbidden();
 
-  const cred = await prisma.oAuthCredential.findUnique({ where: { id: "singleton" } });
+  const cred = await prisma.oAuthCredential.findUnique({ where: { organizationId: ctx.orgId } }).catch(() => null)
+    ?? await prisma.oAuthCredential.findFirst().catch(() => null);
   const refreshToken = cred?.refreshToken ?? process.env.GOOGLE_ADS_REFRESH_TOKEN;
   if (!refreshToken) {
     return NextResponse.json({ error: "Google Ads not connected" }, { status: 503 });
@@ -38,9 +39,10 @@ export async function GET(req: NextRequest, { params }: Params) {
     client_secret:   process.env.GOOGLE_ADS_CLIENT_SECRET!,
     developer_token: process.env.GOOGLE_ADS_DEVELOPER_TOKEN!,
   });
+  const loginCustomerId = cred?.loginCustomerId ?? process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID ?? undefined;
   const customer = client.Customer({
     customer_id:       account.googleAdsId,
-    login_customer_id: process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID || undefined,
+    login_customer_id: loginCustomerId,
     refresh_token:     refreshToken,
   });
 
