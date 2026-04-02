@@ -644,31 +644,43 @@ function fitEfficiencyCurve(
   useRoas: boolean,
   signals: LatestSignals | null
 ): { k: number; source: "historical" | "signals" | "generic"; label: string } {
-  const valid = points.filter(p => p.spend > 0 && (useRoas ? p.roas : p.cpa) != null);
+  // Try the preferred metric first; if no points have it, try the other one
+  // (e.g. targetRoas set but account is lead-gen with no conversion value → fall back to CPA shape)
+  let valid = points.filter(p => p.spend > 0 && (useRoas ? p.roas : p.cpa) != null);
+  if (valid.length < 4) {
+    const altValid = points.filter(p => p.spend > 0 && (useRoas ? p.cpa : p.roas) != null);
+    if (altValid.length > valid.length) valid = altValid;
+  }
 
   if (valid.length >= 4) {
     const spends   = [...valid.map(p => p.spend)].sort((a, b) => a - b);
     const medSpend = spends[Math.floor(spends.length / 2)];
-    if (medSpend === 0) return fitEfficiencyCurve([], useRoas, signals);
 
-    const efficiencies = useRoas
-      ? valid.map(p => p.roas!)
-      : valid.map(p => 1 / p.cpa!);
+    if (medSpend > 0) {
+      // Build efficiency values — prefer roas, then inverse-cpa
+      const efficiencies = valid.map(p =>
+        p.roas != null ? p.roas : p.cpa != null ? 1 / p.cpa : null
+      ).filter((v): v is number => v != null && v > 0);
 
-    const sortedEff = [...efficiencies].sort((a, b) => a - b);
-    const medEff = sortedEff[Math.floor(sortedEff.length / 2)];
-    if (medEff === 0) return fitEfficiencyCurve([], useRoas, signals);
+      if (efficiencies.length >= 4) {
+        const sortedEff = [...efficiencies].sort((a, b) => a - b);
+        const medEff = sortedEff[Math.floor(sortedEff.length / 2)];
+        if (medEff > 0) {
+          const logPairs = valid
+            .map((p, i) => ({
+              logX: Math.log(p.spend / medSpend),
+              logY: Math.log(efficiencies[i] / medEff),
+            }))
+            .filter(p => isFinite(p.logX) && isFinite(p.logY) && Math.abs(p.logX) > 0.05);
 
-    const logPairs = valid.map((p, i) => ({
-      logX: Math.log(p.spend / medSpend),
-      logY: Math.log(efficiencies[i] / medEff),
-    })).filter(p => isFinite(p.logX) && isFinite(p.logY) && Math.abs(p.logX) > 0.05);
-
-    if (logPairs.length >= 3) {
-      const sumXX = logPairs.reduce((s, p) => s + p.logX * p.logX, 0);
-      const sumXY = logPairs.reduce((s, p) => s + p.logX * p.logY, 0);
-      const k = Math.max(-0.6, Math.min(0, sumXY / sumXX));
-      return { k, source: "historical", label: `${valid.length}mo real data` };
+          if (logPairs.length >= 3) {
+            const sumXX = logPairs.reduce((s, p) => s + p.logX * p.logX, 0);
+            const sumXY = logPairs.reduce((s, p) => s + p.logX * p.logY, 0);
+            const k = Math.max(-0.6, Math.min(0, sumXY / sumXX));
+            return { k, source: "historical", label: `${valid.length}mo real data` };
+          }
+        }
+      }
     }
   }
 
@@ -701,8 +713,6 @@ function AccountTargetsPanel({
   const [actualCpa,     setActualCpa]     = useState<number | null>(null);
 
   useEffect(() => {
-    if (initial.monthlyBudget == null) return;
-    if (initial.targetRoas == null && initial.targetCpa == null) return;
     fetch(`/api/accounts/${accountId}/spend-curve`)
       .then(r => r.ok ? r.json() : null)
       .then(d => {
