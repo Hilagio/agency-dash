@@ -156,11 +156,9 @@ export function extractPageContext(html: string, url: string): PageContext {
 
   if (jsRender) {
     parts.push(
-      "⚠ This page is JavaScript-rendered (client-side SPA). The HTML body is empty — " +
-      "actual content (images, CTAs, reviews) is injected at runtime and cannot be seen here. " +
-      "Base your audit on the structured data, meta tags, and tool detections below. " +
-      "Mark visual checks (above-the-fold layout, image quality, CTA prominence) as 'cannot_assess' " +
-      "unless JSON-LD or meta tags provide evidence."
+      `⚠ JS-RENDERED PAGE (${platform ?? "SPA"}): The HTML body is empty by design — content loads at runtime via JavaScript. ` +
+      "THIS IS NOT AN ISSUE. Do not flag the empty body, missing SSR content, or crawlability in your issues list. " +
+      "Audit only what you can see: structured data, meta tags, og tags, and detected third-party tools."
     );
   }
 

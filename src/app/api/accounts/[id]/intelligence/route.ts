@@ -105,7 +105,7 @@ export async function POST(_req: NextRequest, { params }: Params) {
       notionConn.pageCache.map(p => `--- ${p.title} ---\n${p.content}`).join("\n\n").slice(0, 4000)
     : "";
 
-  const prompt = `You are a senior Google Ads strategist. Write a tight intelligence brief for this account — the kind a good analyst would send to a client manager before a weekly call.
+  const prompt = `You are a senior Google Ads strategist. Write an intelligence brief for this account — the kind a good analyst would send to a client manager before a weekly call.
 
 ACCOUNT: ${account.name}
 INDUSTRY: ${account.industry ?? "not set"}
@@ -120,14 +120,13 @@ LIVE METRICS: ${metricsBlock || "not available"}
 ACCOUNT TARGETS: ${targetsBlock}
 ${clientBrief}${notionContext}
 
-Write exactly 4–5 sentences. Cover:
-1. What the actual problem is (use numbers — "CTR is 1.7%, about half the ${account.industry ?? "industry"} benchmark" not "CTR is low")
-2. Why it's the governing constraint — what it's blocking downstream
-3. What the most likely root cause is given the context (be specific, not generic)
-4. What the concrete next step is
-5. If there's a secondary risk worth flagging, name it in one sentence
+Format your response using markdown:
+- Start with a ## heading that names the governing constraint clearly (e.g. "## Conversion Rate is the Governing Constraint")
+- Write 2–3 short paragraphs covering: (1) what is actually happening with numbers, (2) why it is the governing constraint and what it blocks downstream, (3) the most likely root cause given the account context — be specific, not generic
+- Add a **Next step:** line with one concrete, actionable task
+- If there is a secondary risk, add a **Secondary risk:** line for it
 
-No bullet points. No headers. No platitudes. Write in plain text, analyst tone.`;
+Use actual numbers throughout ("CVR dropped from 1.2% to 0.5%", not "CVR is low"). Analyst tone — no platitudes, no generic advice.`;
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
@@ -135,7 +134,7 @@ No bullet points. No headers. No platitudes. Write in plain text, analyst tone.`
       try {
         const aiStream = await client.messages.stream({
           model: "claude-sonnet-4-6",
-          max_tokens: 400,
+          max_tokens: 700,
           system: `You are a direct, data-driven Google Ads analyst. You write sharp, specific briefs. You never use generic advice. You always cite actual numbers.\n\n${AGENCY_PHILOSOPHY}`,
           messages: [{ role: "user", content: prompt }],
         });

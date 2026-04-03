@@ -1278,6 +1278,63 @@ function AccountTargetsPanel({
   );
 }
 
+// ─── Markdown renderer (used by IntelligencePanel) ────────────────────────────
+
+function renderIntelligence(text: string, streaming: boolean): React.ReactNode {
+  const lines = text.split("\n");
+  const nodes: React.ReactNode[] = [];
+  let i = 0;
+
+  const inline = (raw: string): React.ReactNode => {
+    const parts = raw.split(/(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/);
+    return parts.map((p, idx) => {
+      if (p.startsWith("**") && p.endsWith("**"))
+        return <strong key={idx} style={{ color: "var(--text-2)", fontWeight: 600 }}>{p.slice(2, -2)}</strong>;
+      if (p.startsWith("*") && p.endsWith("*"))
+        return <em key={idx}>{p.slice(1, -1)}</em>;
+      if (p.startsWith("`") && p.endsWith("`"))
+        return <code key={idx} style={{ fontFamily: "monospace", fontSize: 11, background: "var(--surface-2)", borderRadius: 3, padding: "1px 4px", color: "#a0c4ff" }}>{p.slice(1, -1)}</code>;
+      return <span key={idx}>{p}</span>;
+    });
+  };
+
+  while (i < lines.length) {
+    const line = lines[i];
+
+    if (line.startsWith("## ")) {
+      nodes.push(
+        <h3 key={i} style={{ fontSize: 14, fontWeight: 700, color: "var(--text-2)", margin: "0 0 10px", lineHeight: 1.3 }}>
+          {inline(line.slice(3))}
+        </h3>
+      );
+      i++; continue;
+    }
+    if (line.startsWith("### ")) {
+      nodes.push(
+        <p key={i} style={{ fontSize: 12, fontWeight: 700, color: "var(--text-3)", margin: "10px 0 4px", textTransform: "uppercase", letterSpacing: "0.4px" }}>
+          {inline(line.slice(4))}
+        </p>
+      );
+      i++; continue;
+    }
+    if (line.trim() === "") {
+      nodes.push(<div key={i} style={{ height: 8 }} />);
+      i++; continue;
+    }
+    nodes.push(
+      <p key={i} style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.75, margin: 0 }}>
+        {inline(line)}
+      </p>
+    );
+    i++;
+  }
+
+  if (streaming) {
+    nodes.push(<span key="cur" style={{ display: "inline-block", width: 2, height: 13, background: "#c084fc", marginLeft: 2, verticalAlign: "middle", animation: "chat-blink 0.9s step-start infinite" }} />);
+  }
+  return <>{nodes}</>;
+}
+
 // ─── AI Intelligence Panel ────────────────────────────────────────────────────
 
 function IntelligencePanel({ accountId }: { accountId: string }) {
@@ -1363,10 +1420,9 @@ function IntelligencePanel({ accountId }: { accountId: string }) {
       )}
 
       {(text || loading) && !error && (
-        <p style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.75, margin: 0, whiteSpace: "pre-wrap" }}>
-          {text}
-          {loading && !done && <span style={{ opacity: 0.35 }}>▍</span>}
-        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          {renderIntelligence(text, loading && !done)}
+        </div>
       )}
     </div>
   );

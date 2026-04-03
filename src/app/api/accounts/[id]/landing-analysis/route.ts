@@ -99,7 +99,12 @@ Review this page for conversion readiness. Evaluate:
 - Message match: does the page match likely ad intent?
 - Friction: unnecessary steps, popups, mandatory registration
 
-${pageCtx.isJsRendered ? "IMPORTANT: This is a JS-rendered page — body content is loaded at runtime. Base visual assessments on JSON-LD, meta tags, and detected tools. Do not penalise for missing visual elements you simply cannot see. If a third-party review platform (e.g. Yotpo, Trustpilot) is detected, treat social proof as present." : ""}
+${pageCtx.isJsRendered ? `CRITICAL — JS-RENDERED PAGE RULES (violations invalidate the analysis):
+1. An empty HTML body is NORMAL for ${pageCtx.platform ?? "this"} stores. Do NOT include it as an issue under any wording.
+2. Do not flag: empty body, missing SSR content, crawlability, client-side rendering, or anything about how the HTML is structured.
+3. If a review tool is detected (${pageCtx.tools.filter(t => t.toLowerCase().includes("review")).join(", ") || "Yotpo/Trustpilot/Judge.me"}), social proof is PRESENT — do not list it as missing.
+4. For visuals you cannot see (CTA placement, above-the-fold, image quality), mark as uncertain — never as a high-severity failure.
+5. Only raise issues you can actually evidence from the data provided.` : ""}
 
 Respond with ONLY valid JSON (no markdown, no explanation):
 {
