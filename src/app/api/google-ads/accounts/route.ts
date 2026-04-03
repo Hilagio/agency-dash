@@ -59,7 +59,7 @@ async function getAccessibleCustomerIds(
 
 /**
  * Returns the MCC (manager account) ID, or null if none exists.
- * Checks env var → DB cache → live discovery.
+ * Checks env var → DB cache → live discovery (only if no cache).
  */
 async function findMccId(
   client: GoogleAdsApi,
@@ -67,42 +67,44 @@ async function findMccId(
   candidateIds: string[],
   orgId: string,
 ): Promise<string | null> {
-  // 1. env var override
+  // 1. env var override — always trusted
   const envId = process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID || process.env.GOOGLE_ADS_CUSTOMER_ID;
   if (envId) return envId;
 
-  // 2. DB-cached login customer ID
+  // 2. DB-cached login customer ID — trust it without re-querying.
+  //    Manager status doesn't change; a live re-validation is wasteful and can timeout.
   const cred = await prisma.oAuthCredential.findUnique({ where: { organizationId: orgId } });
-  if (cred?.loginCustomerId) {
-    try {
-      const c = client.Customer({ customer_id: cred.loginCustomerId, login_customer_id: cred.loginCustomerId, refresh_token: refreshToken });
-      const rows = await withQueryTimeout(c.query("SELECT customer.manager FROM customer LIMIT 1"));
-      if (rows[0]?.customer?.manager) return cred.loginCustomerId;
-    } catch { /* stale — fall through */ }
-  }
+  if (cred?.loginCustomerId) return cred.loginCustomerId;
 
-  // 3. Query candidates in batches of 5. Promise.any per batch stops at first manager found.
-  const BATCH = 5;
-  for (let i = 0; i < candidateIds.length; i += BATCH) {
-    const batch = candidateIds.slice(i, i + BATCH);
-    try {
-      const mccId = await Promise.any(
-        batch.map(async (id) => {
-          const c = client.Customer({ customer_id: id, refresh_token: refreshToken });
-          const rows = await withQueryTimeout(c.query("SELECT customer.id, customer.manager FROM customer LIMIT 1"));
-          if (!rows[0]?.customer?.manager) throw new Error("not manager");
-          return id;
-        })
-      );
-      await prisma.oAuthCredential.update({
-        where: { organizationId: orgId },
-        data:  { loginCustomerId: mccId },
-      }).catch(() => {});
-      return mccId;
-    } catch { /* all in batch failed/timed out — try next batch */ }
-  }
+  // 3. No cache — discover by querying candidates in batches of 5.
+  //    Wrap the entire discovery in a 20s outer timeout so we can't hang the request.
+  const discover = async () => {
+    const BATCH = 5;
+    for (let i = 0; i < candidateIds.length; i += BATCH) {
+      const batch = candidateIds.slice(i, i + BATCH);
+      try {
+        const mccId = await Promise.any(
+          batch.map(async (id) => {
+            const c = client.Customer({ customer_id: id, refresh_token: refreshToken });
+            const rows = await withQueryTimeout(c.query("SELECT customer.id, customer.manager FROM customer LIMIT 1"));
+            if (!rows[0]?.customer?.manager) throw new Error("not manager");
+            return id;
+          })
+        );
+        await prisma.oAuthCredential.update({
+          where: { organizationId: orgId },
+          data:  { loginCustomerId: mccId },
+        }).catch(() => {});
+        return mccId;
+      } catch { /* all in batch failed/timed out — try next batch */ }
+    }
+    return null;
+  };
 
-  return null;
+  return Promise.race([
+    discover(),
+    new Promise<null>((resolve) => setTimeout(() => resolve(null), 20_000)),
+  ]);
 }
 
 export async function GET() {
