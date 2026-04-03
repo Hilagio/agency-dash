@@ -85,7 +85,7 @@ export async function POST(_req: NextRequest, { params }: Params) {
   // ── Account type detection ────────────────────────────────────────────────
   // Lead gen: explicit businessModel OR funnel signals show CPL with no ecommerce revenue
   const isLeadGen = account.businessModel === "lead_gen" || account.businessModel === "service"
-    || (signals?.funnel?.costPerLead != null && signals.funnel.costPerLead > 0 && (signals?.economics?.actualRoas ?? 0) === 0);
+    || (!account.businessModel && signals?.funnel?.costPerLead != null && signals.funnel.costPerLead > 0 && (signals?.economics?.actualRoas ?? 0) === 0);
 
   // Shopping/PMax: feed-based (no keyword QS) AND not lead gen
   const isShoppingAccount = !isLeadGen && (signals?.traffic
