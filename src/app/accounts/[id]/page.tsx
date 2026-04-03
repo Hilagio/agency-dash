@@ -1913,6 +1913,7 @@ export default function AccountPage() {
   const [account, setAccount] = useState<Account | null>(null);
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [actions, setActions] = useState<Action[]>([]);
+  const [orgMembers, setOrgMembers] = useState<{ email: string; name: string | null }[]>([]);
   const [tab, setTab] = useState<Tab>("overview");
   const [loading, setLoading] = useState(true);
   const [rescoring, setRescoring] = useState(false);
@@ -1923,9 +1924,10 @@ export default function AccountPage() {
     setLoading(true);
     setError(null);
     try {
-      const [acctRes, snapRes] = await Promise.all([
+      const [acctRes, snapRes, orgRes] = await Promise.all([
         fetch(`/api/accounts`),
         fetch(`/api/accounts/${id}/snapshot`),
+        fetch(`/api/org`),
       ]);
       if (!acctRes.ok) throw new Error("Failed to load account");
       const accounts: Account[] = await acctRes.json();
@@ -1936,6 +1938,10 @@ export default function AccountPage() {
         const snap: Snapshot = await snapRes.json();
         setSnapshot(snap);
         setActions(snap.actions ?? []);
+      }
+      if (orgRes.ok) {
+        const org = await orgRes.json() as { members: { user: { email: string; name: string | null } }[] };
+        setOrgMembers(org.members.map(m => ({ email: m.user.email, name: m.user.name })));
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unknown error");
@@ -2266,9 +2272,13 @@ export default function AccountPage() {
             <ActionList
               actions={actions}
               accountId={id}
+              orgMembers={orgMembers}
               onTabChange={(t) => setTab(t as Tab)}
               onStatusChange={handleStatusChange}
               onExecute={handleExecute}
+              onActionUpdate={(actionId, updates) =>
+                setActions(prev => prev.map(a => a.id === actionId ? { ...a, ...updates } : a))
+              }
             />
           </>
         )}

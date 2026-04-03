@@ -148,6 +148,10 @@ model ActionRecommendation {
   executedAt   DateTime?
   executionLog String?
 
+  snoozedUntil DateTime?
+  assignedTo   String?
+  doneNote     String?
+
   isEscalation Boolean @default(false)
 }
 
