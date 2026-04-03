@@ -382,6 +382,8 @@ interface Account {
   country:            string | null;
   businessModel:      string | null;
   monthlyChurnRate:   number | null;
+  slackChannelId:     string | null;
+  slackChannelName:   string | null;
 }
 
 // ─── Client Context Panel ─────────────────────────────────────────────────────
@@ -1278,6 +1280,130 @@ function AccountTargetsPanel({
   );
 }
 
+// ─── Slack Channel Panel ──────────────────────────────────────────────────────
+
+function SlackChannelPanel({
+  accountId,
+  initialChannelId,
+  initialChannelName,
+  onSaved,
+}: {
+  accountId: string;
+  initialChannelId:   string | null;
+  initialChannelName: string | null;
+  onSaved: (id: string | null, name: string | null) => void;
+}) {
+  const [channels, setChannels]   = useState<{ id: string; name: string }[] | null>(null);
+  const [loading, setLoading]     = useState(false);
+  const [error, setError]         = useState<string | null>(null);
+  const [saving, setSaving]       = useState(false);
+  const [open, setOpen]           = useState(false);
+  const [selected, setSelected]   = useState<{ id: string; name: string } | null>(
+    initialChannelId && initialChannelName ? { id: initialChannelId, name: initialChannelName } : null
+  );
+
+  const fetchChannels = async () => {
+    if (channels) { setOpen(true); return; }
+    setLoading(true);
+    setError(null);
+    const res = await fetch("/api/integrations/slack/channels");
+    if (res.ok) {
+      const { channels: ch } = await res.json();
+      setChannels(ch);
+      setOpen(true);
+    } else {
+      const j = await res.json().catch(() => ({}));
+      setError(j.error ?? "Failed to load channels");
+    }
+    setLoading(false);
+  };
+
+  const pick = async (ch: { id: string; name: string } | null) => {
+    setSelected(ch);
+    setOpen(false);
+    setSaving(true);
+    await fetch(`/api/accounts/${accountId}`, {
+      method:  "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ slackChannelId: ch?.id ?? null, slackChannelName: ch?.name ?? null }),
+    });
+    onSaved(ch?.id ?? null, ch?.name ?? null);
+    setSaving(false);
+  };
+
+  return (
+    <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: "14px 20px", marginBottom: 20 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div>
+          <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.8px", textTransform: "uppercase", color: "var(--text-dim)" }}>
+            Slack channel
+          </span>
+          <span style={{ fontSize: 11, color: "var(--text-faint)", marginLeft: 8 }}>
+            feeds AI change-log context
+          </span>
+        </div>
+        {!open && (
+          <button
+            onClick={fetchChannels}
+            disabled={loading || saving}
+            style={{ fontSize: 11, color: "var(--text-dim)", background: "transparent", border: "none", cursor: loading || saving ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: 4, padding: "2px 4px" }}
+          >
+            {loading || saving ? <Loader2 size={11} className="animate-spin" /> : <Pencil size={10} />}
+            {selected ? "Change" : "Select channel"}
+          </button>
+        )}
+        {open && (
+          <button onClick={() => setOpen(false)} style={{ background: "transparent", border: "none", cursor: "pointer", color: "var(--text-faint)", display: "flex" }}>
+            <X size={12} />
+          </button>
+        )}
+      </div>
+
+      {!open && selected && (
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 10 }}>
+          <MessageSquare size={12} style={{ color: "#4ade80", flexShrink: 0 }} />
+          <span style={{ fontSize: 13, color: "var(--text-2)" }}>#{selected.name}</span>
+          <button
+            onClick={() => pick(null)}
+            style={{ marginLeft: "auto", fontSize: 11, color: "var(--text-faint)", background: "transparent", border: "none", cursor: "pointer" }}
+          >
+            Remove
+          </button>
+        </div>
+      )}
+
+      {!open && !selected && (
+        <p style={{ fontSize: 12, color: "var(--text-faint)", margin: "8px 0 0" }}>
+          No channel linked. Connect a Slack channel to give AI change-log context.
+        </p>
+      )}
+
+      {error && <p style={{ fontSize: 12, color: "#ef4444", margin: "8px 0 0" }}>{error}</p>}
+
+      {open && channels && (
+        <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 2, maxHeight: 200, overflowY: "auto" }}>
+          {channels.map(ch => (
+            <button
+              key={ch.id}
+              onClick={() => pick(ch)}
+              style={{
+                display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", borderRadius: 7, cursor: "pointer",
+                background: selected?.id === ch.id ? "rgba(74,222,128,0.1)" : "transparent",
+                border: `1px solid ${selected?.id === ch.id ? "rgba(74,222,128,0.3)" : "transparent"}`,
+                textAlign: "left", fontSize: 13, color: "var(--text-2)", width: "100%",
+              }}
+            >
+              <MessageSquare size={11} style={{ color: "var(--text-faint)", flexShrink: 0 }} />
+              #{ch.name}
+              {selected?.id === ch.id && <span style={{ marginLeft: "auto", color: "#4ade80" }}><CheckSquare size={11} /></span>}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Markdown renderer (used by IntelligencePanel) ────────────────────────────
 
 function renderIntelligence(text: string, streaming: boolean): React.ReactNode {
@@ -2061,6 +2187,14 @@ export default function AccountPage() {
                     monthlyChurnRate:   account.monthlyChurnRate,
                   }}
                   onSaved={(v) => setAccount(prev => prev ? { ...prev, ...v } : prev)}
+                />
+
+                {/* Slack channel — feeds AI change-log context */}
+                <SlackChannelPanel
+                  accountId={id}
+                  initialChannelId={account.slackChannelId}
+                  initialChannelName={account.slackChannelName}
+                  onSaved={(chId, chName) => setAccount(prev => prev ? { ...prev, slackChannelId: chId, slackChannelName: chName } : prev)}
                 />
 
                 {/* Account Brief — feeds AI context */}

@@ -12,6 +12,7 @@ import { scoreConstraints } from "@/lib/engine";
 import { ConstraintSignals, BUCKET_LABELS } from "@/lib/engine/types";
 import { getAuthContext, unauthorized, forbidden } from "@/lib/auth";
 import { AGENCY_PHILOSOPHY } from "@/lib/agencyPhilosophy";
+import { fetchSlackMessages, formatSlackForContext } from "@/lib/integrations/slack";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -23,12 +24,13 @@ export async function POST(_req: NextRequest, { params }: Params) {
 
   const { id } = await params;
 
-  const [account, notionConn] = await Promise.all([
+  const [account, notionConn, slackConn] = await Promise.all([
     prisma.account.findFirst({ where: { id, organizationId: ctx.orgId } }),
     prisma.notionConnection.findUnique({
       where:   { organizationId: ctx.orgId },
       include: { pageCache: { orderBy: { fetchedAt: "desc" } } },
     }),
+    prisma.slackConnection.findUnique({ where: { organizationId: ctx.orgId } }),
   ]);
   if (!account) return forbidden();
 
@@ -105,6 +107,14 @@ export async function POST(_req: NextRequest, { params }: Params) {
       notionConn.pageCache.map(p => `--- ${p.title} ---\n${p.content}`).join("\n\n").slice(0, 4000)
     : "";
 
+  let slackContext = "";
+  if (slackConn && account.slackChannelId && account.slackChannelName) {
+    try {
+      const msgs = await fetchSlackMessages(slackConn.botToken, account.slackChannelId, 90);
+      slackContext = msgs.length > 0 ? "\n" + formatSlackForContext(msgs, account.slackChannelName) : "";
+    } catch { /* non-fatal */ }
+  }
+
   const prompt = `You are a senior Google Ads strategist. Write an intelligence brief for this account — the kind a good analyst would send to a client manager before a weekly call.
 
 ACCOUNT: ${account.name}
@@ -118,9 +128,9 @@ ${bucketBlock}
 LIVE METRICS: ${metricsBlock || "not available"}
 
 ACCOUNT TARGETS: ${targetsBlock}
-${clientBrief}${notionContext}
+${clientBrief}${notionContext}${slackContext}
 
-Format your response using markdown:
+${slackContext ? "CHANGE-LOG CORRELATION INSTRUCTIONS: Cross-reference the Slack messages above with the metric data. If a team action (budget change, bid adjustment, campaign edit, creative swap) is mentioned and a related metric shifted within 2–7 days, explicitly call this out as the likely cause in your brief.\n\n" : ""}Format your response using markdown:
 - Start with a ## heading that names the governing constraint clearly (e.g. "## Conversion Rate is the Governing Constraint")
 - Write 2–3 short paragraphs covering: (1) what is actually happening with numbers, (2) why it is the governing constraint and what it blocks downstream, (3) the most likely root cause given the account context — be specific, not generic
 - Add a **Next step:** line with one concrete, actionable task

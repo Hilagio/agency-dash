@@ -21,6 +21,7 @@ model Organization {
   sops       AgencySop[]
   oauthCred  OAuthCredential?
   notion     NotionConnection?
+  slack      SlackConnection?
 }
 
 // ─── Users ────────────────────────────────────────────────────────────────────
@@ -86,6 +87,9 @@ model Account {
   businessModel     String? // dropship | subscription | dtc | service | lead_gen | marketplace
   monthlyChurnRate  Float?  // 0–1, subscription only (e.g. 0.05 = 5%/mo) — used for LTV calc
   // AOV is computed live from conversions_value / conversions — no manual field needed
+
+  slackChannelId   String? // Slack channel ID (e.g. C0123456789)
+  slackChannelName String? // Human-readable name (e.g. #cherie-boutique)
 
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id])
@@ -244,6 +248,19 @@ model LearnedPattern {
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+}
+
+// ─── Slack Integration ────────────────────────────────────────────────────────
+
+model SlackConnection {
+  id             String       @id @default(cuid())
+  organizationId String       @unique
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  botToken       String       // xoxb- bot token
+  teamId         String?
+  teamName       String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 }
 
 // ─── Account Notes / Change Log ───────────────────────────────────────────────

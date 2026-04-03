@@ -30,6 +30,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     country:            string | null;
     businessModel:      string | null;
     monthlyChurnRate:   number | null;
+    slackChannelId:     string | null;
+    slackChannelName:   string | null;
   }>;
 
   const account = await prisma.account.update({
@@ -47,6 +49,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       ...(body.country            !== undefined && { country:            body.country }),
       ...(body.businessModel      !== undefined && { businessModel:      body.businessModel }),
       ...(body.monthlyChurnRate   !== undefined && { monthlyChurnRate:   body.monthlyChurnRate }),
+      ...(body.slackChannelId     !== undefined && { slackChannelId:     body.slackChannelId }),
+      ...(body.slackChannelName   !== undefined && { slackChannelName:   body.slackChannelName }),
     },
   });
 

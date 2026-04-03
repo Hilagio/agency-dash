@@ -11,6 +11,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { prisma } from "@/lib/db";
 import { BUCKET_LABELS, BUCKET_DESCRIPTIONS, ConstraintSignals } from "@/lib/engine/types";
 import { fetchDemographics, fetchSearchTermReport, DemographicRow, SearchTermRow } from "@/lib/integrations/google-ads";
+import { fetchSlackMessages, formatSlackForContext } from "@/lib/integrations/slack";
 import { getAuthContext, unauthorized, forbidden } from "@/lib/auth";
 import { AGENCY_PHILOSOPHY } from "@/lib/agencyPhilosophy";
 
@@ -224,6 +225,7 @@ function buildSystemPrompt(params: {
   clientContext:       string | null;
   sopContext:          string;
   notionContext:       string;
+  slackContext:        string;
   correctionContext:   string;
   globalPatternContext: string;
 }): string {
@@ -232,7 +234,7 @@ function buildSystemPrompt(params: {
     targetRoas, targetCpa, grossMarginPercent,
     governingConstraint, constraintReason, bucketScores, allActions, signals,
     demographics, searchTerms,
-    clientContext, sopContext, notionContext, correctionContext, globalPatternContext,
+    clientContext, sopContext, notionContext, slackContext, correctionContext, globalPatternContext,
   } = params;
 
   const bucketSummary = Object.entries(bucketScores)
@@ -265,6 +267,7 @@ function buildSystemPrompt(params: {
   const clientBriefSection    = clientContext        ? `\n\nCLIENT BRIEF:\n${clientContext}` : "";
   const sopSection            = sopContext           ? `\n\n${sopContext}` : "";
   const notionSection         = notionContext        ? `\n\n${notionContext}` : "";
+  const slackSection          = slackContext         ? `\n\n${slackContext}` : "";
   const correctionSection     = correctionContext    ? `\n\n${correctionContext}` : "";
   const globalPatternSection  = globalPatternContext ? `\n\n${globalPatternContext}` : "";
 
@@ -297,7 +300,8 @@ YOUR BEHAVIOUR:
 - Flag client escalations clearly (website changes, CRM setup, offline conversion import).
 - For Shopping/PMax: think feed quality, product segmentation, asset group performance — not keyword QS.
 - Be direct. Skip preamble. One problem → one cause → one fix.
-- For price competitiveness and competitor pricing: that data is in the Products tab of this account.${notionSection}${correctionSection}${globalPatternSection}`;
+- For price competitiveness and competitor pricing: that data is in the Products tab of this account.
+- When Slack messages are provided: actively correlate dates of team actions (budget changes, bid adjustments, campaign pauses) with metric shifts. If a metric deteriorated 2–5 days after a noted change, flag it explicitly as the likely cause and recommend a response.${notionSection}${slackSection}${correctionSection}${globalPatternSection}`;
 }
 
 // ─── Route handler ─────────────────────────────────────────────────────────────
@@ -313,13 +317,14 @@ export async function POST(req: NextRequest, { params }: Params) {
   };
 
   // Load everything in parallel
-  const [account, sops, notionConn, learnedPatterns] = await Promise.all([
+  const [account, sops, notionConn, slackConn, learnedPatterns] = await Promise.all([
     prisma.account.findFirst({ where: { id, organizationId: ctx.orgId } }),
     prisma.agencySop.findMany({ where: { organizationId: ctx.orgId, isActive: true }, orderBy: { createdAt: "asc" } }),
     prisma.notionConnection.findUnique({
       where:   { organizationId: ctx.orgId },
       include: { pageCache: { orderBy: { fetchedAt: "desc" } } },
     }),
+    prisma.slackConnection.findUnique({ where: { organizationId: ctx.orgId } }),
     prisma.learnedPattern.findMany({
       where: { isActive: true, OR: [{ orgId: ctx.orgId }, { orgId: null }] },
       orderBy: { seenCount: "desc" },
@@ -340,6 +345,15 @@ export async function POST(req: NextRequest, { params }: Params) {
       { error: "No constraint snapshot found. Run a scoring first." },
       { status: 400 }
     );
+  }
+
+  // Fetch Slack channel history if the account has one linked
+  let slackContext = "";
+  if (slackConn && account.slackChannelId && account.slackChannelName) {
+    try {
+      const msgs = await fetchSlackMessages(slackConn.botToken, account.slackChannelId, 90);
+      slackContext = formatSlackForContext(msgs, account.slackChannelName);
+    } catch { /* Slack fetch failure is non-fatal */ }
   }
 
   // Get or create chat session
@@ -443,6 +457,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     clientContext:        account.clientContext ?? null,
     sopContext,
     notionContext,
+    slackContext,
     correctionContext,
     globalPatternContext,
   });

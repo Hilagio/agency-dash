@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft, Loader2, Building2, Users, Mail, Shield,
-  Trash2, RefreshCw, Check, Copy, Zap, LogOut, BookOpen, ChevronDown, ChevronUp,
+  Trash2, RefreshCw, Check, Copy, Zap, LogOut, BookOpen, ChevronDown, ChevronUp, MessageSquare,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -30,6 +30,12 @@ interface Org {
   name:    string;
   slug:    string;
   members: Member[];
+}
+
+interface SlackStatus {
+  connected:  boolean;
+  teamName?:  string;
+  teamId?:    string;
 }
 
 interface NotionPage {
@@ -116,6 +122,12 @@ export default function SettingsPage() {
   // Role change / remove
   const [removingId, setRemovingId] = useState<string | null>(null);
 
+  // Slack
+  const [slackStatus, setSlackStatus]         = useState<SlackStatus | null>(null);
+  const [slackToken, setSlackToken]           = useState("");
+  const [slackConnecting, setSlackConnecting] = useState(false);
+  const [slackError, setSlackError]           = useState<string | null>(null);
+
   // Notion
   const [notionStatus, setNotionStatus]       = useState<NotionStatus | null>(null);
   const [notionToken, setNotionToken]         = useState("");
@@ -132,12 +144,13 @@ export default function SettingsPage() {
   const [myRole, setMyRole]     = useState<string | null>(null);
 
   const load = async () => {
-    const [orgRes, inviteRes, adsRes, meRes, notionRes] = await Promise.all([
+    const [orgRes, inviteRes, adsRes, meRes, notionRes, slackRes] = await Promise.all([
       fetch("/api/org"),
       fetch("/api/org/invites").catch(() => null),
       fetch("/api/auth/google-ads/status"),
       fetch("/api/auth/me"),
       fetch("/api/integrations/notion"),
+      fetch("/api/integrations/slack"),
     ]);
 
     if (orgRes.ok) {
@@ -160,6 +173,10 @@ export default function SettingsPage() {
       const n: NotionStatus = await notionRes.json();
       setNotionStatus(n);
       if (n.selectedPageIds) setNotionSelectedIds(n.selectedPageIds);
+    }
+    if (slackRes.ok) {
+      const s: SlackStatus = await slackRes.json();
+      setSlackStatus(s);
     }
     setLoading(false);
   };
@@ -296,6 +313,31 @@ export default function SettingsPage() {
     setNotionPages(null);
     setNotionSelectedIds([]);
     setNotionShowPages(false);
+  };
+
+  const connectSlack = async () => {
+    if (!slackToken.trim()) return;
+    setSlackConnecting(true);
+    setSlackError(null);
+    const res = await fetch("/api/integrations/slack", {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ token: slackToken.trim() }),
+    });
+    if (!res.ok) {
+      const j = await res.json();
+      setSlackError(j.error ?? "Failed to connect");
+    } else {
+      const s = await res.json();
+      setSlackStatus({ connected: true, teamName: s.teamName, teamId: s.teamId });
+      setSlackToken("");
+    }
+    setSlackConnecting(false);
+  };
+
+  const disconnectSlack = async () => {
+    await fetch("/api/integrations/slack", { method: "DELETE" });
+    setSlackStatus({ connected: false });
   };
 
   if (loading) {
@@ -514,6 +556,62 @@ export default function SettingsPage() {
                 </button>
               </div>
               {notionError && <p style={{ fontSize: 12, color: "#ef4444", margin: 0 }}>{notionError}</p>}
+            </div>
+          )}
+        </Card>
+
+        {/* ── Slack ────────────────────────────────────────────────────── */}
+        <Card title="Slack" icon={<MessageSquare size={15} />}>
+          {slackStatus?.connected ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#22c55e" }} />
+                  <span style={{ fontSize: 13, color: "var(--text-2)" }}>
+                    {slackStatus.teamName ? `Connected · ${slackStatus.teamName}` : "Connected"}
+                  </span>
+                </div>
+                <button
+                  onClick={disconnectSlack}
+                  style={{ fontSize: 12, color: "#ef4444", background: "none", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 7, padding: "5px 10px", cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}
+                >
+                  <Trash2 size={11} /> Disconnect
+                </button>
+              </div>
+              <p style={{ fontSize: 12, color: "var(--text-faint)", margin: 0 }}>
+                Link individual accounts to Slack channels in each account&apos;s settings to provide AI with change-log context.
+              </p>
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <p style={{ fontSize: 13, color: "var(--text-dim)", margin: 0 }}>
+                Connect your Slack workspace to give the AI access to per-account channel history.
+                Create a Slack app at{" "}
+                <a href="https://api.slack.com/apps" target="_blank" rel="noopener noreferrer" style={{ color: "#3b82f6" }}>
+                  api.slack.com/apps
+                </a>
+                , add scopes <code style={{ fontSize: 11, background: "var(--surface-2)", padding: "1px 4px", borderRadius: 3 }}>channels:read channels:history groups:read groups:history</code>,
+                install to your workspace, and paste the Bot User OAuth Token below.
+              </p>
+              <div style={{ display: "flex", gap: 8 }}>
+                <input
+                  type="password"
+                  value={slackToken}
+                  onChange={e => setSlackToken(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && connectSlack()}
+                  placeholder="xoxb-…"
+                  style={{ flex: 1, padding: "8px 12px", borderRadius: 8, border: "1px solid var(--border-2)", background: "var(--bg)", color: "var(--text)", fontSize: 13, outline: "none", fontFamily: "monospace" }}
+                />
+                <button
+                  onClick={connectSlack}
+                  disabled={slackConnecting || !slackToken.trim()}
+                  style={{ padding: "8px 14px", borderRadius: 8, background: slackConnecting || !slackToken.trim() ? "var(--surface-2)" : "var(--btn-primary)", border: "none", color: slackConnecting || !slackToken.trim() ? "var(--text-faint)" : "#fff", fontSize: 13, fontWeight: 600, cursor: slackConnecting || !slackToken.trim() ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" }}
+                >
+                  {slackConnecting ? <Loader2 size={13} className="animate-spin" /> : null}
+                  {slackConnecting ? "Connecting…" : "Connect"}
+                </button>
+              </div>
+              {slackError && <p style={{ fontSize: 12, color: "#ef4444", margin: 0 }}>{slackError}</p>}
             </div>
           )}
         </Card>
