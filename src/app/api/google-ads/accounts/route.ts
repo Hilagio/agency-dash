@@ -10,7 +10,7 @@ import { prisma } from "@/lib/db";
 import { isGoogleAdsConfigured } from "@/lib/integrations/google-ads";
 import { getAuthContext, unauthorized } from "@/lib/auth";
 
-const GADS_REST_BASE = "https://googleads.googleapis.com/v18";
+const GADS_REST_BASE = "https://googleads.googleapis.com/v23";
 const DEV_TOKEN      = process.env.GOOGLE_ADS_DEVELOPER_TOKEN!;
 
 // ─── OAuth ─────────────────────────────────────────────────────────────────────
@@ -53,12 +53,12 @@ async function restFetch(url: string, options: RequestInit, timeoutMs: number): 
   }
 }
 
-function gadsHeaders(accessToken: string, loginCustomerId?: string): Record<string, string> {
+function gadsHeaders(accessToken: string, loginCustomerId?: string, includeContentType = true): Record<string, string> {
   const h: Record<string, string> = {
     Authorization:     `Bearer ${accessToken}`,
     "developer-token": DEV_TOKEN,
-    "Content-Type":    "application/json",
   };
+  if (includeContentType) h["Content-Type"] = "application/json";
   if (loginCustomerId) h["login-customer-id"] = loginCustomerId;
   return h;
 }
@@ -90,7 +90,7 @@ async function gaqlSearch(
 async function listAccessibleCustomerIds(accessToken: string, timeoutMs = 12_000): Promise<string[]> {
   const res = await restFetch(
     `${GADS_REST_BASE}/customers:listAccessibleCustomers`,
-    { method: "GET", headers: gadsHeaders(accessToken) },
+    { method: "GET", headers: gadsHeaders(accessToken, undefined, false) },
     timeoutMs,
   );
   if (!res.ok) {
