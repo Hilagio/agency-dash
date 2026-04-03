@@ -224,7 +224,7 @@ export async function POST(_req: NextRequest, { params }: Params) {
     ? `ACCOUNT TYPE: Lead generation (${account.businessModel ?? "service/lead gen"}). This is NOT an ecommerce account. Do not mention ROAS, product feeds, or purchase revenue. Focus on: CPL vs target, lead volume, lead quality, form CVR, offline conversion import status, search intent quality, funnel handoff to sales team.`
     : isShoppingAccount
     ? `ACCOUNT TYPE: Ecommerce — Shopping/Performance Max (feed-based). Do NOT mention Quality Score. Focus on: product-level ROAS, feed titles, product labels (Heroes/Sidekicks/Zombies), price vs market benchmark, IS lost to rank (bid), zero-conversion products.`
-    : `ACCOUNT TYPE: Ecommerce — Search/keyword-based. Quality Score and ad relevance are relevant signals. Focus on: keyword intent, search term hygiene, ad relevance, landing page alignment.`;
+    : `ACCOUNT TYPE: Ecommerce — Search-driven (runs Search campaigns for an online store). This IS a revenue-focused ecommerce account. Focus on: actual ROAS vs target ROAS, product-level performance, pricing vs competitors, CVR on product landing pages, search term hygiene, and keyword intent alignment with buyer stage. Quality Score is relevant but secondary to ROAS and conversion outcomes.`;
 
   const dataWarning = !hasRealData
     ? `\n⚠ DATA WARNING: This account has very limited performance history (${dataAge != null ? `scored ${dataAge} days ago` : "recently scored"}). The scores reflect setup quality, not conversion outcomes. Do NOT fabricate performance trends. Instead, describe what the setup signals suggest and what to watch for as data accumulates.`
