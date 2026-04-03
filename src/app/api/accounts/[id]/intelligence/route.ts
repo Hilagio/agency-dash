@@ -80,6 +80,20 @@ export async function POST(_req: NextRequest, { params }: Params) {
     account.grossMarginPercent != null ? `Gross margin: ${Math.round(account.grossMarginPercent * 100)}% (break-even ROAS: ${(1 / account.grossMarginPercent).toFixed(1)}x)` : null,
   ].filter(Boolean).join(" | ") || "No targets set";
 
+  // Determine if this is a Shopping/PMax (feed-based) account — QS is not relevant for these
+  const isShoppingAccount = signals?.traffic
+    ? signals.traffic.qualityScoreCount === 0
+    : account.businessModel === "ecommerce";
+
+  // Check if there is enough real data to give a meaningful analysis
+  const hasRealData = signals != null && (
+    (signals.economics.actualRoas > 0 || signals.economics.actualCpa > 0) ||
+    signals.traffic.clickThroughRate > 0
+  );
+  const dataAge = snapshot.createdAt
+    ? Math.round((Date.now() - new Date(snapshot.createdAt).getTime()) / (1000 * 60 * 60 * 24))
+    : null;
+
   let metricsBlock = "";
   if (signals) {
     const t = signals.traffic;
@@ -87,13 +101,17 @@ export async function POST(_req: NextRequest, { params }: Params) {
     const c = signals.conversion;
     const rows = [
       `CTR: ${(t.clickThroughRate * 100).toFixed(2)}%`,
-      `Quality Score: ${t.qualityScoreAvg.toFixed(1)}/10`,
+      // Only include QS for search/keyword accounts — not relevant for Shopping/PMax
+      (!isShoppingAccount && t.qualityScoreCount > 0)
+        ? `Quality Score: ${t.qualityScoreAvg.toFixed(1)}/10 (${t.qualityScoreCount} keywords)`
+        : isShoppingAccount ? `Feed-based account (Shopping/PMax) — QS not applicable` : null,
       `IS lost to budget: ${Math.round(t.impressionShareLost_budget * 100)}%`,
       `IS lost to rank: ${Math.round(t.impressionShareLost_rank * 100)}%`,
       e.actualRoas > 0 ? `Actual ROAS: ${e.actualRoas.toFixed(2)}x` : null,
       e.actualCpa  > 0 ? `Actual CPA: ${e.actualCpa.toFixed(0)}` : null,
       c.conversionRate > 0 ? `CVR: ${(c.conversionRate * 100).toFixed(2)}% (benchmark: ${(c.industryBenchmarkConversionRate * 100).toFixed(1)}%)` : null,
       `Budget utilisation: ${Math.round(e.budgetUtilizationPercent * 100)}%`,
+      !hasRealData ? `⚠ LOW DATA WARNING: This account has very little performance data. Scores are based on setup signals, not conversion history.` : null,
     ].filter(Boolean);
     metricsBlock = rows.join(" | ");
   }
@@ -115,12 +133,22 @@ export async function POST(_req: NextRequest, { params }: Params) {
     } catch { /* non-fatal */ }
   }
 
+  const accountTypeNote = isShoppingAccount
+    ? `ACCOUNT TYPE: Shopping/Performance Max (feed-based). Do NOT mention Quality Score — it is irrelevant for this account type. Focus on: feed quality, product disapprovals, IS lost to rank (bid competitiveness), ROAS by product segment, price competitiveness.`
+    : `ACCOUNT TYPE: Search/keyword-based. Quality Score and ad relevance are relevant signals.`;
+
+  const dataWarning = !hasRealData
+    ? `\n⚠ DATA WARNING: This account has very limited performance history (${dataAge != null ? `scored ${dataAge} days ago` : "recently scored"}). The scores reflect setup quality, not conversion outcomes. Do NOT fabricate performance trends. Instead, describe what the setup signals suggest and what to watch for as data accumulates.`
+    : "";
+
   const prompt = `You are a senior Google Ads strategist. Write an intelligence brief for this account — the kind a good analyst would send to a client manager before a weekly call.
 
 ACCOUNT: ${account.name}
 INDUSTRY: ${account.industry ?? "not set"}
 CURRENCY: ${account.currency}
+${accountTypeNote}
 GOVERNING CONSTRAINT: ${governing} (score: ${Math.round(snapshot.governingConstraint === "MEASUREMENT" ? snapshot.scoreMeasurement : snapshot.governingConstraint === "TRAFFIC" ? snapshot.scoreTraffic : snapshot.governingConstraint === "CONVERSION" ? snapshot.scoreConversion : snapshot.governingConstraint === "FUNNEL" ? snapshot.scoreFunnel : snapshot.scoreEconomics)}/100)
+${dataWarning}
 
 BUCKET HEALTH:
 ${bucketBlock}
@@ -130,13 +158,19 @@ LIVE METRICS: ${metricsBlock || "not available"}
 ACCOUNT TARGETS: ${targetsBlock}
 ${clientBrief}${notionContext}${slackContext}
 
-${slackContext ? "CHANGE-LOG CORRELATION INSTRUCTIONS: Cross-reference the Slack messages above with the metric data. If a team action (budget change, bid adjustment, campaign edit, creative swap) is mentioned and a related metric shifted within 2–7 days, explicitly call this out as the likely cause in your brief.\n\n" : ""}Format your response using markdown:
-- Start with a ## heading that names the governing constraint clearly (e.g. "## Conversion Rate is the Governing Constraint")
-- Write 2–3 short paragraphs covering: (1) what is actually happening with numbers, (2) why it is the governing constraint and what it blocks downstream, (3) the most likely root cause given the account context — be specific, not generic
-- Add a **Next step:** line with one concrete, actionable task
-- If there is a secondary risk, add a **Secondary risk:** line for it
+CRITICAL RULES — violations make the brief useless:
+1. Only use numbers that appear in the data above. Never invent percentages, scores, or trends.
+2. If data is insufficient to support a claim, say so explicitly rather than generalising.
+3. For Shopping/PMax accounts: never mention Quality Score. Focus on feed, bids, and product-level signals.
+4. For new accounts with low data: frame the brief around setup quality and leading indicators, not performance history.
+${slackContext ? "5. Cross-reference Slack messages with metric data — flag any action that correlates with a metric shift within 2–7 days.\n" : ""}
+Format using markdown:
+- ## heading naming the governing constraint
+- 2–3 short paragraphs: (1) what the numbers actually show, (2) why this is the governing constraint, (3) most likely root cause given this specific account
+- **Next step:** one concrete task
+- **Secondary risk:** if one exists
 
-Use actual numbers throughout ("CVR dropped from 1.2% to 0.5%", not "CVR is low"). Analyst tone — no platitudes, no generic advice.`;
+Analyst tone. Cite actual numbers. No generic advice.`;
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
