@@ -1395,6 +1395,14 @@ function SlackChannelPanel({
         </div>
       )}
 
+      {!open && selected && (
+        <p style={{ fontSize: 11, color: "var(--text-faint)", margin: "6px 0 0", lineHeight: 1.5 }}>
+          Make sure the bot is invited to <strong style={{ color: "var(--text-dim)" }}>#{selected.name}</strong> — run{" "}
+          <code style={{ background: "var(--surface-2, rgba(255,255,255,0.06))", padding: "1px 5px", borderRadius: 4, fontFamily: "monospace" }}>/invite @dashboard</code>{" "}
+          inside that channel so it can read messages.
+        </p>
+      )}
+
       {!open && !selected && (
         <p style={{ fontSize: 12, color: "var(--text-faint)", margin: "8px 0 0" }}>
           No channel linked. Connect a Slack channel to give AI change-log context.
