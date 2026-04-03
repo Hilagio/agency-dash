@@ -41,8 +41,11 @@ export interface MetricRow {
   isLostRank:       number;   // 0–1
 }
 
-function dateRange(range: string): { start: string; end: string } {
-  const days = range === "7d" ? 7 : range === "14d" ? 14 : range === "90d" ? 90 : 30;
+function dateRange(range: string, customStart?: string, customEnd?: string): { start: string; end: string } {
+  if (range === "custom" && customStart && customEnd) {
+    return { start: customStart, end: customEnd };
+  }
+  const days = range === "3d" ? 3 : range === "7d" ? 7 : range === "14d" ? 14 : range === "90d" ? 90 : 30;
   const end   = new Date(); end.setDate(end.getDate() - 1);
   const start = new Date(end); start.setDate(start.getDate() - (days - 1));
   const fmt = (d: Date) => d.toISOString().split("T")[0];
@@ -157,8 +160,8 @@ export async function POST(req: NextRequest, { params }: Params) {
   if (!account) return forbidden();
   if (!account.googleAdsId) return NextResponse.json({ error: "No Google Ads account" }, { status: 422 });
 
-  const { view, dateRange: dr = "30d" } = await req.json() as { view: ViewKey; dateRange?: string };
-  const { start, end } = dateRange(dr);
+  const { view, dateRange: dr = "30d", customStart, customEnd } = await req.json() as { view: ViewKey; dateRange?: string; customStart?: string; customEnd?: string };
+  const { start, end } = dateRange(dr, customStart, customEnd);
 
   const gads = new GoogleAdsApi({
     client_id:       process.env.GOOGLE_ADS_CLIENT_ID!,

@@ -32,10 +32,12 @@ const VIEW_OPTIONS: { key: ViewKey; label: string }[] = [
 ];
 
 const DATE_OPTIONS = [
-  { key: "7d",  label: "7d" },
-  { key: "14d", label: "14d" },
-  { key: "30d", label: "30d" },
-  { key: "90d", label: "90d" },
+  { key: "3d",     label: "3d" },
+  { key: "7d",     label: "7d" },
+  { key: "14d",    label: "14d" },
+  { key: "30d",    label: "30d" },
+  { key: "90d",    label: "90d" },
+  { key: "custom", label: "Custom" },
 ];
 
 type MetricConfig = {
@@ -229,6 +231,8 @@ function ScatterPlot({ rows, xKey, yKey, sizeKey, currency }: {
 export function MetricExplorer({ accountId }: { accountId: string }) {
   const [view, setView]           = useState<ViewKey>("campaign");
   const [dr, setDr]               = useState("30d");
+  const [customStart, setCustomStart] = useState("");
+  const [customEnd, setCustomEnd]     = useState("");
   const [loading, setLoading]     = useState(false);
   const [data, setData]           = useState<ExplorerData | null>(null);
   const [error, setError]         = useState<string | null>(null);
@@ -239,14 +243,17 @@ export function MetricExplorer({ accountId }: { accountId: string }) {
   const [yKey, setYKey]           = useState<keyof MetricRow>("conversionRate");
   const [sizeKey, setSizeKey]     = useState<keyof MetricRow>("cost");
 
-  const fetch_ = useCallback(async (v: ViewKey, d: string) => {
+  const fetch_ = useCallback(async (v: ViewKey, d: string, cs?: string, ce?: string) => {
+    if (d === "custom" && (!cs || !ce)) return;
     setLoading(true);
     setError(null);
     try {
+      const body: Record<string, string> = { view: v, dateRange: d };
+      if (d === "custom" && cs && ce) { body.customStart = cs; body.customEnd = ce; }
       const res = await fetch(`/api/accounts/${accountId}/metrics`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ view: v, dateRange: d }),
+        body: JSON.stringify(body),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? "Failed");
@@ -258,7 +265,7 @@ export function MetricExplorer({ accountId }: { accountId: string }) {
     }
   }, [accountId]);
 
-  useEffect(() => { fetch_(view, dr); }, [view, dr, fetch_]);
+  useEffect(() => { fetch_(view, dr, customStart, customEnd); }, [view, dr, fetch_]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const sorted = useMemo(() => {
     if (!data) return [];
@@ -287,7 +294,7 @@ export function MetricExplorer({ accountId }: { accountId: string }) {
     const csv = [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
-    a.download = `metrics-${view}-${dr}.csv`;
+    a.download = `metrics-${view}-${dr === "custom" ? `${customStart}_${customEnd}` : dr}.csv`;
     a.click();
   }
 
@@ -325,6 +332,43 @@ export function MetricExplorer({ accountId }: { accountId: string }) {
             </button>
           ))}
         </div>
+
+        {/* Custom date pickers */}
+        {dr === "custom" && (
+          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            <input
+              type="date"
+              value={customStart}
+              onChange={e => setCustomStart(e.target.value)}
+              style={{
+                background: "var(--surface)", border: "1px solid var(--border-2)",
+                borderRadius: 8, padding: "6px 10px", fontSize: 12, color: "var(--text-2)", outline: "none",
+              }}
+            />
+            <span style={{ fontSize: 12, color: "var(--text-faint)" }}>→</span>
+            <input
+              type="date"
+              value={customEnd}
+              onChange={e => setCustomEnd(e.target.value)}
+              style={{
+                background: "var(--surface)", border: "1px solid var(--border-2)",
+                borderRadius: 8, padding: "6px 10px", fontSize: 12, color: "var(--text-2)", outline: "none",
+              }}
+            />
+            <button
+              onClick={() => fetch_(view, "custom", customStart, customEnd)}
+              disabled={!customStart || !customEnd}
+              style={{
+                padding: "6px 14px", fontSize: 12, fontWeight: 500, borderRadius: 8,
+                background: customStart && customEnd ? "rgba(99,102,241,0.15)" : "var(--surface)",
+                color: customStart && customEnd ? "#6366f1" : "var(--text-faint)",
+                border: "1px solid var(--border-2)", cursor: customStart && customEnd ? "pointer" : "default",
+              }}
+            >
+              Apply
+            </button>
+          </div>
+        )}
 
         {/* Mode toggle */}
         <div style={{ display: "flex", gap: 2, background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: 8, overflow: "hidden" }}>
