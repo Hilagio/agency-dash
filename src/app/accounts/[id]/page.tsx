@@ -1298,6 +1298,7 @@ function SlackChannelPanel({
   const [error, setError]         = useState<string | null>(null);
   const [saving, setSaving]       = useState(false);
   const [open, setOpen]           = useState(false);
+  const [search, setSearch]       = useState("");
   const [selected, setSelected]   = useState<{ id: string; name: string } | null>(
     initialChannelId && initialChannelName ? { id: initialChannelId, name: initialChannelName } : null
   );
@@ -1321,6 +1322,7 @@ function SlackChannelPanel({
   const pick = async (ch: { id: string; name: string } | null) => {
     setSelected(ch);
     setOpen(false);
+    setSearch("");
     setSaving(true);
     await fetch(`/api/accounts/${accountId}`, {
       method:  "PATCH",
@@ -1381,8 +1383,16 @@ function SlackChannelPanel({
       {error && <p style={{ fontSize: 12, color: "#ef4444", margin: "8px 0 0" }}>{error}</p>}
 
       {open && channels && (
-        <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 2, maxHeight: 200, overflowY: "auto" }}>
-          {channels.map(ch => (
+        <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
+          <input
+            autoFocus
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search channels…"
+            style={{ padding: "6px 10px", borderRadius: 7, border: "1px solid var(--border-2)", background: "var(--bg)", color: "var(--text)", fontSize: 12, outline: "none", width: "100%", boxSizing: "border-box" }}
+          />
+          <div style={{ display: "flex", flexDirection: "column", gap: 2, maxHeight: 200, overflowY: "auto" }}>
+          {channels.filter(ch => !search || ch.name.toLowerCase().includes(search.toLowerCase())).map(ch => (
             <button
               key={ch.id}
               onClick={() => pick(ch)}
@@ -1398,6 +1408,10 @@ function SlackChannelPanel({
               {selected?.id === ch.id && <span style={{ marginLeft: "auto", color: "#4ade80" }}><CheckSquare size={11} /></span>}
             </button>
           ))}
+          {channels.filter(ch => !search || ch.name.toLowerCase().includes(search.toLowerCase())).length === 0 && (
+            <p style={{ fontSize: 12, color: "var(--text-faint)", margin: "4px 0" }}>No channels match "{search}"</p>
+          )}
+          </div>
         </div>
       )}
     </div>
