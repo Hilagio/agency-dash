@@ -82,14 +82,20 @@ export async function POST(_req: NextRequest, { params }: Params) {
     account.grossMarginPercent != null ? `Gross margin: ${Math.round(account.grossMarginPercent * 100)}% (break-even ROAS: ${(1 / account.grossMarginPercent).toFixed(1)}x)` : null,
   ].filter(Boolean).join(" | ") || "No targets set";
 
-  // Determine if this is a Shopping/PMax (feed-based) account — QS is not relevant for these
-  const isShoppingAccount = signals?.traffic
+  // ── Account type detection ────────────────────────────────────────────────
+  // Lead gen: explicit businessModel OR funnel signals show CPL with no ecommerce revenue
+  const isLeadGen = account.businessModel === "lead_gen" || account.businessModel === "service"
+    || (signals?.funnel?.costPerLead != null && signals.funnel.costPerLead > 0 && (signals?.economics?.actualRoas ?? 0) === 0);
+
+  // Shopping/PMax: feed-based (no keyword QS) AND not lead gen
+  const isShoppingAccount = !isLeadGen && (signals?.traffic
     ? signals.traffic.qualityScoreCount === 0
-    : account.businessModel === "ecommerce";
+    : account.businessModel === "ecommerce" || account.businessModel === "dtc" || account.businessModel === "dropship");
 
   // Check if there is enough real data to give a meaningful analysis
   const hasRealData = signals != null && (
     (signals.economics.actualRoas > 0 || signals.economics.actualCpa > 0) ||
+    (signals.funnel?.costPerLead ?? 0) > 0 ||
     signals.traffic.clickThroughRate > 0
   );
   const dataAge = snapshot.createdAt
@@ -101,17 +107,23 @@ export async function POST(_req: NextRequest, { params }: Params) {
     const t = signals.traffic;
     const e = signals.economics;
     const c = signals.conversion;
+    const f = signals.funnel;
     const rows = [
       `CTR: ${(t.clickThroughRate * 100).toFixed(2)}%`,
-      // Only include QS for search/keyword accounts — not relevant for Shopping/PMax
       (!isShoppingAccount && t.qualityScoreCount > 0)
         ? `Quality Score: ${t.qualityScoreAvg.toFixed(1)}/10 (${t.qualityScoreCount} keywords)`
-        : isShoppingAccount ? `Feed-based account (Shopping/PMax) — QS not applicable` : null,
+        : isShoppingAccount ? `Feed-based (Shopping/PMax) — QS not applicable` : null,
       `IS lost to budget: ${Math.round(t.impressionShareLost_budget * 100)}%`,
       `IS lost to rank: ${Math.round(t.impressionShareLost_rank * 100)}%`,
-      e.actualRoas > 0 ? `Actual ROAS: ${e.actualRoas.toFixed(2)}x` : null,
-      e.actualCpa  > 0 ? `Actual CPA: ${e.actualCpa.toFixed(0)}` : null,
-      c.conversionRate > 0 ? `CVR: ${(c.conversionRate * 100).toFixed(2)}% (benchmark: ${(c.industryBenchmarkConversionRate * 100).toFixed(1)}%)` : null,
+      // Ecommerce metrics
+      (!isLeadGen && e.actualRoas > 0) ? `Actual ROAS: ${e.actualRoas.toFixed(2)}x` : null,
+      (!isLeadGen && e.actualCpa  > 0) ? `Actual CPA: ${e.actualCpa.toFixed(0)}` : null,
+      // Lead gen metrics
+      (isLeadGen && f?.costPerLead   > 0)                          ? `CPL: ${e.actualCpa > 0 ? e.actualCpa.toFixed(0) : f.costPerLead.toFixed(0)} (target: ${account.targetCpa ?? "not set"})` : null,
+      (isLeadGen && f?.leadToSaleRate > 0)                         ? `Lead-to-sale rate: ${(f.leadToSaleRate * 100).toFixed(1)}%` : null,
+      (isLeadGen && f?.averageLeadQualityScore > 0)                 ? `Avg lead quality: ${f.averageLeadQualityScore.toFixed(1)}/10` : null,
+      (isLeadGen)                                                   ? `Offline conversion import: ${f?.offlineConversionImportActive ? "active" : "NOT active — sales not tracked back to clicks"}` : null,
+      c.conversionRate > 0 ? `${isLeadGen ? "Form CVR" : "CVR"}: ${(c.conversionRate * 100).toFixed(2)}% (benchmark: ${(c.industryBenchmarkConversionRate * 100).toFixed(1)}%)` : null,
       `Budget utilisation: ${Math.round(e.budgetUtilizationPercent * 100)}%`,
       !hasRealData ? `⚠ LOW DATA WARNING: This account has very little performance data. Scores are based on setup signals, not conversion history.` : null,
     ].filter(Boolean);
@@ -135,9 +147,9 @@ export async function POST(_req: NextRequest, { params }: Params) {
     } catch { /* non-fatal */ }
   }
 
-  // ── Product + pricing context (Shopping/PMax accounts) ──────────────────────
+  // ── Product + pricing context (ecommerce Shopping/PMax accounts only) ───────
   let productContext = "";
-  if (account.googleAdsId && isShoppingAccount) {
+  if (account.googleAdsId && isShoppingAccount && !isLeadGen) {
     try {
       const [productData, mcIds] = await Promise.all([
         fetchProductPerformance(account.googleAdsId, ctx.orgId).catch(() => null),
@@ -208,9 +220,11 @@ export async function POST(_req: NextRequest, { params }: Params) {
     } catch { /* non-fatal — intelligence still runs without product data */ }
   }
 
-  const accountTypeNote = isShoppingAccount
-    ? `ACCOUNT TYPE: Shopping/Performance Max (feed-based). Do NOT mention Quality Score — it is irrelevant for this account type. Focus on: feed quality, product disapprovals, IS lost to rank (bid competitiveness), ROAS by product segment, price competitiveness.`
-    : `ACCOUNT TYPE: Search/keyword-based. Quality Score and ad relevance are relevant signals.`;
+  const accountTypeNote = isLeadGen
+    ? `ACCOUNT TYPE: Lead generation (${account.businessModel ?? "service/lead gen"}). This is NOT an ecommerce account. Do not mention ROAS, product feeds, or purchase revenue. Focus on: CPL vs target, lead volume, lead quality, form CVR, offline conversion import status, search intent quality, funnel handoff to sales team.`
+    : isShoppingAccount
+    ? `ACCOUNT TYPE: Ecommerce — Shopping/Performance Max (feed-based). Do NOT mention Quality Score. Focus on: product-level ROAS, feed titles, product labels (Heroes/Sidekicks/Zombies), price vs market benchmark, IS lost to rank (bid), zero-conversion products.`
+    : `ACCOUNT TYPE: Ecommerce — Search/keyword-based. Quality Score and ad relevance are relevant signals. Focus on: keyword intent, search term hygiene, ad relevance, landing page alignment.`;
 
   const dataWarning = !hasRealData
     ? `\n⚠ DATA WARNING: This account has very limited performance history (${dataAge != null ? `scored ${dataAge} days ago` : "recently scored"}). The scores reflect setup quality, not conversion outcomes. Do NOT fabricate performance trends. Instead, describe what the setup signals suggest and what to watch for as data accumulates.`
@@ -268,13 +282,18 @@ One sentence: which metric to check in 7 days, and what threshold means the fix 
 ${slackContext ? "If Slack messages are provided: before writing actions, check whether any team change in the last 14 days correlates with a metric shift. If yes, name it explicitly in Root cause.\n" : ""}
 HARD RULES:
 - Every number you cite must appear in the data provided above. Zero fabrication.
-- For Shopping/PMax: never mention Quality Score. Think feed titles, product labels, IS lost to rank (bid), price vs benchmark.
-- For new accounts with no conversion history: actions must focus on setup and data collection, not performance optimisation.
-- If a pattern from the agency doctrine applies (e.g. ROAS good + IS lost to budget = scaling opportunity), apply it and name the conclusion directly.
 - Do not explain what the constraint framework is. Do not define terms. Write for someone who already knows Google Ads.
-- If product data is available: NAME specific products in your actions. "Your top 3 products by revenue are X, Y, Z — but X and Y are priced 18% above market benchmark. A 10% price reduction on these two would likely unlock significantly more conversion volume given their existing click traction." That is the level of specificity required.
-- If price competitiveness data shows products above market: quantify the gap and name the products. Do not speak in generalities about "some products may be overpriced".
-- If products are spending with zero conversions: name them and give a specific recommendation (exclude, review pricing, check landing page).`;
+- For new accounts with no conversion history: actions must focus on setup and data collection, not performance optimisation.
+- If a pattern from the agency doctrine applies, apply it and name the conclusion directly.
+${isLeadGen ? `- LEAD GEN RULES: Never mention ROAS, product feeds, Shopping, or ProductHero labels. Focus on CPL vs target, lead volume, lead quality, form CVR, search intent quality, offline conversion import.
+- If offline conversion import is NOT active: this is always action #1 — without it, the account is optimising for form fills, not actual revenue, and the AI has no signal on lead quality.
+- If CPL is above target: diagnose whether it's a volume problem (not enough clicks → bid/budget) or a quality problem (clicks not converting → landing page, form UX, keyword intent mismatch).
+- Lead quality below par: recommend reviewing which search terms are generating leads and whether they match the actual buyer profile. Suggest adding negative keywords for low-intent queries.
+- Always address the full funnel: clicks → form CVR → lead quality → lead-to-sale rate. A high form CVR with low lead-to-sale rate means the traffic is unqualified, not the landing page.`
+: `- ECOMMERCE RULES: For Shopping/PMax, never mention Quality Score.
+- If product data is available: NAME specific products in your actions. "Your top 3 revenue products are X, Y, Z — but X and Y are priced 18% above market. Dropping their price by 10% could unlock more volume given their existing click traction." That is the required level of specificity.
+- If price competitiveness data shows products above market: quantify the gap and name the products. Do not speak in generalities.
+- If products are spending with zero conversions: name them and give a specific recommendation (exclude, price review, or landing page check).`}`;
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
@@ -283,11 +302,21 @@ HARD RULES:
         const aiStream = await client.messages.stream({
           model: "claude-sonnet-4-6",
           max_tokens: 1200,
-          system: `You are the senior ecommerce Google Ads specialist at a Dutch performance agency. You have deep expertise in Shopping, Performance Max, feed optimisation, product segmentation (Heroes/Sidekicks/Zombies/Villains via ProductHero), conversion rate diagnosis, and scaling strategy.
+          system: isLeadGen
+            ? `You are the senior lead generation Google Ads specialist at a Dutch performance agency. You have deep expertise in B2B and B2C lead gen campaigns — search intent mapping, CPL optimisation, lead quality vs volume trade-offs, offline conversion tracking, CRM integration, and funnel handoff.
+
+You think like a revenue operations expert: you don't just care about leads, you care about leads that turn into clients. You diagnose the full funnel — from keyword intent to form submission to sales outcome.
+
+You write for understudies. Your brief tells a junior specialist exactly what to do this week: which campaigns to adjust, which keywords to exclude, what to say to the client about their landing page or lead follow-up process, and what metric to watch in 7 days.
+
+You never use generic advice. Every sentence cites actual numbers from the data provided. You never mention ROAS or product feeds — they are irrelevant for this account type.
+
+${AGENCY_PHILOSOPHY}`
+            : `You are the senior ecommerce Google Ads specialist at a Dutch performance agency. You have deep expertise in Shopping, Performance Max, feed optimisation, product segmentation (Heroes/Sidekicks/Zombies/Villains via ProductHero), conversion rate diagnosis, and scaling strategy.
 
 You think like a diagnostician, not a commentator. You find the one thing blocking growth and prescribe the exact fix. You write for understudies — someone reading your brief should know exactly what to do this week without needing to ask a follow-up question.
 
-You never explain what a metric is. You never say "you may want to consider". You never give advice that applies to every account equally. Everything you write is specific to THIS account's numbers.
+You never explain what a metric is. You never say "you may want to consider". You never give advice that applies to every account equally. Everything you write is specific to THIS account's numbers and account type.
 
 ${AGENCY_PHILOSOPHY}`,
           messages: [{ role: "user", content: prompt }],
