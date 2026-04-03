@@ -159,16 +159,25 @@ export async function POST(_req: NextRequest, { params }: Params) {
   let productContext = "";
   if (account.googleAdsId && !isLeadGen) {
     try {
-      const [productData, mcIds] = await Promise.all([
-        fetchProductPerformance(account.googleAdsId, ctx.orgId).catch(() => null),
-        getMerchantCenterIds(account.googleAdsId, ctx.orgId).catch(() => [] as string[]),
+      const productTimeout = new Promise<null>((_, reject) =>
+        setTimeout(() => reject(new Error("product+MCC fetch timed out")), 20_000)
+      );
+      const [productData, mcIds] = await Promise.race([
+        Promise.all([
+          fetchProductPerformance(account.googleAdsId, ctx.orgId).catch(() => null),
+          getMerchantCenterIds(account.googleAdsId, ctx.orgId).catch(() => [] as string[]),
+        ]),
+        productTimeout.then(() => [null, [] as string[]] as const),
       ]);
 
       // Price competitiveness — use first Merchant Center ID
       let priceRows: { itemId: string; title: string; priceDiffPercent: number; status: string; effectivePriceMicros: number; benchmarkMicros: number; currencyCode: string }[] = [];
       if (mcIds.length > 0) {
         try {
-          const priceData = await fetchPriceCompetitiveness(mcIds[0], ctx.orgId);
+          const priceData = await Promise.race([
+            fetchPriceCompetitiveness(mcIds[0], ctx.orgId),
+            new Promise<never>((_, reject) => setTimeout(() => reject(new Error("price comp timed out")), 10_000)),
+          ]);
           priceRows = priceData.products ?? [];
         } catch { /* non-fatal */ }
       }

@@ -28,9 +28,13 @@ import {
 
 function safeQuery<T>(
   queryFn: () => Promise<T[]>,
-  label: string
+  label: string,
+  timeoutMs = 15_000
 ): Promise<T[]> {
-  return queryFn().catch((err: unknown) => {
+  const timeout = new Promise<T[]>((_, reject) =>
+    setTimeout(() => reject(new Error(`${label} timed out after ${timeoutMs}ms`)), timeoutMs)
+  );
+  return Promise.race([queryFn(), timeout]).catch((err: unknown) => {
     console.warn(`[google-ads] ${label} failed:`, err instanceof Error ? err.message : err);
     return [];
   });

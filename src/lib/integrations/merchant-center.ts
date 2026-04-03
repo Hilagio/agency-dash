@@ -105,7 +105,7 @@ export async function getMerchantCenterIds(
       refresh_token:     refreshToken,
     });
 
-    const rows = await customer.query(`
+    const queryPromise = customer.query(`
       SELECT
         product_link.product_link_id,
         product_link.type,
@@ -113,6 +113,10 @@ export async function getMerchantCenterIds(
       FROM product_link
       WHERE product_link.type = 'MERCHANT_CENTER'
     `);
+    const timeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("product_link query timed out after 10s")), 10_000)
+    );
+    const rows = await Promise.race([queryPromise, timeout]);
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return rows.map((r: any) => String(r.product_link?.merchant_center?.merchant_center_id ?? "")).filter(Boolean);
