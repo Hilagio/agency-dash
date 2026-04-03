@@ -194,9 +194,27 @@ function scoreTraffic(s: ConstraintSignals["traffic"]): BucketScore {
   };
 }
 
-function scoreConversion(s: ConstraintSignals["conversion"]): BucketScore {
+function scoreConversion(s: ConstraintSignals["conversion"], full: ConstraintSignals): BucketScore {
   const signals: string[] = [];
   let score = 100;
+
+  // ── Cross-bucket context for CVR interpretation ────────────────────────────
+  // A CVR drop caused by budget scaling (more volume → lower-intent queries)
+  // is fundamentally different from a CVR drop on flat spend (broken funnel).
+  // Signals that suggest volume-dilution rather than a real conversion problem:
+  //   1. ROAS is still at or above target despite the CVR drop
+  //   2. CTR also dropped (traffic mix shifted toward broader, lower-intent queries)
+  //   3. Budget is fully utilised (consistent with a recent budget increase)
+  const e = full.economics;
+  const t = full.traffic;
+  const roasHealthy  = e.targetRoas > 0 && e.actualRoas > 0 && e.actualRoas >= e.targetRoas * 0.85;
+  const roasTrending = e.actualRoasBaseline > 0 && e.actualRoas > 0 && e.actualRoas / e.actualRoasBaseline >= 0.8;
+  const ctrAlsoDown  = t.clickThroughRateBaseline > 0 && t.clickThroughRate > 0 &&
+                       t.clickThroughRate / t.clickThroughRateBaseline < 0.85;
+  const budgetMaxed  = e.budgetUtilizationPercent >= 0.95;
+  // If ROAS is holding up AND CTR dropped AND budget is maxed out, the CVR
+  // decline is most likely a traffic-mix / volume-dilution effect.
+  const likelyVolumeDilution = (roasHealthy || roasTrending) && (ctrAlsoDown || budgetMaxed);
 
   // PRIMARY: self-trend — is CVR deteriorating vs this account's own 6-month average?
   if (s.conversionRateBaseline > 0) {
@@ -204,20 +222,32 @@ function scoreConversion(s: ConstraintSignals["conversion"]): BucketScore {
       ? s.conversionRate / s.conversionRateBaseline
       : 0;
     if (cvrTrend === 0) {
-      // No conversions at all in the recent window — critical
+      // No conversions at all in the recent window — critical regardless of context
       score -= 40;
       signals.push(`No conversions recorded in the last 14 days — conversion has stopped`);
     } else if (cvrTrend < 0.6) {
-      score -= 35;
-      signals.push(
-        `CVR down ${Math.round((1 - cvrTrend) * 100)}% vs account's 6-month average ` +
-        `(${(s.conversionRate * 100).toFixed(2)}% vs ${(s.conversionRateBaseline * 100).toFixed(2)}%) — significant deterioration`
-      );
+      if (likelyVolumeDilution) {
+        // Reduce penalty — ROAS is holding, so this looks like scale dilution not a broken funnel
+        score -= 15;
+        signals.push(
+          `CVR down ${Math.round((1 - cvrTrend) * 100)}% vs 6-month average ` +
+          `(${(s.conversionRate * 100).toFixed(2)}% vs ${(s.conversionRateBaseline * 100).toFixed(2)}%) — ` +
+          `likely traffic-mix dilution from budget scaling (ROAS ${roasHealthy ? "at target" : "near baseline"}, CTR${ctrAlsoDown ? " also down" : ""}) — ` +
+          `confirm by checking if CVR drop tracks the budget increase date`
+        );
+      } else {
+        score -= 35;
+        signals.push(
+          `CVR down ${Math.round((1 - cvrTrend) * 100)}% vs 6-month average ` +
+          `(${(s.conversionRate * 100).toFixed(2)}% vs ${(s.conversionRateBaseline * 100).toFixed(2)}%) — significant deterioration`
+        );
+      }
     } else if (cvrTrend < 0.8) {
-      score -= 15;
+      score -= likelyVolumeDilution ? 5 : 15;
       signals.push(
-        `CVR down ${Math.round((1 - cvrTrend) * 100)}% vs account's 6-month average ` +
-        `(${(s.conversionRate * 100).toFixed(2)}% vs ${(s.conversionRateBaseline * 100).toFixed(2)}%)`
+        `CVR down ${Math.round((1 - cvrTrend) * 100)}% vs 6-month average ` +
+        `(${(s.conversionRate * 100).toFixed(2)}% vs ${(s.conversionRateBaseline * 100).toFixed(2)}%)` +
+        (likelyVolumeDilution ? ` — consistent with increased traffic volume` : "")
       );
     } else if (cvrTrend < 0.93) {
       score -= 5;
@@ -228,18 +258,15 @@ function scoreConversion(s: ConstraintSignals["conversion"]): BucketScore {
     // cvrTrend ≥ 0.93: stable or improving — no penalty
   } else {
     // FALLBACK: industry benchmark — only when <100 baseline clicks; treat as informational only
-    // Very conservative thresholds since benchmarks don't account for audience or market
     const cvRatio = s.industryBenchmarkConversionRate > 0
       ? s.conversionRate / s.industryBenchmarkConversionRate
       : 1;
     if (cvRatio < 0.2) {
-      // Extremely far below any reasonable benchmark — likely tracking issue or broken funnel
       score -= 15;
       signals.push(
         `CVR ${(s.conversionRate * 100).toFixed(2)}% is very low vs industry benchmark — check conversion tracking`
       );
     }
-    // Above 20% of benchmark: not enough context to flag without own history
   }
 
   // Mobile-friendly clicks — only penalise when we have real measured data (> 0)
@@ -475,7 +502,7 @@ export function scoreConstraints(signals: ConstraintSignals): ScoringResult {
   const buckets: BucketScore[] = [
     scoreMeasurement(signals.measurement),
     scoreTraffic(signals.traffic),
-    scoreConversion(signals.conversion),
+    scoreConversion(signals.conversion, signals),
     scoreFunnel(signals.funnel),
     scoreEconomics(signals.economics),
   ];

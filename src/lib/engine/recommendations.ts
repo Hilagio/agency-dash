@@ -226,19 +226,33 @@ const conversionRules: RuleSet = (s) => {
       ? c.conversionRate / c.industryBenchmarkConversionRate
       : 1;
 
+  // Cross-check: if ROAS is healthy and CTR also dropped, the CVR dip may be
+  // volume dilution from a budget scale-up rather than a broken landing page.
+  const e = s.economics;
+  const t = s.traffic;
+  const roasHealthy     = e.targetRoas > 0 && e.actualRoas > 0 && e.actualRoas >= e.targetRoas * 0.85;
+  const ctrAlsoDown     = t.clickThroughRateBaseline > 0 && t.clickThroughRate > 0 &&
+                          t.clickThroughRate / t.clickThroughRateBaseline < 0.85;
+  const budgetMaxed     = e.budgetUtilizationPercent >= 0.95;
+  const likelyDilution  = (roasHealthy) && (ctrAlsoDown || budgetMaxed);
+
   if (cvRatio < 0.5) {
     recs.push({
       bucket: "CONVERSION",
-      title: "Landing page is the primary constraint — fix before scaling spend",
-      description:
-        `CVR ${(c.conversionRate * 100).toFixed(2)}% is less than half of industry benchmark. ` +
-        "More traffic will make results worse. Conduct CRO audit: form friction, headline clarity, " +
-        "trust signals, page speed. Consider dedicated landing pages per campaign.",
-      impact: "HIGH",
+      title: likelyDilution
+        ? "CVR below benchmark — verify whether budget scaling is the cause"
+        : "Landing page is the primary constraint — fix before scaling spend",
+      description: likelyDilution
+        ? `CVR ${(c.conversionRate * 100).toFixed(2)}% vs industry benchmark, but ROAS is ${roasHealthy ? "at or near target" : "holding"} and ${ctrAlsoDown ? "CTR also dropped" : "budget is fully utilised"} — this pattern is consistent with traffic-mix dilution from budget scaling (more volume captures lower-intent queries). ` +
+          "Before treating this as a funnel problem: segment CVR by campaign, check if the drop started when budget increased, and verify the absolute conversion count is growing even if rate fell. If CVR is down uniformly across all campaigns on flat spend, then escalate to a CRO audit."
+        : `CVR ${(c.conversionRate * 100).toFixed(2)}% is less than half the industry benchmark. ` +
+          "More traffic will make results worse. Conduct CRO audit: form friction, headline clarity, " +
+          "trust signals, page speed. Consider dedicated landing pages per campaign.",
+      impact: likelyDilution ? "MEDIUM" : "HIGH",
       effort: "HARD",
       safeToAutomate: false,
       actionType: "CRO_AUDIT",
-      isEscalation: true,
+      isEscalation: !likelyDilution,
     });
   }
 
