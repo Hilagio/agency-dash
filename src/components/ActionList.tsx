@@ -507,7 +507,7 @@ export function ActionList({ actions: initialActions, accountId, orgMembers, onT
     return "open";
   };
 
-  const counts = { open: 0, snoozed: 0, done: 0 };
+  const counts: Record<string, number> = { open: 0, snoozed: 0, done: 0 };
   actions.forEach(a => { counts[classify(a)]++; });
 
   const visible = filter === "all" ? actions : actions.filter(a => classify(a) === filter);
