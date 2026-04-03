@@ -1499,10 +1499,11 @@ function renderIntelligence(text: string, streaming: boolean): React.ReactNode {
 // ─── AI Intelligence Panel ────────────────────────────────────────────────────
 
 function IntelligencePanel({ accountId }: { accountId: string }) {
-  const [text, setText]       = useState("");
-  const [loading, setLoading] = useState(false);
-  const [done, setDone]       = useState(false);
-  const [error, setError]     = useState<string | null>(null);
+  const [text, setText]               = useState("");
+  const [loading, setLoading]         = useState(false);
+  const [done, setDone]               = useState(false);
+  const [error, setError]             = useState<string | null>(null);
+  const [slackWarning, setSlackWarning] = useState<string | null>(null);
 
   const generate = async () => {
     if (loading) return;
@@ -1510,6 +1511,7 @@ function IntelligencePanel({ accountId }: { accountId: string }) {
     setText("");
     setDone(false);
     setError(null);
+    setSlackWarning(null);
 
     try {
       const res = await fetch(`/api/accounts/${accountId}/intelligence`, { method: "POST" });
@@ -1525,7 +1527,11 @@ function IntelligencePanel({ accountId }: { accountId: string }) {
           if (!line.startsWith("data: ")) continue;
           const payload = JSON.parse(line.slice(6));
           if (payload.error) { setError(payload.error); break; }
-          if (payload.done)  { setDone(true); break; }
+          if (payload.done)  {
+            setDone(true);
+            if (payload.slackError) setSlackWarning(payload.slackError);
+            break;
+          }
           if (payload.text)  setText(prev => prev + payload.text);
         }
       }
@@ -1584,6 +1590,12 @@ function IntelligencePanel({ accountId }: { accountId: string }) {
         <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
           {renderIntelligence(text, loading && !done)}
         </div>
+      )}
+
+      {slackWarning && (
+        <p style={{ fontSize: 11, color: "#f59e0b", margin: "10px 0 0", lineHeight: 1.5 }}>
+          ⚠ {slackWarning}
+        </p>
       )}
     </div>
   );

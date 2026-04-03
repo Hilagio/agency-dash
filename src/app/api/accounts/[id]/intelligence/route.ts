@@ -140,11 +140,19 @@ export async function POST(_req: NextRequest, { params }: Params) {
     : "";
 
   let slackContext = "";
-  if (slackConn && account.slackChannelId && account.slackChannelName) {
+  let slackError = "";
+  if (!slackConn) {
+    slackError = "No Slack connection configured for this organisation (add bot token in Settings → Slack).";
+  } else if (!account.slackChannelId) {
+    slackError = "No Slack channel linked to this account.";
+  } else {
     try {
       const msgs = await fetchSlackMessages(slackConn.botToken, account.slackChannelId, 90);
-      slackContext = msgs.length > 0 ? "\n" + formatSlackForContext(msgs, account.slackChannelName) : "";
-    } catch { /* non-fatal */ }
+      slackContext = msgs.length > 0 ? "\n" + formatSlackForContext(msgs, account.slackChannelName!) : "";
+      if (msgs.length === 0) slackError = `Slack channel #${account.slackChannelName} returned 0 messages — bot may not be invited to this channel. Run /invite @<botname> inside the channel.`;
+    } catch (e) {
+      slackError = `Slack fetch failed: ${e instanceof Error ? e.message : String(e)}`;
+    }
   }
 
   // ── Product + pricing context (all ecommerce accounts — not just Shopping/PMax) ─
@@ -238,8 +246,18 @@ export async function POST(_req: NextRequest, { params }: Params) {
     snapshot.scoreEconomics
   );
 
+  const businessModelLabel: Record<string, string> = {
+    ecommerce: "Ecommerce",
+    dtc:       "Direct-to-consumer (DTC)",
+    dropship:  "Ecommerce (dropshipping fulfilment model — retailer, not manufacturer)",
+    lead_gen:  "Lead generation",
+    service:   "Service / lead generation",
+    saas:      "SaaS",
+  };
+  const modelLabel = account.businessModel ? (businessModelLabel[account.businessModel] ?? account.businessModel) : null;
+
   const prompt = `ACCOUNT: ${account.name}
-INDUSTRY: ${account.industry ?? "not set"} | CURRENCY: ${account.currency}
+INDUSTRY: ${account.industry ?? "not set"} | CURRENCY: ${account.currency}${modelLabel ? ` | BUSINESS MODEL: ${modelLabel}` : ""}
 ${accountTypeNote}
 ${dataWarning}
 
@@ -285,6 +303,7 @@ HARD RULES:
 - Do not explain what the constraint framework is. Do not define terms. Write for someone who already knows Google Ads.
 - For new accounts with no conversion history: actions must focus on setup and data collection, not performance optimisation.
 - If a pattern from the agency doctrine applies, apply it and name the conclusion directly.
+- FRAMING RULE: Refer to the client by their name or as "the account" / "the store". Never call them a "dropshipper" — if the business model is dropshipping, it is a fulfilment detail, not their identity. They are an ecommerce retailer.
 - BUDGET INCREASE RULE: NEVER recommend increasing budget if actual ROAS is below the target ROAS. Spending more money at a loss makes the situation worse. If IS lost to budget is high but ROAS is below target, the problem is efficiency — fix conversion rate, search term hygiene, or pricing FIRST. Only recommend a budget increase when actual ROAS ≥ target ROAS AND budget utilisation is at 100%.
 ${isLeadGen ? `- LEAD GEN RULES: Never mention ROAS, product feeds, Shopping, or ProductHero labels. Focus on CPL vs target, lead volume, lead quality, form CVR, search intent quality, offline conversion import.
 - If offline conversion import is NOT active: this is always action #1 — without it, the account is optimising for form fills, not actual revenue, and the AI has no signal on lead quality.
@@ -328,7 +347,7 @@ ${AGENCY_PHILOSOPHY}`,
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: chunk.delta.text })}\n\n`));
           }
         }
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true })}\n\n`));
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true, slackError: slackError || undefined })}\n\n`));
         controller.close();
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Stream error";
