@@ -157,6 +157,65 @@ Priority sequence (upstream blocks everything downstream):
   5. BUSINESS ECONOMICS — Is the account profitable at scale?
      Only relevant once everything upstream is working.
 
+--- GOAL CLARITY (no goal = no bottleneck) ---
+Without a defined goal, every number is just a number. A CPA of €45 is good or bad only relative to a target.
+Before bottleneck analysis, run the GOAL CLARITY TEST:
+  1. What is the OUTPUT METRIC? (revenue, profit, MRR, closed deals — not "number go up")
+  2. What is the TARGET? A specific number with a time horizon. ("€80K/month revenue by Q1 2027")
+  3. What are the GUARDRAILS? (max CAC, min ROAS, min margin, LTV:CAC ratio of 3:1)
+     → Without guardrails, you can always hit a growth goal by losing money.
+  4. Where does Google Ads fit? It's one system inside the acquisition system inside the business.
+  5. What does GOOD ENOUGH look like? Know when to stop optimising a metric and move to the next constraint.
+
+GOALS AS EQUATIONS — every goal is an equation of inputs × efficiency × value = output:
+  Lead gen:   Revenue = Deals × Deal Value = SQLs × Win Rate × Deal Value = Leads × L-to-SQL Rate × Win Rate × Deal Value
+  Ecommerce:  Profit = Orders × AOV × Margin = Sessions × Add-to-cart % × Checkout % × Purchase % × AOV × Margin
+
+Plot current numbers into the equation → compute the gap → find which node is furthest from target.
+That node is your bottleneck. This makes the problem numerical, not emotional.
+
+ALWAYS SEGMENT DOWN — account-level averages hide real problems:
+  Branded vs non-branded, campaign type, product category, device type.
+  Example: blended CVR = 5% looks fine. But branded = 12%, non-branded = 0.8%.
+  Blended view says "traffic is the constraint." Segmented view reveals a conversion crisis.
+  Never diagnose from blended metrics. Never report blended ROAS — branded inflates every number.
+
+--- VOLUME VS EFFICIENCY BOTTLENECKS ---
+Every bottleneck is one of three types — identify which before choosing an action:
+
+BLOCKAGE (REMOVE first): Something actively broken that blocks the system.
+  → Fix before anything else: broken tracking, broken forms, disapproved products, broken checkout.
+  → Applying MORE or BETTER to a blocked system is always expensive waste.
+
+VOLUME bottleneck: System works, but not enough input.
+  → Signal: unit economics are healthy (CVR, close rate, AOV all good) but output is too low.
+  → Signal: IS lost to budget is high, impression share is 35%, budget utilised 100%.
+  → Lever: MORE — increase budget, broaden targeting, expand feed coverage.
+  → Do NOT apply BETTER here. Optimising a landing page that already converts well while starved of traffic is productive waste.
+
+EFFICIENCY bottleneck: Enough input, but wasting what you already have.
+  → Signal: plenty of traffic/clicks/leads but conversion rate, close rate, or AOV is poor.
+  → Signal: high spend, low conversions; high lead volume, low SQL rate.
+  → Lever: BETTER — improve landing pages, fix mobile UX, improve lead qualification, fix offer.
+  → Do NOT apply MORE here. Scaling budget into a broken funnel is "turning up the water pressure when the hose has a leak."
+
+NEW lever: Adding missing pieces when the existing system has hit a structural ceiling.
+  → Only after MORE and BETTER have been exhausted at current scope.
+  → New campaign type, new market, new funnel, new offer tier.
+  → New is seductive (feels creative, impresses stakeholders) but is the most dangerous lever — it adds complexity.
+  → Default to MORE and BETTER first. Only use NEW when you've genuinely hit a ceiling.
+
+VOLUME AND EFFICIENCY ALTERNATE like bicycle pedals — you cannot push both at once:
+  Push volume (MORE) → output increases → efficiency constraint appears → fix efficiency (BETTER)
+  → efficiency improves → push volume again → repeat.
+  This oscillation pattern is how accounts scale from plateau to plateau.
+  Trying to do both simultaneously splits focus and usually solves neither.
+
+LEVER MISMATCHES (common expensive mistakes):
+  MORE when you needed BETTER: scaled budget into a 1% CVR funnel. Traffic doubled. Waste doubled.
+  BETTER when you needed MORE: spent 3 months perfecting a campaign with 35% impression share. Revenue barely moved.
+  NEW when you needed BETTER: launched Demand Gen because search "plateaued" — but CVR was 1.2%. The plateau was a leak, not a ceiling.
+
 DIAGNOSING WEBSITE VS ADS PROBLEMS:
 This is a critical skill. When click volume is healthy but conversions are low:
   - Pull product-level data: which products are getting the clicks?
