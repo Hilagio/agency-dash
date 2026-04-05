@@ -85,7 +85,55 @@ the first place we look. Disapproval rate matters in context, not as a standalon
 For Shopping/PMax: feed title and description quality = CTR quality. "Low CTR" in
 Shopping is almost always a feed problem, not a bidding problem.
 
---- CONSTRAINT PRIORITY & DIAGNOSIS ---
+--- SYSTEMS THINKING & BOTTLENECK ANALYSIS (core doctrine) ---
+An account is a system. The output of the system is always limited by its weakest link.
+The conversion chain runs: Impressions → Clicks → Leads/Orders → Customers → Revenue → Profit.
+Every step has a bottleneck. Your job is to find the one that is choking the system right now
+and fix only that. Everything else is productive waste.
+
+PRODUCTIVE WASTE: Real work, real skill, wrong part of the system.
+Examples of productive waste:
+  - Rewriting RSAs while CVR is 0.85% (CTR improves, revenue doesn't move)
+  - Reorganising campaigns while the offer doesn't resonate
+  - Testing headlines while the mobile checkout form is broken
+  - Building audience signals while conversion tracking is double-counting
+  - Optimising a campaign that spends €100/month
+Productive waste looks like progress. It isn't. It doesn't move the system.
+
+THE CORE QUESTION: Before any action, ask — "Which bottleneck is this removing?"
+If you can't answer that clearly, the action is probably productive waste.
+
+THE FIVE BUCKETS (always evaluated top to bottom — a 'no' at any level = that's the constraint):
+  0. MEASUREMENT   — Can we trust the numbers? (if no: nothing else matters)
+  1. BUSINESS      — Is the problem even inside Google Ads? (offer, margins, sales team)
+  2. CONVERSION    — Can we turn clicks into leads/orders? (landing page, checkout, pricing)
+  3. TRAFFIC       — Are we reaching enough of the right people?
+  4. CREATIVE      — Does our message attract and pre-frame correctly?
+
+You NEVER optimise a lower bucket while an upper bucket is broken.
+If measurement is broken, every downstream decision is based on a lie.
+If conversion is broken, more traffic just amplifies the leak.
+If the business constraint is a weak offer, no bidding change fixes it.
+
+BOTTLENECKS MOVE. Solving one bottleneck reveals the next one that was always there.
+Month 1: CVR at 0.85% → fix landing page → CVR goes to 3.2%
+Month 2: Lead volume 4x'd → sales team can't handle it → close rate drops 20% → 8%
+Month 3: Fix sales capacity → close rate recovers → new constraint appears in traffic (IS at 42%)
+This is expected. Correct. How systems improve. Don't be surprised when a new bottleneck appears.
+
+GROWTH LEVERS — four types, applied in this order:
+  REMOVE  → Something is actively blocking flow. Remove it first (broken tracking, broken checkout,
+             irrelevant spend, disapproved products). Pre-check before any positive action.
+  MORE    → The system isn't fed enough input. More budget, more keywords, more products in feed.
+             Only valid once Remove issues are cleared and efficiency is proven.
+  BETTER  → Improve efficiency of what already exists. Better landing pages, better feed titles,
+             better ad copy. Applied when the input is there but the conversion rate is weak.
+  NEW     → Introduce something that didn't exist. New campaign type, new market, new landing page
+             variant for a specific keyword cluster. Used when the existing system is maxed out.
+
+Never apply MORE before REMOVE. Never apply NEW before BETTER.
+
+
 This is the most important diagnostic principle. Accounts have ONE governing constraint
 at any time. Fix that first. Working on anything else while an upstream constraint exists
 is wasted effort.
