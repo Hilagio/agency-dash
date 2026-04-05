@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, RefreshCw, MessageSquare, ListChecks, BarChart2, Loader2, Search, BookOpen, ClipboardList, Send, Pencil, X, CheckSquare, Sparkles, Package, Brain, FlaskConical, Zap } from "lucide-react";
+import { ArrowLeft, RefreshCw, MessageSquare, ListChecks, BarChart2, Loader2, Search, BookOpen, ClipboardList, Send, Pencil, X, CheckSquare, Sparkles, Package, Brain, FlaskConical, Zap, Copy, Check } from "lucide-react";
 import { ScoreBuckets } from "@/components/ScoreBuckets";
 import { ScoreHistory } from "@/components/ScoreHistory";
 import { ActionList } from "@/components/ActionList";
@@ -1512,6 +1512,14 @@ function IntelligencePanel({ accountId }: { accountId: string }) {
   const [done, setDone]               = useState(false);
   const [error, setError]             = useState<string | null>(null);
   const [slackWarning, setSlackWarning] = useState<string | null>(null);
+  const [copied, setCopied]           = useState(false);
+
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
 
   const generate = async () => {
     if (loading) return;
@@ -1563,25 +1571,44 @@ function IntelligencePanel({ accountId }: { accountId: string }) {
             AI Intelligence
           </span>
         </div>
-        <button
-          onClick={generate}
-          disabled={loading}
-          style={{
-            display: "flex", alignItems: "center", gap: 5,
-            background: done ? "transparent" : "rgba(192,132,252,0.1)",
-            border: "1px solid rgba(192,132,252,0.25)",
-            borderRadius: 7, padding: "5px 12px",
-            fontSize: 11, fontWeight: 500, color: "#c084fc",
-            cursor: loading ? "not-allowed" : "pointer",
-            opacity: loading ? 0.6 : 1,
-          }}
-        >
-          {loading
-            ? <><Loader2 size={11} className="animate-spin" /> Analysing…</>
-            : done
-              ? <><Sparkles size={11} /> Regenerate</>
-              : <><Sparkles size={11} /> Generate insight</>}
-        </button>
+        <div style={{ display: "flex", gap: 6 }}>
+          {done && text && (
+            <button
+              onClick={copyToClipboard}
+              title="Copy to clipboard"
+              style={{
+                display: "flex", alignItems: "center", gap: 5,
+                background: copied ? "rgba(74,222,128,0.1)" : "transparent",
+                border: `1px solid ${copied ? "rgba(74,222,128,0.3)" : "var(--border-2)"}`,
+                borderRadius: 7, padding: "5px 12px",
+                fontSize: 11, fontWeight: 500,
+                color: copied ? "#4ade80" : "var(--text-dim)",
+                cursor: "pointer", transition: "all 0.15s",
+              }}
+            >
+              {copied ? <><Check size={11} /> Copied</> : <><Copy size={11} /> Copy</>}
+            </button>
+          )}
+          <button
+            onClick={generate}
+            disabled={loading}
+            style={{
+              display: "flex", alignItems: "center", gap: 5,
+              background: done ? "transparent" : "rgba(192,132,252,0.1)",
+              border: "1px solid rgba(192,132,252,0.25)",
+              borderRadius: 7, padding: "5px 12px",
+              fontSize: 11, fontWeight: 500, color: "#c084fc",
+              cursor: loading ? "not-allowed" : "pointer",
+              opacity: loading ? 0.6 : 1,
+            }}
+          >
+            {loading
+              ? <><Loader2 size={11} className="animate-spin" /> Analysing…</>
+              : done
+                ? <><Sparkles size={11} /> Regenerate</>
+                : <><Sparkles size={11} /> Generate insight</>}
+          </button>
+        </div>
       </div>
 
       {error && (
