@@ -124,14 +124,23 @@ export async function getMerchantCenterIds(
 
     if (!res.ok) {
       const body = await res.text().catch(() => "");
-      console.warn(`[merchant-center] product_link REST ${res.status}:`, body);
+      console.warn(`[merchant-center] product_link REST ${res.status} for customer ${customerId}:`, body);
       return [];
     }
 
-    const json = await res.json() as { results?: Array<{ productLink?: { merchantCenter?: { merchantCenterId?: string } } }> };
-    return (json.results ?? [])
-      .map(r => String(r.productLink?.merchantCenter?.merchantCenterId ?? ""))
+    const json = await res.json() as { results?: Array<Record<string, unknown>> };
+    console.log(`[merchant-center] product_link raw response for ${customerId}:`, JSON.stringify(json.results?.slice(0, 2)));
+
+    const ids = (json.results ?? [])
+      .map(r => {
+        // REST camelCase: productLink.merchantCenter.merchantCenterId
+        const pl = r.productLink as { merchantCenter?: { merchantCenterId?: string } } | undefined;
+        return String(pl?.merchantCenter?.merchantCenterId ?? "");
+      })
       .filter(Boolean);
+
+    console.log(`[merchant-center] found merchantCenterIds for ${customerId}:`, ids);
+    return ids;
 
   } catch (err) {
     console.warn("[merchant-center] getMerchantCenterIds failed:", err instanceof Error ? err.message : err);
