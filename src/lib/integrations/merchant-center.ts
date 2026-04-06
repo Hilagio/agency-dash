@@ -8,7 +8,6 @@
  * they authenticated before this scope was added.
  */
 
-import { GoogleAdsApi } from "google-ads-api";
 import { prisma } from "@/lib/db";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
@@ -94,34 +93,48 @@ export async function getMerchantCenterIds(
   if (!refreshToken) return [];
 
   try {
-    const client   = new GoogleAdsApi({
-      client_id:       process.env.GOOGLE_ADS_CLIENT_ID!,
-      client_secret:   process.env.GOOGLE_ADS_CLIENT_SECRET!,
-      developer_token: process.env.GOOGLE_ADS_DEVELOPER_TOKEN!,
-    });
-    const customer = client.Customer({
-      customer_id:       customerId,
-      login_customer_id: loginCustomerId,
-      refresh_token:     refreshToken,
-    });
+    const accessToken = await getAccessToken(refreshToken);
 
-    const queryPromise = customer.query(`
-      SELECT
-        product_link.product_link_id,
-        product_link.type,
-        product_link.merchant_center.merchant_center_id
-      FROM product_link
-      WHERE product_link.type = 'MERCHANT_CENTER'
-    `);
-    const timeout = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error("product_link query timed out after 10s")), 10_000)
-    );
-    const rows = await Promise.race([queryPromise, timeout]);
+    const ac    = new AbortController();
+    const timer = setTimeout(() => ac.abort(), 10_000);
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return rows.map((r: any) => String(r.product_link?.merchant_center?.merchant_center_id ?? "")).filter(Boolean);
+    const headers: Record<string, string> = {
+      Authorization:     `Bearer ${accessToken}`,
+      "developer-token": process.env.GOOGLE_ADS_DEVELOPER_TOKEN!,
+      "Content-Type":    "application/json",
+    };
+    if (loginCustomerId) headers["login-customer-id"] = loginCustomerId;
+
+    let res: Response;
+    try {
+      res = await fetch(
+        `https://googleads.googleapis.com/v23/customers/${customerId}/googleAds:search`,
+        {
+          method:  "POST",
+          headers,
+          body:    JSON.stringify({
+            query: `SELECT product_link.product_link_id, product_link.type, product_link.merchant_center.merchant_center_id FROM product_link WHERE product_link.type = 'MERCHANT_CENTER'`,
+          }),
+          signal: ac.signal,
+        }
+      );
+    } finally {
+      clearTimeout(timer);
+    }
+
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      console.warn(`[merchant-center] product_link REST ${res.status}:`, body);
+      return [];
+    }
+
+    const json = await res.json() as { results?: Array<{ productLink?: { merchantCenter?: { merchantCenterId?: string } } }> };
+    return (json.results ?? [])
+      .map(r => String(r.productLink?.merchantCenter?.merchantCenterId ?? ""))
+      .filter(Boolean);
+
   } catch (err) {
-    console.warn("[merchant-center] product_link query failed:", err instanceof Error ? err.message : err);
+    console.warn("[merchant-center] getMerchantCenterIds failed:", err instanceof Error ? err.message : err);
     return [];
   }
 }
