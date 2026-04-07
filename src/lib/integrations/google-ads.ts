@@ -256,18 +256,16 @@ function getIndustryCvrBenchmark(
 // ─── Date helpers ─────────────────────────────────────────────────────────────
 
 function last30Days(): { start: string; end: string } {
-  const end   = new Date();
-  const start = new Date();
-  start.setDate(start.getDate() - 30);
-  const fmt = (d: Date) => d.toISOString().slice(0, 10).replace(/-/g, "-");
+  const fmt   = (d: Date) => d.toISOString().slice(0, 10);
+  const end   = new Date(); end.setDate(end.getDate() - 1);   // yesterday — today is incomplete
+  const start = new Date(); start.setDate(start.getDate() - 30);
   return { start: fmt(start), end: fmt(end) };
 }
 
 function last90Days(): { start: string; end: string } {
-  const end   = new Date();
-  const start = new Date();
-  start.setDate(start.getDate() - 90);
-  const fmt = (d: Date) => d.toISOString().slice(0, 10).replace(/-/g, "-");
+  const fmt   = (d: Date) => d.toISOString().slice(0, 10);
+  const end   = new Date(); end.setDate(end.getDate() - 1);
+  const start = new Date(); start.setDate(start.getDate() - 90);
   return { start: fmt(start), end: fmt(end) };
 }
 
@@ -1055,12 +1053,18 @@ export async function fetchProductPerformance(customerId: string, orgId?: string
   const isLostRank       = campaignRows.reduce((s, r) => s + Number(r.metrics?.search_rank_lost_impression_share ?? 0), 0) / campaignRows.length;
 
   // ── Product-level performance ─────────────────────────────────────────────
+  // shopping_performance_view returns one row per (product × campaign).
+  // We aggregate by itemId to get totals across all campaigns.
+  // NOTE: PMax conversions_value uses cross-channel attribution — revenue
+  //       here may be higher than what you see in the Shopping-specific view
+  //       in the Google Ads UI if PMax is attributing from non-Shopping surfaces.
   const productRows = await safeQuery(
     () => customer.query(`
       SELECT
         segments.product_item_id,
         segments.product_title,
         segments.product_brand,
+        campaign.advertising_channel_type,
         metrics.clicks,
         metrics.impressions,
         metrics.ctr,
@@ -1075,6 +1079,14 @@ export async function fetchProductPerformance(customerId: string, orgId?: string
   );
 
   // Aggregate by product item ID (same product can appear across campaigns)
+  // Log campaign type distribution to diagnose double-counting
+  const campaignTypeCounts: Record<string, number> = {};
+  for (const r of productRows) {
+    const ct = String((r.campaign as {advertising_channel_type?: string} | undefined)?.advertising_channel_type ?? "UNKNOWN");
+    campaignTypeCounts[ct] = (campaignTypeCounts[ct] ?? 0) + 1;
+  }
+  console.log(`[product-perf] ${customerId}: ${productRows.length} rows from shopping_performance_view, campaign types:`, campaignTypeCounts);
+
   const productMap = new Map<string, ProductRow>();
   for (const r of productRows) {
     const itemId = String(r.segments?.product_item_id ?? "unknown");
