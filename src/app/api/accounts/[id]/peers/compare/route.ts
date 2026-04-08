@@ -249,54 +249,42 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   const hasProducts = prodBlockA || prodBlockB;
 
-  const prompt = `You are doing a performance gap analysis between two ${accountA.industry ?? "ecommerce"} accounts managed by the same agency in the same market.
+  const prompt = `Internal agency gap analysis. Two ${accountA.industry ?? "ecommerce"} stores, same market, managed by same agency.
 
 ${AGENCY_PHILOSOPHY}
 
-⚠ INTERNAL AGENCY ANALYSIS — not for client communication. Be blunt and specific.
-
---- ACCOUNT A: ${accountA.name} ---
+--- ${accountA.name} ---
 ${blockA}
-${prodBlockA ? `\n${prodBlockA}` : "\n(No product data available)"}
+${prodBlockA ? `\n${prodBlockA}` : "\n(No product data)"}
 
---- ACCOUNT B: ${accountB.name} ---
+--- ${accountB.name} ---
 ${blockB}
-${prodBlockB ? `\n${prodBlockB}` : "\n(No product data available)"}
+${prodBlockB ? `\n${prodBlockB}` : "\n(No product data)"}
 
 ---
 
-Identify which account is genuinely performing better based on the revenue, ROAS, and product data — not just bucket scores (scores can be misleading if targets aren't set). Explain the gap, and what the laggard needs to fix.
+Write a gap analysis. Use this structure, nothing else:
 
-Use EXACTLY this structure:
+## ${accountA.name} vs ${accountB.name}
 
-## Performance gap: ${accountA.name} vs ${accountB.name}
+**Revenue & efficiency gap**
+2–3 sentences max. Lead with ROAS and revenue. Cite numbers. Done.
 
-**Who's ahead and by how much**
-One paragraph. Lead with revenue and ROAS comparison (the ultimate truth), then CTR, CVR, IS, CPC, product-level data. Use actual numbers from the data. Quantify every gap ("ROAS 4.1x vs 2.3x — ${leader} is 1.8x more efficient per euro spent").
+**Why — root causes only**
+Bullet points. Each bullet = one cause, one consequence. No padding, no transitions. If pricing is a factor, name the products and the % gap. If search term hygiene is a factor, say so and why it matters here specifically. Maximum 5 bullets.
+${hasProducts ? `
+**Product & pricing**
+Which account has the better product mix? Name the top products that are driving the gap. Name specific overpriced products that are killing conversion. 3–5 bullets, numbers only.
+` : ""}
+**Actions for ${laggard} — this week**
+Numbered list. Max 4. Each action must be executable by a specialist tomorrow morning — no strategy, no "review", no "consider". Format: [metric to move] → [exact action] → [expected result].
 
-**Root cause of the gap**
-Go bucket by bucket where scores differ by 10+ points, AND identify product/pricing differences that explain the revenue gap. For each divergence:
-- Name the specific metric
-- Name the most likely root cause for this account type and market
-- State the downstream consequence${hasProducts ? `
-
-**Product & pricing diagnosis**
-Compare the product mix, conversion rates by product, and price positioning. Which account has better-converting products? Which is pricing competitively? Name specific products where pricing is likely hurting conversion.` : ""}
-
-**What ${laggard} should do this week**
-Numbered list, max 4 actions. Each action:
-- Names the specific metric to move and by how much
-- Gives a concrete tactic (not "review pricing" — "reduce price on [product] by X% to reach competitive range, which currently has 0 conversions despite high spend")
-- States which gap it closes
-
-**What ${leader} does well to preserve**
-One paragraph. What structural advantage explains the lead? "Don't break this."
-
-HARD RULES:
-- Only cite numbers that appear in the data above. Zero fabrication.
-- If both accounts have similar scores but different revenue/ROAS, say so explicitly and explain why the score isn't capturing the real difference.
-- Do not say "consider" or "may want to". Give direct instructions.
-- Refer to accounts as "${accountA.name}" and "${accountB.name}" throughout.`;
+RULES:
+- Maximum 400 words total.
+- Zero meta-commentary about scores, data quality, or the tool.
+- Zero strategy preamble. Start with the gap, end with actions.
+- If a number isn't in the data, don't mention it.
+- Do not explain what the constraint framework is.`;
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
@@ -304,8 +292,8 @@ HARD RULES:
       try {
         const aiStream = await client.messages.stream({
           model:      "claude-sonnet-4-6",
-          max_tokens: 1800,
-          system: `You are a senior performance analyst at a Google Ads agency. You diagnose why similar stores in the same market achieve different results. You lead with revenue and ROAS truth — not theoretical scores. You write for agency specialists: direct, specific, no filler. You correlate product performance, pricing, and ad efficiency to find the real root cause.`,
+          max_tokens: 2000,
+          system: `You are a senior performance analyst at a Google Ads agency. You diagnose why similar stores achieve different results and tell specialists exactly what to fix. You are blunt, short, and number-driven. You never explain methodology, never comment on data quality, never use filler. Every sentence contains a number or an action. Maximum 400 words total.`,
           messages: [{ role: "user", content: prompt }],
         });
 
