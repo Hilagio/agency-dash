@@ -81,7 +81,9 @@ async function getAccessToken(refreshToken: string): Promise<string> {
  */
 export async function getMerchantCenterIds(
   customerId: string,
-  orgId?: string
+  orgId?: string,
+  /** Manually configured fallback — used if auto-discovery returns nothing */
+  storedMerchantId?: string | null
 ): Promise<string[]> {
   const cred = orgId
     ? await prisma.oAuthCredential.findUnique({ where: { organizationId: orgId } }).catch(() => null)
@@ -140,10 +142,22 @@ export async function getMerchantCenterIds(
       .filter(Boolean);
 
     console.log(`[merchant-center] found merchantCenterIds for ${customerId}:`, ids);
-    return ids;
+    if (ids.length > 0) return ids;
+
+    // Auto-discovery returned nothing — fall back to stored ID if provided
+    if (storedMerchantId) {
+      console.log(`[merchant-center] auto-discovery empty, using stored merchantCenterId: ${storedMerchantId}`);
+      return [storedMerchantId];
+    }
+    return [];
 
   } catch (err) {
     console.warn("[merchant-center] getMerchantCenterIds failed:", err instanceof Error ? err.message : err);
+    // Even on error, try the stored ID as a last resort
+    if (storedMerchantId) {
+      console.log(`[merchant-center] falling back to stored merchantCenterId: ${storedMerchantId}`);
+      return [storedMerchantId];
+    }
     return [];
   }
 }

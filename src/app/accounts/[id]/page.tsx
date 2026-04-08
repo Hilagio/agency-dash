@@ -385,6 +385,7 @@ interface Account {
   slackChannelId:     string | null;
   slackChannelName:   string | null;
   peerGroupId:        string | null;
+  merchantCenterId:   string | null;
 }
 
 // ─── Client Context Panel ─────────────────────────────────────────────────────
@@ -1656,6 +1657,71 @@ function IntelligencePanel({ accountId, onContinueInAdvisor }: { accountId: stri
   );
 }
 
+// ─── Merchant Center ID row ───────────────────────────────────────────────────
+
+function MerchantCenterIdRow({ accountId, initial, onSaved }: {
+  accountId: string;
+  initial:   string | null;
+  onSaved:   (v: string | null) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [value,   setValue]   = useState(initial ?? "");
+  const [saving,  setSaving]  = useState(false);
+
+  const save = async () => {
+    setSaving(true);
+    await fetch(`/api/accounts/${accountId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ merchantCenterId: value.trim() || null }),
+    });
+    onSaved(value.trim() || null);
+    setSaving(false);
+    setEditing(false);
+  };
+
+  return (
+    <div style={{ marginBottom: 12, display: "flex", alignItems: "center", gap: 10 }}>
+      {!editing ? (
+        <>
+          <span style={{ fontSize: 11, color: "var(--text-faint)" }}>
+            Merchant Center ID:&nbsp;
+            <strong style={{ color: initial ? "var(--text-2)" : "#f87171" }}>
+              {initial ?? "not set — VS MARKET will show —"}
+            </strong>
+          </span>
+          <button
+            onClick={() => setEditing(true)}
+            style={{ background: "none", border: "1px solid var(--border-2)", borderRadius: 6, padding: "2px 9px", fontSize: 10, color: "var(--text-dim)", cursor: "pointer" }}
+          >
+            <Pencil size={10} style={{ display: "inline", marginRight: 3, verticalAlign: "middle" }} />Edit
+          </button>
+        </>
+      ) : (
+        <>
+          <input
+            value={value}
+            onChange={e => setValue(e.target.value)}
+            placeholder="e.g. 123456789"
+            style={{
+              background: "var(--bg)", border: "1px solid var(--border-2)", borderRadius: 7,
+              color: "var(--text)", fontSize: 12, padding: "5px 10px", outline: "none",
+              fontFamily: "inherit", width: 160,
+            }}
+            autoFocus
+          />
+          <button onClick={save} disabled={saving} style={{ background: "var(--btn-primary)", border: "none", borderRadius: 7, color: "#fff", fontSize: 11, padding: "5px 12px", cursor: "pointer" }}>
+            {saving ? "Saving…" : "Save"}
+          </button>
+          <button onClick={() => { setValue(initial ?? ""); setEditing(false); }} style={{ background: "none", border: "1px solid var(--border-2)", borderRadius: 7, color: "var(--text-dim)", fontSize: 11, padding: "5px 10px", cursor: "pointer" }}>
+            Cancel
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
 // ─── Peers Panel ─────────────────────────────────────────────────────────────
 
 interface PeerSnapshot {
@@ -2787,7 +2853,8 @@ export default function AccountPage() {
                 Your price vs median competitor · via Merchant Center
               </span>
             </div>
-            <PriceCompetitiveness accountId={id} />
+            <MerchantCenterIdRow accountId={id} initial={account.merchantCenterId} onSaved={v => setAccount(prev => prev ? { ...prev, merchantCenterId: v } : prev)} />
+            <PriceCompetitiveness accountId={id} merchantCenterId={account.merchantCenterId} />
           </>
         )}
 

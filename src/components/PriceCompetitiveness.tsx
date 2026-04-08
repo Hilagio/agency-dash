@@ -92,7 +92,7 @@ const STATUS_CONFIG = {
 type SortKey = "priceDiffPercent" | "yourPrice" | "benchmarkPrice" | "title" | "spend";
 type FilterKey = "all" | "above" | "well_above" | "competitive" | "below";
 
-export function PriceCompetitiveness({ accountId }: { accountId: string }) {
+export function PriceCompetitiveness({ accountId, merchantCenterId }: { accountId: string; merchantCenterId?: string | null }) {
   const [data,    setData]    = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [sort,    setSort]    = useState<SortKey>("priceDiffPercent");
@@ -111,7 +111,9 @@ export function PriceCompetitiveness({ accountId }: { accountId: string }) {
     }
   };
 
-  useEffect(() => { load(); }, [accountId]);
+  // Re-fetch when the merchantCenterId is saved (key change triggers remount,
+  // but we also watch it explicitly to reload without unmounting)
+  useEffect(() => { load(); }, [accountId, merchantCenterId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (loading) return (
     <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "60px 0", justifyContent: "center", color: "var(--text-dim)", fontSize: 13 }}>
@@ -151,10 +153,12 @@ export function PriceCompetitiveness({ accountId }: { accountId: string }) {
   );
 
   if (data.noMerchantCenter) return (
-    <div style={{ border: "1px dashed var(--border-2)", borderRadius: 12, padding: "48px 32px", textAlign: "center" }}>
-      <p style={{ color: "var(--text-dim)", fontSize: 14, marginBottom: 4 }}>No Merchant Center linked</p>
-      <p style={{ color: "var(--text-faint)", fontSize: 12 }}>
-        Link a Merchant Center account to this Google Ads account to see price competitiveness data.
+    <div style={{ border: "1px dashed var(--border-2)", borderRadius: 12, padding: "32px", textAlign: "center" }}>
+      <p style={{ color: "var(--text-dim)", fontSize: 14, marginBottom: 6 }}>Merchant Center not found automatically</p>
+      <p style={{ color: "var(--text-faint)", fontSize: 12, lineHeight: 1.6 }}>
+        Auto-discovery via Google Ads returned no linked Merchant Center.<br />
+        Enter your Merchant Center ID manually using the field above — find it at{" "}
+        <strong>merchant center → Settings → Business info</strong>.
       </p>
     </div>
   );

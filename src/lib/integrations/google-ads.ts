@@ -1087,7 +1087,14 @@ export async function fetchProductPerformance(customerId: string, orgId?: string
   }
   console.log(`[product-perf] ${customerId}: ${productRows.length} rows from shopping_performance_view, campaign types:`, campaignTypeCounts);
 
-  const productMap = new Map<string, ProductRow>();
+  // De-duplicate across campaign types: if a product appears in both Shopping
+  // and PMax, each campaign attributes its own conversions independently — summing
+  // them double-counts revenue and clicks. We prefer Shopping-type data when both
+  // exist (matches the standard Products report in the Google Ads UI), falling back
+  // to PMax only when no Shopping data is available for that product.
+  const shoppingMap = new Map<string, ProductRow>();  // SHOPPING type only
+  const pmaxMap     = new Map<string, ProductRow>();  // PERFORMANCE_MAX type only
+
   for (const r of productRows) {
     const itemId = String(r.segments?.product_item_id ?? "unknown");
     const title  = String(r.segments?.product_title  ?? "Unknown product");
@@ -1097,8 +1104,10 @@ export async function fetchProductPerformance(customerId: string, orgId?: string
     const conversions = Number(r.metrics?.conversions       ?? 0);
     const revenue     = Number(r.metrics?.conversions_value ?? 0);
     const cost        = Number(r.metrics?.cost_micros       ?? 0) / 1_000_000;
+    const ct = String((r.campaign as {advertising_channel_type?: string} | undefined)?.advertising_channel_type ?? "");
+    const targetMap = ct === "PERFORMANCE_MAX" ? pmaxMap : shoppingMap;
 
-    const existing = productMap.get(itemId);
+    const existing = targetMap.get(itemId);
     if (existing) {
       existing.clicks      += clicks;
       existing.impressions += impressions;
@@ -1106,9 +1115,17 @@ export async function fetchProductPerformance(customerId: string, orgId?: string
       existing.revenue     += revenue;
       existing.cost        += cost;
     } else {
-      productMap.set(itemId, { itemId, title, brand, clicks, impressions, ctr: 0, conversions, revenue, cost, roas: 0, cpc: 0 });
+      targetMap.set(itemId, { itemId, title, brand, clicks, impressions, ctr: 0, conversions, revenue, cost, roas: 0, cpc: 0 });
     }
   }
+
+  // Merge: Shopping data wins per product; fill in PMax-only products
+  const productMap = new Map<string, ProductRow>(shoppingMap);
+  for (const [itemId, pmaxRow] of pmaxMap) {
+    if (!productMap.has(itemId)) productMap.set(itemId, pmaxRow);
+  }
+  console.log(`[product-perf] ${customerId}: after dedup — ${shoppingMap.size} Shopping products, ${pmaxMap.size} PMax products, ${productMap.size} merged unique`);
+
 
   // Compute derived metrics
   const products: ProductRow[] = Array.from(productMap.values()).map(p => ({

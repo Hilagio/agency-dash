@@ -33,6 +33,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     slackChannelId:     string | null;
     slackChannelName:   string | null;
     peerGroupId:        string | null;
+    merchantCenterId:   string | null;
   }>;
 
   const account = await prisma.account.update({
@@ -53,6 +54,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       ...(body.slackChannelId     !== undefined && { slackChannelId:     body.slackChannelId }),
       ...(body.slackChannelName   !== undefined && { slackChannelName:   body.slackChannelName }),
       ...(body.peerGroupId        !== undefined && { peerGroupId:        body.peerGroupId }),
+      ...(body.merchantCenterId   !== undefined && { merchantCenterId:   body.merchantCenterId }),
     },
   });
 

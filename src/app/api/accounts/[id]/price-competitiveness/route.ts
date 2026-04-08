@@ -34,17 +34,17 @@ export async function GET(_req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "No Google Ads account linked" }, { status: 422 });
   }
 
-  // 1. Discover Merchant Center IDs
+  // 1. Discover Merchant Center IDs (auto-discovery + stored fallback)
   let merchantIds: string[];
   try {
-    merchantIds = await getMerchantCenterIds(account.googleAdsId, ctx.orgId);
+    merchantIds = await getMerchantCenterIds(account.googleAdsId, ctx.orgId, (account as {merchantCenterId?: string | null}).merchantCenterId);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ error: `Could not discover Merchant Center: ${msg}` }, { status: 502 });
   }
 
   if (merchantIds.length === 0) {
-    return NextResponse.json({ noMerchantCenter: true, products: [] });
+    return NextResponse.json({ noMerchantCenter: true, products: [], merchantIdMissing: true });
   }
 
   // 2. Fetch price competitiveness + product spend in parallel

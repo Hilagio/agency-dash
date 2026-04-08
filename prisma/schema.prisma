@@ -91,6 +91,11 @@ model Account {
   slackChannelId   String? // Slack channel ID (e.g. C0123456789)
   slackChannelName String? // Human-readable name (e.g. #cherie-boutique)
 
+  // ─── Merchant Center (for price competitiveness) ─────────────────────────
+  // Auto-discovered via product_link on first load; set manually as fallback
+  // if auto-discovery fails (e.g. the MC is owned by a different Google account).
+  merchantCenterId String?
+
   // ─── Peer group (internal agency use only — never shown to clients) ────────
   // Free-text label grouping competitor accounts managed by the same agency.
   // e.g. "polish-fashion" groups Moda Poznan + Perlowa Moda for gap analysis.
