@@ -337,9 +337,10 @@ export async function POST(req: NextRequest, { params }: Params) {
   if (!ctx) return unauthorized();
 
   const { id } = await params;
-  const { message, sessionId } = await req.json() as {
+  const { message, sessionId, intelligenceBrief } = await req.json() as {
     message: string;
     sessionId?: string;
+    intelligenceBrief?: string;
   };
 
   // Load everything in parallel
@@ -576,6 +577,13 @@ export async function POST(req: NextRequest, { params }: Params) {
     role:    m.role as "user" | "assistant",
     content: m.content,
   }));
+
+  // If this is the first message in a new session and the user came from the Intelligence tab,
+  // prepend the brief as a synthetic assistant turn so the AI can answer follow-up questions
+  // that reference specific conclusions from the brief (e.g. "explain action 1 more").
+  if (intelligenceBrief && history.length === 0) {
+    history.unshift({ role: "assistant", content: intelligenceBrief });
+  }
 
   // Stream response
   const encoder = new TextEncoder();

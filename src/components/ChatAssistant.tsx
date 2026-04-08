@@ -14,6 +14,7 @@ interface Props {
   accountId: string;
   constraintBucket: string;
   constraintReason: string;
+  intelligenceBrief?: string;
 }
 
 // ─── Markdown renderer ────────────────────────────────────────────────────────
@@ -183,13 +184,12 @@ const QUICK_PROMPTS = [
   "What metrics show we're improving?",
 ];
 
-export function ChatAssistant({ accountId, constraintBucket, constraintReason }: Props) {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      role:    "assistant",
-      content: `Analyzing this account through its governing constraint: **${constraintBucket}**\n\n_${constraintReason}_\n\nWhat would you like to work through?`,
-    },
-  ]);
+export function ChatAssistant({ accountId, constraintBucket, constraintReason, intelligenceBrief }: Props) {
+  const initialMessages: Message[] = intelligenceBrief
+    ? [{ role: "assistant", content: intelligenceBrief }]
+    : [{ role: "assistant", content: `Analyzing this account through its governing constraint: **${constraintBucket}**\n\n_${constraintReason}_\n\nWhat would you like to work through?` }];
+
+  const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [input, setInput]       = useState("");
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [streaming, setStreaming] = useState(false);
@@ -240,7 +240,12 @@ export function ChatAssistant({ accountId, constraintBucket, constraintReason }:
       const res = await fetch(`/api/accounts/${accountId}/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: userMessage, sessionId }),
+        body: JSON.stringify({
+          message: userMessage,
+          sessionId,
+          // Pass brief only on the first message so the API can prepend it as context
+          intelligenceBrief: !sessionId && intelligenceBrief ? intelligenceBrief : undefined,
+        }),
       });
 
       if (!res.ok) throw new Error(await res.text());
@@ -422,8 +427,8 @@ export function ChatAssistant({ accountId, constraintBucket, constraintReason }:
         </div>
       </div>
 
-      {/* Quick prompts — only on first message */}
-      {messages.length === 1 && (
+      {/* Quick prompts — only on first message, and not when a brief was pre-seeded */}
+      {messages.length === 1 && !intelligenceBrief && (
         <div style={{ padding: "12px 20px", borderTop: "1px solid var(--border)" }}>
           <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.8px", textTransform: "uppercase", color: "var(--text-faint)", marginBottom: 8 }}>
             Suggested

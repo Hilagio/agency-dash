@@ -1506,7 +1506,7 @@ function renderIntelligence(text: string, streaming: boolean): React.ReactNode {
 
 // ─── AI Intelligence Panel ────────────────────────────────────────────────────
 
-function IntelligencePanel({ accountId, onContinueInAdvisor }: { accountId: string; onContinueInAdvisor?: () => void }) {
+function IntelligencePanel({ accountId, onContinueInAdvisor }: { accountId: string; onContinueInAdvisor?: (brief: string) => void }) {
   const [text, setText]               = useState("");
   const [loading, setLoading]         = useState(false);
   const [done, setDone]               = useState(false);
@@ -1636,7 +1636,7 @@ function IntelligencePanel({ accountId, onContinueInAdvisor }: { accountId: stri
       {done && text && onContinueInAdvisor && (
         <div style={{ marginTop: 14, borderTop: "1px solid var(--border)", paddingTop: 12 }}>
           <button
-            onClick={onContinueInAdvisor}
+            onClick={() => onContinueInAdvisor(text)}
             style={{
               display: "flex", alignItems: "center", gap: 6,
               background: "rgba(192,132,252,0.07)",
@@ -2002,6 +2002,7 @@ export default function AccountPage() {
   const [actions, setActions] = useState<Action[]>([]);
   const [orgMembers, setOrgMembers] = useState<{ email: string; name: string | null }[]>([]);
   const [tab, setTab] = useState<Tab>("overview");
+  const [intelligenceBriefText, setIntelligenceBriefText] = useState<string | undefined>(undefined);
   const [loading, setLoading] = useState(true);
   const [rescoring, setRescoring] = useState(false);
   const [rescoreError, setRescoreError] = useState<string | null>(null);
@@ -2313,7 +2314,13 @@ export default function AccountPage() {
                 />
 
                 {/* AI Intelligence Brief */}
-                <IntelligencePanel accountId={id} onContinueInAdvisor={() => setTab("chat")} />
+                <IntelligencePanel
+                  accountId={id}
+                  onContinueInAdvisor={(brief) => {
+                    setIntelligenceBriefText(brief);
+                    setTab("chat");
+                  }}
+                />
 
                 <div style={{ marginBottom: 20, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                   <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.8px", textTransform: "uppercase", color: "var(--text-dim)" }}>
@@ -2453,6 +2460,7 @@ export default function AccountPage() {
               accountId={id}
               constraintBucket={label}
               constraintReason={snapshot.constraintReason}
+              intelligenceBrief={intelligenceBriefText}
             />
           </div>
         )}
