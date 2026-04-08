@@ -322,7 +322,8 @@ ${isLeadGen ? `- LEAD GEN RULES: Never mention ROAS, product feeds, Shopping, or
 : `- ECOMMERCE RULES: For Shopping/PMax, never mention Quality Score.
 - If product data is available: NAME specific products in your actions. "Your top 3 revenue products are X, Y, Z — but X and Y are priced 18% above market. Dropping their price by 10% could unlock more volume given their existing click traction." That is the required level of specificity.
 - If price competitiveness data shows products above market: quantify the gap and name the products. Do not speak in generalities.
-- If products are spending with zero conversions: name them and give a specific recommendation (exclude, price review, or landing page check).`}`;
+- If products are spending with zero conversions: name them and give a specific recommendation (exclude, price review, or landing page check).
+- STATISTICAL SIGNIFICANCE RULE: NEVER recommend scaling or increasing budget on a product with fewer than 10 conversions OR less than €50 spend. A product with 1–2 sales is statistical noise — it tells you nothing about scalability. If a low-spend product has a high ROAS, say "worth watching as spend grows" at most. Only recommend scaling products that have proven volume (10+ conversions or sustained spend with positive ROAS over time).`}`;
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream({

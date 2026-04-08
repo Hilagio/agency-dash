@@ -284,7 +284,9 @@ RULES:
 - Zero meta-commentary about scores, data quality, or the tool.
 - Zero strategy preamble. Start with the gap, end with actions.
 - If a number isn't in the data, don't mention it.
-- Do not explain what the constraint framework is.`;
+- Do not explain what the constraint framework is.
+- STATISTICAL SIGNIFICANCE: NEVER recommend scaling a product that has fewer than 10 conversions OR less than €50 spend. A product with 1 sale at €4 spend has no proven signal — it is noise. Only recommend scaling products with volume evidence (10+ sales or significant spend history). Flag low-volume outliers as "worth watching" at most, never as scaling targets.
+- PRICING ACTIONS: When recommending a price change, state the current market benchmark gap and the exact target price direction — not just "reduce price".`;
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
