@@ -1506,7 +1506,7 @@ function renderIntelligence(text: string, streaming: boolean): React.ReactNode {
 
 // ─── AI Intelligence Panel ────────────────────────────────────────────────────
 
-function IntelligencePanel({ accountId }: { accountId: string }) {
+function IntelligencePanel({ accountId, onContinueInAdvisor }: { accountId: string; onContinueInAdvisor?: () => void }) {
   const [text, setText]               = useState("");
   const [loading, setLoading]         = useState(false);
   const [done, setDone]               = useState(false);
@@ -1631,6 +1631,25 @@ function IntelligencePanel({ accountId }: { accountId: string }) {
         <p style={{ fontSize: 11, color: "#f59e0b", margin: "10px 0 0", lineHeight: 1.5 }}>
           ⚠ {slackWarning}
         </p>
+      )}
+
+      {done && text && onContinueInAdvisor && (
+        <div style={{ marginTop: 14, borderTop: "1px solid var(--border)", paddingTop: 12 }}>
+          <button
+            onClick={onContinueInAdvisor}
+            style={{
+              display: "flex", alignItems: "center", gap: 6,
+              background: "rgba(192,132,252,0.07)",
+              border: "1px solid rgba(192,132,252,0.2)",
+              borderRadius: 8, padding: "6px 14px",
+              fontSize: 12, fontWeight: 500, color: "#c084fc",
+              cursor: "pointer",
+            }}
+          >
+            <MessageSquare size={12} />
+            Continue in Advisor →
+          </button>
+        </div>
       )}
     </div>
   );
@@ -2294,7 +2313,7 @@ export default function AccountPage() {
                 />
 
                 {/* AI Intelligence Brief */}
-                <IntelligencePanel accountId={id} />
+                <IntelligencePanel accountId={id} onContinueInAdvisor={() => setTab("chat")} />
 
                 <div style={{ marginBottom: 20, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                   <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.8px", textTransform: "uppercase", color: "var(--text-dim)" }}>

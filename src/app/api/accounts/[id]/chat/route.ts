@@ -10,8 +10,9 @@ import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { prisma } from "@/lib/db";
 import { BUCKET_LABELS, BUCKET_DESCRIPTIONS, ConstraintSignals } from "@/lib/engine/types";
-import { fetchDemographics, fetchSearchTermReport, DemographicRow, SearchTermRow } from "@/lib/integrations/google-ads";
+import { fetchDemographics, fetchSearchTermReport, fetchProductPerformance, DemographicRow, SearchTermRow } from "@/lib/integrations/google-ads";
 import { fetchSlackMessages, formatSlackForContext } from "@/lib/integrations/slack";
+import { getMerchantCenterIds, fetchPriceCompetitiveness } from "@/lib/integrations/merchant-center";
 import { getAuthContext, unauthorized, forbidden } from "@/lib/auth";
 import { AGENCY_PHILOSOPHY } from "@/lib/agencyPhilosophy";
 
@@ -228,6 +229,9 @@ function buildSystemPrompt(params: {
   slackContext:        string;
   correctionContext:   string;
   globalPatternContext: string;
+  productContext:      string;
+  isLeadGen:           boolean;
+  isShoppingAccount:   boolean;
 }): string {
   const {
     accountName, currency, industry, country, businessModel, monthlyBudget,
@@ -235,6 +239,7 @@ function buildSystemPrompt(params: {
     governingConstraint, constraintReason, bucketScores, allActions, signals,
     demographics, searchTerms,
     clientContext, sopContext, notionContext, slackContext, correctionContext, globalPatternContext,
+    productContext, isLeadGen, isShoppingAccount,
   } = params;
 
   const bucketSummary = Object.entries(bucketScores)
@@ -250,16 +255,32 @@ function buildSystemPrompt(params: {
     .map((a, i) => `  ${i + 1}. [${a.impact} impact · ${a.bucket}] ${a.title}\n     ${a.description}`)
     .join("\n\n");
 
+  const businessModelLabel: Record<string, string> = {
+    ecommerce: "Ecommerce",
+    dtc:       "Direct-to-consumer (DTC)",
+    dropship:  "Ecommerce (dropshipping fulfilment model — retailer, not manufacturer)",
+    lead_gen:  "Lead generation",
+    service:   "Service / lead generation",
+    saas:      "SaaS",
+  };
+  const modelLabel = businessModel ? (businessModelLabel[businessModel] ?? businessModel) : null;
+
   const accountMeta = [
     industry     && `Industry: ${industry}`,
     country      && `Market: ${country}`,
-    businessModel && `Business model: ${businessModel}`,
+    modelLabel   && `Business model: ${modelLabel}`,
     currency     && `Currency: ${currency}`,
     monthlyBudget && `Agreed monthly budget: ${money(monthlyBudget, currency)} (intentionally set by the agency — IS lost to budget is expected and not a problem to escalate)`,
     targetRoas   && `ROAS target: ${targetRoas.toFixed(2)}x`,
     targetCpa    && `CPA target: ${money(targetCpa, currency)}`,
     grossMarginPercent && `Gross margin: ${pct(grossMarginPercent)}`,
   ].filter(Boolean).join("\n");
+
+  const accountTypeNote = isLeadGen
+    ? `ACCOUNT TYPE: Lead generation (${modelLabel ?? "service/lead gen"}). This is NOT an ecommerce account. Do not mention ROAS, product feeds, or purchase revenue. Focus on: CPL vs target, lead volume, lead quality, form CVR, offline conversion import status, search intent quality, funnel handoff to sales team.`
+    : isShoppingAccount
+    ? `ACCOUNT TYPE: Ecommerce — Shopping/Performance Max (feed-based). Do NOT mention Quality Score. Focus on: product-level ROAS, feed titles, product labels (Heroes/Sidekicks/Zombies), price vs market benchmark, IS lost to rank (bid), zero-conversion products.`
+    : `ACCOUNT TYPE: Ecommerce — Search-driven (runs Search campaigns for an online store). This IS a revenue-focused ecommerce account. Focus on: actual ROAS vs target ROAS, product-level performance, pricing vs competitors, CVR on product landing pages, search term hygiene, and keyword intent alignment with buyer stage. Quality Score is relevant but secondary to ROAS and conversion outcomes.`;
 
   const signalContext = signals ? "\n\n" + buildSignalContext(signals, currency) : "";
   const demoContext   = buildDemographicsContext(demographics, currency);
@@ -270,6 +291,7 @@ function buildSystemPrompt(params: {
   const slackSection          = slackContext         ? `\n\n${slackContext}` : "";
   const correctionSection     = correctionContext    ? `\n\n${correctionContext}` : "";
   const globalPatternSection  = globalPatternContext ? `\n\n${globalPatternContext}` : "";
+  const productSection        = productContext       ? `\n\n${productContext}` : "";
 
   return `You are an expert senior Google Ads specialist embedded in an agency performance platform. You have full access to this account's data — it was fetched directly from Google Ads API and Merchant Center moments before this conversation. Never say you lack access to Google Ads data; everything you need is already provided below.
 
@@ -277,6 +299,7 @@ ${AGENCY_PHILOSOPHY}
 
 ACCOUNT: ${accountName}
 ${accountMeta}
+${accountTypeNote}
 
 DATA SOURCE: All metrics below are pulled live from this account's Google Ads API. You have the actual numbers — use them. If a specific dimension isn't listed (e.g. a specific campaign's day-parting), say you don't have that level of detail in the current context rather than saying you have no Google Ads access.
 
@@ -291,7 +314,7 @@ ${bucketSummary}
 
 RECOMMENDED ACTIONS (prioritised):
 ${actionSummary}
-${signalContext}${demoContext}${stContext}${clientBriefSection}${sopSection}
+${signalContext}${demoContext}${stContext}${productSection}${clientBriefSection}${sopSection}
 
 YOUR BEHAVIOUR:
 - You have real account data. Use specific numbers in every response: "CTR dropped from 2.8% to 1.1%" not "CTR is low".
@@ -300,7 +323,10 @@ YOUR BEHAVIOUR:
 - Flag client escalations clearly (website changes, CRM setup, offline conversion import).
 - For Shopping/PMax: think feed quality, product segmentation, asset group performance — not keyword QS.
 - Be direct. Skip preamble. One problem → one cause → one fix.
-- For price competitiveness and competitor pricing: that data is in the Products tab of this account.
+- FRAMING RULE: Refer to the client by their name or as "the account" / "the store". Never call them a "dropshipper".
+- BUDGET INCREASE RULE: NEVER recommend increasing budget if actual ROAS is below the target ROAS.
+- If product performance data is provided: NAME specific products in answers about revenue, ROAS, or pricing. Use the actual numbers.
+- If price competitiveness data is provided: use it directly. Do NOT say "see the Products tab" — you already have the data.
 - When Slack messages are provided: actively correlate dates of team actions (budget changes, bid adjustments, campaign pauses) with metric shifts. If a metric deteriorated 2–5 days after a noted change, flag it explicitly as the likely cause and recommend a response.${notionSection}${slackSection}${correctionSection}${globalPatternSection}`;
 }
 
@@ -384,6 +410,14 @@ export async function POST(req: NextRequest, { params }: Params) {
     // If parsing fails, continue without signal detail — prompt degrades gracefully
   }
 
+  // Account type detection (mirrors intelligence route logic)
+  const isLeadGen = account.businessModel === "lead_gen" || account.businessModel === "service"
+    || (!account.businessModel && signals?.funnel?.costPerLead != null && signals.funnel.costPerLead > 0 && (signals?.economics?.actualRoas ?? 0) === 0);
+
+  const isShoppingAccount = !isLeadGen && (signals?.traffic
+    ? signals.traffic.qualityScoreCount === 0
+    : account.businessModel === "ecommerce" || account.businessModel === "dtc" || account.businessModel === "dropship");
+
   // Fetch live demographics + search terms in parallel (non-blocking — fail gracefully)
   const googleAdsId = account.googleAdsId;
   const [demographics, searchTerms]: [DemographicRow[], SearchTermRow[]] = googleAdsId
@@ -392,6 +426,79 @@ export async function POST(req: NextRequest, { params }: Params) {
         fetchSearchTermReport(googleAdsId, ctx.orgId).catch((): SearchTermRow[] => []),
       ])
     : [[], []];
+
+  // Fetch product performance + price competitiveness (ecommerce only, non-blocking)
+  let productContext = "";
+  if (googleAdsId && !isLeadGen) {
+    try {
+      const [productData, mcIds] = await Promise.race([
+        Promise.all([
+          fetchProductPerformance(googleAdsId, ctx.orgId).catch(() => null),
+          getMerchantCenterIds(googleAdsId, ctx.orgId).catch(() => [] as string[]),
+        ]),
+        new Promise<[null, string[]]>((_, reject) => setTimeout(() => reject(new Error("product+MCC timed out")), 20_000)),
+      ]);
+
+      let priceRows: { itemId: string; priceDiffPercent: number; status: string }[] = [];
+      if (mcIds.length > 0) {
+        try {
+          const priceData = await Promise.race([
+            fetchPriceCompetitiveness(mcIds[0], ctx.orgId),
+            new Promise<never>((_, reject) => setTimeout(() => reject(new Error("price comp timed out")), 10_000)),
+          ]);
+          priceRows = priceData.products ?? [];
+        } catch { /* non-fatal */ }
+      }
+
+      if (productData?.products?.length) {
+        const curr = account.currency === "EUR" ? "€" : account.currency === "GBP" ? "£" : "$";
+        const priceMap = new Map(priceRows.map(p => [p.itemId, p]));
+
+        const topByRevenue = [...productData.products]
+          .filter(p => p.revenue > 0 || p.conversions > 0)
+          .sort((a, b) => b.revenue - a.revenue)
+          .slice(0, 8);
+
+        const noConv = [...productData.products]
+          .filter(p => p.cost > 20 && p.conversions === 0)
+          .sort((a, b) => b.cost - a.cost)
+          .slice(0, 5);
+
+        const formatProduct = (p: typeof productData.products[0]) => {
+          const pc = priceMap.get(p.itemId);
+          const priceNote = pc ? ` | price ${pc.priceDiffPercent > 0 ? "+" : ""}${pc.priceDiffPercent.toFixed(0)}% vs market (${pc.status})` : "";
+          const eff = productData.roas > 0 ? ` | ROAS ${p.roas.toFixed(1)}x` : "";
+          return `  - ${p.title || p.itemId}: ${p.conversions.toFixed(0)} sales, ${curr}${Math.round(p.revenue)} rev, ${curr}${Math.round(p.cost)} spend${eff}, CTR ${(p.ctr * 100).toFixed(1)}%${priceNote}`;
+        };
+
+        const lines = [`PRODUCT PERFORMANCE (last 30 days, ${productData.products.length} total products):`];
+        lines.push(`Account ROAS: ${productData.roas.toFixed(2)}x | Total revenue: ${curr}${Math.round(productData.totalRevenue)} | Total spend: ${curr}${Math.round(productData.totalCost)}`);
+
+        if (topByRevenue.length > 0) {
+          lines.push(`\nTop revenue-generating products:`);
+          topByRevenue.forEach(p => lines.push(formatProduct(p)));
+        }
+
+        if (noConv.length > 0) {
+          lines.push(`\nProducts spending budget with zero conversions:`);
+          noConv.forEach(p => {
+            const pc = priceMap.get(p.itemId);
+            const priceNote = pc ? ` | price ${pc.priceDiffPercent > 0 ? "+" : ""}${pc.priceDiffPercent.toFixed(0)}% vs market` : "";
+            lines.push(`  - ${p.title || p.itemId}: ${curr}${Math.round(p.cost)} spent, ${p.clicks} clicks, 0 sales${priceNote}`);
+          });
+        }
+
+        if (priceRows.length > 0) {
+          const wellAbove = priceRows.filter(p => p.status === "well_above").length;
+          const above     = priceRows.filter(p => p.status === "above").length;
+          const below     = priceRows.filter(p => p.status === "below" || p.status === "competitive").length;
+          lines.push(`\nPrice competitiveness (${priceRows.length} products with benchmark data): ${wellAbove} well above market, ${above} above market, ${below} competitive/below market`);
+        }
+
+        productContext = lines.join("\n");
+      }
+    } catch { /* non-fatal — chat still works without product data */ }
+  }
 
   const bucketScores: Record<string, number> = {
     MEASUREMENT: snapshot.scoreMeasurement,
@@ -460,6 +567,9 @@ export async function POST(req: NextRequest, { params }: Params) {
     slackContext,
     correctionContext,
     globalPatternContext,
+    productContext,
+    isLeadGen,
+    isShoppingAccount,
   });
 
   const history = (session.messages ?? []).map(m => ({
