@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, RefreshCw, MessageSquare, ListChecks, BarChart2, Loader2, Search, BookOpen, ClipboardList, Send, Pencil, X, CheckSquare, Sparkles, Package, Brain, FlaskConical, Zap, Copy, Check } from "lucide-react";
+import { ArrowLeft, RefreshCw, MessageSquare, ListChecks, BarChart2, Loader2, Search, BookOpen, ClipboardList, Send, Pencil, X, CheckSquare, Sparkles, Package, Brain, FlaskConical, Zap, Copy, Check, Users } from "lucide-react";
 import { ScoreBuckets } from "@/components/ScoreBuckets";
 import { ScoreHistory } from "@/components/ScoreHistory";
 import { ActionList } from "@/components/ActionList";
@@ -17,7 +17,7 @@ import { MetricExplorer } from "@/components/MetricExplorer";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { BUCKET_LABELS } from "@/lib/engine/types";
 
-type Tab = "overview" | "actions" | "products" | "search-terms" | "persona" | "explorer" | "playbook" | "chat" | "notes" | "sops";
+type Tab = "overview" | "actions" | "products" | "search-terms" | "persona" | "explorer" | "playbook" | "chat" | "notes" | "sops" | "peers";
 
 interface Note {
   id: string;
@@ -384,6 +384,7 @@ interface Account {
   monthlyChurnRate:   number | null;
   slackChannelId:     string | null;
   slackChannelName:   string | null;
+  peerGroupId:        string | null;
 }
 
 // ─── Client Context Panel ─────────────────────────────────────────────────────
@@ -1655,6 +1656,394 @@ function IntelligencePanel({ accountId, onContinueInAdvisor }: { accountId: stri
   );
 }
 
+// ─── Peers Panel ─────────────────────────────────────────────────────────────
+
+interface PeerSnapshot {
+  scoredAt:            string;
+  scoreMeasurement:    number;
+  scoreTraffic:        number;
+  scoreConversion:     number;
+  scoreFunnel:         number;
+  scoreEconomics:      number;
+  governingConstraint: string;
+  constraintReason:    string;
+  metrics: {
+    ctr: number; isLostBudget: number; isLostRank: number; impressionShare: number;
+    cvr: number; actualRoas: number; actualCpa: number; budgetUtil: number;
+    avgCpc: number; qualityScoreAvg: number; qualityScoreCount: number;
+  } | null;
+}
+
+interface Peer {
+  id: string;
+  name: string;
+  industry: string | null;
+  country: string | null;
+  businessModel: string | null;
+  currency: string;
+  targetRoas: number | null;
+  targetCpa: number | null;
+  peerGroupId: string | null;
+  snapshot: PeerSnapshot | null;
+}
+
+interface PeersData {
+  matchMode: "group" | "auto" | "none";
+  peerGroupId: string | null;
+  own: { id: string; name: string; snapshot: PeerSnapshot | null };
+  peers: Peer[];
+}
+
+function ScoreBar({ label, value, compareValue }: { label: string; value: number; compareValue?: number }) {
+  const color = value >= 70 ? "#4ade80" : value >= 45 ? "#fbbf24" : "#f87171";
+  const cmpColor = compareValue !== undefined
+    ? (compareValue >= 70 ? "#4ade80" : compareValue >= 45 ? "#fbbf24" : "#f87171")
+    : undefined;
+
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
+      <span style={{ fontSize: 10, color: "var(--text-faint)", width: 84, flexShrink: 0, letterSpacing: "0.3px" }}>{label}</span>
+      <div style={{ flex: 1, height: 5, background: "var(--bg)", borderRadius: 3, position: "relative" }}>
+        <div style={{ position: "absolute", left: 0, top: 0, height: "100%", width: `${Math.min(value, 100)}%`, background: color, borderRadius: 3, transition: "width 0.4s" }} />
+      </div>
+      <span style={{ fontSize: 10, color, width: 26, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{Math.round(value)}</span>
+      {compareValue !== undefined && (
+        <>
+          <span style={{ fontSize: 10, color: "var(--text-faint)" }}>vs</span>
+          <span style={{ fontSize: 10, color: cmpColor, width: 26, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{Math.round(compareValue)}</span>
+        </>
+      )}
+    </div>
+  );
+}
+
+function PeersPanel({ accountId, accountName, peerGroupId }: {
+  accountId:   string;
+  accountName: string;
+  peerGroupId: string | null;
+}) {
+  const [data, setData]               = useState<PeersData | null>(null);
+  const [loadingPeers, setLoadingPeers] = useState(false);
+  const [groupInput, setGroupInput]   = useState(peerGroupId ?? "");
+  const [editingGroup, setEditingGroup] = useState(false);
+  const [savingGroup, setSavingGroup] = useState(false);
+
+  const [selectedPeerId, setSelectedPeerId] = useState<string | null>(null);
+  const [analysisText, setAnalysisText]     = useState("");
+  const [analysisLoading, setAnalysisLoading] = useState(false);
+  const [analysisDone, setAnalysisDone]     = useState(false);
+  const [analysisCopied, setAnalysisCopied] = useState(false);
+
+  const fetchPeers = async () => {
+    setLoadingPeers(true);
+    try {
+      const res = await fetch(`/api/accounts/${accountId}/peers`);
+      if (res.ok) setData(await res.json());
+    } finally {
+      setLoadingPeers(false);
+    }
+  };
+
+  useEffect(() => { fetchPeers(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const saveGroup = async () => {
+    setSavingGroup(true);
+    await fetch(`/api/accounts/${accountId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ peerGroupId: groupInput.trim() || null }),
+    });
+    setSavingGroup(false);
+    setEditingGroup(false);
+    fetchPeers();
+  };
+
+  const runCompare = async (peerId: string) => {
+    setSelectedPeerId(peerId);
+    setAnalysisText("");
+    setAnalysisDone(false);
+    setAnalysisCopied(false);
+    setAnalysisLoading(true);
+
+    try {
+      const res = await fetch(`/api/accounts/${accountId}/peers/compare`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ compareWithId: peerId }),
+      });
+      if (!res.ok || !res.body) throw new Error("Compare failed");
+
+      const reader = res.body.getReader();
+      const dec = new TextDecoder();
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        for (const line of dec.decode(value).split("\n")) {
+          if (!line.startsWith("data: ")) continue;
+          const payload = JSON.parse(line.slice(6));
+          if (payload.text) setAnalysisText(prev => prev + payload.text);
+          if (payload.done) { setAnalysisDone(true); break; }
+          if (payload.error) throw new Error(payload.error);
+        }
+      }
+    } catch (e) {
+      setAnalysisText(`Error: ${e instanceof Error ? e.message : "Unknown error"}`);
+      setAnalysisDone(true);
+    } finally {
+      setAnalysisLoading(false);
+    }
+  };
+
+  const pct = (v: number, d = 1) => `${(v * 100).toFixed(d)}%`;
+
+  const BUCKET_KEYS: Array<{ key: keyof PeerSnapshot; label: string }> = [
+    { key: "scoreMeasurement", label: "Measurement" },
+    { key: "scoreTraffic",     label: "Traffic"     },
+    { key: "scoreConversion",  label: "Conversion"  },
+    { key: "scoreFunnel",      label: "Funnel"      },
+    { key: "scoreEconomics",   label: "Economics"   },
+  ];
+
+  const selectedPeer = data?.peers.find(p => p.id === selectedPeerId);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      {/* Internal badge */}
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{
+          display: "inline-flex", alignItems: "center", gap: 5,
+          background: "rgba(251,191,36,0.1)", border: "1px solid rgba(251,191,36,0.25)",
+          borderRadius: 6, padding: "3px 10px", fontSize: 10, fontWeight: 700,
+          color: "#fbbf24", letterSpacing: "0.8px", textTransform: "uppercase",
+        }}>
+          Internal only
+        </div>
+        <span style={{ fontSize: 11, color: "var(--text-faint)" }}>
+          Competitor accounts under the same agency management. Never share with clients.
+        </span>
+      </div>
+
+      {/* Peer group config */}
+      <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: "14px 18px" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div>
+            <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.7px", textTransform: "uppercase", color: "var(--text-dim)" }}>
+              Peer group
+            </span>
+            {!editingGroup && (
+              <p style={{ fontSize: 12, color: data?.peerGroupId ? "var(--text-2)" : "var(--text-faint)", margin: "3px 0 0" }}>
+                {data?.peerGroupId
+                  ? <>Group: <strong>{data.peerGroupId}</strong></>
+                  : data?.matchMode === "auto"
+                    ? "Auto-matched by industry + country"
+                    : "No group set — assign one or ensure industry + country are filled in"}
+              </p>
+            )}
+          </div>
+          {!editingGroup && (
+            <button
+              onClick={() => setEditingGroup(true)}
+              style={{ display: "flex", alignItems: "center", gap: 5, background: "none", border: "1px solid var(--border-2)", borderRadius: 7, padding: "4px 10px", fontSize: 11, color: "var(--text-dim)", cursor: "pointer" }}
+            >
+              <Pencil size={11} /> Edit group
+            </button>
+          )}
+        </div>
+
+        {editingGroup && (
+          <div style={{ marginTop: 10, display: "flex", gap: 8, alignItems: "center" }}>
+            <input
+              value={groupInput}
+              onChange={e => setGroupInput(e.target.value)}
+              placeholder="e.g. polish-fashion"
+              style={{
+                flex: 1, background: "var(--bg)", border: "1px solid var(--border-2)", borderRadius: 8,
+                color: "var(--text)", fontSize: 12, padding: "7px 12px", outline: "none", fontFamily: "inherit",
+              }}
+            />
+            <button
+              onClick={saveGroup}
+              disabled={savingGroup}
+              style={{ background: "var(--btn-primary)", border: "none", borderRadius: 8, color: "#fff", fontSize: 12, fontWeight: 500, padding: "7px 16px", cursor: "pointer" }}
+            >
+              {savingGroup ? "Saving…" : "Save"}
+            </button>
+            <button
+              onClick={() => { setGroupInput(peerGroupId ?? ""); setEditingGroup(false); }}
+              style={{ background: "none", border: "1px solid var(--border-2)", borderRadius: 8, color: "var(--text-dim)", fontSize: 12, padding: "7px 12px", cursor: "pointer" }}
+            >
+              Cancel
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Peers list */}
+      {loadingPeers && (
+        <div style={{ padding: "24px 0", textAlign: "center", color: "var(--text-faint)", fontSize: 12 }}>
+          <Loader2 size={14} className="animate-spin" style={{ display: "inline", marginRight: 6 }} />
+          Loading peers…
+        </div>
+      )}
+
+      {!loadingPeers && data?.matchMode === "none" && (
+        <div style={{ background: "var(--surface)", border: "1px dashed var(--border-2)", borderRadius: 12, padding: "32px 24px", textAlign: "center" }}>
+          <p style={{ fontSize: 13, color: "var(--text-faint)", margin: 0 }}>
+            Set a peer group name above, or fill in <strong>Industry</strong> and <strong>Country</strong> in account settings for auto-matching.
+          </p>
+        </div>
+      )}
+
+      {!loadingPeers && data && data.peers.length === 0 && data.matchMode !== "none" && (
+        <div style={{ background: "var(--surface)", border: "1px dashed var(--border-2)", borderRadius: 12, padding: "32px 24px", textAlign: "center" }}>
+          <p style={{ fontSize: 13, color: "var(--text-faint)", margin: 0 }}>
+            No other accounts matched.{" "}
+            {data.matchMode === "auto"
+              ? "Add more accounts with the same industry + country, or assign them all to the same peer group."
+              : `Add the same peer group name "${data.peerGroupId}" to the other accounts.`}
+          </p>
+        </div>
+      )}
+
+      {!loadingPeers && data && data.peers.length > 0 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {data.matchMode === "auto" && (
+            <p style={{ fontSize: 11, color: "var(--text-faint)", margin: 0 }}>
+              Auto-matched by industry + country. Assign a peer group name for precise control.
+            </p>
+          )}
+          {data.peers.map(peer => (
+            <div
+              key={peer.id}
+              style={{
+                background: "var(--surface)", border: `1px solid ${selectedPeerId === peer.id ? "rgba(192,132,252,0.4)" : "var(--border)"}`,
+                borderRadius: 12, padding: "14px 18px",
+                transition: "border-color 0.2s",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 10 }}>
+                <div>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{peer.name}</span>
+                  {peer.snapshot && (
+                    <span style={{
+                      marginLeft: 8, fontSize: 10, padding: "2px 7px", borderRadius: 5,
+                      background: "rgba(248,113,113,0.1)", color: "#f87171", fontWeight: 500,
+                    }}>
+                      {BUCKET_LABELS[peer.snapshot.governingConstraint as keyof typeof BUCKET_LABELS] ?? peer.snapshot.governingConstraint}
+                    </span>
+                  )}
+                  {!peer.snapshot && (
+                    <span style={{ marginLeft: 8, fontSize: 11, color: "var(--text-faint)" }}>No snapshot yet</span>
+                  )}
+                </div>
+                {peer.snapshot && (
+                  <button
+                    onClick={() => runCompare(peer.id)}
+                    disabled={analysisLoading}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 5,
+                      background: selectedPeerId === peer.id ? "rgba(192,132,252,0.1)" : "none",
+                      border: "1px solid rgba(192,132,252,0.25)", borderRadius: 7,
+                      padding: "5px 12px", fontSize: 11, fontWeight: 500, color: "#c084fc",
+                      cursor: analysisLoading ? "not-allowed" : "pointer", opacity: analysisLoading ? 0.6 : 1,
+                    }}
+                  >
+                    <Sparkles size={11} />
+                    {selectedPeerId === peer.id && analysisLoading ? "Analysing…" : "Explain the gap"}
+                  </button>
+                )}
+              </div>
+
+              {peer.snapshot ? (
+                <div>
+                  {/* Score bars — this account vs peer */}
+                  {BUCKET_KEYS.map(({ key, label }) => (
+                    <ScoreBar
+                      key={key}
+                      label={label}
+                      value={peer.snapshot![key as keyof PeerSnapshot] as number}
+                      compareValue={data.own.snapshot ? data.own.snapshot[key as keyof PeerSnapshot] as number : undefined}
+                    />
+                  ))}
+
+                  {/* Key metrics row */}
+                  {peer.snapshot.metrics && (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 14px", marginTop: 10, paddingTop: 10, borderTop: "1px solid var(--border)" }}>
+                      {peer.snapshot.metrics.ctr > 0 && (
+                        <span style={{ fontSize: 11, color: "var(--text-faint)" }}>
+                          CTR <strong style={{ color: "var(--text-2)" }}>{pct(peer.snapshot.metrics.ctr, 2)}</strong>
+                          {data.own.snapshot?.metrics?.ctr ? <> vs <span style={{ color: "var(--text-dim)" }}>{pct(data.own.snapshot.metrics.ctr, 2)}</span></> : null}
+                        </span>
+                      )}
+                      {peer.snapshot.metrics.cvr > 0 && (
+                        <span style={{ fontSize: 11, color: "var(--text-faint)" }}>
+                          CVR <strong style={{ color: "var(--text-2)" }}>{pct(peer.snapshot.metrics.cvr, 2)}</strong>
+                          {data.own.snapshot?.metrics?.cvr ? <> vs <span style={{ color: "var(--text-dim)" }}>{pct(data.own.snapshot.metrics.cvr, 2)}</span></> : null}
+                        </span>
+                      )}
+                      {peer.snapshot.metrics.actualRoas > 0 && (
+                        <span style={{ fontSize: 11, color: "var(--text-faint)" }}>
+                          ROAS <strong style={{ color: "var(--text-2)" }}>{peer.snapshot.metrics.actualRoas.toFixed(2)}x</strong>
+                          {data.own.snapshot?.metrics?.actualRoas ? <> vs <span style={{ color: "var(--text-dim)" }}>{data.own.snapshot.metrics.actualRoas.toFixed(2)}x</span></> : null}
+                        </span>
+                      )}
+                      {peer.snapshot.metrics.impressionShare > 0 && (
+                        <span style={{ fontSize: 11, color: "var(--text-faint)" }}>
+                          IS <strong style={{ color: "var(--text-2)" }}>{pct(peer.snapshot.metrics.impressionShare)}</strong>
+                          {data.own.snapshot?.metrics?.impressionShare ? <> vs <span style={{ color: "var(--text-dim)" }}>{pct(data.own.snapshot.metrics.impressionShare)}</span></> : null}
+                        </span>
+                      )}
+                      {peer.snapshot.metrics.avgCpc > 0 && (
+                        <span style={{ fontSize: 11, color: "var(--text-faint)" }}>
+                          CPC <strong style={{ color: "var(--text-2)" }}>{peer.snapshot.metrics.avgCpc.toFixed(2)}</strong>
+                          {data.own.snapshot?.metrics?.avgCpc ? <> vs <span style={{ color: "var(--text-dim)" }}>{data.own.snapshot.metrics.avgCpc.toFixed(2)}</span></> : null}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p style={{ fontSize: 12, color: "var(--text-faint)", margin: 0 }}>Score this account first to compare.</p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* AI gap analysis output */}
+      {selectedPeerId && (analysisText || analysisLoading) && (
+        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: "16px 20px" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+              <Sparkles size={13} style={{ color: "#c084fc" }} />
+              <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.8px", textTransform: "uppercase", color: "var(--text-dim)" }}>
+                Gap analysis — {accountName} vs {selectedPeer?.name}
+              </span>
+            </div>
+            {analysisDone && analysisText && (
+              <button
+                onClick={() => { navigator.clipboard.writeText(analysisText).then(() => { setAnalysisCopied(true); setTimeout(() => setAnalysisCopied(false), 2000); }); }}
+                style={{
+                  display: "flex", alignItems: "center", gap: 5,
+                  background: analysisCopied ? "rgba(74,222,128,0.1)" : "transparent",
+                  border: `1px solid ${analysisCopied ? "rgba(74,222,128,0.3)" : "var(--border-2)"}`,
+                  borderRadius: 7, padding: "4px 10px", fontSize: 11, fontWeight: 500,
+                  color: analysisCopied ? "#4ade80" : "var(--text-dim)", cursor: "pointer",
+                }}
+              >
+                {analysisCopied ? <><Check size={11} /> Copied</> : <><Copy size={11} /> Copy</>}
+              </button>
+            )}
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            {renderIntelligence(analysisText, analysisLoading && !analysisDone)}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Landing Page AI Analysis Panel ──────────────────────────────────────────
 
 interface LandingAnalysis {
@@ -2116,6 +2505,7 @@ export default function AccountPage() {
     { key: "explorer",      label: "Explorer",     icon: <FlaskConical   size={14} /> },
     { key: "playbook",      label: "Playbook",     icon: <BookOpen       size={14} /> },
     { key: "chat",          label: "AI Advisor",   icon: <MessageSquare size={14} /> },
+    { key: "peers",         label: "Peer analysis",icon: <Users         size={14} /> },
     { key: "sops",          label: "SOPs",         icon: <CheckSquare   size={14} /> },
     { key: "notes",         label: "Change log",   icon: <ClipboardList size={14} /> },
   ];
@@ -2472,6 +2862,10 @@ export default function AccountPage() {
           }}>
             Run a constraint score first to unlock the advisor.
           </div>
+        )}
+
+        {tab === "peers" && (
+          <PeersPanel accountId={id} accountName={account.name} peerGroupId={account.peerGroupId} />
         )}
 
         {tab === "sops" && (
