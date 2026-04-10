@@ -171,7 +171,7 @@ export async function POST(_req: NextRequest, { params }: Params) {
       ]);
 
       // Price competitiveness — use first Merchant Center ID
-      let priceRows: { itemId: string; title: string; priceDiffPercent: number; status: string; effectivePriceMicros: number; benchmarkMicros: number; currencyCode: string }[] = [];
+      let priceRows: { itemId: string; title: string; priceDiffPercent: number; status: string; benchmarkMicros: number; currencyCode: string }[] = [];
       if (mcIds.length > 0) {
         try {
           const priceData = await Promise.race([

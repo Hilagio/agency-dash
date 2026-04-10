@@ -1317,12 +1317,15 @@ export async function fetchSearchTermReport(customerId: string, orgId?: string):
 /**
  * Returns a map of product item_id → spend in micros over the last 30 days.
  * Used to enrich price competitiveness rows with actual ad spend.
+ *
+ * Deduplicates Shopping vs PMax exactly like getProductPerformance does:
+ * Shopping-campaign spend wins per product; PMax fills in only for products
+ * that have no Shopping data. Summing both would inflate spend ~1.7x.
  */
 export async function fetchProductSpend(
   customerId: string,
   orgId?: string
 ): Promise<Map<string, number>> {
-  const spendMap = new Map<string, number>();
   try {
     const client   = getClient();
     const customer = await getCustomer(client, customerId, orgId);
@@ -1332,6 +1335,7 @@ export async function fetchProductSpend(
       () => customer.query(`
         SELECT
           segments.product_item_id,
+          campaign.advertising_channel_type,
           metrics.cost_micros
         FROM shopping_performance_view
         WHERE segments.date BETWEEN '${start}' AND '${end}'
@@ -1340,17 +1344,31 @@ export async function fetchProductSpend(
       "product spend"
     );
 
+    // Separate Shopping and PMax spend maps — same dedup strategy as getProductPerformance.
+    // A product running in both campaign types would be double-counted if summed naively.
+    const shoppingSpend = new Map<string, number>();
+    const pmaxSpend     = new Map<string, number>();
+
     for (const r of rows) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const itemId = String((r as any).segments?.product_item_id ?? "");
       const cost   = Number(r.metrics?.cost_micros ?? 0);
+      const ct     = String((r as { campaign?: { advertising_channel_type?: string } } | undefined)?.campaign?.advertising_channel_type ?? "");
       if (!itemId) continue;
-      spendMap.set(itemId, (spendMap.get(itemId) ?? 0) + cost);
+      const target = ct === "PERFORMANCE_MAX" ? pmaxSpend : shoppingSpend;
+      target.set(itemId, (target.get(itemId) ?? 0) + cost);
     }
+
+    // Shopping wins; PMax fills in products not present in Shopping
+    const spendMap = new Map<string, number>(shoppingSpend);
+    for (const [itemId, cost] of pmaxSpend) {
+      if (!spendMap.has(itemId)) spendMap.set(itemId, cost);
+    }
+    return spendMap;
   } catch (err) {
     console.warn("[google-ads] product spend fetch failed:", err instanceof Error ? err.message : err);
+    return new Map();
   }
-  return spendMap;
 }
 
 // ─── Demographics ─────────────────────────────────────────────────────────────

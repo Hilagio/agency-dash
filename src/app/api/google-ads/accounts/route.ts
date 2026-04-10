@@ -63,7 +63,7 @@ function gadsHeaders(accessToken: string, loginCustomerId?: string, includeConte
   return h;
 }
 
-/** GAQL query via REST — throws on timeout or non-2xx */
+/** GAQL query via REST — paginates automatically, throws on timeout or non-2xx */
 async function gaqlSearch(
   accessToken: string,
   customerId: string,
@@ -71,17 +71,28 @@ async function gaqlSearch(
   loginCustomerId?: string,
   timeoutMs = 15_000,
 ): Promise<GaqlRow[]> {
-  const res = await restFetch(
-    `${GADS_REST_BASE}/customers/${customerId}/googleAds:search`,
-    { method: "POST", headers: gadsHeaders(accessToken, loginCustomerId), body: JSON.stringify({ query: gaql }) },
-    timeoutMs,
-  );
-  if (!res.ok) {
-    const body = await res.text().catch(() => res.status.toString());
-    throw new Error(`Google Ads REST ${res.status}: ${body}`);
-  }
-  const json = await res.json() as { results?: GaqlRow[] };
-  return json.results ?? [];
+  const results: GaqlRow[] = [];
+  let pageToken: string | undefined;
+
+  do {
+    const body: Record<string, unknown> = { query: gaql, pageSize: 10000 };
+    if (pageToken) body.pageToken = pageToken;
+
+    const res = await restFetch(
+      `${GADS_REST_BASE}/customers/${customerId}/googleAds:search`,
+      { method: "POST", headers: gadsHeaders(accessToken, loginCustomerId), body: JSON.stringify(body) },
+      timeoutMs,
+    );
+    if (!res.ok) {
+      const errBody = await res.text().catch(() => res.status.toString());
+      throw new Error(`Google Ads REST ${res.status}: ${errBody}`);
+    }
+    const json = await res.json() as { results?: GaqlRow[]; nextPageToken?: string };
+    results.push(...(json.results ?? []));
+    pageToken = json.nextPageToken;
+  } while (pageToken);
+
+  return results;
 }
 
 // ─── Customer ID discovery ─────────────────────────────────────────────────────

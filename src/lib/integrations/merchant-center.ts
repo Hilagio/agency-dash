@@ -13,22 +13,19 @@ import { prisma } from "@/lib/db";
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
 export interface PriceCompRow {
-  itemId:              string;
-  title:               string;
-  brand:               string;
-  yourPriceMicros:     number;
-  /** Sale price in micros — 0 if no active sale */
-  salePriceMicros:     number;
-  /** Effective price used for benchmark comparison (sale if active, else regular) */
-  effectivePriceMicros: number;
-  benchmarkMicros:     number;
-  currencyCode:        string;
-  countryCode:         string;
+  itemId:           string;
+  title:            string;
+  brand:            string;
+  /** Current product price in micros as reported by Merchant Center */
+  yourPriceMicros:  number;
+  benchmarkMicros:  number;
+  currencyCode:     string;
+  countryCode:      string;
   /** Positive = above benchmark (expensive), negative = below (cheap) */
-  priceDiffPercent:    number;
-  status:              "competitive" | "above" | "well_above" | "below";
+  priceDiffPercent: number;
+  status:           "competitive" | "above" | "well_above" | "below";
   /** Google Ads spend on this item over last 30 days (micros); 0 = no data */
-  spendMicros:         number;
+  spendMicros:      number;
 }
 
 export interface PriceCompetitivenessResult {
@@ -200,35 +197,45 @@ export async function fetchPriceCompetitiveness(
     "  price_competitiveness.benchmark_price_currency_code,",
     "  price_competitiveness.country_code",
     "FROM PriceCompetitivenessProductView",
-    "LIMIT 1000",
   ].join(" ");
 
-  const res = await fetch(
-    `https://shoppingcontent.googleapis.com/content/v2.1/${merchantId}/reports/search`,
-    {
-      method: "POST",
-      headers: {
-        Authorization:  `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ query }),
+  // Paginate through all results — the Reports API returns up to 1000 rows per
+  // page and a nextPageToken when more are available.
+  const rows: MerchantReportRow[] = [];
+  let pageToken: string | undefined;
+
+  do {
+    const body: Record<string, unknown> = { query };
+    if (pageToken) body.pageToken = pageToken;
+
+    const res = await fetch(
+      `https://shoppingcontent.googleapis.com/content/v2.1/${merchantId}/reports/search`,
+      {
+        method: "POST",
+        headers: {
+          Authorization:  `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      }
+    );
+
+    // 403 with insufficient scope → tell caller to prompt reconnect
+    if (res.status === 401 || res.status === 403) {
+      const errBody = await res.text();
+      console.warn(`[merchant-center] Reports API ${res.status}:`, errBody);
+      return { merchantId, products: [], scopeMissing: true };
     }
-  );
 
-  // 403 with insufficient scope → tell caller to prompt reconnect
-  if (res.status === 401 || res.status === 403) {
-    const body = await res.text();
-    console.warn(`[merchant-center] Reports API ${res.status}:`, body);
-    return { merchantId, products: [], scopeMissing: true };
-  }
+    if (!res.ok) {
+      const errBody = await res.text();
+      throw new Error(`Merchant Center API error (${res.status}): ${errBody}`);
+    }
 
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`Merchant Center API error (${res.status}): ${body}`);
-  }
-
-  const json = await res.json() as { results?: MerchantReportRow[] };
-  const rows  = json.results ?? [];
+    const json = await res.json() as { results?: MerchantReportRow[]; nextPageToken?: string };
+    rows.push(...(json.results ?? []));
+    pageToken = json.nextPageToken;
+  } while (pageToken);
 
   const products: PriceCompRow[] = rows
     .map((r) => {
@@ -259,13 +266,11 @@ export async function fetchPriceCompetitiveness(
         itemId,
         title,
         brand,
-        yourPriceMicros:      priceMicros,
-        salePriceMicros:      0, // not available in PriceCompetitivenessProductView
-        effectivePriceMicros: priceMicros,
-        benchmarkMicros:      benchMicros,
-        currencyCode:         currency,
-        countryCode:          country,
-        priceDiffPercent:     Math.round(diffPct * 10) / 10,
+        yourPriceMicros:  priceMicros,
+        benchmarkMicros:  benchMicros,
+        currencyCode:     currency,
+        countryCode:      country,
+        priceDiffPercent: Math.round(diffPct * 10) / 10,
         status,
         spendMicros: 0, // populated by caller after merging Google Ads spend data
       } satisfies PriceCompRow;

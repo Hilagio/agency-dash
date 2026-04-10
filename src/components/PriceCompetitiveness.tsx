@@ -4,18 +4,16 @@ import { useEffect, useState } from "react";
 import { Loader2, AlertTriangle, TrendingUp, TrendingDown, Minus, RefreshCw, ExternalLink, Download } from "lucide-react";
 
 interface PriceCompRow {
-  itemId:               string;
-  title:                string;
-  brand:                string;
-  yourPriceMicros:      number;
-  salePriceMicros:      number;
-  effectivePriceMicros: number;
-  benchmarkMicros:      number;
-  currencyCode:         string;
-  countryCode:          string;
-  priceDiffPercent:     number;
-  status:               "competitive" | "above" | "well_above" | "below";
-  spendMicros:          number;
+  itemId:           string;
+  title:            string;
+  brand:            string;
+  yourPriceMicros:  number;
+  benchmarkMicros:  number;
+  currencyCode:     string;
+  countryCode:      string;
+  priceDiffPercent: number;
+  status:           "competitive" | "above" | "well_above" | "below";
+  spendMicros:      number;
 }
 
 interface ApiResponse {
@@ -39,20 +37,16 @@ function exportXml(products: PriceCompRow[], merchantId: string) {
     s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
   const rows = products.map(p => {
-    const effectivePrice = (p.effectivePriceMicros / 1_000_000).toFixed(2);
-    const regularPrice   = (p.yourPriceMicros / 1_000_000).toFixed(2);
-    const benchPrice     = (p.benchmarkMicros / 1_000_000).toFixed(2);
-    const spend          = (p.spendMicros / 1_000_000).toFixed(2);
-    const onSale         = p.salePriceMicros > 0 && p.salePriceMicros < p.yourPriceMicros;
+    const price      = (p.yourPriceMicros / 1_000_000).toFixed(2);
+    const benchPrice = (p.benchmarkMicros / 1_000_000).toFixed(2);
+    const spend      = (p.spendMicros / 1_000_000).toFixed(2);
     return [
       `    <product>`,
       `      <id>${escXml(p.itemId)}</id>`,
       `      <title>${escXml(p.title)}</title>`,
       `      <brand>${escXml(p.brand)}</brand>`,
       `      <country>${escXml(p.countryCode)}</country>`,
-      `      <regularPrice currency="${escXml(p.currencyCode)}">${regularPrice}</regularPrice>`,
-      onSale ? `      <salePrice currency="${escXml(p.currencyCode)}">${(p.salePriceMicros / 1_000_000).toFixed(2)}</salePrice>` : "",
-      `      <effectivePrice currency="${escXml(p.currencyCode)}">${effectivePrice}</effectivePrice>`,
+      `      <price currency="${escXml(p.currencyCode)}">${price}</price>`,
       `      <benchmarkPrice currency="${escXml(p.currencyCode)}">${benchPrice}</benchmarkPrice>`,
       `      <priceDiffPercent>${p.priceDiffPercent > 0 ? "+" : ""}${p.priceDiffPercent.toFixed(1)}</priceDiffPercent>`,
       `      <status>${p.status}</status>`,
@@ -66,7 +60,7 @@ function exportXml(products: PriceCompRow[], merchantId: string) {
     `<priceCompetitivenessReport>`,
     `  <generated>${now}</generated>`,
     `  <merchantId>${escXml(merchantId)}</merchantId>`,
-    `  <note>benchmarkPrice = Google median competitor price. effectivePrice = sale price if active, otherwise regularPrice. adSpend = Google Ads spend on this product over the last 30 days.</note>`,
+    `  <note>benchmarkPrice = Google median competitor price. price = current product price as reported by Merchant Center. adSpend = Google Ads spend on this product over the last 30 days.</note>`,
     `  <products>`,
     rows,
     `  </products>`,
@@ -185,9 +179,9 @@ export function PriceCompetitiveness({ accountId, merchantCenterId }: { accountI
 
   visible.sort((a, b) => {
     let va: number, vb: number;
-    if (sort === "priceDiffPercent")  { va = a.priceDiffPercent;    vb = b.priceDiffPercent;    }
-    else if (sort === "yourPrice")    { va = a.effectivePriceMicros; vb = b.effectivePriceMicros; }
-    else if (sort === "benchmarkPrice") { va = a.benchmarkMicros;   vb = b.benchmarkMicros;     }
+    if (sort === "priceDiffPercent")  { va = a.priceDiffPercent;  vb = b.priceDiffPercent;  }
+    else if (sort === "yourPrice")    { va = a.yourPriceMicros;   vb = b.yourPriceMicros;   }
+    else if (sort === "benchmarkPrice") { va = a.benchmarkMicros; vb = b.benchmarkMicros;   }
     else if (sort === "spend")        { va = a.spendMicros;         vb = b.spendMicros;         }
     else { return sortDir === "desc" ? b.title.localeCompare(a.title) : a.title.localeCompare(b.title); }
     return sortDir === "desc" ? vb - va : va - vb;
@@ -276,7 +270,7 @@ export function PriceCompetitiveness({ accountId, merchantCenterId }: { accountI
         borderRadius: 8, padding: "9px 14px", marginBottom: 14,
         fontSize: 11, color: "var(--text-muted)",
       }}>
-        Benchmark = median competitor price reported by Google. Gap % is calculated against your <strong>effective price</strong> (sale price if active). Spend = last 30 days Google Ads.
+        Benchmark = median competitor price reported by Google. Gap % = (your price − benchmark) ÷ benchmark. Spend = last 30 days Google Ads.
       </div>
 
       {visible.length === 0 ? (
@@ -318,9 +312,8 @@ export function PriceCompetitiveness({ accountId, merchantCenterId }: { accountI
 
           {/* Rows */}
           {visible.map((p, i) => {
-            const cfg    = STATUS_CONFIG[p.status];
-            const Icon   = cfg.icon;
-            const onSale = p.salePriceMicros > 0 && p.salePriceMicros < p.yourPriceMicros;
+            const cfg      = STATUS_CONFIG[p.status];
+            const Icon     = cfg.icon;
             const isAtRisk = p.status === "well_above";
             return (
               <div
@@ -343,21 +336,9 @@ export function PriceCompetitiveness({ accountId, merchantCenterId }: { accountI
                   </div>
                 </div>
 
-                {/* Your price (effective) */}
-                <div style={{ textAlign: "right", fontSize: 12, display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 4 }}>
-                  <span style={{ color: "var(--text-muted)" }}>
-                    {microsToPrice(p.effectivePriceMicros, p.currencyCode)}
-                  </span>
-                  {onSale && (
-                    <span style={{
-                      fontSize: 9, fontWeight: 700, letterSpacing: "0.3px",
-                      background: "rgba(34,197,94,0.1)", color: "#22c55e",
-                      border: "1px solid rgba(34,197,94,0.2)",
-                      padding: "1px 5px", borderRadius: 4,
-                    }}>
-                      SALE
-                    </span>
-                  )}
+                {/* Your price */}
+                <div style={{ textAlign: "right", fontSize: 12, color: "var(--text-muted)" }}>
+                  {microsToPrice(p.yourPriceMicros, p.currencyCode)}
                 </div>
 
                 {/* Benchmark */}
