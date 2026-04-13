@@ -2617,70 +2617,123 @@ export default function AccountPage() {
         </div>
       </header>
 
-      {/* Constraint hero */}
-      {snapshot && (
-        <div style={{
-          padding: "32px 32px 28px",
-          background: glow,
-          borderBottom: "1px solid var(--border)",
-        }}>
-          <div style={{ maxWidth: 860, margin: "0 auto" }}>
-            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 24 }}>
-              <div>
-                <div style={{ fontSize: 12, color: "var(--text-dim)", marginBottom: 6 }}>{account.name} · {account.googleAdsId}</div>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                  <h1 style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-0.5px", color: "var(--text)" }}>
-                    Governing Constraint
-                  </h1>
-                  <span style={{
-                    fontSize: 12, fontWeight: 600, letterSpacing: "0.4px",
-                    background: `rgba(${accent.slice(1).match(/../g)!.map(h => parseInt(h, 16)).join(",")}, 0.15)`,
-                    color: accent,
-                    padding: "3px 10px", borderRadius: 20,
-                  }}>
-                    {label}
-                  </span>
-                </div>
-                <p style={{ fontSize: 13, color: "var(--text-muted)", maxWidth: 560, lineHeight: 1.6 }}>
-                  {snapshot.constraintReason}
-                </p>
-              </div>
+      {/* Account hero */}
+      <div style={{
+        padding: "24px 32px 20px",
+        borderBottom: "1px solid var(--border)",
+      }}>
+        <div style={{ maxWidth: 860, margin: "0 auto" }}>
 
-              {automatable.length > 0 && (
-                <div style={{
+          {/* Row 1: Account name + automatable badge */}
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, marginBottom: 14 }}>
+            <div>
+              <h1 style={{ fontSize: 24, fontWeight: 800, letterSpacing: "-0.6px", color: "var(--text)", margin: 0, lineHeight: 1.2 }}>
+                {account.name}
+              </h1>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
+                {account.industry && (
+                  <span style={{
+                    fontSize: 11, color: "var(--text-dim)", background: "var(--surface-2)",
+                    border: "1px solid var(--border)", borderRadius: 5, padding: "2px 8px",
+                  }}>
+                    {account.industry}
+                  </span>
+                )}
+                <span style={{ fontSize: 11, color: "var(--text-faint)" }}>{account.googleAdsId}</span>
+              </div>
+            </div>
+            {automatable.length > 0 && (
+              <button
+                onClick={() => setTab("actions")}
+                style={{
                   flexShrink: 0,
                   background: "rgba(59,130,246,0.1)", border: "1px solid rgba(59,130,246,0.2)",
-                  borderRadius: 10, padding: "10px 16px", textAlign: "center",
-                }}>
-                  <div style={{ fontSize: 22, fontWeight: 700, color: "#60a5fa" }}>{automatable.length}</div>
-                  <div style={{ fontSize: 11, color: "var(--text-dim)" }}>ready to run</div>
-                </div>
-              )}
-            </div>
+                  borderRadius: 8, padding: "6px 14px", fontSize: 11, fontWeight: 600,
+                  color: "#60a5fa", cursor: "pointer",
+                  display: "flex", alignItems: "center", gap: 5,
+                }}
+              >
+                <Zap size={11} /> {automatable.length} action{automatable.length > 1 ? "s" : ""} ready
+              </button>
+            )}
+          </div>
 
-            <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 12 }}>
-              Last scored {new Date(snapshot.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+          {/* Row 2: 5 bucket scores */}
+          {snapshot && (
+            <div style={{ display: "flex", gap: 6, marginBottom: 14, flexWrap: "wrap" }}>
+              {buckets.map(({ bucket: b, score: s, isGoverning }) => {
+                const bucketLabel = BUCKET_LABELS[b as keyof typeof BUCKET_LABELS] ?? b;
+                const scoreCol = s >= 70 ? "#22c55e" : s >= 45 ? "#eab308" : "#ef4444";
+                return (
+                  <div
+                    key={b}
+                    title={`${bucketLabel}: ${Math.round(s)}`}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 6,
+                      background: isGoverning ? scoreCol + "12" : "var(--surface)",
+                      border: `1px solid ${isGoverning ? scoreCol + "40" : "var(--border)"}`,
+                      borderRadius: 8, padding: "5px 11px",
+                      transition: "border-color 0.1s",
+                    }}
+                  >
+                    <div style={{ width: 6, height: 6, borderRadius: "50%", background: scoreCol, flexShrink: 0 }} />
+                    <span style={{ fontSize: 11, color: isGoverning ? "var(--text-muted)" : "var(--text-dim)" }}>{bucketLabel}</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: scoreCol, letterSpacing: "-0.3px" }}>{Math.round(s)}</span>
+                    {isGoverning && (
+                      <span style={{ fontSize: 9, fontWeight: 700, color: scoreCol, letterSpacing: "0.4px", textTransform: "uppercase" }}>
+                        ← bottleneck
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
             </div>
+          )}
+
+          {/* Row 3: Constraint reason */}
+          {snapshot && (
+            <div style={{
+              borderLeft: `3px solid ${accent}`,
+              paddingLeft: 12,
+              display: "flex", alignItems: "flex-start", gap: 10,
+            }}>
+              <span style={{
+                fontSize: 10, fontWeight: 700, letterSpacing: "0.4px", textTransform: "uppercase",
+                color: accent, background: accent + "18",
+                padding: "3px 8px", borderRadius: 20, flexShrink: 0, marginTop: 2,
+              }}>
+                {label}
+              </span>
+              <p style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.6, margin: 0 }}>
+                {snapshot.constraintReason}
+              </p>
+            </div>
+          )}
+
+          <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 12 }}>
+            {snapshot
+              ? `Last scored ${new Date(snapshot.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`
+              : "Not scored yet"}
           </div>
         </div>
-      )}
+      </div>
 
       {/* Tabs */}
-      <div style={{ borderBottom: "1px solid var(--border)", padding: "0 32px" }}>
-        <div style={{ maxWidth: 860, margin: "0 auto", display: "flex", gap: 0 }}>
+      <div style={{ borderBottom: "1px solid var(--border)", padding: "0 32px", overflowX: "auto" }}>
+        <div style={{ maxWidth: 860, margin: "0 auto", display: "flex", gap: 0, minWidth: "max-content" }}>
           {TABS.map((t) => (
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
               style={{
-                display: "flex", alignItems: "center", gap: 7,
-                padding: "14px 16px", fontSize: 13, fontWeight: 500,
+                display: "flex", alignItems: "center", gap: 6,
+                padding: "12px 14px", fontSize: 12, fontWeight: tab === t.key ? 600 : 500,
                 borderTop: "none", borderLeft: "none", borderRight: "none",
                 borderBottom: `2px solid ${tab === t.key ? accent : "transparent"}`,
-                color: tab === t.key ? "var(--text-2)" : "var(--text-dim)",
+                color: tab === t.key ? "var(--text)" : "var(--text-dim)",
                 background: "transparent",
                 cursor: "pointer", transition: "color 0.15s",
-                marginBottom: -1,
+                marginBottom: -1, whiteSpace: "nowrap",
               }}
             >
               {t.icon}
@@ -2688,7 +2741,7 @@ export default function AccountPage() {
               {t.badge !== undefined && t.badge > 0 && (
                 <span style={{
                   background: "rgba(59,130,246,0.15)", color: "#60a5fa",
-                  borderRadius: 20, padding: "1px 7px", fontSize: 10, fontWeight: 700,
+                  borderRadius: 20, padding: "1px 6px", fontSize: 10, fontWeight: 700,
                 }}>
                   {t.badge}
                 </span>
@@ -2736,6 +2789,29 @@ export default function AccountPage() {
               </div>
             ) : (
               <>
+                {/* ── Diagnosis ───────────────────────────────────────────── */}
+                <ScoreBuckets buckets={buckets} accountId={id} />
+
+                {/* AI Intelligence Brief */}
+                <IntelligencePanel
+                  accountId={id}
+                  onContinueInAdvisor={(brief) => {
+                    setIntelligenceBriefText(brief);
+                    setTab("chat");
+                  }}
+                />
+
+                <ScoreHistory accountId={id} governingConstraint={constraint} />
+
+                {/* ── Account setup ────────────────────────────────────────── */}
+                <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "32px 0 24px" }}>
+                  <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
+                  <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.8px", textTransform: "uppercase", color: "var(--text-faint)", whiteSpace: "nowrap" }}>
+                    Account setup
+                  </span>
+                  <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
+                </div>
+
                 {/* Account Targets — feeds ECONOMICS scoring */}
                 <AccountTargetsPanel
                   accountId={id}
@@ -2769,41 +2845,11 @@ export default function AccountPage() {
                   onSaved={(v) => setAccount(prev => prev ? { ...prev, clientContext: v } : prev)}
                 />
 
-                {/* AI Intelligence Brief */}
-                <IntelligencePanel
-                  accountId={id}
-                  onContinueInAdvisor={(brief) => {
-                    setIntelligenceBriefText(brief);
-                    setTab("chat");
-                  }}
-                />
-
-                <div style={{ marginBottom: 20, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.8px", textTransform: "uppercase", color: "var(--text-dim)" }}>
-                    Bucket health
-                  </span>
-                </div>
                 {/* Landing page AI CRO review */}
                 <LandingAnalysisPanel accountId={id} landingPageUrl={account.landingPageUrl ?? null} />
 
                 {/* Product page AI audit */}
                 <PDPAnalysisPanel accountId={id} />
-
-                <ScoreBuckets buckets={buckets} accountId={id} />
-
-                <ScoreHistory accountId={id} governingConstraint={constraint} />
-
-                <div style={{
-                  background: "var(--surface)", border: "1px solid var(--surface-3)", borderRadius: 12,
-                  padding: "20px 22px", marginTop: 20,
-                }}>
-                  <p style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.7 }}>
-                    <strong style={{ color: "var(--text-2)" }}>{label}</strong> is your governing constraint —
-                    the single bottleneck blocking growth. Fix this before anything downstream.
-                    Go to the <strong style={{ color: "var(--text-2)" }}>Actions</strong> tab for prioritized moves,
-                    or use the <strong style={{ color: "var(--text-2)" }}>AI Advisor</strong> to think it through.
-                  </p>
-                </div>
               </>
             )}
           </>
