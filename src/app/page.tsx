@@ -7,7 +7,7 @@ import { BUCKET_LABELS } from "@/lib/engine/types";
 import {
   Zap, RefreshCw, Loader2, Plus, AlertTriangle, TrendingUp,
   BookOpen, ListChecks, TrendingDown, Check, X, Settings, LogOut,
-  Trash2, Search, ChevronUp, ChevronDown, ChevronsUpDown,
+  Trash2, Search, ChevronUp, ChevronDown,
 } from "lucide-react";
 import { AccountImporter } from "@/components/AccountImporter";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -95,54 +95,20 @@ function LoginPage() {
   );
 }
 
-// ─── Sort header ──────────────────────────────────────────────────────────────
+// ─── Account card ─────────────────────────────────────────────────────────────
 
-const COLS = "28px 1fr 48px 136px 68px 58px 116px 72px";
-
-function SortHeader({ label, col, sortBy, sortDir, onSort, align = "left" }: {
-  label: string;
-  col: "score" | "name" | "roas" | "budget" | "bucket";
-  sortBy: string;
-  sortDir: "asc" | "desc";
-  onSort: (col: "score" | "name" | "roas" | "budget" | "bucket") => void;
-  align?: "left" | "right" | "center";
-}) {
-  const active = sortBy === col;
-  const Icon = active ? (sortDir === "asc" ? ChevronUp : ChevronDown) : ChevronsUpDown;
-  return (
-    <button
-      onClick={() => onSort(col)}
-      style={{
-        display: "flex", alignItems: "center", gap: 3,
-        justifyContent: align === "right" ? "flex-end" : align === "center" ? "center" : "flex-start",
-        background: "none", border: "none", cursor: "pointer", padding: 0,
-        fontSize: 10, fontWeight: 600, letterSpacing: "0.6px", textTransform: "uppercase",
-        color: active ? "var(--text-3)" : "var(--text-faint)",
-        transition: "color 0.15s",
-      }}
-      onMouseEnter={e => (e.currentTarget.style.color = "var(--text-3)")}
-      onMouseLeave={e => (e.currentTarget.style.color = active ? "var(--text-3)" : "var(--text-faint)")}
-    >
-      {align === "right" && <Icon size={9} />}
-      {label}
-      {align !== "right" && <Icon size={9} />}
-    </button>
-  );
-}
-
-// ─── Account row ──────────────────────────────────────────────────────────────
-
-function AccountRow({
-  account, index, scoring, onRescore, onRemove,
+function AccountCard({
+  account, scoring, onRescore, onRemove,
 }: {
   account:   Account;
-  index:     number;
   scoring:   boolean;
   onRescore: (id: string, e: React.MouseEvent) => void;
   onRemove:  (id: string) => void;
 }) {
+  const [hovered, setHovered]           = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [removing, setRemoving]           = useState(false);
+
   const snap   = account.snapshots[0];
   const score  = snap ? minScore(snap) : null;
   const delta  = account.scoreDelta;
@@ -150,74 +116,69 @@ function AccountRow({
 
   const isCritical = score !== null && score < 45;
   const isAtRisk   = score !== null && score >= 45 && score < 70;
+  const isHealthy  = score !== null && score >= 70;
 
-  const accentColor = isCritical ? "#ef4444" : isAtRisk ? "#eab308" : null;
-
-  const deltaColor = delta === null ? "var(--text-faint)"
-    : delta > 0  ? "#22c55e"
-    : delta < 0  ? "#ef4444"
-    : "var(--text-faint)";
-
-  const rowBg        = isCritical ? "rgba(239,68,68,0.04)" : "var(--bg)";
-  const rowBgHover   = isCritical ? "rgba(239,68,68,0.07)" : "var(--surface)";
+  const accentColor = isCritical ? "#ef4444" : isAtRisk ? "#eab308" : isHealthy ? "#22c55e" : "var(--border-3)";
+  const deltaColor  = delta === null ? "var(--text-faint)" : delta > 0 ? "#22c55e" : delta < 0 ? "#ef4444" : "var(--text-faint)";
 
   return (
     <Link href={`/accounts/${account.id}`} style={{ textDecoration: "none", display: "block" }}>
       <div
         style={{
-          display: "grid",
-          gridTemplateColumns: COLS,
-          alignItems: "center",
-          gap: 12,
-          padding: "10px 16px 10px 0",
-          borderBottom: "1px solid var(--border)",
-          background: rowBg,
+          background: "var(--surface)",
+          border: `1px solid ${hovered ? "var(--border-3)" : "var(--border)"}`,
+          borderRadius: 14,
+          overflow: "hidden",
           cursor: "pointer",
-          transition: "background 0.1s",
-          borderLeft: accentColor ? `3px solid ${accentColor}` : "3px solid transparent",
+          transition: "border-color 0.15s, box-shadow 0.15s",
+          boxShadow: hovered ? "0 4px 24px rgba(0,0,0,0.18)" : "0 1px 3px rgba(0,0,0,0.08)",
         }}
-        onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = rowBgHover}
-        onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = rowBg}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => { setHovered(false); if (!confirmDelete) return; }}
       >
-        {/* Rank */}
-        <span style={{ fontSize: 11, color: "var(--text-faint)", textAlign: "center", paddingLeft: 14 }}>{index + 1}</span>
+        {/* Top accent bar */}
+        <div style={{ height: 3, background: accentColor, transition: "background 0.2s" }} />
 
-        {/* Name */}
-        <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: isCritical ? "#f87171" : "var(--text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {account.name}
-          </div>
-          {account.industry && (
-            <div style={{ fontSize: 10, color: "var(--text-faint)", marginTop: 1 }}>{account.industry}</div>
-          )}
-        </div>
+        <div style={{ padding: "16px 18px 15px" }}>
 
-        {/* Score badge */}
-        <div style={{ textAlign: "center" }}>
-          {score !== null ? (
-            <span style={{
-              display: "inline-block",
-              fontSize: 12, fontWeight: 700, letterSpacing: "-0.3px",
-              color: scoreColor(score),
-              background: scoreColor(score) + "18",
-              padding: "2px 6px", borderRadius: 6,
-              minWidth: 32, textAlign: "center",
-            }}>
-              {score}
-            </span>
-          ) : <span style={{ fontSize: 11, color: "var(--text-faint)" }}>—</span>}
-        </div>
-
-        {/* Health — 5 bucket dots + delta */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 7 }}>
-          {delta !== null && delta !== 0 && (
-            <div style={{ display: "flex", alignItems: "center", gap: 1, fontSize: 10, fontWeight: 600, color: deltaColor }}>
-              {delta > 0 ? <TrendingUp size={9} /> : <TrendingDown size={9} />}
-              {delta > 0 ? `+${delta}` : delta}
+          {/* Row 1: Name + Score */}
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 14 }}>
+            <div style={{ minWidth: 0 }}>
+              <div style={{
+                fontSize: 14, fontWeight: 700, color: "var(--text)",
+                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                letterSpacing: "-0.3px", lineHeight: 1.3,
+              }}>
+                {account.name}
+              </div>
+              {account.industry && (
+                <div style={{ fontSize: 11, color: "var(--text-dim)", marginTop: 3 }}>{account.industry}</div>
+              )}
             </div>
-          )}
+
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2, flexShrink: 0 }}>
+              {score !== null ? (
+                <span style={{
+                  fontSize: 26, fontWeight: 800, letterSpacing: "-1.5px", lineHeight: 1,
+                  color: scoreColor(score),
+                }}>
+                  {score}
+                </span>
+              ) : (
+                <span style={{ fontSize: 13, color: "var(--text-faint)", fontStyle: "italic", lineHeight: 1 }}>—</span>
+              )}
+              {delta !== null && delta !== 0 && (
+                <div style={{ display: "flex", alignItems: "center", gap: 2, fontSize: 10, fontWeight: 600, color: deltaColor }}>
+                  {delta > 0 ? <TrendingUp size={9} /> : <TrendingDown size={9} />}
+                  {delta > 0 ? `+${delta}` : delta}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Row 2: Health buckets */}
           {snap ? (
-            <div style={{ display: "flex", alignItems: "flex-end", gap: 4 }}>
+            <div style={{ display: "flex", gap: 5, marginBottom: 14 }}>
               {(
                 [
                   ["scoreMeasurement", "M"] as const,
@@ -230,97 +191,116 @@ function AccountRow({
                 const s = snap[key] as number;
                 const dotColor = s >= 70 ? "#22c55e" : s >= 45 ? "#eab308" : "#ef4444";
                 return (
-                  <div key={key} title={`${initial}: ${Math.round(s)}`} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
-                    <div style={{ width: 9, height: 9, borderRadius: "50%", background: dotColor }} />
-                    <span style={{ fontSize: 7, color: "var(--text-faint)", lineHeight: 1 }}>{initial}</span>
+                  <div
+                    key={key}
+                    title={`${initial}: ${Math.round(s)}`}
+                    style={{
+                      flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
+                      background: dotColor + "14", borderRadius: 7, padding: "6px 0",
+                    }}
+                  >
+                    <div style={{ width: 6, height: 6, borderRadius: "50%", background: dotColor }} />
+                    <span style={{ fontSize: 8, fontWeight: 700, letterSpacing: "0.3px", color: "var(--text-dim)" }}>{initial}</span>
                   </div>
                 );
               })}
             </div>
           ) : (
-            <div style={{ fontSize: 11, color: "var(--text-faint)", fontStyle: "italic" }}>—</div>
+            <div style={{ height: 38, display: "flex", alignItems: "center", marginBottom: 14 }}>
+              <span style={{ fontSize: 11, color: "var(--text-faint)", fontStyle: "italic" }}>Not scored yet</span>
+            </div>
           )}
-        </div>
 
-        {/* ROAS */}
-        <div style={{ textAlign: "right" }}>
-          {snap && snap.roas > 0 ? (
-            <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-2)", letterSpacing: "-0.3px" }}>{fmt(snap.roas)}x</span>
-          ) : <span style={{ fontSize: 11, color: "var(--text-faint)" }}>—</span>}
-        </div>
+          {/* Row 3: Metrics + Constraint */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+            <div style={{ display: "flex", gap: 6 }}>
+              {snap && snap.roas > 0 && (
+                <div style={{
+                  background: "var(--surface-2)", borderRadius: 6, padding: "4px 10px",
+                  fontSize: 12, fontWeight: 700, color: "var(--text-2)", letterSpacing: "-0.3px",
+                  display: "flex", alignItems: "baseline", gap: 4,
+                }}>
+                  {fmt(snap.roas)}x
+                  <span style={{ fontSize: 9, fontWeight: 500, color: "var(--text-dim)", letterSpacing: 0 }}>ROAS</span>
+                </div>
+              )}
+              {snap && snap.budgetUtil > 0 && (
+                <div style={{
+                  background: "var(--surface-2)", borderRadius: 6, padding: "4px 10px",
+                  fontSize: 12, fontWeight: 700, letterSpacing: "-0.3px",
+                  color: snap.budgetUtil > 0.9 ? "#22c55e" : snap.budgetUtil > 0.6 ? "var(--text-2)" : "#ef4444",
+                  display: "flex", alignItems: "baseline", gap: 4,
+                }}>
+                  {Math.round(snap.budgetUtil * 100)}%
+                  <span style={{ fontSize: 9, fontWeight: 500, color: "var(--text-dim)", letterSpacing: 0 }}>budget</span>
+                </div>
+              )}
+            </div>
 
-        {/* Budget util */}
-        <div style={{ textAlign: "right" }}>
-          {snap && snap.budgetUtil > 0 ? (
-            <span style={{ fontSize: 12, fontWeight: 600, letterSpacing: "-0.3px", color: snap.budgetUtil > 0.9 ? "#22c55e" : snap.budgetUtil > 0.6 ? "var(--text-2)" : "#ef4444" }}>
-              {Math.round(snap.budgetUtil * 100)}%
-            </span>
-          ) : <span style={{ fontSize: 11, color: "var(--text-faint)" }}>—</span>}
-        </div>
+            {bucket && (
+              <span style={{
+                fontSize: 10, fontWeight: 600, letterSpacing: "0.4px", textTransform: "uppercase",
+                color: BUCKET_COLOR[bucket], background: BUCKET_COLOR[bucket] + "18",
+                padding: "3px 8px", borderRadius: 20, flexShrink: 0,
+              }}>
+                {BUCKET_LABELS[bucket]}
+              </span>
+            )}
+          </div>
 
-        {/* Constraint */}
-        <div>
-          {bucket ? (
-            <span style={{
-              fontSize: 10, fontWeight: 600, letterSpacing: "0.4px", textTransform: "uppercase",
-              color: BUCKET_COLOR[bucket], background: BUCKET_COLOR[bucket] + "18",
-              padding: "3px 8px", borderRadius: 20,
-            }}>
-              {BUCKET_LABELS[bucket]}
-            </span>
-          ) : (
-            <span style={{ fontSize: 11, color: "var(--text-faint)", fontStyle: "italic" }}>not scored</span>
-          )}
-        </div>
-
-        {/* Actions */}
-        <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 4 }}
-          onClick={e => { e.preventDefault(); e.stopPropagation(); }}>
-          {confirmDelete ? (
-            <>
-              <span style={{ fontSize: 11, color: "var(--text-dim)", whiteSpace: "nowrap" }}>Remove?</span>
-              <button
-                onClick={async e => {
-                  e.preventDefault(); e.stopPropagation();
-                  setRemoving(true);
-                  await fetch(`/api/accounts/${account.id}`, { method: "DELETE" });
-                  onRemove(account.id);
-                }}
-                disabled={removing}
-                style={{ padding: "3px 8px", borderRadius: 5, background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.3)", color: "#ef4444", fontSize: 11, cursor: "pointer", display: "flex", alignItems: "center", gap: 3 }}
-              >
-                {removing ? <Loader2 size={10} className="animate-spin" /> : <Check size={10} />}
-              </button>
-              <button
-                onClick={e => { e.preventDefault(); e.stopPropagation(); setConfirmDelete(false); }}
-                style={{ padding: "3px 6px", borderRadius: 5, background: "none", border: "1px solid var(--border-2)", color: "var(--text-faint)", fontSize: 11, cursor: "pointer", display: "flex", alignItems: "center" }}
-              >
-                <X size={10} />
-              </button>
+          {/* Row 4: Actions (visible on hover) */}
+          <div
+            style={{
+              display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 4,
+              marginTop: 12, opacity: hovered ? 1 : 0, transition: "opacity 0.15s",
+            }}
+            onClick={e => { e.preventDefault(); e.stopPropagation(); }}
+          >
+            {confirmDelete ? (
+              <>
+                <span style={{ fontSize: 11, color: "var(--text-dim)", marginRight: 4 }}>Remove?</span>
+                <button
+                  onClick={async e => {
+                    e.preventDefault(); e.stopPropagation();
+                    setRemoving(true);
+                    await fetch(`/api/accounts/${account.id}`, { method: "DELETE" });
+                    onRemove(account.id);
+                  }}
+                  disabled={removing}
+                  style={{ padding: "3px 8px", borderRadius: 5, background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.3)", color: "#ef4444", fontSize: 11, cursor: "pointer", display: "flex", alignItems: "center", gap: 3 }}
+                >
+                  {removing ? <Loader2 size={10} className="animate-spin" /> : <Check size={10} />}
+                </button>
+                <button
+                  onClick={e => { e.preventDefault(); e.stopPropagation(); setConfirmDelete(false); }}
+                  style={{ padding: "3px 6px", borderRadius: 5, background: "none", border: "1px solid var(--border-2)", color: "var(--text-faint)", fontSize: 11, cursor: "pointer", display: "flex", alignItems: "center" }}
+                >
+                  <X size={10} />
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={e => onRescore(account.id, e)}
+                  disabled={scoring}
+                  style={{ display: "flex", alignItems: "center", gap: 4, background: "transparent", border: "1px solid var(--border-2)", borderRadius: 6, color: "var(--text-dim)", fontSize: 11, padding: "4px 10px", cursor: scoring ? "not-allowed" : "pointer", opacity: scoring ? 0.4 : 1 }}
+                >
+                  {scoring ? <Loader2 size={10} className="animate-spin" /> : <RefreshCw size={10} />}
+                  {scoring ? "…" : "Score"}
+                </button>
+                <button
+                  onClick={e => { e.preventDefault(); e.stopPropagation(); setConfirmDelete(true); }}
+                  title="Remove account"
+                  style={{ padding: "4px 6px", borderRadius: 6, background: "none", border: "1px solid var(--border-2)", color: "var(--text-faint)", cursor: "pointer", display: "flex", alignItems: "center" }}
+                >
+                  <Trash2 size={10} />
+                </button>
             </>
-          ) : (
-            <>
-              <button
-                onClick={e => onRescore(account.id, e)}
-                disabled={scoring}
-                style={{ display: "flex", alignItems: "center", gap: 4, background: "transparent", border: "1px solid var(--border-2)", borderRadius: 6, color: "var(--text-dim)", fontSize: 11, padding: "4px 10px", cursor: scoring ? "not-allowed" : "pointer", opacity: scoring ? 0.4 : 1 }}
-              >
-                {scoring ? <Loader2 size={10} className="animate-spin" /> : <RefreshCw size={10} />}
-                {scoring ? "…" : "Rescore"}
-              </button>
-              <button
-                onClick={e => { e.preventDefault(); e.stopPropagation(); setConfirmDelete(true); }}
-                title="Remove account"
-                style={{ padding: "4px 6px", borderRadius: 6, background: "none", border: "1px solid var(--border-2)", color: "var(--text-faint)", cursor: "pointer", display: "flex", alignItems: "center", opacity: 0.5 }}
-                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.opacity = "1"; (e.currentTarget as HTMLButtonElement).style.color = "#ef4444"; (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(239,68,68,0.3)"; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.opacity = "0.5"; (e.currentTarget as HTMLButtonElement).style.color = "var(--text-faint)"; (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--border-2)"; }}
-              >
-                <Trash2 size={10} />
-              </button>
-            </>
           )}
         </div>
-      </div>
+
+        </div>{/* card body */}
+      </div>{/* outer card */}
     </Link>
   );
 }
@@ -729,30 +709,59 @@ function HomePageInner() {
             )}
           </div>
         ) : (
-          <div style={{ border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
-            {/* Sortable header */}
-            <div style={{ display: "grid", gridTemplateColumns: COLS, gap: 12, padding: "7px 16px 7px 0", background: "var(--surface)", borderBottom: "1px solid var(--border)" }}>
-              <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.6px", textTransform: "uppercase", color: "var(--text-faint)", paddingLeft: 14 }}>#</span>
-              <SortHeader label="Account" col="name" sortBy={sortBy} sortDir={sortDir} onSort={toggleSort} />
-              <SortHeader label="Score" col="score" sortBy={sortBy} sortDir={sortDir} onSort={toggleSort} align="center" />
-              <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.6px", textTransform: "uppercase", color: "var(--text-faint)", textAlign: "right" }}>Health</span>
-              <SortHeader label="ROAS" col="roas" sortBy={sortBy} sortDir={sortDir} onSort={toggleSort} align="right" />
-              <SortHeader label="Budget" col="budget" sortBy={sortBy} sortDir={sortDir} onSort={toggleSort} align="right" />
-              <SortHeader label="Bottleneck" col="bucket" sortBy={sortBy} sortDir={sortDir} onSort={toggleSort} />
-              <span />
+          <>
+            {/* Sort toolbar */}
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 16, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 11, color: "var(--text-faint)", fontWeight: 500, marginRight: 2 }}>Sort:</span>
+              {(
+                [
+                  { col: "score",  label: "Score"      },
+                  { col: "name",   label: "Name"        },
+                  { col: "roas",   label: "ROAS"        },
+                  { col: "budget", label: "Budget"      },
+                  { col: "bucket", label: "Bottleneck"  },
+                ] as { col: typeof sortBy; label: string }[]
+              ).map(({ col, label }) => {
+                const active = sortBy === col;
+                const Icon = active ? (sortDir === "asc" ? ChevronUp : ChevronDown) : null;
+                return (
+                  <button
+                    key={col}
+                    onClick={() => toggleSort(col)}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 3,
+                      fontSize: 11, fontWeight: active ? 700 : 500,
+                      color: active ? "var(--text)" : "var(--text-dim)",
+                      background: active ? "var(--surface-2)" : "transparent",
+                      border: `1px solid ${active ? "var(--border-3)" : "var(--border)"}`,
+                      borderRadius: 6, padding: "4px 10px", cursor: "pointer",
+                      transition: "all 0.1s",
+                    }}
+                  >
+                    {label}
+                    {Icon && <Icon size={10} />}
+                  </button>
+                );
+              })}
             </div>
 
-            {sorted.map((account, idx) => (
-              <AccountRow
-                key={account.id}
-                account={account}
-                index={idx}
-                scoring={scoring === account.id}
-                onRescore={runScore}
-                onRemove={handleRemove}
-              />
-            ))}
-          </div>
+            {/* Card grid */}
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+              gap: 14,
+            }}>
+              {sorted.map((account) => (
+                <AccountCard
+                  key={account.id}
+                  account={account}
+                  scoring={scoring === account.id}
+                  onRescore={runScore}
+                  onRemove={handleRemove}
+                />
+              ))}
+            </div>
+          </>
         )}
       </main>
     </div>
