@@ -1000,6 +1000,14 @@ export interface ProductRow {
   cpc:         number;
 }
 
+export interface LabelDistribution {
+  /** Label name (e.g. "hero", "villain", "sidekick", "zombie") or "unlabeled" */
+  label:     string;
+  cost:      number;   // in account currency
+  revenue:   number;
+  products:  number;   // distinct product count
+}
+
 export interface ShoppingOverview {
   hasShoppingCampaigns: boolean;
   campaignCount:        number;
@@ -1011,6 +1019,8 @@ export interface ShoppingOverview {
   isLostRank:           number;  // avg impression share lost to rank
   disapprovedCount:     number;
   products:             ProductRow[];
+  /** Cost distribution by ProductHero custom_label_0 value (empty if no labels found) */
+  labelDistribution:    LabelDistribution[];
 }
 
 export async function fetchProductPerformance(customerId: string, orgId?: string): Promise<ShoppingOverview> {
@@ -1043,6 +1053,7 @@ export async function fetchProductPerformance(customerId: string, orgId?: string
       hasShoppingCampaigns: false,
       campaignCount: 0, totalCost: 0, totalRevenue: 0, totalConversions: 0,
       roas: 0, isLostBudget: 0, isLostRank: 0, disapprovedCount: 0, products: [],
+      labelDistribution: [],
     };
   }
 
@@ -1064,6 +1075,7 @@ export async function fetchProductPerformance(customerId: string, orgId?: string
         segments.product_item_id,
         segments.product_title,
         segments.product_brand,
+        segments.product_custom_label0,
         campaign.advertising_channel_type,
         metrics.clicks,
         metrics.impressions,
@@ -1094,6 +1106,8 @@ export async function fetchProductPerformance(customerId: string, orgId?: string
   // to PMax only when no Shopping data is available for that product.
   const shoppingMap = new Map<string, ProductRow>();  // SHOPPING type only
   const pmaxMap     = new Map<string, ProductRow>();  // PERFORMANCE_MAX type only
+  // custom_label_0 per item (last-seen value wins — label should be consistent across campaigns)
+  const itemLabelMap = new Map<string, string>();
 
   for (const r of productRows) {
     const itemId = String(r.segments?.product_item_id ?? "unknown");
@@ -1104,8 +1118,11 @@ export async function fetchProductPerformance(customerId: string, orgId?: string
     const conversions = Number(r.metrics?.conversions       ?? 0);
     const revenue     = Number(r.metrics?.conversions_value ?? 0);
     const cost        = Number(r.metrics?.cost_micros       ?? 0) / 1_000_000;
-    const ct = String((r.campaign as {advertising_channel_type?: string} | undefined)?.advertising_channel_type ?? "");
+    const ct    = String((r.campaign as {advertising_channel_type?: string} | undefined)?.advertising_channel_type ?? "");
+    const label = String((r.segments as {product_custom_label0?: string} | undefined)?.product_custom_label0 ?? "").trim();
     const targetMap = ct === "PERFORMANCE_MAX" ? pmaxMap : shoppingMap;
+
+    if (label) itemLabelMap.set(itemId, label.toLowerCase());
 
     const existing = targetMap.get(itemId);
     if (existing) {
@@ -1124,8 +1141,23 @@ export async function fetchProductPerformance(customerId: string, orgId?: string
   for (const [itemId, pmaxRow] of pmaxMap) {
     if (!productMap.has(itemId)) productMap.set(itemId, pmaxRow);
   }
-  console.log(`[product-perf] ${customerId}: after dedup — ${shoppingMap.size} Shopping products, ${pmaxMap.size} PMax products, ${productMap.size} merged unique`);
+  console.log(`[product-perf] ${customerId}: after dedup — ${shoppingMap.size} Shopping products, ${pmaxMap.size} PMax products, ${productMap.size} merged unique, ${itemLabelMap.size} labeled`);
 
+  // ── Label distribution (cost + revenue by custom_label_0 value) ────────────
+  // Shows how budget is allocated across Heroes/Villains/Sidekicks/Zombies.
+  // Only populated when the account uses a ProductHero-style labelizer.
+  const labelBuckets = new Map<string, { cost: number; revenue: number; products: Set<string> }>();
+  for (const [itemId, row] of productMap) {
+    const label = itemLabelMap.get(itemId) ?? "unlabeled";
+    let bucket = labelBuckets.get(label);
+    if (!bucket) { bucket = { cost: 0, revenue: 0, products: new Set() }; labelBuckets.set(label, bucket); }
+    bucket.cost    += row.cost;
+    bucket.revenue += row.revenue;
+    bucket.products.add(itemId);
+  }
+  const labelDistribution: LabelDistribution[] = Array.from(labelBuckets.entries())
+    .map(([label, b]) => ({ label, cost: b.cost, revenue: b.revenue, products: b.products.size }))
+    .sort((a, b) => b.cost - a.cost);
 
   // Compute derived metrics
   const products: ProductRow[] = Array.from(productMap.values()).map(p => ({
@@ -1160,6 +1192,7 @@ export async function fetchProductPerformance(customerId: string, orgId?: string
     isLostRank:    Math.min(1, isLostRank),
     disapprovedCount,
     products: products.slice(0, 50),
+    labelDistribution,
   };
 }
 

@@ -232,6 +232,29 @@ export async function POST(_req: NextRequest, { params }: Params) {
           lines.push(`\nPrice competitiveness (${priceRows.length} products with benchmark data): ${wellAbove} well above market, ${above} above market, ${below} competitive/below market`);
         }
 
+        // Labelizer health (only when custom_label_0 data is available)
+        const dist = productData.labelDistribution ?? [];
+        const hasLabels = dist.some(d => d.label !== "unlabeled");
+        if (hasLabels) {
+          const totalLabeledCost   = dist.reduce((s, d) => s + d.cost, 0);
+          const totalLabeledProds  = dist.reduce((s, d) => s + d.products, 0);
+          const unlabeled          = dist.find(d => d.label === "unlabeled");
+          const unlabeledPct       = totalLabeledProds > 0
+            ? Math.round((unlabeled?.products ?? 0) / totalLabeledProds * 100)
+            : 0;
+          const labelLines = dist
+            .map(d => {
+              const costPct = totalLabeledCost > 0 ? Math.round(d.cost / totalLabeledCost * 100) : 0;
+              const roas    = d.cost > 0 ? (d.revenue / d.cost).toFixed(2) : "n/a";
+              return `  ${d.label}: ${d.products} products, ${costPct}% of spend, ROAS ${roas}x`;
+            });
+          lines.push(`\nLABELIZER HEALTH (custom_label_0):`);
+          lines.push(`  ${totalLabeledProds} active products (${unlabeledPct}% unlabeled = still in testing or unclassified)`);
+          labelLines.forEach(l => lines.push(l));
+          lines.push(`  NOTE: "unlabeled" = new products being tested this week (Villain testing cycle) or products awaiting first impression.`);
+          lines.push(`  Sidekicks = too few clicks/conversions to classify yet. Villains = failed test — spending without return. Heroes = proven performers.`);
+        }
+
         productContext = lines.join("\n");
       }
     } catch { /* non-fatal — intelligence still runs without product data */ }

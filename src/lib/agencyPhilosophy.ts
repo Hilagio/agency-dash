@@ -35,15 +35,61 @@ Villains campaign (controlled spend) + Brand (isolated). That's it.
 Spreading budget across 10 campaigns keeps you busy without making money.
 
 --- PRODUCT SEGMENTATION (HEROES/SIDEKICKS/ZOMBIES/VILLAINS) ---
-Heroes & Sidekicks: scale aggressively — push budget, push ROAS targets
-Zombies: activate and test — they may have hidden potential
-Villains: these are products that spend without returning value. There is no hard budget
-  cap on the Villains campaign. If Villains are consuming too much budget, that is a
-  SEGMENTATION signal — not a budget problem. The fix is to go back into ProductHero and
-  adjust the labeling thresholds: tighten targets so fewer products qualify as Villains,
-  or shift marginal products into Zombies for further testing. The goal is to shrink the
-  Villain pool by improving label accuracy, not by capping spend on a broken segment.
-  More budget going to Villains = your ProductHero targets need recalibration.
+Labels are assigned by the Labelizer (Flowboost / ProductHero) using Google Ads
+custom_label_0. The label determines which campaign a product runs in and therefore
+what budget and ROAS target it receives.
+
+LABEL DEFINITIONS:
+  Hero:     Proven performer — consistent conversions at or above target ROAS.
+            Scale aggressively. Push budget, push ROAS targets.
+  Sidekick: Insufficient volume to classify yet. Product has some activity (impressions,
+            maybe 1 sale) but not enough clicks/conversions to know whether it belongs
+            with Heroes or Villains. Sidekicks are NOT bad products — they are undecided.
+            They need more data. Do NOT cut them early.
+  Zombie:   Product exists in the feed but has never received traffic. Activate and test.
+            May have hidden potential. Treat as opportunity, not dead weight.
+  Villain:  Failed the test. Spent budget across a full test cycle without returning
+            sufficient value. Villains are NOT permanent — the classification is based on
+            a rolling test window (Monday-to-Monday feed refresh, ~1-week cycle). A
+            product can graduate out of Villain status if underlying issues are fixed
+            (pricing, feed title, landing page). No hard budget cap on the Villains
+            campaign — if Villains are consuming too much budget, that is a SEGMENTATION
+            signal, not a budget problem. The fix is to recalibrate ProductHero thresholds
+            so fewer products qualify as Villains (tighter ROAS targets = smaller Villain
+            pool), or shift marginal products into Zombies for re-testing.
+
+ACTIVATION RATE — a key health metric:
+  For large catalogs, only a small fraction of products may have a label at any given
+  time (e.g. 2–5% of total feed). This is normal and expected: the Labelizer works
+  through the catalog sequentially, testing one cohort per week. A low activation rate
+  is NOT a problem to fix in Google Ads — it is a feed size vs. testing throughput issue.
+  Do NOT recommend reducing the product catalog or changing campaign structure to address
+  a low activation rate. The solution is to continue running the Labelizer and let it
+  work through the catalog.
+
+COST DISTRIBUTION — what healthy looks like:
+  In a well-optimised account, the majority of cost flows to Heroes and Sidekicks (active,
+  revenue-generating segments). Villains should be a minority of total spend (<15% is
+  acceptable; >25% signals the Labelizer thresholds need recalibration). If Villains + new
+  unlabeled products are eating >30% of budget while revenue comes primarily from Heroes
+  and Sidekicks, the account is over-investing in the testing pipeline relative to its
+  proven performers.
+
+CLICK MULTIPLIER — the classification speed dial:
+  The Labelizer uses a "click multiplier" to control how many clicks/conversions a product
+  must accumulate before it is classified as Hero or Villain.
+  - Low multiplier  → faster classification → more products activated quickly → higher
+    short-term activation rate. RISK: a product classified as Hero at low volume (e.g. 2
+    conversions) may be a false positive — it can drain budget at scale when impression
+    share increases, because the data wasn't statistically reliable.
+  - High multiplier → slower classification → fewer labels assigned per week → lower
+    activation rate, but labels are more accurate. Products need more evidence before
+    being trusted with Hero budgets.
+  Trade-off: short-term activation vs. long-term label accuracy. For accounts with large
+  budgets per product (high AOV, big budgets), use a higher multiplier to protect against
+  false Hero classifications. For high-volume, low-AOV accounts, a lower multiplier may
+  be acceptable because the cost of a false Hero is smaller.
+
 We control performance at product level, not campaign level. This is the real lever.
 
 --- BRAND CAMPAIGNS ---
