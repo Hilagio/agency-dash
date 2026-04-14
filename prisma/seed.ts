@@ -42,6 +42,11 @@ const acme_signals: ConstraintSignals = {
     irrelevantQueryPercent: 0.22,
     isPmaxPrimary: false,
     pmaxDisplayYoutubePercent: 0,
+    budgetConstrainedCampaigns: [],
+    zeroImpressionAdGroupCount: 0,
+    zeroImpressionAdGroupNames: [],
+    wastedKeywordSpend: 0,
+    wastedKeywordSpendRatio: 0,
   },
   conversion: {
     conversionRate: 0.032,
@@ -97,6 +102,11 @@ const nova_signals: ConstraintSignals = {
     irrelevantQueryPercent: 0.08,
     isPmaxPrimary: false,
     pmaxDisplayYoutubePercent: 0,
+    budgetConstrainedCampaigns: [],
+    zeroImpressionAdGroupCount: 0,
+    zeroImpressionAdGroupNames: [],
+    wastedKeywordSpend: 0,
+    wastedKeywordSpendRatio: 0,
   },
   conversion: {
     conversionRate: 0.0,

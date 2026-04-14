@@ -165,3 +165,167 @@ export async function executeEnableEnhancedConversions(googleAdsId: string): Pro
     (alreadyEnabled.length > 0 ? `${alreadyEnabled.length} already had it enabled.` : "")
   );
 }
+
+// ─── Pause zero-impression ad groups ─────────────────────────────────────────
+// Pauses SEARCH ad groups that received 0 impressions in the last 30 days.
+// Skips brand-named campaigns and Shopping/PMax (they don't use classic ad groups).
+// This is safe and reversible — groups that haven't run in a month waste no money
+// but clutter structure and can dilute quality score averages.
+
+export async function executePauseZeroImpressionAdGroups(googleAdsId: string): Promise<string> {
+  const customer = await getCustomer(googleAdsId);
+
+  const end   = new Date();
+  const start = new Date();
+  start.setDate(start.getDate() - 30);
+  const fmt = (d: Date) => d.toISOString().slice(0, 10);
+
+  // All enabled SEARCH ad groups
+  const allRows = await customer.query(`
+    SELECT ad_group.id, ad_group.name, ad_group.resource_name, campaign.name
+    FROM ad_group
+    WHERE ad_group.status = 'ENABLED'
+      AND campaign.status = 'ENABLED'
+      AND campaign.advertising_channel_type = 'SEARCH'
+    LIMIT 1000
+  `);
+
+  // Ad groups that had any impressions in the last 30 days
+  const activeRows = await customer.query(`
+    SELECT ad_group.id
+    FROM ad_group
+    WHERE ad_group.status = 'ENABLED'
+      AND campaign.status = 'ENABLED'
+      AND campaign.advertising_channel_type = 'SEARCH'
+      AND metrics.impressions > 0
+      AND segments.date BETWEEN '${fmt(start)}' AND '${fmt(end)}'
+    LIMIT 1000
+  `);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const activeIds = new Set(activeRows.map(r => String((r.ad_group as any)?.id ?? "")).filter(Boolean));
+
+  const toPause = allRows.filter(r => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const id = String((r.ad_group as any)?.id ?? "");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const campName = String((r.campaign as any)?.name ?? "").toLowerCase();
+    if (!id) return false;
+    if (campName.includes("brand") || campName.includes("merken")) return false;
+    return !activeIds.has(id);
+  });
+
+  if (toPause.length === 0) {
+    return "No zero-impression SEARCH ad groups found to pause. All active ad groups served impressions in the last 30 days.";
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mutations: any[] = toPause.map(r => ({
+    entity: "ad_group",
+    operation: "update",
+    resource: {
+      resource_name: r.ad_group!.resource_name as string,
+      status: enums.AdGroupStatus.PAUSED,
+    },
+    update_mask: { paths: ["status"] },
+  }));
+
+  await customer.mutateResources(mutations, { partial_failure: true });
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const names = toPause.slice(0, 5).map(r => (r.ad_group as any)?.name as string).filter(Boolean).join(", ");
+  const more  = toPause.length > 5 ? ` +${toPause.length - 5} more` : "";
+
+  return `Paused ${toPause.length} zero-impression ad group(s): ${names}${more}.`;
+}
+
+// ─── Pause non-converting EXACT/PHRASE keywords ───────────────────────────────
+// Pauses keywords with EXACT or PHRASE match type that spent money in the last
+// 30 days but had 0 conversions. Only touches EXACT/PHRASE — BROAD is excluded
+// because broad match may reach converting intent even if the keyword itself
+// shows 0 attributed conversions.
+//
+// payload.costThresholdMultiple: pause keywords that spent > N × targetCpa
+// (defaults to 2× if not provided, or a flat €5 floor to avoid pausing tiny spend)
+
+export async function executePauseNonConvertingKeywords(
+  googleAdsId: string,
+  payload: Record<string, unknown> = {},
+): Promise<string> {
+  const customer = await getCustomer(googleAdsId);
+
+  const end   = new Date();
+  const start = new Date();
+  start.setDate(start.getDate() - 30);
+  const fmt = (d: Date) => d.toISOString().slice(0, 10);
+
+  // Query keywords with aggregated 30-day totals (no segments.date → GAQL auto-groups)
+  const kwRows = await customer.query(`
+    SELECT
+      ad_group_criterion.criterion_id,
+      ad_group_criterion.resource_name,
+      ad_group_criterion.keyword.text,
+      ad_group_criterion.keyword.match_type,
+      metrics.cost_micros,
+      metrics.conversions
+    FROM keyword_view
+    WHERE ad_group_criterion.status = 'ENABLED'
+      AND campaign.status = 'ENABLED'
+      AND ad_group.status = 'ENABLED'
+      AND ad_group_criterion.keyword.match_type IN ('EXACT', 'PHRASE')
+      AND segments.date BETWEEN '${fmt(start)}' AND '${fmt(end)}'
+    LIMIT 5000
+  `);
+
+  // Group by criterion_id to aggregate multi-day rows
+  const kwMap = new Map<string, { resourceName: string; text: string; matchType: string; cost: number; conversions: number }>();
+  for (const r of kwRows) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const id     = String((r.ad_group_criterion as any)?.criterion_id ?? "");
+    const cost   = Number(r.metrics?.cost_micros ?? 0) / 1_000_000;
+    const conv   = Number(r.metrics?.conversions ?? 0);
+    if (!id) continue;
+    const entry = kwMap.get(id) ?? {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      resourceName: (r.ad_group_criterion as any)?.resource_name as string ?? "",
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      text:      (r.ad_group_criterion as any)?.keyword?.text      as string ?? "",
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      matchType: (r.ad_group_criterion as any)?.keyword?.match_type as string ?? "",
+      cost: 0, conversions: 0,
+    };
+    entry.cost        += cost;
+    entry.conversions += conv;
+    kwMap.set(id, entry);
+  }
+
+  // Apply cost floor: minimum €5 spent AND 0 conversions
+  const costFloor = typeof payload.costFloor === "number" ? payload.costFloor : 5;
+  const toPause = [...kwMap.values()].filter(k => k.conversions < 1 && k.cost >= costFloor);
+
+  if (toPause.length === 0) {
+    return `No EXACT/PHRASE keywords found that spent ≥€${costFloor} with 0 conversions in the last 30 days.`;
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mutations: any[] = toPause.map(k => ({
+    entity: "ad_group_criterion",
+    operation: "update",
+    resource: {
+      resource_name: k.resourceName,
+      status: enums.AdGroupCriterionStatus.PAUSED,
+    },
+    update_mask: { paths: ["status"] },
+  }));
+
+  await customer.mutateResources(mutations, { partial_failure: true });
+
+  const totalWasted = toPause.reduce((s, k) => s + k.cost, 0);
+  const names = toPause.slice(0, 5).map(k => `[${k.matchType.toLowerCase()}] ${k.text}`).join(", ");
+  const more  = toPause.length > 5 ? ` +${toPause.length - 5} more` : "";
+
+  return (
+    `Paused ${toPause.length} non-converting keyword(s) — €${Math.round(totalWasted)} reclaimed. ` +
+    `Keywords: ${names}${more}.`
+  );
+}

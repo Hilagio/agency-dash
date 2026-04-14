@@ -103,17 +103,69 @@ const trafficRules: RuleSet = (s) => {
   const recs: ActionRecommendation[] = [];
   const t = s.traffic;
 
-  if (t.impressionShareLost_budget > 0.3) {
+  // Per-campaign budget constraint — one recommendation per constrained campaign
+  // with specific current/suggested budget numbers.
+  for (const c of t.budgetConstrainedCampaigns ?? []) {
+    const pct = Math.round(c.isLostBudget * 100);
+    const suggestStr = c.suggestedDailyBudget
+      ? ` → suggest €${c.suggestedDailyBudget}/day to capture full demand`
+      : "";
     recs.push({
       bucket: "TRAFFIC",
-      title: "Increase budget on budget-constrained campaigns",
+      title: `Raise budget: ${c.campaignName}`,
       description:
-        `Losing ${Math.round(t.impressionShareLost_budget * 100)}% of potential impression share to budget. ` +
-        "Raise daily budgets or reallocate from low-ROI campaigns. Confirm economics support scale first.",
-      impact: "HIGH",
+        `Losing ${pct}% of impression share to budget. ` +
+        `Current: €${c.currentDailyBudget.toFixed(0)}/day${suggestStr}. ` +
+        "Confirm ROAS supports scale before raising.",
+      impact: pct >= 30 ? "HIGH" : "MEDIUM",
       effort: "EASY",
       safeToAutomate: false,
       actionType: "RAISE_BUDGET",
+      actionPayload: {
+        campaignId:          c.campaignId,
+        campaignName:        c.campaignName,
+        currentDailyBudget:  c.currentDailyBudget,
+        suggestedDailyBudget: c.suggestedDailyBudget,
+        isLostBudget:        c.isLostBudget,
+      },
+      isEscalation: false,
+    });
+  }
+
+  // Zero-impression ad groups — safe to pause (reversible, clearly inactive)
+  if ((t.zeroImpressionAdGroupCount ?? 0) > 0) {
+    const names = (t.zeroImpressionAdGroupNames ?? []).slice(0, 3).join(", ");
+    const more  = (t.zeroImpressionAdGroupCount ?? 0) > 3
+      ? ` +${(t.zeroImpressionAdGroupCount ?? 0) - 3} more` : "";
+    recs.push({
+      bucket: "TRAFFIC",
+      title: `Pause ${t.zeroImpressionAdGroupCount} inactive ad group(s)`,
+      description:
+        `${t.zeroImpressionAdGroupCount} enabled ad group(s) received 0 impressions in 30 days: ` +
+        `${names}${more}. Pausing cleans up structure and prevents quality score dilution.`,
+      impact: "MEDIUM",
+      effort: "EASY",
+      safeToAutomate: true,
+      actionType: "PAUSE_ZERO_IMPRESSION_AD_GROUPS",
+      actionPayload: { adGroupNames: t.zeroImpressionAdGroupNames ?? [] },
+      isEscalation: false,
+    });
+  }
+
+  // Non-converting EXACT/PHRASE keyword waste
+  if ((t.wastedKeywordSpendRatio ?? 0) > 0.15 && (t.wastedKeywordSpend ?? 0) > 50) {
+    const wastePct = Math.round((t.wastedKeywordSpendRatio ?? 0) * 100);
+    recs.push({
+      bucket: "TRAFFIC",
+      title: `Pause non-converting keywords (${wastePct}% of spend wasted)`,
+      description:
+        `€${Math.round(t.wastedKeywordSpend ?? 0)} spent on EXACT/PHRASE keywords with 0 conversions ` +
+        `in the last 30 days (${wastePct}% of total spend). Safe to pause — exact match only.`,
+      impact: wastePct >= 25 ? "HIGH" : "MEDIUM",
+      effort: "EASY",
+      safeToAutomate: true,
+      actionType: "PAUSE_NON_CONVERTING_KEYWORDS",
+      actionPayload: { costThresholdMultiple: 2 },
       isEscalation: false,
     });
   }

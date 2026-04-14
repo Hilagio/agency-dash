@@ -8,6 +8,8 @@ import { getAuthContext, unauthorized, forbidden } from "@/lib/auth";
 import {
   executeExcludeSearchTerms,
   executeEnableEnhancedConversions,
+  executePauseZeroImpressionAdGroups,
+  executePauseNonConvertingKeywords,
 } from "@/lib/integrations/google-ads-actions";
 
 type Params = { params: Promise<{ id: string }> };
@@ -71,6 +73,14 @@ export async function POST(req: NextRequest, { params }: Params) {
       case "ENABLE_ENHANCED_CONVERSIONS":
         log = await executeEnableEnhancedConversions(googleAdsId);
         break;
+      case "PAUSE_ZERO_IMPRESSION_AD_GROUPS":
+        log = await executePauseZeroImpressionAdGroups(googleAdsId);
+        break;
+      case "PAUSE_NON_CONVERTING_KEYWORDS": {
+        const payload = action.actionPayload as Record<string, unknown> | null ?? {};
+        log = await executePauseNonConvertingKeywords(googleAdsId, payload);
+        break;
+      }
       default:
         log = `Action type '${action.actionType}' acknowledged at ${new Date().toISOString()}. Manual follow-up required.`;
     }

@@ -49,6 +49,20 @@ export interface TrafficSignals {
   // ── PMax-specific ──────────────────────────────────────────────────────────
   isPmaxPrimary: boolean;                  // PMax > 50% of account spend
   pmaxDisplayYoutubePercent: number;       // 0–1, share of PMax spend on Display+YouTube (0 = no pmax / no data)
+  // ── Per-campaign budget constraint ─────────────────────────────────────────
+  budgetConstrainedCampaigns: {
+    campaignId:         string;
+    campaignName:       string;
+    currentDailyBudget: number;            // in account currency
+    isLostBudget:       number;            // 0–1 fraction of impressions lost to budget
+    suggestedDailyBudget: number | null;   // rounded up to nearest 50
+  }[];
+  // ── Inactive ad groups ──────────────────────────────────────────────────────
+  zeroImpressionAdGroupCount: number;      // enabled ad groups with 0 impressions last 30 days
+  zeroImpressionAdGroupNames: string[];    // first 10 names for logging
+  // ── Non-converting keyword waste ───────────────────────────────────────────
+  wastedKeywordSpend: number;             // total spend on EXACT/PHRASE keywords with 0 conv (account currency)
+  wastedKeywordSpendRatio: number;        // wastedKeywordSpend / totalSpend30d (0–1)
 }
 
 export interface MeasurementSignals {

@@ -492,9 +492,14 @@ async function fetchTrafficSignals(customer: Customer): Promise<TrafficSignals> 
   // ── Search/Shopping campaigns: IS metrics are only valid for these types ──
   // PMax campaigns return 0 for search_impression_share — averaging them in
   // produces misleading values. Query Search + Shopping only.
+  // Also fetch campaign.id, campaign.name, campaign_budget.amount_micros for
+  // per-campaign budget constraint detection.
   const searchShoppingRows = await safeQuery(
     () => customer.query(`
       SELECT
+        campaign.id,
+        campaign.name,
+        campaign_budget.amount_micros,
         metrics.search_impression_share,
         metrics.search_budget_lost_impression_share,
         metrics.search_rank_lost_impression_share,
@@ -543,9 +548,16 @@ async function fetchTrafficSignals(customer: Customer): Promise<TrafficSignals> 
     "pmax channel breakdown"
   );
 
-  // Aggregate IS metrics (Search/Shopping only)
+  // Aggregate IS metrics (Search/Shopping only) — account-level + per-campaign
   let isLostBudgetSum = 0, isLostRankSum = 0, isSum = 0, isRowCount = 0;
   let ssClicks = 0, ssImpressions = 0, ssCost = 0;
+
+  // Per-campaign: track IS-lost-to-budget and daily budget separately.
+  // One row per campaign per day — group by campaign.id.
+  const campaignBudgetMap = new Map<string, {
+    name: string; isLostBudgetSum: number; rows: number; dailyBudget: number;
+  }>();
+
   for (const r of searchShoppingRows) {
     const m = r.metrics ?? {};
     ssClicks      += Number(m.clicks ?? 0);
@@ -555,10 +567,43 @@ async function fetchTrafficSignals(customer: Customer): Promise<TrafficSignals> 
     isLostRankSum   += Number(m.search_rank_lost_impression_share   ?? 0);
     isSum           += Number(m.search_impression_share             ?? 0);
     isRowCount++;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const campaignId   = String((r.campaign as any)?.id   ?? "");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const campaignName = String((r.campaign as any)?.name ?? "");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const dailyBudget  = Number((r.campaign_budget as any)?.amount_micros ?? 0) / 1_000_000;
+    if (campaignId) {
+      const entry = campaignBudgetMap.get(campaignId)
+        ?? { name: campaignName, isLostBudgetSum: 0, rows: 0, dailyBudget };
+      entry.isLostBudgetSum += Number(m.search_budget_lost_impression_share ?? 0);
+      entry.rows++;
+      entry.dailyBudget = dailyBudget; // same value each day — just keep latest
+      campaignBudgetMap.set(campaignId, entry);
+    }
   }
   const avgIsLostBudget = isRowCount > 0 ? isLostBudgetSum / isRowCount : 0;
   const avgIsLostRank   = isRowCount > 0 ? isLostRankSum   / isRowCount : 0;
   const avgIs           = isRowCount > 0 ? isSum           / isRowCount : 0;
+
+  // Build budget-constrained campaigns (avg IS-lost-to-budget > 15%)
+  const budgetConstrainedCampaigns = [...campaignBudgetMap.entries()]
+    .map(([id, d]) => {
+      const avgIsBudget = d.rows > 0 ? d.isLostBudgetSum / d.rows : 0;
+      const suggestedDailyBudget = d.dailyBudget > 0 && avgIsBudget > 0.01
+        ? Math.ceil(d.dailyBudget / Math.max(0.01, 1 - avgIsBudget) / 50) * 50
+        : null;
+      return {
+        campaignId:         id,
+        campaignName:       d.name,
+        currentDailyBudget: d.dailyBudget,
+        isLostBudget:       Math.min(1, avgIsBudget),
+        suggestedDailyBudget,
+      };
+    })
+    .filter(c => c.isLostBudget > 0.15 && c.currentDailyBudget > 0)
+    .sort((a, b) => b.isLostBudget - a.isLostBudget);
 
   // Account-level totals (all campaigns)
   let totalClicks = 0, totalImpressions = 0, totalCost = 0, pmaxCost = 0;
@@ -691,6 +736,91 @@ async function fetchTrafficSignals(customer: Customer): Promise<TrafficSignals> 
   const recentClicks14    = recentCtrRows.reduce((s, r) => s + Number(r.metrics?.clicks ?? 0), 0);
   const ctr14 = recentImpressions > 0 ? recentClicks14 / recentImpressions : ctr;
 
+  // ── Zero-impression ad groups (SEARCH only) ──────────────────────────────
+  // Two-query approach: all enabled SEARCH ad groups minus those with any impressions.
+  // Excludes brand-named campaigns (naming convention) and Shopping/PMax.
+  const allSearchAdGroupRows = await safeQuery(
+    () => customer.query(`
+      SELECT ad_group.id, ad_group.name, campaign.name
+      FROM ad_group
+      WHERE ad_group.status = 'ENABLED'
+        AND campaign.status = 'ENABLED'
+        AND campaign.advertising_channel_type = 'SEARCH'
+      LIMIT 1000
+    `),
+    "all enabled search ad groups"
+  );
+  const activeAdGroupRows = await safeQuery(
+    () => customer.query(`
+      SELECT ad_group.id
+      FROM ad_group
+      WHERE ad_group.status = 'ENABLED'
+        AND campaign.status = 'ENABLED'
+        AND campaign.advertising_channel_type = 'SEARCH'
+        AND metrics.impressions > 0
+        AND segments.date BETWEEN '${start}' AND '${end}'
+      LIMIT 1000
+    `),
+    "active search ad groups 30d"
+  );
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const activeAdGroupIds = new Set(activeAdGroupRows.map(r => String((r.ad_group as any)?.id ?? "")).filter(Boolean));
+  const zeroImpressionAdGroups = allSearchAdGroupRows.filter(r => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const id           = String((r.ad_group  as any)?.id   ?? "");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const campName     = String((r.campaign  as any)?.name ?? "").toLowerCase();
+    if (!id) return false;
+    // Skip campaigns with "brand" or "merken" in the name (naming convention)
+    if (campName.includes("brand") || campName.includes("merken")) return false;
+    return !activeAdGroupIds.has(id);
+  });
+  const zeroImpressionAdGroupCount = zeroImpressionAdGroups.length;
+  const zeroImpressionAdGroupNames = zeroImpressionAdGroups
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .map(r => String((r.ad_group as any)?.name ?? ""))
+    .filter(Boolean)
+    .slice(0, 10);
+
+  // ── Non-converting EXACT/PHRASE keywords (30-day totals) ─────────────────
+  // Each row = one keyword with aggregated 30-day cost + conversions.
+  // Omit segments.date from SELECT → GAQL auto-groups by the resource fields.
+  const nonConvertingKwRows = await safeQuery(
+    () => customer.query(`
+      SELECT
+        ad_group_criterion.criterion_id,
+        metrics.cost_micros,
+        metrics.conversions
+      FROM keyword_view
+      WHERE ad_group_criterion.status = 'ENABLED'
+        AND campaign.status = 'ENABLED'
+        AND ad_group.status = 'ENABLED'
+        AND ad_group_criterion.keyword.match_type IN ('EXACT', 'PHRASE')
+        AND segments.date BETWEEN '${start}' AND '${end}'
+      LIMIT 5000
+    `),
+    "non-converting keywords 30d"
+  );
+
+  // Aggregate: group by criterion_id so multi-day rows don't double-count
+  const kwTotals = new Map<string, { cost: number; conversions: number }>();
+  for (const r of nonConvertingKwRows) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const id          = String((r.ad_group_criterion as any)?.criterion_id ?? "");
+    const cost        = Number(r.metrics?.cost_micros ?? 0) / 1_000_000;
+    const conversions = Number(r.metrics?.conversions ?? 0);
+    const entry = kwTotals.get(id) ?? { cost: 0, conversions: 0 };
+    entry.cost        += cost;
+    entry.conversions += conversions;
+    kwTotals.set(id, entry);
+  }
+  let wastedKeywordSpend = 0;
+  for (const d of kwTotals.values()) {
+    if (d.conversions < 1) wastedKeywordSpend += d.cost;
+  }
+  // totalCost here is 30-day account spend (computed from allCampaignRows above)
+  const wastedKeywordSpendRatio = totalCost > 0 ? Math.min(1, wastedKeywordSpend / totalCost) : 0;
+
   return {
     impressionShareLost_budget:  Math.min(1, avgIsLostBudget),
     impressionShareLost_rank:    Math.min(1, avgIsLostRank),
@@ -704,6 +834,11 @@ async function fetchTrafficSignals(customer: Customer): Promise<TrafficSignals> 
     irrelevantQueryPercent:      Math.min(1, irrelevantQueryPercent),
     isPmaxPrimary,
     pmaxDisplayYoutubePercent:   Math.min(1, pmaxDisplayYoutubePercent),
+    budgetConstrainedCampaigns,
+    zeroImpressionAdGroupCount,
+    zeroImpressionAdGroupNames,
+    wastedKeywordSpend,
+    wastedKeywordSpendRatio,
   };
 }
 
