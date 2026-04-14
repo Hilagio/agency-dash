@@ -31,8 +31,10 @@ export function AccountImporter({ onImported, onClose, onAuthFailed }: Props) {
     setLoading(true);
     setError(null);
     setAuthRequired(false);
+    const ac = new AbortController();
+    const t  = setTimeout(() => ac.abort(), 25_000); // 25s — before Railway's 30s hard limit
     try {
-      const res = await fetch("/api/google-ads/accounts");
+      const res = await fetch("/api/google-ads/accounts", { signal: ac.signal });
       const data = await res.json();
       if (!res.ok) {
         // Only treat as auth failure for real credential errors (invalid_grant etc.)
@@ -50,9 +52,14 @@ export function AccountImporter({ onImported, onClose, onAuthFailed }: Props) {
       }
       setAccounts(data);
       setLoaded(true);
-    } catch {
-      setError("Network error");
+    } catch (e) {
+      if (e instanceof Error && e.name === "AbortError") {
+        setError("Request timed out. Try again, or set GOOGLE_ADS_LOGIN_CUSTOMER_ID in your Railway environment variables to speed up MCC discovery.");
+      } else {
+        setError("Network error — check your connection and try again.");
+      }
     } finally {
+      clearTimeout(t);
       setLoading(false);
     }
   };
