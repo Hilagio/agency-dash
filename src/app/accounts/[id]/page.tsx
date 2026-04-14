@@ -7,6 +7,7 @@ import { ArrowLeft, RefreshCw, MessageSquare, ListChecks, BarChart2, Loader2, Se
 import { ScoreBuckets } from "@/components/ScoreBuckets";
 import { ScoreHistory } from "@/components/ScoreHistory";
 import { ActionList } from "@/components/ActionList";
+import { AccountSetupWizard } from "@/components/AccountSetupWizard";
 import { ChatAssistant } from "@/components/ChatAssistant";
 import { SearchTermReport } from "@/components/SearchTermReport";
 import { PlaybookView } from "@/components/PlaybookView";
@@ -2462,6 +2463,7 @@ export default function AccountPage() {
   const [rescoring, setRescoring] = useState(false);
   const [rescoreError, setRescoreError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showWizard, setShowWizard] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -2477,6 +2479,13 @@ export default function AccountPage() {
       const acct = accounts.find((a) => a.id === id);
       if (!acct) throw new Error("Account not found");
       setAccount(acct);
+      // Show setup wizard if account has no targets configured and user hasn't dismissed it
+      const dismissed = typeof window !== "undefined"
+        && localStorage.getItem(`setup_dismissed_${acct.id}`) === "1";
+      const needsSetup = acct.businessModel == null
+        && acct.targetRoas == null
+        && acct.targetCpa  == null;
+      if (needsSetup && !dismissed) setShowWizard(true);
       if (snapRes.ok) {
         const snap: Snapshot = await snapRes.json();
         setSnapshot(snap);
@@ -2511,6 +2520,11 @@ export default function AccountPage() {
     } finally {
       setRescoring(false);
     }
+  };
+
+  const dismissWizard = () => {
+    if (account) localStorage.setItem(`setup_dismissed_${account.id}`, "1");
+    setShowWizard(false);
   };
 
   const handleStatusChange = async (actionId: string, status: "APPROVED" | "DISMISSED") => {
@@ -2718,6 +2732,20 @@ export default function AccountPage() {
         </div>
       </div>
 
+      {/* Setup wizard — shown on first open when account has no targets */}
+      {showWizard && (
+        <div style={{ padding: "24px 32px", borderBottom: "1px solid var(--border)", background: "var(--bg)" }}>
+          <AccountSetupWizard
+            accountId={id}
+            accountName={account.name}
+            currency={account.currency}
+            onSaved={(values) => setAccount(prev => prev ? { ...prev, ...values } : prev)}
+            onSkip={dismissWizard}
+            onScore={() => { dismissWizard(); rescore(); }}
+          />
+        </div>
+      )}
+
       {/* Tabs */}
       <div style={{ borderBottom: "1px solid var(--border)", padding: "0 32px", overflowX: "auto" }}>
         <div style={{ maxWidth: 860, margin: "0 auto", display: "flex", gap: 0, minWidth: "max-content" }}>
@@ -2810,6 +2838,21 @@ export default function AccountPage() {
                     Account setup
                   </span>
                   <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
+                  {!showWizard && (
+                    <button
+                      onClick={() => {
+                        if (account) localStorage.removeItem(`setup_dismissed_${account.id}`);
+                        setShowWizard(true);
+                      }}
+                      style={{
+                        background: "transparent", border: "none", cursor: "pointer",
+                        fontSize: 10, color: "var(--text-faint)", padding: "0 2px",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      Redo setup ↑
+                    </button>
+                  )}
                 </div>
 
                 {/* Account Targets — feeds ECONOMICS scoring */}
