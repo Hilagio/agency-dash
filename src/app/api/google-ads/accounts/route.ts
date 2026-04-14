@@ -75,7 +75,7 @@ async function gaqlSearch(
   let pageToken: string | undefined;
 
   do {
-    const body: Record<string, unknown> = { query: gaql, pageSize: 10000 };
+    const body: Record<string, unknown> = { query: gaql };
     if (pageToken) body.pageToken = pageToken;
 
     const res = await restFetch(
