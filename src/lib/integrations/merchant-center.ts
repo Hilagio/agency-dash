@@ -102,12 +102,14 @@ export async function getMerchantCenterIds(
       "developer-token": process.env.GOOGLE_ADS_DEVELOPER_TOKEN!,
       "Content-Type":    "application/json",
     };
-    if (loginCustomerId) headers["login-customer-id"] = loginCustomerId;
+    // Strip dashes — Google Ads REST resource names require numeric-only customer IDs
+    const numericCustomerId = customerId.replace(/-/g, "");
+    if (loginCustomerId) headers["login-customer-id"] = loginCustomerId.replace(/-/g, "");
 
     let res: Response;
     try {
       res = await fetch(
-        `https://googleads.googleapis.com/v23/customers/${customerId}/googleAds:search`,
+        `https://googleads.googleapis.com/v23/customers/${numericCustomerId}/googleAds:search`,
         {
           method:  "POST",
           headers,
@@ -199,17 +201,18 @@ export async function fetchPriceCompetitiveness(
     "FROM PriceCompetitivenessProductView",
   ].join(" ");
 
-  // Paginate through all results — the Reports API returns up to 1000 rows per
-  // page and a nextPageToken when more are available.
+  // Paginate through all results.
   const rows: MerchantReportRow[] = [];
   let pageToken: string | undefined;
 
   do {
-    const body: Record<string, unknown> = { query };
+    const body: Record<string, unknown> = { query, pageSize: 1000 };
     if (pageToken) body.pageToken = pageToken;
 
+    // Merchant Center Reports API (v1beta, successor to Content API v2.1 which was
+    // sunset September 2024). Endpoint: merchantapi.googleapis.com/reports/v1beta
     const res = await fetch(
-      `https://shoppingcontent.googleapis.com/content/v2.1/${merchantId}/reports/search`,
+      `https://merchantapi.googleapis.com/reports/v1beta/accounts/${merchantId}:search`,
       {
         method: "POST",
         headers: {
