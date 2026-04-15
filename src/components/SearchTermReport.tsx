@@ -50,6 +50,13 @@ function PushModal({ selectedRows, accountId, onClose, onSuccess }: PushModalPro
   const [result,  setResult]    = useState<{ pushed: number; skipped: number; log: string[] } | null>(null);
   const [error,   setError]     = useState<string | null>(null);
 
+  // Auto-close 2 s after a successful push so the user sees the updated list
+  useEffect(() => {
+    if (!result || result.pushed === 0) return;
+    const t = setTimeout(onClose, 2000);
+    return () => clearTimeout(t);
+  }, [result, onClose]);
+
   // Group by campaign for display
   const byCampaign = new Map<string, { name: string; source: string; terms: SearchTermRow[] }>();
   for (const row of selectedRows) {
@@ -607,8 +614,13 @@ export function SearchTermReport({ accountId }: { accountId: string }) {
           accountId={accountId}
           onClose={() => setShowModal(false)}
           onSuccess={(pushed) => {
-            // Clear selection after successful push
-            setTimeout(() => setSelected(new Set()), 1500);
+            if (pushed > 0) {
+              // Optimistically remove the successfully-pushed terms from local state.
+              // Google Ads marks them EXCLUDED so they won't appear on next fetch either.
+              const pushedKeys = new Set(selectedRows.map(termKey));
+              setRows(prev => prev ? prev.filter(r => !pushedKeys.has(termKey(r))) : null);
+            }
+            setTimeout(() => setSelected(new Set()), 800);
           }}
         />
       )}

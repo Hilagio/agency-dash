@@ -2536,12 +2536,11 @@ export default function AccountPage() {
     setActions((prev) => prev.map((a) => (a.id === actionId ? { ...a, status } : a)));
   };
 
-  const handleExecute = async (actionId: string) => {
-    const res = await fetch(`/api/actions/${actionId}`, { method: "POST" });
-    if (res.ok) {
-      const updated: Action = await res.json();
-      setActions((prev) => prev.map((a) => (a.id === actionId ? updated : a)));
-    }
+  // ActionList owns the execute fetch and updates its own local state immediately.
+  // This callback is called afterwards so the parent's copy also stays consistent.
+  const handleExecute = (_actionId: string) => {
+    // Nothing needed — ActionList already updated via its own setActions call.
+    // If we ever need to refresh parent-level stats, do it here.
   };
 
   if (loading) {

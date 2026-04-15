@@ -66,13 +66,16 @@ export async function POST(req: NextRequest, { params }: Params) {
   }
   const loginCustomerId = cred?.loginCustomerId ?? process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID ?? undefined;
 
+  // Strip dashes — resource names require the numeric-only customer ID format
+  const numericCustomerId = account.googleAdsId.replace(/-/g, "");
+
   const client = new GoogleAdsApi({
     client_id:       process.env.GOOGLE_ADS_CLIENT_ID!,
     client_secret:   process.env.GOOGLE_ADS_CLIENT_SECRET!,
     developer_token: process.env.GOOGLE_ADS_DEVELOPER_TOKEN!,
   });
   const customer = client.Customer({
-    customer_id:       account.googleAdsId,
+    customer_id:       numericCustomerId,
     login_customer_id: loginCustomerId,
     refresh_token:     refreshToken,
   });
@@ -83,7 +86,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     entity:    "campaign_criterion",
     operation: "create",
     resource:  {
-      campaign: `customers/${account.googleAdsId}/campaigns/${t.campaignId}`,
+      campaign: `customers/${numericCustomerId}/campaigns/${t.campaignId}`,
       negative: true,
       type:     enums.CriterionType.KEYWORD,
       keyword:  {
@@ -100,14 +103,23 @@ export async function POST(req: NextRequest, { params }: Params) {
   try {
     const result = await customer.mutateResources(mutations, { partial_failure: true });
 
-    // Count partial failures (e.g. already exists as negative)
-    const failedCount = result.partial_failure_error
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ? (result as any).partial_failure_error?.details?.length ?? 0
-      : 0;
-
-    pushed  = dedupedTerms.length - failedCount;
-    skipped = failedCount;
+    // Count partial failures (e.g. term already exists as a negative).
+    // The results array has one entry per mutation; failed entries have no resource_name.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const results: any[] = (result as any).mutate_operation_responses ?? [];
+    if (results.length > 0) {
+      pushed  = results.filter((r: any) => r?.campaign_criterion_result?.resource_name).length;
+      skipped = dedupedTerms.length - pushed;
+    } else if (result.partial_failure_error) {
+      // Fallback: if results array is absent but there is an error, mark all as skipped
+      pushed  = 0;
+      skipped = dedupedTerms.length;
+      console.warn("[push-negatives] partial_failure_error without results:", JSON.stringify(result.partial_failure_error));
+    } else {
+      // No results array and no error = all succeeded (older library versions)
+      pushed  = dedupedTerms.length;
+      skipped = 0;
+    }
 
     // Group by campaign for the log
     const byCampaign = new Map<string, string[]>();

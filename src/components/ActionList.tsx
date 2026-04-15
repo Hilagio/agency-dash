@@ -495,8 +495,18 @@ export function ActionList({ actions: initialActions, accountId, orgMembers, onT
 
   const handleExecute = async (id: string) => {
     setExecuting(id);
-    await onExecute?.(id);
-    setExecuting(null);
+    try {
+      const res = await fetch(`/api/actions/${id}`, { method: "POST" });
+      if (res.ok) {
+        const updated: Action = await res.json();
+        // Update local state immediately — don't rely on parent prop propagation
+        setActions(prev => prev.map(a => a.id === id ? updated : a));
+      }
+    } finally {
+      setExecuting(null);
+    }
+    // Notify parent for any side-effects (e.g. dashboard counters)
+    onExecute?.(id);
   };
 
   // ── Classify actions into view buckets ──────────────────────────────────────
