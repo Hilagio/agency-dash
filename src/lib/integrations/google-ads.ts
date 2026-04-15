@@ -1145,6 +1145,12 @@ export interface LabelDistribution {
 
 export interface ShoppingOverview {
   hasShoppingCampaigns: boolean;
+  /**
+   * True when Shopping/PMax campaigns exist but shopping_performance_view
+   * returned 0 product rows — typically means the PMax campaigns are serving
+   * on Search/Display/YouTube surfaces without a linked Shopping feed.
+   */
+  noShoppingFeedData?:  boolean;
   campaignCount:        number;
   totalCost:            number;
   totalRevenue:         number;
@@ -1222,7 +1228,8 @@ export async function fetchProductPerformance(customerId: string, orgId?: string
       WHERE segments.date BETWEEN '${start}' AND '${end}'
         AND metrics.impressions > 0
     `),
-    "shopping product performance"
+    "shopping product performance",
+    30_000  // 30 s — large accounts can have thousands of products
   );
 
   // Aggregate by product item ID (same product can appear across campaigns)
@@ -1318,6 +1325,7 @@ export async function fetchProductPerformance(customerId: string, orgId?: string
 
   return {
     hasShoppingCampaigns: true,
+    noShoppingFeedData: products.length === 0,
     campaignCount: new Set(campaignRows.map(r => String(r.campaign?.id))).size,
     totalCost,
     totalRevenue,

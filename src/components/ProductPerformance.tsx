@@ -22,6 +22,7 @@ interface ProductRow {
 
 interface ShoppingOverview {
   hasShoppingCampaigns: boolean;
+  noShoppingFeedData?:  boolean;
   campaignCount:        number;
   totalCost:            number;
   totalRevenue:         number;
@@ -118,6 +119,18 @@ export function ProductPerformance({ accountId, currency }: { accountId: string;
       <ShoppingBag size={28} style={{ color: "var(--text-faint)", marginBottom: 12 }} />
       <p style={{ color: "var(--text-dim)", fontSize: 14, marginBottom: 4 }}>No Shopping or PMax campaigns found</p>
       <p style={{ color: "var(--text-faint)", fontSize: 12 }}>This account doesn't have active Shopping or Performance Max campaigns in the last 30 days.</p>
+    </div>
+  );
+
+  if (data.noShoppingFeedData) return (
+    <div style={{ border: "1px dashed var(--border-2)", borderRadius: 12, padding: "48px 32px", textAlign: "center" }}>
+      <Package size={28} style={{ color: "var(--text-faint)", marginBottom: 12 }} />
+      <p style={{ color: "var(--text-dim)", fontSize: 14, marginBottom: 4 }}>Campaigns found, but no Shopping product data</p>
+      <p style={{ color: "var(--text-faint)", fontSize: 12, lineHeight: 1.7, maxWidth: 420, margin: "0 auto" }}>
+        The {data.campaignCount} active PMax/Shopping campaign{data.campaignCount !== 1 ? "s" : ""} had no impressions
+        via the Shopping surface in the last 30 days. This usually means the campaign has no product feed linked
+        or is serving exclusively on Search/Display/YouTube.
+      </p>
     </div>
   );
 
@@ -349,30 +362,4 @@ function Cell({ value, color, bold }: { value: string; color?: string; bold?: bo
 }
 
 
-interface ProductRow {
-  itemId:      string;
-  title:       string;
-  brand:       string;
-  clicks:      number;
-  impressions: number;
-  ctr:         number;
-  conversions: number;
-  revenue:     number;
-  cost:        number;
-  roas:        number;
-  cpc:         number;
-}
-
-interface ShoppingOverview {
-  hasShoppingCampaigns: boolean;
-  campaignCount:        number;
-  totalCost:            number;
-  totalRevenue:         number;
-  totalConversions:     number;
-  roas:                 number;
-  isLostBudget:         number;
-  isLostRank:           number;
-  disapprovedCount:     number;
-  products:             ProductRow[];
-}
 
