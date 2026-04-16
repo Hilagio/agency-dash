@@ -22,6 +22,7 @@ interface ApiResponse {
   scopeMissing?:     boolean;
   noMerchantCenter?: boolean;
   error?:            string;
+  apiError?:         string;
 }
 
 function microsToPrice(micros: number, currency: string): string {
@@ -143,6 +144,14 @@ export function PriceCompetitiveness({ accountId, merchantCenterId }: { accountI
       >
         <ExternalLink size={12} /> Reconnect Google
       </a>
+      {data.apiError && (
+        <details style={{ marginTop: 16, textAlign: "left" }}>
+          <summary style={{ fontSize: 11, color: "var(--text-faint)", cursor: "pointer" }}>API error detail</summary>
+          <pre style={{ fontSize: 10, color: "var(--text-faint)", marginTop: 6, whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
+            {data.apiError}
+          </pre>
+        </details>
+      )}
     </div>
   );
 

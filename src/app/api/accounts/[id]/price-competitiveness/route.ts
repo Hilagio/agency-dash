@@ -55,7 +55,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
     ]);
 
     if (result.scopeMissing) {
-      return NextResponse.json({ scopeMissing: true, products: [] });
+      return NextResponse.json({ scopeMissing: true, products: [], apiError: result.apiError });
     }
 
     // Merge spend data into each product row

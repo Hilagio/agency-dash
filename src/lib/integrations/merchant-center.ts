@@ -33,6 +33,8 @@ export interface PriceCompetitivenessResult {
   products:     PriceCompRow[];
   /** True if the content scope appears to be missing from the token */
   scopeMissing: boolean;
+  /** Raw error body from the API — populated when scopeMissing is true */
+  apiError?:    string;
 }
 
 // ─── OAuth helpers ─────────────────────────────────────────────────────────────
@@ -163,6 +165,48 @@ export async function getMerchantCenterIds(
 
 // ─── Price Competitiveness ─────────────────────────────────────────────────────
 
+function parseRows(rows: MerchantReportRow[]): PriceCompRow[] {
+  return rows
+    .map((r) => {
+      const pv          = r.productView;
+      const pc          = r.priceCompetitiveness;
+      const rawId       = pv?.id ?? "";
+      const title       = pv?.title ?? "";
+      const brand       = pv?.brand ?? "";
+      const priceMicros = Number(pv?.priceMicros ?? 0);
+      const benchMicros = Number(pc?.benchmarkPriceMicros ?? 0);
+      const currency    = pv?.currencyCode ?? pc?.benchmarkPriceCurrencyCode ?? "EUR";
+      const country     = pc?.countryCode ?? "";
+
+      if (!rawId || priceMicros === 0 || benchMicros === 0) return null;
+
+      const parts  = rawId.split(":");
+      const itemId = parts[parts.length - 1] ?? rawId;
+
+      const diffPct = ((priceMicros - benchMicros) / benchMicros) * 100;
+
+      const status: PriceCompRow["status"] =
+        diffPct > 15  ? "well_above" :
+        diffPct > 3   ? "above" :
+        diffPct < -3  ? "below" :
+        "competitive";
+
+      return {
+        itemId,
+        title,
+        brand,
+        yourPriceMicros:  priceMicros,
+        benchmarkMicros:  benchMicros,
+        currencyCode:     currency,
+        countryCode:      country,
+        priceDiffPercent: Math.round(diffPct * 10) / 10,
+        status,
+        spendMicros: 0,
+      } satisfies PriceCompRow;
+    })
+    .filter((r): r is PriceCompRow => r !== null);
+}
+
 /**
  * Calls the Merchant Center Reports API to get price competitiveness data.
  * Returns an empty array (with scopeMissing=true) if the `content` scope
@@ -185,101 +229,96 @@ export async function fetchPriceCompetitiveness(
     throw err;
   }
 
-  // Content API for Shopping v2.1 — this is what was working before and still works.
-  // Despite the "sunset" announcement, the reports/search endpoint remains functional.
-  const query = [
-    "SELECT",
-    "  product_view.id,",
-    "  product_view.title,",
-    "  product_view.brand,",
-    "  product_view.price_micros,",
-    "  product_view.currency_code,",
-    "  price_competitiveness.country_code,",
-    "  price_competitiveness.benchmark_price_micros,",
-    "  price_competitiveness.benchmark_price_currency_code",
-    "FROM PriceCompetitivenessProductView",
-  ].join(" ");
+  // Try multiple endpoints in order of preference.
+  // v2.1 Content API was working originally; v1 Merchant Center API is the successor.
+  // We try v2.1 first (same query syntax) then fall back to v1 if auth fails.
+  const endpoints: Array<{ url: (id: string) => string; query: string; label: string }> = [
+    {
+      label: "Content API v2.1",
+      url:   (id) => `https://shoppingcontent.googleapis.com/content/v2.1/${id}/reports/search`,
+      query: [
+        "SELECT",
+        "  product_view.id,",
+        "  product_view.title,",
+        "  product_view.brand,",
+        "  product_view.price_micros,",
+        "  product_view.currency_code,",
+        "  price_competitiveness.country_code,",
+        "  price_competitiveness.benchmark_price_micros,",
+        "  price_competitiveness.benchmark_price_currency_code",
+        "FROM PriceCompetitivenessProductView",
+      ].join(" "),
+    },
+    {
+      label: "Merchant Center API v1",
+      url:   (id) => `https://merchantapi.googleapis.com/reports/v1/accounts/${id}/reports:search`,
+      query: [
+        "SELECT",
+        "  product_view.id,",
+        "  product_view.title,",
+        "  product_view.brand,",
+        "  product_view.price_micros,",
+        "  product_view.currency_code,",
+        "  price_competitiveness.country_code,",
+        "  price_competitiveness.benchmark_price_micros,",
+        "  price_competitiveness.benchmark_price_currency_code",
+        "FROM price_competitiveness_product_view",
+      ].join(" "),
+    },
+  ];
 
-  // Paginate through all results.
-  const rows: MerchantReportRow[] = [];
-  let pageToken: string | undefined;
+  let lastAuthError = "";
 
-  do {
-    const body: Record<string, unknown> = { query };
-    if (pageToken) body.pageToken = pageToken;
+  for (const endpoint of endpoints) {
+    const rows: MerchantReportRow[] = [];
+    let pageToken: string | undefined;
+    let authFailed = false;
 
-    const res = await fetch(
-      `https://shoppingcontent.googleapis.com/content/v2.1/${merchantId}/reports/search`,
-      {
+    do {
+      const body: Record<string, unknown> = { query: endpoint.query };
+      if (pageToken) body.pageToken = pageToken;
+
+      // eslint-disable-next-line no-await-in-loop
+      const res = await fetch(endpoint.url(merchantId), {
         method: "POST",
         headers: {
           Authorization:  `Bearer ${accessToken}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify(body),
+      });
+
+      if (res.status === 401 || res.status === 403) {
+        // eslint-disable-next-line no-await-in-loop
+        const errBody = await res.text();
+        lastAuthError = `[${endpoint.label}] ${res.status}: ${errBody.slice(0, 300)}`;
+        console.warn(`[merchant-center] ${endpoint.label} auth error ${res.status}:`, errBody);
+        authFailed = true;
+        break;
       }
-    );
 
-    // 403 with insufficient scope → tell caller to prompt reconnect
-    if (res.status === 401 || res.status === 403) {
-      const errBody = await res.text();
-      console.warn(`[merchant-center] Reports API ${res.status}:`, errBody);
-      return { merchantId, products: [], scopeMissing: true };
-    }
+      if (!res.ok) {
+        // eslint-disable-next-line no-await-in-loop
+        const errBody = await res.text();
+        throw new Error(`Merchant Center ${endpoint.label} error (${res.status}): ${errBody}`);
+      }
 
-    if (!res.ok) {
-      const errBody = await res.text();
-      throw new Error(`Merchant Center API error (${res.status}): ${errBody}`);
-    }
+      // eslint-disable-next-line no-await-in-loop
+      const json = await res.json() as { results?: MerchantReportRow[]; nextPageToken?: string };
+      rows.push(...(json.results ?? []));
+      pageToken = json.nextPageToken;
+    } while (pageToken);
 
-    const json = await res.json() as { results?: MerchantReportRow[]; nextPageToken?: string };
-    rows.push(...(json.results ?? []));
-    pageToken = json.nextPageToken;
-  } while (pageToken);
+    if (authFailed) continue; // try next endpoint
 
-  const products: PriceCompRow[] = rows
-    .map((r) => {
-      // v1: two separate keys — productView and priceCompetitiveness
-      const pv          = r.productView;
-      const pc          = r.priceCompetitiveness;
-      const rawId       = pv?.id ?? "";
-      const title       = pv?.title ?? "";
-      const brand       = pv?.brand ?? "";
-      const priceMicros = Number(pv?.priceMicros ?? 0);
-      const benchMicros = Number(pc?.benchmarkPriceMicros ?? 0);
-      const currency    = pv?.currencyCode ?? pc?.benchmarkPriceCurrencyCode ?? "EUR";
-      const country     = pc?.countryCode ?? "";
+    // This endpoint worked — parse and return results
+    console.log(`[merchant-center] ${endpoint.label} succeeded, ${rows.length} rows`);
+    const products = parseRows(rows);
+    return { merchantId, products, scopeMissing: false };
+  }
 
-      if (!rawId || priceMicros === 0 || benchMicros === 0) return null;
-
-      // Extract item_id from resource name like "online:en:GB:ABC123"
-      const parts  = rawId.split(":");
-      const itemId = parts[parts.length - 1] ?? rawId;
-
-      const diffPct = ((priceMicros - benchMicros) / benchMicros) * 100;
-
-      const status: PriceCompRow["status"] =
-        diffPct > 15  ? "well_above" :
-        diffPct > 3   ? "above" :
-        diffPct < -3  ? "below" :
-        "competitive";
-
-      return {
-        itemId,
-        title,
-        brand,
-        yourPriceMicros:  priceMicros,
-        benchmarkMicros:  benchMicros,
-        currencyCode:     currency,
-        countryCode:      country,
-        priceDiffPercent: Math.round(diffPct * 10) / 10,
-        status,
-        spendMicros: 0, // populated by caller after merging Google Ads spend data
-      } satisfies PriceCompRow;
-    })
-    .filter((r): r is PriceCompRow => r !== null);
-
-  return { merchantId, products, scopeMissing: false };
+  // All endpoints failed with auth errors
+  return { merchantId, products: [], scopeMissing: true, apiError: lastAuthError };
 }
 
 // ─── Product catalog listing ──────────────────────────────────────────────────
