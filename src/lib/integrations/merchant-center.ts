@@ -212,7 +212,7 @@ export async function fetchPriceCompetitiveness(
     // Merchant Center Reports API (v1beta, successor to Content API v2.1 which was
     // sunset September 2024). Endpoint: merchantapi.googleapis.com/reports/v1beta
     const res = await fetch(
-      `https://merchantapi.googleapis.com/reports/v1beta/accounts/${merchantId}:search`,
+      `https://merchantapi.googleapis.com/reports/v1beta/accounts/${merchantId}/reports:search`,
       {
         method: "POST",
         headers: {
