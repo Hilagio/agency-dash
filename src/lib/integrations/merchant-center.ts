@@ -185,9 +185,8 @@ export async function fetchPriceCompetitiveness(
     throw err;
   }
 
-  // Merchant Center Reports API stable v1 (launched July 2025; v1beta shut down Feb 28 2026):
-  //   - fields use two separate prefixes: product_view.field and price_competitiveness.field
-  //   - response rows have two separate keys: productView and priceCompetitiveness
+  // Content API for Shopping v2.1 — this is what was working before and still works.
+  // Despite the "sunset" announcement, the reports/search endpoint remains functional.
   const query = [
     "SELECT",
     "  product_view.id,",
@@ -198,7 +197,7 @@ export async function fetchPriceCompetitiveness(
     "  price_competitiveness.country_code,",
     "  price_competitiveness.benchmark_price_micros,",
     "  price_competitiveness.benchmark_price_currency_code",
-    "FROM price_competitiveness_product_view",
+    "FROM PriceCompetitivenessProductView",
   ].join(" ");
 
   // Paginate through all results.
@@ -206,12 +205,11 @@ export async function fetchPriceCompetitiveness(
   let pageToken: string | undefined;
 
   do {
-    const body: Record<string, unknown> = { query, pageSize: 1000 };
+    const body: Record<string, unknown> = { query };
     if (pageToken) body.pageToken = pageToken;
 
-    // Merchant Center Reports API stable v1. Endpoint: merchantapi.googleapis.com/reports/v1
     const res = await fetch(
-      `https://merchantapi.googleapis.com/reports/v1/accounts/${merchantId}/reports:search`,
+      `https://shoppingcontent.googleapis.com/content/v2.1/${merchantId}/reports/search`,
       {
         method: "POST",
         headers: {
