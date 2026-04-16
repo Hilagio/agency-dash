@@ -76,8 +76,9 @@ export function ProductPerformance({ accountId, currency }: { accountId: string;
   const [sortKey, setSortKey]         = useState<SortKey>("conversions");
   const [sortDir, setSortDir]         = useState<SortDir>("desc");
   const [filter, setFilter]           = useState<"all" | "no-conversions" | "overpriced">("all");
-  const [hasPriceData, setHasPriceData] = useState(false);
-  const [priceMap, setPriceMap]         = useState<Map<string, PriceCompRow>>(new Map());
+  const [hasPriceData, setHasPriceData]         = useState(false);
+  const [priceDataUnavailable, setPriceDataUnavailable] = useState(false);
+  const [priceMap, setPriceMap]                 = useState<Map<string, PriceCompRow>>(new Map());
 
   const currSym = currency === "EUR" ? "€" : currency === "GBP" ? "£" : "$";
 
@@ -99,6 +100,9 @@ export function ProductPerformance({ accountId, currency }: { accountId: string;
         );
         setPriceMap(pm);
         setHasPriceData(true);
+      } else if (price && !price.scopeMissing && !price.noMerchantCenter && !price.error) {
+        // API succeeded but returned 0 rows — products likely lack GTINs
+        setPriceDataUnavailable(true);
       }
 
       overview.products = overview.products.map(p => {
@@ -234,6 +238,18 @@ export function ProductPerformance({ accountId, currency }: { accountId: string;
           />
         )}
       </div>
+
+      {/* Price data unavailable notice */}
+      {priceDataUnavailable && (
+        <div style={{
+          background: "rgba(99,102,241,0.05)", border: "1px solid rgba(99,102,241,0.12)",
+          borderRadius: 8, padding: "8px 14px", marginBottom: 14,
+          fontSize: 11, color: "var(--text-faint)", display: "flex", alignItems: "center", gap: 8,
+        }}>
+          <TrendingUp size={12} style={{ flexShrink: 0, opacity: 0.5 }} />
+          Price vs market data unavailable — products may need GTINs added to the Merchant Center feed.
+        </div>
+      )}
 
       {/* Filters + sort */}
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
