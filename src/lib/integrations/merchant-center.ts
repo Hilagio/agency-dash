@@ -185,20 +185,21 @@ export async function fetchPriceCompetitiveness(
     throw err;
   }
 
-  // sale_price_micros is not available in PriceCompetitivenessProductView —
-  // Google's benchmark already compares against the effective (lowest) price,
-  // so we just use price_micros as reported.
+  // In Merchant Center API v1beta (successor to Content API v2.1):
+  //   - table name is snake_case: price_competitiveness_product_view
+  //   - every field is prefixed with the table name
+  //   - response rows nest all values under priceCompetitivenessProductView (camelCase)
   const query = [
     "SELECT",
-    "  product_view.id,",
-    "  product_view.title,",
-    "  product_view.brand,",
-    "  product_view.price_micros,",
-    "  product_view.currency_code,",
-    "  price_competitiveness.benchmark_price_micros,",
-    "  price_competitiveness.benchmark_price_currency_code,",
-    "  price_competitiveness.country_code",
-    "FROM PriceCompetitivenessProductView",
+    "  price_competitiveness_product_view.id,",
+    "  price_competitiveness_product_view.title,",
+    "  price_competitiveness_product_view.brand,",
+    "  price_competitiveness_product_view.price_micros,",
+    "  price_competitiveness_product_view.currency_code,",
+    "  price_competitiveness_product_view.benchmark_price_micros,",
+    "  price_competitiveness_product_view.benchmark_price_currency_code,",
+    "  price_competitiveness_product_view.report_country_code",
+    "FROM price_competitiveness_product_view",
   ].join(" ");
 
   // Paginate through all results.
@@ -242,14 +243,15 @@ export async function fetchPriceCompetitiveness(
 
   const products: PriceCompRow[] = rows
     .map((r) => {
-      // Merchant Center uses camelCase field names in REST responses
-      const rawId       = r.productView?.id ?? "";
-      const title       = r.productView?.title ?? "";
-      const brand       = r.productView?.brand ?? "";
-      const priceMicros = Number(r.productView?.priceMicros ?? 0);
-      const benchMicros = Number(r.priceCompetitiveness?.benchmarkPriceMicros ?? 0);
-      const currency    = r.productView?.currencyCode ?? r.priceCompetitiveness?.benchmarkPriceCurrencyCode ?? "EUR";
-      const country     = r.priceCompetitiveness?.countryCode ?? "";
+      // v1beta nests all fields under priceCompetitivenessProductView (camelCase)
+      const v         = r.priceCompetitivenessProductView;
+      const rawId       = v?.id ?? "";
+      const title       = v?.title ?? "";
+      const brand       = v?.brand ?? "";
+      const priceMicros = Number(v?.priceMicros ?? 0);
+      const benchMicros = Number(v?.benchmarkPriceMicros ?? 0);
+      const currency    = v?.currencyCode ?? v?.benchmarkPriceCurrencyCode ?? "EUR";
+      const country     = v?.reportCountryCode ?? "";
 
       if (!rawId || priceMicros === 0 || benchMicros === 0) return null;
 
@@ -283,19 +285,18 @@ export async function fetchPriceCompetitiveness(
   return { merchantId, products, scopeMissing: false };
 }
 
-// ─── Internal types (Merchant Center API response shape) ──────────────────────
+// ─── Internal types (Merchant Center API v1beta response shape) ──────────────
 
 interface MerchantReportRow {
-  productView?: {
-    id?:          string;
-    title?:       string;
-    brand?:       string;
-    priceMicros?: string | number;
-    currencyCode?: string;
-  };
-  priceCompetitiveness?: {
+  // v1beta: all price_competitiveness_product_view fields collapsed into one key
+  priceCompetitivenessProductView?: {
+    id?:                          string;
+    title?:                       string;
+    brand?:                       string;
+    priceMicros?:                 string | number;
+    currencyCode?:                string;
     benchmarkPriceMicros?:        string | number;
     benchmarkPriceCurrencyCode?:  string;
-    countryCode?:                 string;
+    reportCountryCode?:           string;
   };
 }
