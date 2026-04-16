@@ -1145,33 +1145,28 @@ export interface LabelDistribution {
 
 export interface ShoppingOverview {
   hasShoppingCampaigns: boolean;
-  /**
-   * True when Shopping/PMax campaigns exist but shopping_performance_view
-   * returned 0 product rows — typically means the PMax campaigns are serving
-   * on Search/Display/YouTube surfaces without a linked Shopping feed.
-   */
   noShoppingFeedData?:  boolean;
-  /**
-   * True when the product list was populated from the Merchant Center feed
-   * rather than from shopping_performance_view. Metrics (cost, revenue, etc.)
-   * will all be 0 in this case — the products haven't been served on the
-   * Shopping surface in the last 30 days.
-   */
   fromMerchantFeed?:    boolean;
+  /** True when more products are available beyond the current page */
+  hasMore?:             boolean;
   campaignCount:        number;
   totalCost:            number;
   totalRevenue:         number;
   totalConversions:     number;
   roas:                 number;
-  isLostBudget:         number;  // avg impression share lost to budget
-  isLostRank:           number;  // avg impression share lost to rank
+  isLostBudget:         number;
+  isLostRank:           number;
   disapprovedCount:     number;
   products:             ProductRow[];
-  /** Cost distribution by ProductHero custom_label_0 value (empty if no labels found) */
   labelDistribution:    LabelDistribution[];
 }
 
-export async function fetchProductPerformance(customerId: string, orgId?: string): Promise<ShoppingOverview> {
+export async function fetchProductPerformance(
+  customerId: string,
+  orgId?: string,
+  pageOffset = 0,
+  pageSize = 10,
+): Promise<ShoppingOverview> {
   const client   = getClient();
   const customer = await getCustomer(client, customerId, orgId);
   const { start, end } = last30Days();
@@ -1212,11 +1207,10 @@ export async function fetchProductPerformance(customerId: string, orgId?: string
   const isLostRank       = campaignRows.reduce((s, r) => s + Number(r.metrics?.search_rank_lost_impression_share ?? 0), 0) / campaignRows.length;
 
   // ── Product-level performance ─────────────────────────────────────────────
-  // shopping_performance_view returns one row per (product × campaign).
-  // We aggregate by itemId to get totals across all campaigns.
-  // NOTE: PMax conversions_value uses cross-channel attribution — revenue
-  //       here may be higher than what you see in the Shopping-specific view
-  //       in the Google Ads UI if PMax is attributing from non-Shopping surfaces.
+  // Use GAQL ORDER BY + LIMIT so Google does the sorting/pagination server-side.
+  // Omitting campaign fields causes GAQL to auto-aggregate across all campaigns,
+  // avoiding double-counting between Shopping and PMax. Fetch pageSize+1 to
+  // determine whether a next page exists.
   const productRows = await safeQuery(
     () => customer.query(`
       SELECT
@@ -1224,100 +1218,43 @@ export async function fetchProductPerformance(customerId: string, orgId?: string
         segments.product_title,
         segments.product_brand,
         segments.product_custom_label0,
-        campaign.advertising_channel_type,
         metrics.clicks,
         metrics.impressions,
-        metrics.ctr,
         metrics.conversions,
         metrics.conversions_value,
         metrics.cost_micros
       FROM shopping_performance_view
       WHERE segments.date BETWEEN '${start}' AND '${end}'
         AND (metrics.impressions > 0 OR metrics.cost_micros > 0)
+      ORDER BY metrics.conversions_value DESC, metrics.cost_micros DESC
+      LIMIT ${pageSize + 1} OFFSET ${pageOffset}
     `),
     "shopping product performance",
-    60_000  // 60 s — large PMax accounts can have thousands of active products
+    30_000
   );
 
-  // Aggregate by product item ID (same product can appear across campaigns)
-  // Log campaign type distribution to diagnose double-counting
-  const campaignTypeCounts: Record<string, number> = {};
-  for (const r of productRows) {
-    const ct = String((r.campaign as {advertising_channel_type?: string} | undefined)?.advertising_channel_type ?? "UNKNOWN");
-    campaignTypeCounts[ct] = (campaignTypeCounts[ct] ?? 0) + 1;
-  }
-  console.log(`[product-perf] ${customerId}: ${productRows.length} rows from shopping_performance_view, campaign types:`, campaignTypeCounts);
+  const hasMore = productRows.length > pageSize;
+  const pageRows = productRows.slice(0, pageSize);
 
-  // De-duplicate across campaign types: if a product appears in both Shopping
-  // and PMax, each campaign attributes its own conversions independently — summing
-  // them double-counts revenue and clicks. We prefer Shopping-type data when both
-  // exist (matches the standard Products report in the Google Ads UI), falling back
-  // to PMax only when no Shopping data is available for that product.
-  const shoppingMap = new Map<string, ProductRow>();  // SHOPPING type only
-  const pmaxMap     = new Map<string, ProductRow>();  // PERFORMANCE_MAX type only
-  // custom_label_0 per item (last-seen value wins — label should be consistent across campaigns)
-  const itemLabelMap = new Map<string, string>();
-
-  for (const r of productRows) {
-    const itemId = String(r.segments?.product_item_id ?? "unknown");
-    const title  = String(r.segments?.product_title  ?? "Unknown product");
-    const brand  = String(r.segments?.product_brand  ?? "");
+  const products: ProductRow[] = pageRows.map(r => {
+    const itemId      = String(r.segments?.product_item_id ?? "unknown");
+    const title       = String(r.segments?.product_title   ?? "Unknown product");
+    const brand       = String(r.segments?.product_brand   ?? "");
     const clicks      = Number(r.metrics?.clicks           ?? 0);
-    const impressions = Number(r.metrics?.impressions       ?? 0);
-    const conversions = Number(r.metrics?.conversions       ?? 0);
+    const impressions = Number(r.metrics?.impressions      ?? 0);
+    const conversions = Number(r.metrics?.conversions      ?? 0);
     const revenue     = Number(r.metrics?.conversions_value ?? 0);
-    const cost        = Number(r.metrics?.cost_micros       ?? 0) / 1_000_000;
-    const ct    = String((r.campaign as {advertising_channel_type?: string} | undefined)?.advertising_channel_type ?? "");
-    const label = String((r.segments as {product_custom_label0?: string} | undefined)?.product_custom_label0 ?? "").trim();
-    const targetMap = ct === "PERFORMANCE_MAX" ? pmaxMap : shoppingMap;
+    const cost        = Number(r.metrics?.cost_micros      ?? 0) / 1_000_000;
+    return {
+      itemId, title, brand, clicks, impressions,
+      ctr:  impressions > 0 ? clicks / impressions : 0,
+      conversions, revenue, cost,
+      roas: cost > 0 ? revenue / cost : 0,
+      cpc:  clicks > 0 ? cost / clicks : 0,
+    };
+  });
 
-    if (label) itemLabelMap.set(itemId, label.toLowerCase());
-
-    const existing = targetMap.get(itemId);
-    if (existing) {
-      existing.clicks      += clicks;
-      existing.impressions += impressions;
-      existing.conversions += conversions;
-      existing.revenue     += revenue;
-      existing.cost        += cost;
-    } else {
-      targetMap.set(itemId, { itemId, title, brand, clicks, impressions, ctr: 0, conversions, revenue, cost, roas: 0, cpc: 0 });
-    }
-  }
-
-  // Merge: Shopping data wins per product; fill in PMax-only products
-  const productMap = new Map<string, ProductRow>(shoppingMap);
-  for (const [itemId, pmaxRow] of pmaxMap) {
-    if (!productMap.has(itemId)) productMap.set(itemId, pmaxRow);
-  }
-  console.log(`[product-perf] ${customerId}: after dedup — ${shoppingMap.size} Shopping products, ${pmaxMap.size} PMax products, ${productMap.size} merged unique, ${itemLabelMap.size} labeled`);
-
-  // ── Label distribution (cost + revenue by custom_label_0 value) ────────────
-  // Shows how budget is allocated across Heroes/Villains/Sidekicks/Zombies.
-  // Only populated when the account uses a ProductHero-style labelizer.
-  const labelBuckets = new Map<string, { cost: number; revenue: number; products: Set<string> }>();
-  for (const [itemId, row] of productMap) {
-    const label = itemLabelMap.get(itemId) ?? "unlabeled";
-    let bucket = labelBuckets.get(label);
-    if (!bucket) { bucket = { cost: 0, revenue: 0, products: new Set() }; labelBuckets.set(label, bucket); }
-    bucket.cost    += row.cost;
-    bucket.revenue += row.revenue;
-    bucket.products.add(itemId);
-  }
-  const labelDistribution: LabelDistribution[] = Array.from(labelBuckets.entries())
-    .map(([label, b]) => ({ label, cost: b.cost, revenue: b.revenue, products: b.products.size }))
-    .sort((a, b) => b.cost - a.cost);
-
-  // Compute derived metrics
-  const products: ProductRow[] = Array.from(productMap.values()).map(p => ({
-    ...p,
-    ctr:  p.impressions > 0 ? p.clicks / p.impressions : 0,
-    roas: p.cost > 0 ? p.revenue / p.cost : 0,
-    cpc:  p.clicks > 0 ? p.cost / p.clicks : 0,
-  }));
-
-  // Sort by revenue desc, take top 50
-  products.sort((a, b) => b.revenue - a.revenue);
+  const labelDistribution: LabelDistribution[] = [];
 
   // ── Disapproved products ──────────────────────────────────────────────────
   const disapprovedRows = await safeQuery(
@@ -1341,7 +1278,8 @@ export async function fetchProductPerformance(customerId: string, orgId?: string
     isLostBudget:  Math.min(1, isLostBudget),
     isLostRank:    Math.min(1, isLostRank),
     disapprovedCount,
-    products: products.slice(0, 50),
+    hasMore,
+    products,
     labelDistribution,
   };
 }

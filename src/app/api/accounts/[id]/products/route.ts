@@ -12,7 +12,7 @@ import { getAuthContext, unauthorized, forbidden } from "@/lib/auth";
 
 type Params = { params: Promise<{ id: string }> };
 
-export async function GET(_req: NextRequest, { params }: Params) {
+export async function GET(req: NextRequest, { params }: Params) {
   const ctx = await getAuthContext();
   if (!ctx) return unauthorized();
 
@@ -21,13 +21,15 @@ export async function GET(_req: NextRequest, { params }: Params) {
   const account = await prisma.account.findFirst({ where: { id, organizationId: ctx.orgId } });
   if (!account) return forbidden();
 
-  try {
-    const data = await fetchProductPerformance(account.googleAdsId, ctx.orgId);
+  const page     = Math.max(0, parseInt(new URL(req.url).searchParams.get("page") ?? "0"));
+  const pageSize = 10;
 
-    // When shopping_performance_view returned nothing (PMax campaigns not serving
-    // on Shopping surface), fall back to the Merchant Center product catalog so the
-    // user can at least see what products are in their feed.
-    if (data.noShoppingFeedData && account.googleAdsId) {
+  try {
+    const data = await fetchProductPerformance(account.googleAdsId, ctx.orgId, page * pageSize, pageSize);
+
+    // When shopping_performance_view returned nothing, fall back to MC catalog
+    // (only on page 0 — subsequent pages mean Shopping data exists).
+    if (page === 0 && data.noShoppingFeedData && account.googleAdsId) {
       const mcId = (account as { merchantCenterId?: string | null }).merchantCenterId
         ?? (await getMerchantCenterIds(account.googleAdsId, ctx.orgId).catch(() => []))[0];
 

@@ -24,6 +24,7 @@ interface ShoppingOverview {
   hasShoppingCampaigns: boolean;
   noShoppingFeedData?:  boolean;
   fromMerchantFeed?:    boolean;
+  hasMore?:             boolean;
   campaignCount:        number;
   totalCost:            number;
   totalRevenue:         number;
@@ -67,49 +68,74 @@ type SortKey = "revenue" | "roas" | "cost" | "conversions" | "clicks" | "priceDi
 type SortDir = "desc" | "asc";
 
 export function ProductPerformance({ accountId, currency }: { accountId: string; currency: string }) {
-  const [data, setData]           = useState<ShoppingOverview | null>(null);
-  const [loading, setLoading]     = useState(true);
-  const [error, setError]         = useState<string | null>(null);
-  const [sortKey, setSortKey]     = useState<SortKey>("revenue");
-  const [sortDir, setSortDir]     = useState<SortDir>("desc");
-  const [filter, setFilter]       = useState<"all" | "winners" | "losers" | "no-sales" | "overpriced">("all");
+  const [data, setData]               = useState<ShoppingOverview | null>(null);
+  const [loading, setLoading]         = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [error, setError]             = useState<string | null>(null);
+  const [page, setPage]               = useState(0);
+  const [sortKey, setSortKey]         = useState<SortKey>("revenue");
+  const [sortDir, setSortDir]         = useState<SortDir>("desc");
+  const [filter, setFilter]           = useState<"all" | "winners" | "losers" | "no-sales" | "overpriced">("all");
   const [hasPriceData, setHasPriceData] = useState(false);
+  const [priceMap, setPriceMap]         = useState<Map<string, PriceCompRow>>(new Map());
 
   const currSym = currency === "EUR" ? "€" : currency === "GBP" ? "£" : "$";
 
+  // Initial load: products page 0 + price competitiveness in parallel
   useEffect(() => {
     setLoading(true);
+    setPage(0);
     Promise.all([
-      fetch(`/api/accounts/${accountId}/products`).then(r => r.json()),
+      fetch(`/api/accounts/${accountId}/products?page=0`).then(r => r.json()),
       fetch(`/api/accounts/${accountId}/price-competitiveness`).then(r => r.ok ? r.json() : null).catch(() => null),
     ]).then(([prod, price]) => {
       if ("error" in prod) { setError(prod.error); return; }
       const overview = prod as ShoppingOverview;
 
+      let pm = new Map<string, PriceCompRow>();
       if (price?.products?.length) {
-        const priceMap = new Map<string, PriceCompRow>(
+        pm = new Map<string, PriceCompRow>(
           (price.products as PriceCompRow[]).map((p: PriceCompRow) => [p.itemId, p])
         );
-        overview.products = overview.products.map(p => {
-          const pc = priceMap.get(p.itemId);
-          return pc ? { ...p, priceDiffPercent: pc.priceDiffPercent, priceStatus: pc.status } : p;
-        });
+        setPriceMap(pm);
         setHasPriceData(true);
       }
 
-      // For PMax accounts, conversions_value is often 0 at product level
-      // (revenue is attributed to the campaign, not individual product Shopping rows).
-      // Default to cost so the user sees which products Google is spending on.
+      overview.products = overview.products.map(p => {
+        const pc = pm.get(p.itemId);
+        return pc ? { ...p, priceDiffPercent: pc.priceDiffPercent, priceStatus: pc.status } : p;
+      });
+
       const hasRevenue = overview.products.some(p => p.revenue > 0);
-      if (!hasRevenue && overview.products.some(p => p.cost > 0)) {
-        setSortKey("cost");
-      }
+      if (!hasRevenue && overview.products.some(p => p.cost > 0)) setSortKey("cost");
 
       setData(overview);
     })
     .catch(e => setError(e.message))
     .finally(() => setLoading(false));
   }, [accountId]);
+
+  function loadMore() {
+    const nextPage = page + 1;
+    setLoadingMore(true);
+    fetch(`/api/accounts/${accountId}/products?page=${nextPage}`)
+      .then(r => r.json())
+      .then((prod: ShoppingOverview) => {
+        if ("error" in prod) return;
+        const newProducts = prod.products.map(p => {
+          const pc = priceMap.get(p.itemId);
+          return pc ? { ...p, priceDiffPercent: pc.priceDiffPercent, priceStatus: pc.status } : p;
+        });
+        setData(prev => prev ? {
+          ...prev,
+          hasMore: prod.hasMore,
+          products: [...prev.products, ...newProducts],
+        } : prev);
+        setPage(nextPage);
+      })
+      .catch(() => {/* silently ignore load-more errors */})
+      .finally(() => setLoadingMore(false));
+  }
 
   if (loading) return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, padding: "60px 0", color: "var(--text-dim)", fontSize: 13 }}>
@@ -329,6 +355,24 @@ export function ProductPerformance({ accountId, currency }: { accountId: string;
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Load more */}
+      {data.hasMore && (
+        <div style={{ textAlign: "center", marginTop: 16 }}>
+          <button
+            onClick={loadMore}
+            disabled={loadingMore}
+            style={{
+              background: "var(--surface)", border: "1px solid var(--border-2)",
+              borderRadius: 8, padding: "8px 20px", fontSize: 12, color: "var(--text-2)",
+              cursor: loadingMore ? "default" : "pointer", display: "inline-flex", alignItems: "center", gap: 6,
+            }}
+          >
+            {loadingMore && <Loader2 size={12} className="animate-spin" />}
+            {loadingMore ? "Loading…" : "Load 10 more"}
+          </button>
         </div>
       )}
 
