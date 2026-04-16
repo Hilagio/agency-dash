@@ -29,12 +29,17 @@ export interface PriceCompRow {
 }
 
 export interface PriceCompetitivenessResult {
-  merchantId:   string;
-  products:     PriceCompRow[];
+  merchantId:        string;
+  products:          PriceCompRow[];
   /** True if the content scope appears to be missing from the token */
-  scopeMissing: boolean;
-  /** Raw error body from the API — populated when scopeMissing is true */
-  apiError?:    string;
+  scopeMissing:      boolean;
+  /** True when the GCP project hasn't been registered with this Merchant Center account */
+  gcpNotRegistered?: boolean;
+  /** The GCP project ID/number extracted from the 401 error, so the UI can show exact steps */
+  gcpProjectId?:     string;
+  gcpProjectNumber?: string;
+  /** Raw error body from the API */
+  apiError?:         string;
 }
 
 // ─── OAuth helpers ─────────────────────────────────────────────────────────────
@@ -229,96 +234,81 @@ export async function fetchPriceCompetitiveness(
     throw err;
   }
 
-  // Try multiple endpoints in order of preference.
-  // v2.1 Content API was working originally; v1 Merchant Center API is the successor.
-  // We try v2.1 first (same query syntax) then fall back to v1 if auth fails.
-  const endpoints: Array<{ url: (id: string) => string; query: string; label: string }> = [
-    {
-      label: "Content API v2.1",
-      url:   (id) => `https://shoppingcontent.googleapis.com/content/v2.1/${id}/reports/search`,
-      query: [
-        "SELECT",
-        "  product_view.id,",
-        "  product_view.title,",
-        "  product_view.brand,",
-        "  product_view.price_micros,",
-        "  product_view.currency_code,",
-        "  price_competitiveness.country_code,",
-        "  price_competitiveness.benchmark_price_micros,",
-        "  price_competitiveness.benchmark_price_currency_code",
-        "FROM PriceCompetitivenessProductView",
-      ].join(" "),
-    },
-    {
-      label: "Merchant Center API v1",
-      url:   (id) => `https://merchantapi.googleapis.com/reports/v1/accounts/${id}/reports:search`,
-      query: [
-        "SELECT",
-        "  product_view.id,",
-        "  product_view.title,",
-        "  product_view.brand,",
-        "  product_view.price_micros,",
-        "  product_view.currency_code,",
-        "  price_competitiveness.country_code,",
-        "  price_competitiveness.benchmark_price_micros,",
-        "  price_competitiveness.benchmark_price_currency_code",
-        "FROM price_competitiveness_product_view",
-      ].join(" "),
-    },
-  ];
+  // Merchant Center Reports API v1 is the only API that provides price competitiveness data.
+  // Content API v2.1 only surfaces Shopping Ads performance (clicks/cost/conversions) — not benchmarks.
+  const query = [
+    "SELECT",
+    "  product_view.id,",
+    "  product_view.title,",
+    "  product_view.brand,",
+    "  product_view.price_micros,",
+    "  product_view.currency_code,",
+    "  price_competitiveness.country_code,",
+    "  price_competitiveness.benchmark_price_micros,",
+    "  price_competitiveness.benchmark_price_currency_code",
+    "FROM price_competitiveness_product_view",
+  ].join(" ");
 
-  let lastAuthError = "";
+  const rows: MerchantReportRow[] = [];
+  let pageToken: string | undefined;
 
-  for (const endpoint of endpoints) {
-    const rows: MerchantReportRow[] = [];
-    let pageToken: string | undefined;
-    let authFailed = false;
+  do {
+    const body: Record<string, unknown> = { query };
+    if (pageToken) body.pageToken = pageToken;
 
-    do {
-      const body: Record<string, unknown> = { query: endpoint.query };
-      if (pageToken) body.pageToken = pageToken;
-
-      // eslint-disable-next-line no-await-in-loop
-      const res = await fetch(endpoint.url(merchantId), {
+    // eslint-disable-next-line no-await-in-loop
+    const res = await fetch(
+      `https://merchantapi.googleapis.com/reports/v1/accounts/${merchantId}/reports:search`,
+      {
         method: "POST",
-        headers: {
-          Authorization:  `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
+        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
         body: JSON.stringify(body),
-      });
-
-      if (res.status === 401 || res.status === 403) {
-        // eslint-disable-next-line no-await-in-loop
-        const errBody = await res.text();
-        lastAuthError = `[${endpoint.label}] ${res.status}: ${errBody.slice(0, 300)}`;
-        console.warn(`[merchant-center] ${endpoint.label} auth error ${res.status}:`, errBody);
-        authFailed = true;
-        break;
       }
+    );
 
-      if (!res.ok) {
-        // eslint-disable-next-line no-await-in-loop
-        const errBody = await res.text();
-        throw new Error(`Merchant Center ${endpoint.label} error (${res.status}): ${errBody}`);
-      }
-
+    if (res.status === 401 || res.status === 403) {
       // eslint-disable-next-line no-await-in-loop
-      const json = await res.json() as { results?: MerchantReportRow[]; nextPageToken?: string };
-      rows.push(...(json.results ?? []));
-      pageToken = json.nextPageToken;
-    } while (pageToken);
+      const errBody = await res.text();
+      console.warn(`[merchant-center] v1 auth error ${res.status}:`, errBody.slice(0, 300));
 
-    if (authFailed) continue; // try next endpoint
+      // Detect the specific "GCP project not registered with merchant account" error
+      // so the UI can show actionable steps instead of a generic auth failure.
+      let gcpProjectId: string | undefined;
+      let gcpProjectNumber: string | undefined;
+      try {
+        const parsed = JSON.parse(errBody) as {
+          error?: { details?: Array<{ metadata?: { GCP_ID?: string; GCP_NUMBER?: string } }> }
+        };
+        const meta = parsed?.error?.details?.[0]?.metadata;
+        gcpProjectId     = meta?.GCP_ID;
+        gcpProjectNumber = meta?.GCP_NUMBER;
+      } catch { /* ignore parse errors */ }
 
-    // This endpoint worked — parse and return results
-    console.log(`[merchant-center] ${endpoint.label} succeeded, ${rows.length} rows`);
-    const products = parseRows(rows);
-    return { merchantId, products, scopeMissing: false };
-  }
+      if (gcpProjectId || errBody.includes("GCP_NOT_REGISTERED")) {
+        return {
+          merchantId, products: [], scopeMissing: false,
+          gcpNotRegistered: true, gcpProjectId, gcpProjectNumber,
+          apiError: errBody.slice(0, 500),
+        };
+      }
 
-  // All endpoints failed with auth errors
-  return { merchantId, products: [], scopeMissing: true, apiError: lastAuthError };
+      return { merchantId, products: [], scopeMissing: true, apiError: errBody.slice(0, 300) };
+    }
+
+    if (!res.ok) {
+      // eslint-disable-next-line no-await-in-loop
+      const errBody = await res.text();
+      throw new Error(`Merchant Center API v1 error (${res.status}): ${errBody}`);
+    }
+
+    // eslint-disable-next-line no-await-in-loop
+    const json = await res.json() as { results?: MerchantReportRow[]; nextPageToken?: string };
+    rows.push(...(json.results ?? []));
+    pageToken = json.nextPageToken;
+  } while (pageToken);
+
+  console.log(`[merchant-center] v1 price competitiveness: ${rows.length} rows`);
+  return { merchantId, products: parseRows(rows), scopeMissing: false };
 }
 
 // ─── Product catalog listing ──────────────────────────────────────────────────

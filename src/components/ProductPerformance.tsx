@@ -76,9 +76,10 @@ export function ProductPerformance({ accountId, currency }: { accountId: string;
   const [sortKey, setSortKey]         = useState<SortKey>("conversions");
   const [sortDir, setSortDir]         = useState<SortDir>("desc");
   const [filter, setFilter]           = useState<"all" | "no-conversions" | "overpriced">("all");
-  const [hasPriceData, setHasPriceData]         = useState(false);
+  const [hasPriceData, setHasPriceData]             = useState(false);
   const [priceDataUnavailable, setPriceDataUnavailable] = useState(false);
-  const [priceMap, setPriceMap]                 = useState<Map<string, PriceCompRow>>(new Map());
+  const [gcpNotRegistered, setGcpNotRegistered]     = useState<{ projectId?: string; projectNumber?: string; merchantId?: string } | null>(null);
+  const [priceMap, setPriceMap]                     = useState<Map<string, PriceCompRow>>(new Map());
 
   const currSym = currency === "EUR" ? "€" : currency === "GBP" ? "£" : "$";
 
@@ -100,8 +101,13 @@ export function ProductPerformance({ accountId, currency }: { accountId: string;
         );
         setPriceMap(pm);
         setHasPriceData(true);
+      } else if (price?.gcpNotRegistered) {
+        setGcpNotRegistered({
+          projectId:     price.gcpProjectId,
+          projectNumber: price.gcpProjectNumber,
+          merchantId:    price.merchantId,
+        });
       } else if (price && !price.scopeMissing && !price.noMerchantCenter && !price.error) {
-        // API succeeded but returned 0 rows — products likely lack GTINs
         setPriceDataUnavailable(true);
       }
 
@@ -238,6 +244,29 @@ export function ProductPerformance({ accountId, currency }: { accountId: string;
           />
         )}
       </div>
+
+      {/* GCP project not registered with Merchant Center */}
+      {gcpNotRegistered && (
+        <div style={{
+          background: "rgba(251,191,36,0.06)", border: "1px solid rgba(251,191,36,0.2)",
+          borderRadius: 8, padding: "10px 14px", marginBottom: 14,
+          fontSize: 12, color: "var(--text-muted)", lineHeight: 1.6,
+        }}>
+          <strong style={{ color: "#fbbf24" }}>Price vs market unavailable</strong> — GCP project
+          {gcpNotRegistered.projectId ? ` "${gcpNotRegistered.projectId}"` : ""}
+          {gcpNotRegistered.projectNumber ? ` (${gcpNotRegistered.projectNumber})` : ""} needs to be
+          registered with Merchant Center account {gcpNotRegistered.merchantId ?? ""}.{" "}
+          <a
+            href="https://merchants.google.com/"
+            target="_blank" rel="noopener noreferrer"
+            style={{ color: "#fbbf24" }}
+          >
+            Open Merchant Center
+          </a>
+          {" "}→ Settings → API access → Add project number
+          {gcpNotRegistered.projectNumber ? ` ${gcpNotRegistered.projectNumber}` : ""}.
+        </div>
+      )}
 
       {/* Price data unavailable notice */}
       {priceDataUnavailable && (

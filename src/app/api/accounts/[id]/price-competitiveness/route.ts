@@ -54,6 +54,17 @@ export async function GET(_req: NextRequest, { params }: Params) {
       fetchProductSpend(account.googleAdsId, ctx.orgId),
     ]);
 
+    if (result.gcpNotRegistered) {
+      return NextResponse.json({
+        gcpNotRegistered:  true,
+        gcpProjectId:      result.gcpProjectId,
+        gcpProjectNumber:  result.gcpProjectNumber,
+        merchantId:        result.merchantId,
+        products:          [],
+        scopeMissing:      false,
+      });
+    }
+
     if (result.scopeMissing) {
       return NextResponse.json({ scopeMissing: true, products: [], apiError: result.apiError });
     }
