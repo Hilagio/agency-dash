@@ -66,7 +66,8 @@ export async function GET(_req: NextRequest, { params }: Params) {
         AND segments.date BETWEEN '${start}' AND '${end}'
     `);
     diag.campaignCount = campaignRows.length;
-    diag.campaigns = campaignRows.slice(0, 5).map((r: Record<string, unknown>) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    diag.campaigns = campaignRows.slice(0, 5).map((r: any) => {
       const c = r.campaign as { id?: unknown; name?: unknown; advertising_channel_type?: unknown } | undefined;
       const m = r.metrics as { cost_micros?: unknown; conversions_value?: unknown } | undefined;
       return {
@@ -96,7 +97,8 @@ export async function GET(_req: NextRequest, { params }: Params) {
       WHERE segments.date BETWEEN '${start}' AND '${end}'
     `);
     diag.productRowCount = productRows.length;
-    diag.productSample = productRows.slice(0, 5).map((r: Record<string, unknown>) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    diag.productSample = productRows.slice(0, 5).map((r: any) => {
       const s = r.segments as { product_item_id?: unknown; product_title?: unknown } | undefined;
       const c = r.campaign as { advertising_channel_type?: unknown } | undefined;
       const m = r.metrics as { clicks?: unknown; impressions?: unknown; conversions_value?: unknown; cost_micros?: unknown } | undefined;
