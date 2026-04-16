@@ -133,7 +133,7 @@ export function PriceCompetitiveness({ accountId, merchantCenterId }: { accountI
         Merchant Center access requires an updated Google permission. Click below to reconnect — it only takes a moment.
       </p>
       <a
-        href="/api/auth/google-ads"
+        href={`/api/auth/google-ads?returnTo=${encodeURIComponent(typeof window !== "undefined" ? window.location.pathname : "/")}`}
         style={{
           display: "inline-flex", alignItems: "center", gap: 6,
           background: "var(--accent)", color: "#fff",

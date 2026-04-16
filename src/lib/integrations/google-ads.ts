@@ -1226,7 +1226,7 @@ export async function fetchProductPerformance(customerId: string, orgId?: string
         metrics.cost_micros
       FROM shopping_performance_view
       WHERE segments.date BETWEEN '${start}' AND '${end}'
-        AND metrics.impressions > 0
+        AND metrics.cost_micros > 0
     `),
     "shopping product performance",
     30_000  // 30 s — large accounts can have thousands of products

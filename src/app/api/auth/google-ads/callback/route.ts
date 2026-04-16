@@ -24,6 +24,11 @@ export async function GET(req: NextRequest) {
   const error = searchParams.get("error");
   const origin = getOrigin(req);
 
+  // Restore the return destination passed via OAuth state.
+  // Only allow relative paths (starting with /) to prevent open redirect attacks.
+  const rawState = searchParams.get("state") ?? "/";
+  const returnTo = rawState.startsWith("/") ? rawState : "/";
+
   if (error) {
     return NextResponse.redirect(`${origin}/?auth_error=${encodeURIComponent(error)}`);
   }
@@ -103,6 +108,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(`${origin}/?auth_error=${encodeURIComponent("db: " + msg)}`);
   }
 
-  // ── 4. Redirect straight to dashboard ────────────────────────────────────────
-  return NextResponse.redirect(`${origin}/`);
+  // ── 4. Redirect back to the page that initiated the reconnect (or dashboard) ──
+  return NextResponse.redirect(`${origin}${returnTo}`);
 }

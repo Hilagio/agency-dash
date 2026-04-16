@@ -28,6 +28,11 @@ export async function GET(req: NextRequest) {
   const origin = getOrigin(req);
   const redirectUri = process.env.GOOGLE_ADS_REDIRECT_URI ?? `${origin}/api/auth/google-ads/callback`;
 
+  // Preserve the return destination through the OAuth round-trip via state param.
+  // Only allow relative paths (starting with /) to prevent open redirect attacks.
+  const rawReturn = req.nextUrl.searchParams.get("returnTo") ?? "/";
+  const returnTo  = rawReturn.startsWith("/") ? rawReturn : "/";
+
   console.log("[google-ads auth] redirectUri:", redirectUri);
 
   const params = new URLSearchParams({
@@ -37,6 +42,7 @@ export async function GET(req: NextRequest) {
     scope:         SCOPES,
     access_type:   "offline",
     prompt:        "consent", // forces refresh_token to be returned every time
+    state:         returnTo,
   });
 
   return NextResponse.redirect(
