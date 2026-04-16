@@ -1227,14 +1227,15 @@ export async function fetchProductPerformance(
       WHERE segments.date BETWEEN '${start}' AND '${end}'
         AND (metrics.impressions > 0 OR metrics.cost_micros > 0)
       ORDER BY metrics.conversions_value DESC, metrics.cost_micros DESC
-      LIMIT ${pageSize + 1} OFFSET ${pageOffset}
+      LIMIT ${pageOffset + pageSize + 1}
     `),
     "shopping product performance",
     30_000
   );
 
-  const hasMore = productRows.length > pageSize;
-  const pageRows = productRows.slice(0, pageSize);
+  // GAQL has no OFFSET — emulate it by fetching up to current page end and slicing
+  const hasMore = productRows.length > pageOffset + pageSize;
+  const pageRows = productRows.slice(pageOffset, pageOffset + pageSize);
 
   const products: ProductRow[] = pageRows.map(r => {
     const itemId      = String(r.segments?.product_item_id ?? "unknown");
