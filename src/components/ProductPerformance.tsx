@@ -97,6 +97,14 @@ export function ProductPerformance({ accountId, currency }: { accountId: string;
         setHasPriceData(true);
       }
 
+      // For PMax accounts, conversions_value is often 0 at product level
+      // (revenue is attributed to the campaign, not individual product Shopping rows).
+      // Default to cost so the user sees which products Google is spending on.
+      const hasRevenue = overview.products.some(p => p.revenue > 0);
+      if (!hasRevenue && overview.products.some(p => p.cost > 0)) {
+        setSortKey("cost");
+      }
+
       setData(overview);
     })
     .catch(e => setError(e.message))

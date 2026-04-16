@@ -1233,9 +1233,10 @@ export async function fetchProductPerformance(customerId: string, orgId?: string
         metrics.cost_micros
       FROM shopping_performance_view
       WHERE segments.date BETWEEN '${start}' AND '${end}'
+        AND (metrics.impressions > 0 OR metrics.cost_micros > 0)
     `),
     "shopping product performance",
-    45_000  // 45 s — PMax cross-channel attribution can generate many rows
+    60_000  // 60 s — large PMax accounts can have thousands of active products
   );
 
   // Aggregate by product item ID (same product can appear across campaigns)
