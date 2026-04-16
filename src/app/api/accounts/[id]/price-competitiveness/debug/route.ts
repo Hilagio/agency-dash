@@ -66,7 +66,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
   if (!merchantId) return NextResponse.json(diag);
 
   // 4. Content API v2.1 reports/search
-  const q21 = "SELECT product_view.id, product_view.price_micros, price_competitiveness.benchmark_price_micros FROM PriceCompetitivenessProductView";
+  const q21 = "SELECT product_view.id, product_view.title, product_view.price_micros, product_view.currency_code, price_competitiveness.country_code, price_competitiveness.benchmark_price_micros, price_competitiveness.benchmark_price_currency_code FROM PriceCompetitivenessProductView";
   const r21 = await fetch(
     `https://shoppingcontent.googleapis.com/content/v2.1/${merchantId}/reports/search`,
     {
