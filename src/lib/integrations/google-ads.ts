@@ -1151,6 +1151,13 @@ export interface ShoppingOverview {
    * on Search/Display/YouTube surfaces without a linked Shopping feed.
    */
   noShoppingFeedData?:  boolean;
+  /**
+   * True when the product list was populated from the Merchant Center feed
+   * rather than from shopping_performance_view. Metrics (cost, revenue, etc.)
+   * will all be 0 in this case — the products haven't been served on the
+   * Shopping surface in the last 30 days.
+   */
+  fromMerchantFeed?:    boolean;
   campaignCount:        number;
   totalCost:            number;
   totalRevenue:         number;

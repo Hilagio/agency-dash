@@ -23,6 +23,7 @@ interface ProductRow {
 interface ShoppingOverview {
   hasShoppingCampaigns: boolean;
   noShoppingFeedData?:  boolean;
+  fromMerchantFeed?:    boolean;
   campaignCount:        number;
   totalCost:            number;
   totalRevenue:         number;
@@ -166,6 +167,18 @@ export function ProductPerformance({ accountId, currency }: { accountId: string;
 
   return (
     <div>
+
+      {/* Feed-only banner: shown when products come from MC catalog, not ad performance */}
+      {data.fromMerchantFeed && (
+        <div style={{
+          background: "rgba(99,102,241,0.06)", border: "1px solid rgba(99,102,241,0.15)",
+          borderRadius: 8, padding: "10px 16px", marginBottom: 16,
+          fontSize: 12, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 8,
+        }}>
+          <Package size={13} style={{ flexShrink: 0 }} />
+          Showing product catalog from Merchant Center — these products had no impressions on the Shopping surface in the last 30 days. Ad metrics (clicks, revenue, ROAS) are not available. Check that your PMax campaigns have a Shopping listing group configured.
+        </div>
+      )}
 
       {/* Shopping overview cards */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12, marginBottom: 20 }}>

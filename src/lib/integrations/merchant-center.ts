@@ -284,6 +284,75 @@ export async function fetchPriceCompetitiveness(
   return { merchantId, products, scopeMissing: false };
 }
 
+// ─── Product catalog listing ──────────────────────────────────────────────────
+
+export interface MerchantProductItem {
+  itemId:      string;
+  title:       string;
+  brand:       string;
+}
+
+/**
+ * Lists all products in the Merchant Center feed via Content API v2.1.
+ * Used as a fallback when shopping_performance_view returns no rows
+ * (PMax campaigns serving on non-Shopping surfaces).
+ *
+ * Despite the "sunset" announcement, this endpoint still works for accounts
+ * that have the content scope. We cap at 1000 products to stay fast.
+ */
+export async function fetchMerchantCenterProductList(
+  merchantId: string,
+  orgId?: string
+): Promise<MerchantProductItem[]> {
+  const refreshToken = await getRefreshToken(orgId);
+  let accessToken: string;
+  try {
+    accessToken = await getAccessToken(refreshToken);
+  } catch {
+    return [];
+  }
+
+  const products: MerchantProductItem[] = [];
+  let pageToken: string | undefined;
+
+  try {
+    do {
+      const url = new URL(`https://shoppingcontent.googleapis.com/content/v2.1/${merchantId}/products`);
+      url.searchParams.set("maxResults", "250");
+      if (pageToken) url.searchParams.set("pageToken", pageToken);
+
+      const res = await fetch(url.toString(), {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+
+      if (!res.ok) {
+        const body = await res.text().catch(() => "");
+        console.warn(`[merchant-center] products.list ${res.status}:`, body.slice(0, 200));
+        break;
+      }
+
+      const json = await res.json() as {
+        resources?: Array<{ id?: string; title?: string; brand?: string }>;
+        nextPageToken?: string;
+      };
+
+      for (const p of json.resources ?? []) {
+        // Content API product ID: "online:en:GB:ITEM123" — extract last segment
+        const parts  = (p.id ?? "").split(":");
+        const itemId = parts[parts.length - 1] ?? "";
+        if (itemId) products.push({ itemId, title: p.title ?? "", brand: p.brand ?? "" });
+      }
+
+      pageToken = json.nextPageToken;
+    } while (pageToken && products.length < 1000);
+  } catch (err) {
+    console.warn("[merchant-center] fetchMerchantCenterProductList failed:", err instanceof Error ? err.message : err);
+  }
+
+  console.log(`[merchant-center] product list for ${merchantId}: ${products.length} items`);
+  return products;
+}
+
 // ─── Internal types (Merchant Center Reports API v1 response shape) ──────────
 
 interface MerchantReportRow {
