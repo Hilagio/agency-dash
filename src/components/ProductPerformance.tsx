@@ -202,7 +202,19 @@ export function ProductPerformance({ accountId, currency }: { accountId: string;
   return (
     <div>
 
-      {/* Feed-only banner: shown when products come from MC catalog, not ad performance */}
+      {/* PMax attribution note: Shopping surface has clicks/cost but revenue is attributed cross-channel */}
+      {!data.fromMerchantFeed && data.products.length > 0 && !data.products.some(p => p.revenue > 0) && data.totalRevenue > 0 && (
+        <div style={{
+          background: "rgba(251,191,36,0.06)", border: "1px solid rgba(251,191,36,0.15)",
+          borderRadius: 8, padding: "10px 16px", marginBottom: 16,
+          fontSize: 12, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 8,
+        }}>
+          <AlertTriangle size={13} style={{ flexShrink: 0, color: "#fbbf24" }} />
+          PMax revenue (€{fmt(data.totalRevenue)}) is attributed across all channels — Shopping surface reports 0 revenue per product because conversions happen via Search/Display/YouTube. Products are sorted by spend instead.
+        </div>
+      )}
+
+      {/* Feed-only banner: MC catalog fallback — no Shopping data available */}
       {data.fromMerchantFeed && (
         <div style={{
           background: "rgba(99,102,241,0.06)", border: "1px solid rgba(99,102,241,0.15)",
@@ -210,7 +222,7 @@ export function ProductPerformance({ accountId, currency }: { accountId: string;
           fontSize: 12, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 8,
         }}>
           <Package size={13} style={{ flexShrink: 0 }} />
-          Showing product catalog from Merchant Center — these products had no impressions on the Shopping surface in the last 30 days. Ad metrics (clicks, revenue, ROAS) are not available. Check that your PMax campaigns have a Shopping listing group configured.
+          Showing product catalog from Merchant Center — no Shopping surface data available in the last 30 days.
         </div>
       )}
 
