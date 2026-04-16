@@ -64,7 +64,7 @@ function priceDiffLabel(diff: number, status: string) {
   return { label: pct, color: "#4ade80" };
 }
 
-type SortKey = "revenue" | "roas" | "cost" | "conversions" | "clicks" | "priceDiffPercent";
+type SortKey = "conversions" | "cost" | "clicks" | "priceDiffPercent";
 type SortDir = "desc" | "asc";
 
 export function ProductPerformance({ accountId, currency }: { accountId: string; currency: string }) {
@@ -73,9 +73,9 @@ export function ProductPerformance({ accountId, currency }: { accountId: string;
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError]             = useState<string | null>(null);
   const [page, setPage]               = useState(0);
-  const [sortKey, setSortKey]         = useState<SortKey>("revenue");
+  const [sortKey, setSortKey]         = useState<SortKey>("conversions");
   const [sortDir, setSortDir]         = useState<SortDir>("desc");
-  const [filter, setFilter]           = useState<"all" | "winners" | "losers" | "no-sales" | "overpriced">("all");
+  const [filter, setFilter]           = useState<"all" | "no-conversions" | "overpriced">("all");
   const [hasPriceData, setHasPriceData] = useState(false);
   const [priceMap, setPriceMap]         = useState<Map<string, PriceCompRow>>(new Map());
 
@@ -105,9 +105,6 @@ export function ProductPerformance({ accountId, currency }: { accountId: string;
         const pc = pm.get(p.itemId);
         return pc ? { ...p, priceDiffPercent: pc.priceDiffPercent, priceStatus: pc.status } : p;
       });
-
-      const hasRevenue = overview.products.some(p => p.revenue > 0);
-      if (!hasRevenue && overview.products.some(p => p.cost > 0)) setSortKey("cost");
 
       setData(overview);
     })
@@ -172,10 +169,8 @@ export function ProductPerformance({ accountId, currency }: { accountId: string;
   // Sort + filter products
   let products = [...data.products];
 
-  if (filter === "winners")   products = products.filter(p => p.roas >= data.roas * 1.3 && p.cost > 0);
-  if (filter === "losers")    products = products.filter(p => p.roas > 0 && p.roas < data.roas * 0.7 && p.cost > 5);
-  if (filter === "no-sales")  products = products.filter(p => p.cost > 0 && p.conversions === 0);
-  if (filter === "overpriced") products = products.filter(p => p.priceStatus === "above" || p.priceStatus === "well_above");
+  if (filter === "no-conversions") products = products.filter(p => p.cost > 0 && p.conversions === 0);
+  if (filter === "overpriced")     products = products.filter(p => p.priceStatus === "above" || p.priceStatus === "well_above");
 
   products.sort((a, b) => {
     const va = (a[sortKey] ?? 0) as number;
@@ -190,29 +185,15 @@ export function ProductPerformance({ accountId, currency }: { accountId: string;
 
   const sortIcon = (key: SortKey) => sortKey === key ? (sortDir === "desc" ? " ↓" : " ↑") : "";
 
-  const winners   = data.products.filter(p => p.roas >= data.roas * 1.3 && p.cost > 0).length;
-  const losers    = data.products.filter(p => p.roas > 0 && p.roas < data.roas * 0.7 && p.cost > 5).length;
-  const noSales   = data.products.filter(p => p.cost > 0 && p.conversions === 0).length;
-  const overpriced = data.products.filter(p => p.priceStatus === "above" || p.priceStatus === "well_above").length;
+  const noConversions = data.products.filter(p => p.cost > 0 && p.conversions === 0).length;
+  const overpriced    = data.products.filter(p => p.priceStatus === "above" || p.priceStatus === "well_above").length;
 
   const cols = hasPriceData
-    ? "1fr 70px 70px 80px 80px 70px 70px 80px"
-    : "1fr 70px 70px 80px 80px 70px 70px";
+    ? "1fr 70px 80px 80px 70px 80px"
+    : "1fr 70px 80px 80px 70px";
 
   return (
     <div>
-
-      {/* PMax attribution note: Shopping surface has clicks/cost but revenue is attributed cross-channel */}
-      {!data.fromMerchantFeed && data.products.length > 0 && !data.products.some(p => p.revenue > 0) && data.totalRevenue > 0 && (
-        <div style={{
-          background: "rgba(251,191,36,0.06)", border: "1px solid rgba(251,191,36,0.15)",
-          borderRadius: 8, padding: "10px 16px", marginBottom: 16,
-          fontSize: 12, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 8,
-        }}>
-          <AlertTriangle size={13} style={{ flexShrink: 0, color: "#fbbf24" }} />
-          PMax revenue (€{fmt(data.totalRevenue)}) is attributed across all channels — Shopping surface reports 0 revenue per product because conversions happen via Search/Display/YouTube. Products are sorted by spend instead.
-        </div>
-      )}
 
       {/* Feed-only banner: MC catalog fallback — no Shopping data available */}
       {data.fromMerchantFeed && (
@@ -259,9 +240,7 @@ export function ProductPerformance({ accountId, currency }: { accountId: string;
         <span style={{ fontSize: 11, color: "var(--text-faint)", marginRight: 4 }}>Show:</span>
         {([
           { f: "all",       label: `All (${data.products.length})`,       color: "var(--text-dim)" },
-          { f: "winners",   label: `Winners (${winners})`,                 color: "#4ade80" },
-          { f: "losers",    label: `Underperformers (${losers})`,          color: "#f87171" },
-          { f: "no-sales",  label: `Spend, no sales (${noSales})`,         color: "#fbbf24" },
+          { f: "no-conversions", label: `Spend, no conversions (${noConversions})`, color: "#fbbf24" },
           ...(hasPriceData ? [{ f: "overpriced", label: `Above market price (${overpriced})`, color: "#f87171" }] : []),
         ] as { f: string; label: string; color: string }[]).map(({ f, label, color }) => (
           <button
@@ -293,10 +272,8 @@ export function ProductPerformance({ accountId, currency }: { accountId: string;
             {[
               { key: null,               label: "Product" },
               { key: "clicks",           label: "Clicks" },
-              { key: "conversions",      label: "Sales" },
-              { key: "revenue",          label: "Revenue" },
+              { key: "conversions",      label: "Conversions" },
               { key: "cost",             label: "Cost" },
-              { key: "roas",             label: "ROAS" },
               { key: null,               label: "CTR" },
               ...(hasPriceData ? [{ key: "priceDiffPercent", label: "vs Market" }] : []),
             ].map(({ key, label }, i) => (
@@ -318,9 +295,6 @@ export function ProductPerformance({ accountId, currency }: { accountId: string;
 
           {/* Rows */}
           {products.map((p, i) => {
-            const color    = roasColor(p.roas, data.roas);
-            const isWinner = p.roas >= data.roas * 1.3 && p.cost > 0;
-            const isLoser  = p.roas > 0 && p.roas < data.roas * 0.7 && p.cost > 5;
             const noSale   = p.cost > 0 && p.conversions === 0;
             const priceInfo = (p.priceDiffPercent != null && p.priceStatus)
               ? priceDiffLabel(p.priceDiffPercent, p.priceStatus)
@@ -334,10 +308,9 @@ export function ProductPerformance({ accountId, currency }: { accountId: string;
                   gap: 8, padding: "9px 16px",
                   borderBottom: i < products.length - 1 ? "1px solid var(--border)" : "none",
                   background: "var(--bg)",
-                  borderLeft: isWinner ? "2px solid #4ade80" : isLoser ? "2px solid #f87171" : noSale ? "2px solid #fbbf24" : "2px solid transparent",
+                  borderLeft: noSale ? "2px solid #fbbf24" : "2px solid transparent",
                 }}
               >
-                {/* Product title */}
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontSize: 12, fontWeight: 500, color: "var(--text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {p.title || "—"}
@@ -349,13 +322,7 @@ export function ProductPerformance({ accountId, currency }: { accountId: string;
 
                 <Cell value={fmt(p.clicks, 0)} />
                 <Cell value={p.conversions > 0 ? fmt(p.conversions, 1) : "—"} color={p.conversions === 0 && p.cost > 0 ? "#fbbf24" : undefined} />
-                <Cell value={p.revenue > 0 ? `${currSym}${fmt(p.revenue)}` : "—"} />
                 <Cell value={p.cost > 0 ? `${currSym}${fmt(p.cost)}` : "—"} />
-                <Cell
-                  value={p.roas > 0 ? `${p.roas.toFixed(1)}x` : p.cost > 0 ? "0x" : "—"}
-                  color={p.cost > 0 ? color : undefined}
-                  bold
-                />
                 <Cell value={p.impressions > 0 ? `${(p.ctr * 100).toFixed(1)}%` : "—"} />
                 {hasPriceData && (
                   <Cell
@@ -391,9 +358,7 @@ export function ProductPerformance({ accountId, currency }: { accountId: string;
       {/* Legend */}
       <div style={{ display: "flex", gap: 16, marginTop: 12, flexWrap: "wrap" }}>
         {[
-          { color: "#4ade80", label: "ROAS ≥ 130% of avg" },
-          { color: "#f87171", label: "ROAS < 70% of avg" },
-          { color: "#fbbf24", label: "Spend with no sales" },
+          { color: "#fbbf24", label: "Spend with no conversions" },
           ...(hasPriceData ? [
             { color: "#f87171", label: "Price above market" },
             { color: "#60a5fa", label: "Price below market" },
