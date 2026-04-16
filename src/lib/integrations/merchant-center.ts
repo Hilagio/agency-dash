@@ -185,20 +185,19 @@ export async function fetchPriceCompetitiveness(
     throw err;
   }
 
-  // In Merchant Center API v1beta (successor to Content API v2.1):
-  //   - table name is snake_case: price_competitiveness_product_view
-  //   - every field is prefixed with the table name
-  //   - response rows nest all values under priceCompetitivenessProductView (camelCase)
+  // Merchant Center Reports API stable v1 (launched July 2025; v1beta shut down Feb 28 2026):
+  //   - fields use two separate prefixes: product_view.field and price_competitiveness.field
+  //   - response rows have two separate keys: productView and priceCompetitiveness
   const query = [
     "SELECT",
-    "  price_competitiveness_product_view.id,",
-    "  price_competitiveness_product_view.title,",
-    "  price_competitiveness_product_view.brand,",
-    "  price_competitiveness_product_view.price_micros,",
-    "  price_competitiveness_product_view.currency_code,",
-    "  price_competitiveness_product_view.benchmark_price_micros,",
-    "  price_competitiveness_product_view.benchmark_price_currency_code,",
-    "  price_competitiveness_product_view.report_country_code",
+    "  product_view.id,",
+    "  product_view.title,",
+    "  product_view.brand,",
+    "  product_view.price_micros,",
+    "  product_view.currency_code,",
+    "  price_competitiveness.country_code,",
+    "  price_competitiveness.benchmark_price_micros,",
+    "  price_competitiveness.benchmark_price_currency_code",
     "FROM price_competitiveness_product_view",
   ].join(" ");
 
@@ -210,10 +209,9 @@ export async function fetchPriceCompetitiveness(
     const body: Record<string, unknown> = { query, pageSize: 1000 };
     if (pageToken) body.pageToken = pageToken;
 
-    // Merchant Center Reports API (v1beta, successor to Content API v2.1 which was
-    // sunset September 2024). Endpoint: merchantapi.googleapis.com/reports/v1beta
+    // Merchant Center Reports API stable v1. Endpoint: merchantapi.googleapis.com/reports/v1
     const res = await fetch(
-      `https://merchantapi.googleapis.com/reports/v1beta/accounts/${merchantId}/reports:search`,
+      `https://merchantapi.googleapis.com/reports/v1/accounts/${merchantId}/reports:search`,
       {
         method: "POST",
         headers: {
@@ -243,15 +241,16 @@ export async function fetchPriceCompetitiveness(
 
   const products: PriceCompRow[] = rows
     .map((r) => {
-      // v1beta nests all fields under priceCompetitivenessProductView (camelCase)
-      const v         = r.priceCompetitivenessProductView;
-      const rawId       = v?.id ?? "";
-      const title       = v?.title ?? "";
-      const brand       = v?.brand ?? "";
-      const priceMicros = Number(v?.priceMicros ?? 0);
-      const benchMicros = Number(v?.benchmarkPriceMicros ?? 0);
-      const currency    = v?.currencyCode ?? v?.benchmarkPriceCurrencyCode ?? "EUR";
-      const country     = v?.reportCountryCode ?? "";
+      // v1: two separate keys — productView and priceCompetitiveness
+      const pv          = r.productView;
+      const pc          = r.priceCompetitiveness;
+      const rawId       = pv?.id ?? "";
+      const title       = pv?.title ?? "";
+      const brand       = pv?.brand ?? "";
+      const priceMicros = Number(pv?.priceMicros ?? 0);
+      const benchMicros = Number(pc?.benchmarkPriceMicros ?? 0);
+      const currency    = pv?.currencyCode ?? pc?.benchmarkPriceCurrencyCode ?? "EUR";
+      const country     = pc?.countryCode ?? "";
 
       if (!rawId || priceMicros === 0 || benchMicros === 0) return null;
 
@@ -285,18 +284,20 @@ export async function fetchPriceCompetitiveness(
   return { merchantId, products, scopeMissing: false };
 }
 
-// ─── Internal types (Merchant Center API v1beta response shape) ──────────────
+// ─── Internal types (Merchant Center Reports API v1 response shape) ──────────
 
 interface MerchantReportRow {
-  // v1beta: all price_competitiveness_product_view fields collapsed into one key
-  priceCompetitivenessProductView?: {
-    id?:                          string;
-    title?:                       string;
-    brand?:                       string;
-    priceMicros?:                 string | number;
-    currencyCode?:                string;
+  // v1: product_view fields and price_competitiveness fields in separate keys
+  productView?: {
+    id?:           string;
+    title?:        string;
+    brand?:        string;
+    priceMicros?:  string | number;
+    currencyCode?: string;
+  };
+  priceCompetitiveness?: {
+    countryCode?:                 string;
     benchmarkPriceMicros?:        string | number;
     benchmarkPriceCurrencyCode?:  string;
-    reportCountryCode?:           string;
   };
 }
