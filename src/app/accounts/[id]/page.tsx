@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, RefreshCw, MessageSquare, ListChecks, BarChart2, Loader2, Search, BookOpen, ClipboardList, Send, Pencil, X, CheckSquare, Sparkles, Package, Brain, FlaskConical, Zap, Copy, Check, Users } from "lucide-react";
+import { ArrowLeft, RefreshCw, MessageSquare, ListChecks, BarChart2, Loader2, Search, BookOpen, ClipboardList, Send, Pencil, X, CheckSquare, Sparkles, Package, Brain, FlaskConical, Zap, Copy, Check, Users, Wand2 } from "lucide-react";
 import { ScoreBuckets } from "@/components/ScoreBuckets";
 import { ScoreHistory } from "@/components/ScoreHistory";
 import { ActionList } from "@/components/ActionList";
@@ -16,9 +16,10 @@ import { PriceCompetitiveness } from "@/components/PriceCompetitiveness";
 import { PersonaView } from "@/components/PersonaView";
 import { MetricExplorer } from "@/components/MetricExplorer";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { AdCopyTab } from "@/components/AdCopyTab";
 import { BUCKET_LABELS } from "@/lib/engine/types";
 
-type Tab = "overview" | "actions" | "products" | "search-terms" | "persona" | "explorer" | "playbook" | "chat" | "notes" | "sops" | "peers";
+type Tab = "overview" | "actions" | "products" | "search-terms" | "ads" | "persona" | "explorer" | "playbook" | "chat" | "notes" | "sops" | "peers";
 
 interface Note {
   id: string;
@@ -2580,6 +2581,7 @@ export default function AccountPage() {
     { key: "actions",       label: "Actions",      icon: <ListChecks   size={14} />, badge: pendingActions.length },
     { key: "products",      label: "Products",     icon: <Package      size={14} /> },
     { key: "search-terms",  label: "Search terms", icon: <Search       size={14} /> },
+    { key: "ads",           label: "Ad copy",      icon: <Wand2          size={14} /> },
     { key: "persona",       label: "Audience",     icon: <Brain          size={14} /> },
     { key: "explorer",      label: "Explorer",     icon: <FlaskConical   size={14} /> },
     { key: "playbook",      label: "Playbook",     icon: <BookOpen       size={14} /> },
@@ -2958,6 +2960,10 @@ export default function AccountPage() {
             </div>
             <SearchTermReport accountId={id} />
           </>
+        )}
+
+        {tab === "ads" && (
+          <AdCopyTab accountId={id} />
         )}
 
         {tab === "persona" && (
