@@ -252,12 +252,16 @@ export async function fetchPriceCompetitiveness(
   const rows: MerchantReportRow[] = [];
   let pageToken: string | undefined;
 
+  // On a first 401/403, get a fresh token and retry once — transient token
+  // expiry should not trigger the permanent "register your project" banner.
+  let retried = false;
+
   do {
     const body: Record<string, unknown> = { query };
     if (pageToken) body.pageToken = pageToken;
 
     // eslint-disable-next-line no-await-in-loop
-    const res = await fetch(
+    let res = await fetch(
       `https://merchantapi.googleapis.com/reports/v1/accounts/${merchantId}/reports:search`,
       {
         method: "POST",
@@ -266,25 +270,48 @@ export async function fetchPriceCompetitiveness(
       }
     );
 
+    if ((res.status === 401 || res.status === 403) && !retried) {
+      // Refresh the token and retry once before treating this as a hard error
+      retried = true;
+      try {
+        accessToken = await getAccessToken(refreshToken);
+        res = await fetch(
+          `https://merchantapi.googleapis.com/reports/v1/accounts/${merchantId}/reports:search`,
+          {
+            method: "POST",
+            headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          }
+        );
+      } catch {
+        // If token refresh itself fails, fall through to the original 401 handling below
+      }
+    }
+
     if (res.status === 401 || res.status === 403) {
       // eslint-disable-next-line no-await-in-loop
       const errBody = await res.text();
-      console.warn(`[merchant-center] v1 auth error ${res.status}:`, errBody.slice(0, 300));
+      console.warn(`[merchant-center] v1 auth error ${res.status} (after retry=${retried}):`, errBody.slice(0, 300));
 
-      // Detect the specific "GCP project not registered with merchant account" error
-      // so the UI can show actionable steps instead of a generic auth failure.
+      // Only flag gcpNotRegistered if the API explicitly says so — transient 401s
+      // must not be promoted to a permanent "register your project" banner.
       let gcpProjectId: string | undefined;
       let gcpProjectNumber: string | undefined;
+      let isGcpNotRegistered = false;
       try {
         const parsed = JSON.parse(errBody) as {
-          error?: { details?: Array<{ metadata?: { GCP_ID?: string; GCP_NUMBER?: string } }> }
+          error?: {
+            status?: string;
+            details?: Array<{ metadata?: { GCP_ID?: string; GCP_NUMBER?: string } }>
+          }
         };
         const meta = parsed?.error?.details?.[0]?.metadata;
-        gcpProjectId     = meta?.GCP_ID;
-        gcpProjectNumber = meta?.GCP_NUMBER;
+        gcpProjectId       = meta?.GCP_ID;
+        gcpProjectNumber   = meta?.GCP_NUMBER;
+        isGcpNotRegistered = !!(gcpProjectId || errBody.includes("GCP_NOT_REGISTERED"));
       } catch { /* ignore parse errors */ }
 
-      if (gcpProjectId || errBody.includes("GCP_NOT_REGISTERED")) {
+      if (isGcpNotRegistered) {
         return {
           merchantId, products: [], scopeMissing: false,
           gcpNotRegistered: true, gcpProjectId, gcpProjectNumber,
