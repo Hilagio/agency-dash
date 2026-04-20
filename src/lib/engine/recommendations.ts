@@ -93,6 +93,22 @@ const measurementRules: RuleSet = (s) => {
     });
   }
 
+  const staleTotal = (m.staleConversionCount ?? 0) + (m.neverFiredConversionCount ?? 0);
+  if (staleTotal > 0) {
+    recs.push({
+      bucket: "MEASUREMENT",
+      title: `${staleTotal} conversion action${staleTotal > 1 ? "s" : ""} may be broken`,
+      description:
+        `${m.neverFiredConversionCount ?? 0} action${(m.neverFiredConversionCount ?? 0) !== 1 ? "s" : ""} never fired; ` +
+        `${m.staleConversionCount ?? 0} haven't fired in 90+ days. ` +
+        "Check Tag Assistant and verify the dataLayer event fires on the confirmation page.",
+      impact: "HIGH",
+      effort: "MEDIUM",
+      safeToAutomate: false,
+      actionType: "FIX_STALE_CONVERSIONS",
+      isEscalation: true,
+    });
+  }
 
   return recs;
 };
@@ -170,6 +186,22 @@ const trafficRules: RuleSet = (s) => {
     });
   }
 
+  if (t.irrelevantQueryPercent > 0.10) {
+    recs.push({
+      bucket: "TRAFFIC",
+      title: "Classify search queries to find off-brand waste",
+      description:
+        `~${Math.round(t.irrelevantQueryPercent * 100)}% of spend on zero-conversion queries. ` +
+        "AI classifier labels each term by intent (High Intent / Low Intent / Informational / Off-Brand) " +
+        "— off-brand and navigational queries surface automatically for review before any negatives are added.",
+      impact: "HIGH",
+      effort: "EASY",
+      safeToAutomate: false,
+      actionType: "CLASSIFY_SEARCH_QUERIES",
+      isEscalation: false,
+    });
+  }
+
   if (t.irrelevantQueryPercent > 0.15) {
     recs.push({
       bucket: "TRAFFIC",
@@ -234,6 +266,24 @@ const trafficRules: RuleSet = (s) => {
       effort: "MEDIUM",
       safeToAutomate: false,
       actionType: "REWRITE_ADS",
+      isEscalation: false,
+    });
+  }
+
+  if ((t.isDemandCeiling ?? false) && t.searchImpressionShare < 0.30) {
+    recs.push({
+      bucket: "TRAFFIC",
+      title: "Low IS reflects a small market — not a budget or rank problem",
+      description:
+        `Search impression share is ${Math.round(t.searchImpressionShare * 100)}%, ` +
+        `but budget loss is only ${Math.round(t.impressionShareLost_budget * 100)}% ` +
+        `and rank loss ${Math.round(t.impressionShareLost_rank * 100)}% — this is a demand ceiling. ` +
+        "More budget or better Quality Score won't move the needle here. " +
+        "Consider expanding match types, adding adjacent keyword themes, or broadening geo targeting.",
+      impact: "MEDIUM",
+      effort: "HARD",
+      safeToAutomate: false,
+      actionType: "EXPAND_TARGETING",
       isEscalation: false,
     });
   }

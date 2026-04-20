@@ -63,6 +63,8 @@ export interface TrafficSignals {
   // ── Non-converting keyword waste ───────────────────────────────────────────
   wastedKeywordSpend: number;             // total spend on EXACT/PHRASE keywords with 0 conv (account currency)
   wastedKeywordSpendRatio: number;        // wastedKeywordSpend / totalSpend30d (0–1)
+  // ── IS root cause ──────────────────────────────────────────────────────────
+  isDemandCeiling: boolean;              // IS < 30% with no budget or rank loss — market is simply small
 }
 
 export interface MeasurementSignals {
@@ -74,6 +76,9 @@ export interface MeasurementSignals {
   dateLagDays: number;                     // avg attribution lag
   hasGa4Linked: boolean;
   hasMerchantCenterLinked: boolean;        // for shopping
+  // ── Conversion staleness ───────────────────────────────────────────────────
+  staleConversionCount: number;            // enabled actions that haven't fired in 90+ days
+  neverFiredConversionCount: number;       // enabled actions with no last_conversion_date ever
 }
 
 export interface ConversionSignals {

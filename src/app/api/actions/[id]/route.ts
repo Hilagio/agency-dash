@@ -81,6 +81,18 @@ export async function POST(req: NextRequest, { params }: Params) {
         log = await executePauseNonConvertingKeywords(googleAdsId, payload);
         break;
       }
+      case "EXCLUDE_OFF_BRAND_QUERIES": {
+        const payload = action.actionPayload as Record<string, unknown> | null ?? {};
+        const { executeExcludeOffBrandQueries } = await import("@/lib/integrations/google-ads-actions");
+        log = await executeExcludeOffBrandQueries(googleAdsId, payload);
+        break;
+      }
+      // Future scaffolding — acknowledged, not yet automated
+      case "REFRESH_RSA_ASSETS":
+      case "BUILD_PMAX_ASSET_GROUP":
+      case "GENERATE_MONTHLY_REPORT":
+        log = `Action type '${action.actionType}' queued at ${new Date().toISOString()}. Automated execution coming — manual follow-up required for now.`;
+        break;
       default:
         log = `Action type '${action.actionType}' acknowledged at ${new Date().toISOString()}. Manual follow-up required.`;
     }

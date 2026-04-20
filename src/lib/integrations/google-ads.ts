@@ -269,6 +269,14 @@ function last90Days(): { start: string; end: string } {
   return { start: fmt(start), end: fmt(end) };
 }
 
+/** Last 180 days — used for non-converting keyword detection (longer window = higher confidence) */
+function last180Days(): { start: string; end: string } {
+  const fmt   = (d: Date) => d.toISOString().slice(0, 10);
+  const end   = new Date(); end.setDate(end.getDate() - 1);
+  const start = new Date(); start.setDate(start.getDate() - 180);
+  return { start: fmt(start), end: fmt(end) };
+}
+
 /** Last 14 days — "recent" window for trend scoring */
 function last14Days(): { start: string; end: string } {
   const fmt = (d: Date) => d.toISOString().slice(0, 10);
@@ -288,13 +296,14 @@ function days15to180(): { start: string; end: string } {
 // ─── Measurement signals ──────────────────────────────────────────────────────
 
 async function fetchMeasurementSignals(customer: Customer): Promise<MeasurementSignals> {
-  // Conversion actions
+  // Conversion actions — include last_conversion_date for staleness detection
   const convActions = await customer.query(`
     SELECT
       conversion_action.id,
       conversion_action.status,
       conversion_action.type,
-      conversion_action.primary_for_goal
+      conversion_action.primary_for_goal,
+      conversion_action.last_conversion_date
     FROM conversion_action
     WHERE conversion_action.status = 'ENABLED'
   `);
@@ -470,6 +479,21 @@ async function fetchMeasurementSignals(customer: Customer): Promise<MeasurementS
   );
   const hasMerchantCenterLinked = merchantLinks.length > 0;
 
+  // Conversion staleness: enabled actions that have never fired or haven't fired in 90+ days
+  const today = new Date();
+  let staleConversionCount = 0;
+  let neverFiredConversionCount = 0;
+  for (const row of activeConversions) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const lastDate = (row.conversion_action as any)?.last_conversion_date as string | null | undefined;
+    if (!lastDate) {
+      neverFiredConversionCount++;
+    } else {
+      const daysAgo = Math.floor((today.getTime() - new Date(lastDate).getTime()) / 86_400_000);
+      if (daysAgo > 90) staleConversionCount++;
+    }
+  }
+
   return {
     conversionTrackingActive,
     conversionActionsCount: activeConversions.length,
@@ -479,6 +503,8 @@ async function fetchMeasurementSignals(customer: Customer): Promise<MeasurementS
     dateLagDays: 3, // Google Ads standard attribution lag
     hasGa4Linked,
     hasMerchantCenterLinked,
+    staleConversionCount,
+    neverFiredConversionCount,
   };
 }
 
@@ -782,9 +808,11 @@ async function fetchTrafficSignals(customer: Customer): Promise<TrafficSignals> 
     .filter(Boolean)
     .slice(0, 10);
 
-  // ── Non-converting EXACT/PHRASE keywords (30-day totals) ─────────────────
-  // Each row = one keyword with aggregated 30-day cost + conversions.
+  // ── Non-converting EXACT/PHRASE keywords (180-day totals) ────────────────
+  // 180 days gives strong confidence: a keyword with zero conversions over 6
+  // months is genuinely wasted regardless of volume fluctuations.
   // Omit segments.date from SELECT → GAQL auto-groups by the resource fields.
+  const { start: kw180start, end: kw180end } = last180Days();
   const nonConvertingKwRows = await safeQuery(
     () => customer.query(`
       SELECT
@@ -796,10 +824,10 @@ async function fetchTrafficSignals(customer: Customer): Promise<TrafficSignals> 
         AND campaign.status = 'ENABLED'
         AND ad_group.status = 'ENABLED'
         AND ad_group_criterion.keyword.match_type IN ('EXACT', 'PHRASE')
-        AND segments.date BETWEEN '${start}' AND '${end}'
+        AND segments.date BETWEEN '${kw180start}' AND '${kw180end}'
       LIMIT 5000
     `),
-    "non-converting keywords 30d"
+    "non-converting keywords 180d"
   );
 
   // Aggregate: group by criterion_id so multi-day rows don't double-count
@@ -821,6 +849,15 @@ async function fetchTrafficSignals(customer: Customer): Promise<TrafficSignals> 
   // totalCost here is 30-day account spend (computed from allCampaignRows above)
   const wastedKeywordSpendRatio = totalCost > 0 ? Math.min(1, wastedKeywordSpend / totalCost) : 0;
 
+  // IS demand ceiling: low IS that can't be explained by budget or rank loss.
+  // When budget loss < 10% and rank loss < 15% but IS is still < 30%, the market
+  // itself is simply too small — scaling spend or improving quality won't help.
+  const isDemandCeiling =
+    avgIs < 0.30 &&
+    avgIsLostBudget < 0.10 &&
+    avgIsLostRank < 0.15 &&
+    isRowCount > 0;
+
   return {
     impressionShareLost_budget:  Math.min(1, avgIsLostBudget),
     impressionShareLost_rank:    Math.min(1, avgIsLostRank),
@@ -839,6 +876,7 @@ async function fetchTrafficSignals(customer: Customer): Promise<TrafficSignals> 
     zeroImpressionAdGroupNames,
     wastedKeywordSpend,
     wastedKeywordSpendRatio,
+    isDemandCeiling,
   };
 }
 

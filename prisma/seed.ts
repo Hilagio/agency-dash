@@ -28,6 +28,8 @@ const acme_signals: ConstraintSignals = {
     dateLagDays: 3,
     hasGa4Linked: true,
     hasMerchantCenterLinked: false,
+    staleConversionCount: 0,
+    neverFiredConversionCount: 0,
   },
   traffic: {
     impressionShareLost_budget: 0.38,  // ← biggest traffic problem
@@ -47,6 +49,7 @@ const acme_signals: ConstraintSignals = {
     zeroImpressionAdGroupNames: [],
     wastedKeywordSpend: 0,
     wastedKeywordSpendRatio: 0,
+    isDemandCeiling: false,
   },
   conversion: {
     conversionRate: 0.032,
@@ -88,6 +91,8 @@ const nova_signals: ConstraintSignals = {
     dateLagDays: 0,
     hasGa4Linked: false,
     hasMerchantCenterLinked: false,
+    staleConversionCount: 0,
+    neverFiredConversionCount: 0,
   },
   traffic: {
     impressionShareLost_budget: 0.1,
@@ -107,6 +112,7 @@ const nova_signals: ConstraintSignals = {
     zeroImpressionAdGroupNames: [],
     wastedKeywordSpend: 0,
     wastedKeywordSpendRatio: 0,
+    isDemandCeiling: false,
   },
   conversion: {
     conversionRate: 0.0,

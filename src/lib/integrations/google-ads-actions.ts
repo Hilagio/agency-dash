@@ -329,3 +329,62 @@ export async function executePauseNonConvertingKeywords(
     `Keywords: ${names}${more}.`
   );
 }
+
+// ─── Exclude off-brand search queries ────────────────────────────────────────
+// Adds specialist-approved off-brand/irrelevant queries as campaign-level
+// broad-match negatives. Queries to exclude come from the AI classifier
+// (SearchTermClassifier UI) and are passed in payload.terms.
+
+export async function executeExcludeOffBrandQueries(
+  googleAdsId: string,
+  payload: Record<string, unknown> = {},
+): Promise<string> {
+  const terms = Array.isArray(payload.terms) ? (payload.terms as string[]).filter(Boolean) : [];
+
+  if (terms.length === 0) {
+    return "No search terms provided in payload.terms — nothing to exclude.";
+  }
+
+  const customer = await getCustomer(googleAdsId);
+
+  // Find all enabled Search campaigns to attach the negatives to
+  const campaignRows = await customer.query(`
+    SELECT campaign.resource_name, campaign.name
+    FROM campaign
+    WHERE campaign.status = 'ENABLED'
+      AND campaign.advertising_channel_type = 'SEARCH'
+    LIMIT 200
+  `);
+
+  if (campaignRows.length === 0) {
+    return "No enabled Search campaigns found to attach negatives to.";
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mutations: any[] = [];
+  for (const row of campaignRows) {
+    const campaign = row.campaign!.resource_name as string;
+    for (const term of terms) {
+      mutations.push({
+        entity: "campaign_criterion",
+        operation: "create",
+        resource: {
+          campaign,
+          negative: true,
+          type: enums.CriterionType.KEYWORD,
+          keyword: { text: term, match_type: enums.KeywordMatchType.BROAD },
+        },
+      });
+    }
+  }
+
+  await customer.mutateResources(mutations, { partial_failure: true });
+
+  const preview = terms.slice(0, 5).join(", ");
+  const more    = terms.length > 5 ? ` +${terms.length - 5} more` : "";
+
+  return (
+    `Added ${terms.length} off-brand query${terms.length > 1 ? "ies" : ""} as negatives ` +
+    `across ${campaignRows.length} campaign(s): ${preview}${more}.`
+  );
+}
