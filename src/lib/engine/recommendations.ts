@@ -358,7 +358,7 @@ const conversionRules: RuleSet = (s) => {
     });
   }
 
-  if (c.mobileSpeedScore < 50) {
+  if (c.mobileSpeedScore > 0 && c.mobileSpeedScore < 50) {
     recs.push({
       bucket: "CONVERSION",
       title: "Critical: Mobile page speed below 50",

@@ -4,9 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import {
   CheckCircle, XCircle, Zap, AlertTriangle,
   ChevronDown, ChevronUp, Loader2, Copy, Check,
-  ExternalLink, Sparkles, FileText, Clock, CheckCheck, UserPlus,
+  ExternalLink, Sparkles, FileText, Clock, CheckCheck, UserPlus, Brain,
 } from "lucide-react";
 import { ConstraintBadge } from "./ConstraintBadge";
+import { SearchTermClassifier } from "./SearchTermClassifier";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -446,10 +447,11 @@ function initials(name: string | null, email: string) {
 type ViewFilter = "open" | "snoozed" | "done" | "all";
 
 export function ActionList({ actions: initialActions, accountId, orgMembers, onTabChange, onStatusChange, onExecute, onActionUpdate }: Props) {
-  const [actions, setActions]   = useState<Action[]>(initialActions);
-  const [expanded, setExpanded] = useState<string | null>(null);
-  const [executing, setExecuting] = useState<string | null>(null);
-  const [filter, setFilter]     = useState<ViewFilter>("open");
+  const [actions, setActions]         = useState<Action[]>(initialActions);
+  const [expanded, setExpanded]       = useState<string | null>(null);
+  const [executing, setExecuting]     = useState<string | null>(null);
+  const [filter, setFilter]           = useState<ViewFilter>("open");
+  const [classifierOpen, setClassifierOpen] = useState(false);
   const [snoozeOpen, setSnoozeOpen] = useState<string | null>(null);
   const [assignOpen, setAssignOpen] = useState<string | null>(null);
   const snoozeRef = useRef<HTMLDivElement>(null);
@@ -568,6 +570,10 @@ export function ActionList({ actions: initialActions, accountId, orgMembers, onT
         </div>
       )}
 
+      {classifierOpen && (
+        <SearchTermClassifier accountId={accountId} onClose={() => setClassifierOpen(false)} />
+      )}
+
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {visible.map((action) => {
           const bucket      = classify(action);
@@ -576,9 +582,10 @@ export function ActionList({ actions: initialActions, accountId, orgMembers, onT
           const isExpanded  = expanded === action.id;
           const accent      = BUCKET_BORDER[action.bucket] ?? "#60a5fa";
 
-          const showSearchTerms = isExpanded && isSearchTermAction(action);
-          const showCro         = isExpanded && isCroAction(action);
-          const showCtr         = isExpanded && isCtrAction(action);
+          const showSearchTerms  = isExpanded && isSearchTermAction(action);
+          const showCro          = isExpanded && isCroAction(action);
+          const showCtr          = isExpanded && isCtrAction(action);
+          const showClassifyBtn  = isExpanded && action.actionType === "CLASSIFY_SEARCH_QUERIES";
 
           return (
             <div
@@ -650,6 +657,22 @@ export function ActionList({ actions: initialActions, accountId, orgMembers, onT
                       {showSearchTerms && <SearchTermPreview accountId={accountId} onTabChange={onTabChange} />}
                       {showCro && <InlineAiBrief accountId={accountId} type="cro" actionTitle={action.title} actionDescription={action.description} />}
                       {showCtr && <InlineAiBrief accountId={accountId} type="ctr" actionTitle={action.title} actionDescription={action.description} />}
+                      {showClassifyBtn && (
+                        <button
+                          onClick={() => setClassifierOpen(true)}
+                          style={{
+                            display: "flex", alignItems: "center", gap: 6,
+                            background: "rgba(96,165,250,0.08)",
+                            border: "1px solid rgba(96,165,250,0.2)",
+                            borderRadius: 7, color: "#60a5fa",
+                            fontSize: 11, fontWeight: 600, padding: "7px 14px",
+                            cursor: "pointer", marginTop: 4,
+                          }}
+                        >
+                          <Brain size={11} />
+                          Open Query Classifier
+                        </button>
+                      )}
                       {action.executionLog && (
                         <div style={{ marginTop: 8, background: "rgba(74,222,128,0.06)", border: "1px solid rgba(74,222,128,0.15)", borderRadius: 8, padding: "8px 12px", fontSize: 11, color: "#4ade80", lineHeight: 1.6 }}>
                           {action.executionLog}
