@@ -275,7 +275,7 @@ export function PriceCompetitiveness({ accountId, merchantCenterId }: { accountI
 
       {/* Context note */}
       <div style={{
-        background: "rgba(99,102,241,0.05)", border: "1px solid rgba(99,102,241,0.12)",
+        background: "rgba(196,154,10,0.05)", border: "1px solid rgba(196,154,10,0.12)",
         borderRadius: 8, padding: "9px 14px", marginBottom: 14,
         fontSize: 11, color: "var(--text-muted)",
       }}>

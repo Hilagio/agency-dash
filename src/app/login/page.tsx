@@ -32,7 +32,7 @@ function LoginContent() {
         <div style={{ marginBottom: 40 }}>
           <div style={{
             width: 48, height: 48, borderRadius: 14,
-            background: "linear-gradient(135deg, var(--btn-primary), #7c3aed)",
+            background: "linear-gradient(135deg, var(--btn-primary), #8a6504)",
             margin: "0 auto 16px",
             display: "flex", alignItems: "center", justifyContent: "center",
           }}>

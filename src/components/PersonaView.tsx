@@ -28,7 +28,7 @@ const DAY_SHORT: Record<string, string> = {
   FRIDAY: "Fri", SATURDAY: "Sat", SUNDAY: "Sun",
 };
 
-const ACCENT = "#6366f1";
+const ACCENT = "#c49a0a";
 
 // ─── Mini bar chart row ────────────────────────────────────────────────────────
 
@@ -85,7 +85,7 @@ function HourHeatmap({ hours }: { hours: DayHourRow[] }) {
           const intensity = h.conversions / max;
           const bg = intensity < 0.01
             ? "var(--surface-2)"
-            : `rgba(99,102,241,${0.12 + intensity * 0.88})`;
+            : `rgba(196,154,10,${0.12 + intensity * 0.88})`;
           return (
             <div
               key={i}
@@ -118,7 +118,7 @@ function DayBars({ days }: { days: DayHourRow[] }) {
         const isTop = d.conversions === maxConv;
         return (
           <div key={d.label} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
-            <div style={{ width: "100%", height: h, background: isTop ? ACCENT : "rgba(99,102,241,0.25)", borderRadius: "2px 2px 0 0", transition: "height 0.3s" }} />
+            <div style={{ width: "100%", height: h, background: isTop ? ACCENT : "rgba(196,154,10,0.25)", borderRadius: "2px 2px 0 0", transition: "height 0.3s" }} />
             <span style={{ fontSize: 8, color: "var(--text-faint)" }}>{DAY_SHORT[d.label] ?? d.label.slice(0,3)}</span>
           </div>
         );
@@ -191,7 +191,7 @@ function AiPersonaCard({ accountId, data }: { accountId: string; data: PersonaDa
       <div style={{
         padding: "14px 18px", display: "flex", alignItems: "center", justifyContent: "space-between",
         borderBottom: text ? "1px solid var(--border)" : "none",
-        background: `linear-gradient(135deg, rgba(99,102,241,0.06), rgba(168,85,247,0.04))`,
+        background: `linear-gradient(135deg, rgba(196,154,10,0.06), rgba(168,85,247,0.04))`,
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <Sparkles size={14} style={{ color: ACCENT }} />
@@ -287,7 +287,7 @@ export function PersonaView({ accountId, currency }: { accountId: string; curren
       {/* Header note */}
       <div style={{
         display: "flex", alignItems: "flex-start", gap: 8,
-        background: "rgba(99,102,241,0.05)", border: "1px solid rgba(99,102,241,0.12)",
+        background: "rgba(196,154,10,0.05)", border: "1px solid rgba(196,154,10,0.12)",
         borderRadius: 8, padding: "10px 14px", marginBottom: 20, fontSize: 11, color: "var(--text-muted)",
       }}>
         <Info size={12} style={{ marginTop: 1, flexShrink: 0, color: ACCENT }} />
@@ -312,7 +312,7 @@ export function PersonaView({ accountId, currency }: { accountId: string; curren
             {devices.sort((a, b) => b.costMicros - a.costMicros).map(r => (
               <BarRow key={r.label} label={r.label} value={r.costMicros} total={totalDeviceCost}
                 secondary={`CVR ${r.clicks > 0 ? ((r.conversions / r.clicks) * 100).toFixed(1) : 0}%`}
-                color={r.label === "MOBILE" ? "#6366f1" : r.label === "DESKTOP" ? "#8b5cf6" : "#a78bfa"} />
+                color={r.label === "MOBILE" ? "#c49a0a" : r.label === "DESKTOP" ? "#9a7808" : "#d4aa18"} />
             ))}
           </Section>
         )}
@@ -356,7 +356,7 @@ export function PersonaView({ accountId, currency }: { accountId: string; curren
           <Section title="Parental status" icon={<Users size={13} />}>
             {data.parental.sort((a, b) => b.costMicros - a.costMicros).map(r => (
               <BarRow key={r.label} label={r.label} value={r.costMicros} total={totalParentalCost}
-                secondary={`${r.conversions.toFixed(0)} conv`} color="#8b5cf6" />
+                secondary={`${r.conversions.toFixed(0)} conv`} color="#9a7808" />
             ))}
           </Section>
         )}
