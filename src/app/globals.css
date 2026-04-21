@@ -4,25 +4,25 @@
 :root {
   --bg:            #0f0f0b;
   --bg-deep:       #090905;
-  --surface:       #191910;
-  --surface-hover: #1e1e14;
-  --surface-2:     #232318;
-  --surface-3:     #2c2c1e;
-  --border:        rgba(196, 154, 10, 0.12);
-  --border-2:      rgba(196, 154, 10, 0.22);
-  --border-3:      rgba(196, 154, 10, 0.36);
-  --text:          #f0efe8;
-  --text-2:        #d4d2c4;
-  --text-3:        #9a9880;
-  --text-muted:    #706e58;
-  --text-dim:      #4c4a38;
-  --text-very-dim: #383628;
-  --text-faint:    #282818;
-  --header-bg:     rgba(15, 15, 11, 0.92);
+  --surface:       #1d1d13;
+  --surface-hover: #242419;
+  --surface-2:     #292920;
+  --surface-3:     #333328;
+  --border:        rgba(196, 154, 10, 0.16);
+  --border-2:      rgba(196, 154, 10, 0.28);
+  --border-3:      rgba(196, 154, 10, 0.44);
+  --text:          #f2f0e6;
+  --text-2:        #ddd9c8;
+  --text-3:        #b0ac94;
+  --text-muted:    #8a8670;
+  --text-dim:      #635f4c;
+  --text-very-dim: #4a4638;
+  --text-faint:    #363328;
+  --header-bg:     rgba(15, 15, 11, 0.94);
   --input-bg:      #131309;
   --accent:        #c49a0a;
   --accent-blue:   #c49a0a;
-  --accent-dim:    rgba(196, 154, 10, 0.08);
+  --accent-dim:    rgba(196, 154, 10, 0.10);
   --btn-primary:   #a88500;
   --btn-primary-hover: #c49a0a;
 }
@@ -38,13 +38,13 @@
   --border:        rgba(100, 78, 4, 0.12);
   --border-2:      rgba(100, 78, 4, 0.18);
   --border-3:      rgba(100, 78, 4, 0.28);
-  --text:          #1a1a0e;
-  --text-2:        #2a2a18;
-  --text-3:        #4a4830;
-  --text-muted:    #6a6848;
-  --text-dim:      #8a8868;
-  --text-very-dim: #9a9878;
-  --text-faint:    #aaa888;
+  --text:          #18180e;
+  --text-2:        #2e2c1c;
+  --text-3:        #524e38;
+  --text-muted:    #6e6a52;
+  --text-dim:      #908c74;
+  --text-very-dim: #a8a490;
+  --text-faint:    #bab6a4;
   --header-bg:     rgba(245, 244, 239, 0.92);
   --input-bg:      #fafaf7;
   --accent:        #9a7808;
@@ -60,7 +60,8 @@ body {
   font-family: var(--font-inter), "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Display", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  letter-spacing: -0.01em;
+  letter-spacing: 0em;
+  font-size: 15px;
   /* Subtle warm ambient glow */
   background-image:
     radial-gradient(ellipse 80% 50% at 10% 0%, rgba(196, 154, 10, 0.05) 0%, transparent 60%),
