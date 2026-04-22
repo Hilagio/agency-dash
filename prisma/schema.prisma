@@ -102,6 +102,15 @@ model Account {
   // Falls back to auto-detection by industry + country if not set.
   peerGroupId String?
 
+  // ─── Client intake (replaces Typeform) ───────────────────────────────────────
+  reportEmail         String?   // email address for weekly reports
+  tosAcceptedAt       DateTime? // when client accepted Ecomtrada ToS
+  intakeToken         String?   @unique // shareable token for the public intake form
+  intakeCompletedAt   DateTime? // when client submitted the intake form
+
+  // ─── Team assignment ──────────────────────────────────────────────────────────
+  assignedUserId String? // User.id of the specialist managing this account
+
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id])
   createdAt      DateTime @default(now())

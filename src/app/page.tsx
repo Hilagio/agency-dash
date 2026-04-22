@@ -17,6 +17,7 @@ interface SessionUser {
   orgId:  string | null;
   email:  string;
   name:   string | null;
+  role:   string;
 }
 
 type ConstraintBucket = "MEASUREMENT" | "TRAFFIC" | "CONVERSION" | "FUNNEL" | "ECONOMICS";
@@ -35,15 +36,16 @@ interface Snapshot {
 }
 
 interface Account {
-  id:            string;
-  name:          string;
-  googleAdsId:   string;
-  industry:      string | null;
-  monthlyBudget: number | null;
-  currency:      string;
-  snapshots:     Snapshot[];
-  scoreDelta:    number | null;
-  prevScoredAt:  string | null;
+  id:             string;
+  name:           string;
+  googleAdsId:    string;
+  industry:       string | null;
+  monthlyBudget:  number | null;
+  currency:       string;
+  snapshots:      Snapshot[];
+  scoreDelta:     number | null;
+  prevScoredAt:   string | null;
+  assignedUserId: string | null;
 }
 
 function minScore(snap: Snapshot): number {
@@ -208,6 +210,18 @@ function AccountCard({
           ) : (
             <div style={{ height: 38, display: "flex", alignItems: "center", marginBottom: 14 }}>
               <span style={{ fontSize: 11, color: "var(--text-faint)", fontStyle: "italic" }}>Not scored yet</span>
+            </div>
+          )}
+
+          {/* Row 2b: Top issue (constraint reason) */}
+          {snap?.constraintReason && (
+            <div style={{
+              fontSize: 11, color: isCritical ? "#f87171" : isAtRisk ? "#fbbf24" : "var(--text-dim)",
+              marginBottom: 10, lineHeight: 1.4,
+              overflow: "hidden", display: "-webkit-box",
+              WebkitLineClamp: 2, WebkitBoxOrient: "vertical",
+            }}>
+              {snap.constraintReason}
             </div>
           )}
 
@@ -497,9 +511,12 @@ function HomePageInner() {
   const healthy  = scored.filter(a => minScore(a.snapshots[0]) >= 70).length;
 
   const q = search.trim().toLowerCase();
+  // SPECIALIST role: only show accounts assigned to them
+  const isSpecialist = sessionUser?.role === "SPECIALIST";
   const sorted = [...accounts]
     .filter(a => !q || a.name.toLowerCase().includes(q) || (a.industry ?? "").toLowerCase().includes(q))
     .filter(a => !filterBucket || a.snapshots[0]?.governingConstraint === filterBucket)
+    .filter(a => !isSpecialist || a.assignedUserId === sessionUser?.userId)
     .sort((a, b) => {
       const dir = sortDir === "asc" ? 1 : -1;
       if (sortBy === "score") {

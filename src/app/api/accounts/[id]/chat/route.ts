@@ -15,6 +15,7 @@ import { fetchSlackMessages, formatSlackForContext } from "@/lib/integrations/sl
 import { getMerchantCenterIds, fetchPriceCompetitiveness } from "@/lib/integrations/merchant-center";
 import { getAuthContext, unauthorized, forbidden } from "@/lib/auth";
 import { AGENCY_PHILOSOPHY } from "@/lib/agencyPhilosophy";
+import { searchKnowledge } from "@/lib/knowledge-search";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -230,6 +231,7 @@ function buildSystemPrompt(params: {
   correctionContext:   string;
   globalPatternContext: string;
   productContext:      string;
+  kbContext:           string;
   isLeadGen:           boolean;
   isShoppingAccount:   boolean;
 }): string {
@@ -239,7 +241,7 @@ function buildSystemPrompt(params: {
     governingConstraint, constraintReason, bucketScores, allActions, signals,
     demographics, searchTerms,
     clientContext, sopContext, notionContext, slackContext, correctionContext, globalPatternContext,
-    productContext, isLeadGen, isShoppingAccount,
+    productContext, kbContext, isLeadGen, isShoppingAccount,
   } = params;
 
   const bucketSummary = Object.entries(bucketScores)
@@ -292,6 +294,7 @@ function buildSystemPrompt(params: {
   const correctionSection     = correctionContext    ? `\n\n${correctionContext}` : "";
   const globalPatternSection  = globalPatternContext ? `\n\n${globalPatternContext}` : "";
   const productSection        = productContext       ? `\n\n${productContext}` : "";
+  const kbSection             = kbContext            ? `\n\n${kbContext}` : "";
 
   return `You are an expert senior Google Ads specialist embedded in an agency performance platform. You have full access to this account's data — it was fetched directly from Google Ads API and Merchant Center moments before this conversation. Never say you lack access to Google Ads data; everything you need is already provided below.
 
@@ -327,7 +330,8 @@ YOUR BEHAVIOUR:
 - BUDGET INCREASE RULE: NEVER recommend increasing budget if actual ROAS is below the target ROAS.
 - If product performance data is provided: NAME specific products in answers about revenue, ROAS, or pricing. Use the actual numbers.
 - If price competitiveness data is provided: use it directly. Do NOT say "see the Products tab" — you already have the data.
-- When Slack messages are provided: actively correlate dates of team actions (budget changes, bid adjustments, campaign pauses) with metric shifts. If a metric deteriorated 2–5 days after a noted change, flag it explicitly as the likely cause and recommend a response.${notionSection}${slackSection}${correctionSection}${globalPatternSection}`;
+- When Slack messages are provided: actively correlate dates of team actions (budget changes, bid adjustments, campaign pauses) with metric shifts. If a metric deteriorated 2–5 days after a noted change, flag it explicitly as the likely cause and recommend a response.
+- When Knowledge Base references are provided: ground your answer in the specific checklist items, SOP steps, or mental model framework cited. Quote the relevant rule or step when it directly answers the question.${notionSection}${slackSection}${correctionSection}${globalPatternSection}${kbSection}`;
 }
 
 // ─── Route handler ─────────────────────────────────────────────────────────────
@@ -539,6 +543,9 @@ export async function POST(req: NextRequest, { params }: Params) {
       learnedPatterns.map(p => `- [${p.questionType}] ${p.pattern}`).join("\n")
     : "";
 
+  // Search the PPC Mastery KB for chunks relevant to this message + governing constraint
+  const kbContext = searchKnowledge(message, snapshot.governingConstraint);
+
   const systemPrompt = buildSystemPrompt({
     accountName:         account.name,
     currency:            account.currency,
@@ -569,6 +576,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     correctionContext,
     globalPatternContext,
     productContext,
+    kbContext,
     isLeadGen,
     isShoppingAccount,
   });

@@ -389,6 +389,10 @@ interface Account {
   slackChannelName:   string | null;
   peerGroupId:        string | null;
   merchantCenterId:   string | null;
+  intakeToken:        string | null;
+  intakeCompletedAt:  string | null;
+  assignedUserId:     string | null;
+  reportEmail:        string | null;
 }
 
 // ─── Client Context Panel ─────────────────────────────────────────────────────
@@ -2113,6 +2117,171 @@ function PeersPanel({ accountId, accountName, peerGroupId }: {
   );
 }
 
+// ─── Account Assignment Panel ────────────────────────────────────────────────
+
+interface OrgMember { id: string; role: string; user: { id: string; name: string | null; email: string } }
+
+function AccountAssignmentPanel({
+  accountId,
+  assignedUserId,
+  onSaved,
+}: {
+  accountId:      string;
+  assignedUserId: string | null;
+  onSaved:        (userId: string | null) => void;
+}) {
+  const [members, setMembers] = useState<OrgMember[]>([]);
+  const [saving,  setSaving]  = useState(false);
+
+  useEffect(() => {
+    fetch("/api/org/members").then(r => r.json()).then(setMembers).catch(() => {});
+  }, []);
+
+  const save = async (userId: string | null) => {
+    setSaving(true);
+    try {
+      await fetch(`/api/accounts/${accountId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ assignedUserId: userId }),
+      });
+      onSaved(userId);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (members.length === 0) return null;
+
+  return (
+    <div style={{
+      border: "1px solid var(--border)", borderRadius: 12, padding: "18px 20px", marginBottom: 16,
+    }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>Assigned specialist</span>
+        <select
+          value={assignedUserId ?? ""}
+          onChange={e => save(e.target.value || null)}
+          disabled={saving}
+          style={{
+            background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 6,
+            color: "var(--text)", fontSize: 12, padding: "5px 10px", cursor: "pointer",
+          }}
+        >
+          <option value="">Unassigned</option>
+          {members.map(m => (
+            <option key={m.user.id} value={m.user.id}>
+              {m.user.name ?? m.user.email}
+            </option>
+          ))}
+        </select>
+      </div>
+    </div>
+  );
+}
+
+// ─── Client Intake Panel ─────────────────────────────────────────────────────
+
+function ClientIntakePanel({
+  accountId,
+  intakeToken,
+  intakeCompletedAt,
+  onTokenGenerated,
+}: {
+  accountId:         string;
+  intakeToken:       string | null;
+  intakeCompletedAt: string | null;
+  onTokenGenerated:  (token: string) => void;
+}) {
+  const [loading, setLoading] = useState(false);
+  const [copied,  setCopied]  = useState(false);
+
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  const url    = intakeToken ? `${origin}/client/${intakeToken}` : null;
+
+  const generate = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/accounts/${accountId}/intake-token`, { method: "POST" });
+      const j   = await res.json();
+      if (j.token) onTokenGenerated(j.token);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const copy = () => {
+    if (!url) return;
+    navigator.clipboard.writeText(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div style={{
+      border: "1px solid var(--border)", borderRadius: 12, padding: "18px 20px", marginBottom: 16,
+    }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+        <div>
+          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>Client intake form</span>
+          {intakeCompletedAt && (
+            <span style={{ marginLeft: 8, fontSize: 11, color: "#22c55e",
+              background: "rgba(34,197,94,0.1)", padding: "2px 7px", borderRadius: 99 }}>
+              ✓ Submitted
+            </span>
+          )}
+          {intakeToken && !intakeCompletedAt && (
+            <span style={{ marginLeft: 8, fontSize: 11, color: "var(--text-faint)",
+              background: "var(--bg)", padding: "2px 7px", borderRadius: 99, border: "1px solid var(--border)" }}>
+              Awaiting client
+            </span>
+          )}
+        </div>
+        {!url ? (
+          <button
+            onClick={generate}
+            disabled={loading}
+            style={{
+              background: "var(--btn-primary)", border: "none", borderRadius: 6,
+              color: "#fff", fontSize: 11, fontWeight: 600,
+              padding: "5px 14px", cursor: loading ? "not-allowed" : "pointer",
+              opacity: loading ? 0.6 : 1,
+            }}
+          >
+            {loading ? "Generating…" : "Generate link"}
+          </button>
+        ) : (
+          <button
+            onClick={copy}
+            style={{
+              background: "transparent", border: "1px solid var(--border)", borderRadius: 6,
+              color: copied ? "#22c55e" : "var(--text-dim)", fontSize: 11, fontWeight: 600,
+              padding: "5px 12px", cursor: "pointer", display: "flex", alignItems: "center", gap: 5,
+            }}
+          >
+            {copied ? <Check size={11} /> : <Copy size={11} />}
+            {copied ? "Copied!" : "Copy link"}
+          </button>
+        )}
+      </div>
+      {url && (
+        <div style={{
+          background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 6,
+          padding: "8px 12px", fontSize: 11, color: "var(--text-faint)",
+          wordBreak: "break-all", fontFamily: "monospace",
+        }}>
+          {url}
+        </div>
+      )}
+      {!url && (
+        <p style={{ fontSize: 12, color: "var(--text-faint)", margin: 0 }}>
+          Generate a shareable link to send to your client. They fill in the intake form and the data flows directly into this account.
+        </p>
+      )}
+    </div>
+  );
+}
+
 // ─── Landing Page AI Analysis Panel ──────────────────────────────────────────
 
 interface LandingAnalysis {
@@ -2930,12 +3099,27 @@ export default function AccountPage() {
                   onSaved={(chId, chName) => setAccount(prev => prev ? { ...prev, slackChannelId: chId, slackChannelName: chName } : prev)}
                 />
 
+                {/* Account assignment */}
+                <AccountAssignmentPanel
+                  accountId={id}
+                  assignedUserId={account.assignedUserId ?? null}
+                  onSaved={(uid) => setAccount(prev => prev ? { ...prev, assignedUserId: uid } : prev)}
+                />
+
                 {/* Account Brief — feeds AI context */}
                 <ClientContextPanel
                   accountId={id}
                   landingPageUrl={account.landingPageUrl ?? null}
                   initial={account.clientContext}
                   onSaved={(v) => setAccount(prev => prev ? { ...prev, clientContext: v } : prev)}
+                />
+
+                {/* Client intake form link (replaces Typeform) */}
+                <ClientIntakePanel
+                  accountId={id}
+                  intakeToken={account.intakeToken ?? null}
+                  intakeCompletedAt={account.intakeCompletedAt ?? null}
+                  onTokenGenerated={(token) => setAccount(prev => prev ? { ...prev, intakeToken: token } : prev)}
                 />
 
                 {/* Landing page AI CRO review */}
