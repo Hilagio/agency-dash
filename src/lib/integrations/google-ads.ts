@@ -40,6 +40,27 @@ function safeQuery<T>(
   });
 }
 
+/** Extract a human-readable message from any error shape the Google Ads library may throw. */
+export function extractGoogleAdsError(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  if (typeof err === "string") return err;
+  if (typeof err === "object" && err !== null) {
+    const e = err as Record<string, unknown>;
+    if (typeof e.message === "string") return e.message;
+    // google-ads-api throws objects with an `errors` array
+    if (Array.isArray(e.errors) && e.errors.length > 0) {
+      const first = e.errors[0];
+      if (typeof first === "object" && first !== null) {
+        const fe = first as Record<string, unknown>;
+        if (typeof fe.message === "string") return fe.message;
+        if (typeof fe.errorCode === "object") return JSON.stringify(fe.errorCode);
+      }
+    }
+    try { return JSON.stringify(err); } catch { /* circular */ }
+  }
+  return String(err);
+}
+
 // ─── Client factory ───────────────────────────────────────────────────────────
 
 function getClient(): GoogleAdsApi {
