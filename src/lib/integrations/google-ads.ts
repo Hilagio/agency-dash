@@ -330,16 +330,15 @@ function days15to180(): { start: string; end: string } {
 // ─── Measurement signals ──────────────────────────────────────────────────────
 
 async function fetchMeasurementSignals(customer: Customer): Promise<MeasurementSignals> {
-  // Conversion actions — include last_conversion_date for staleness detection
-  // Wrapped in safeQuery so a permissions/auth error on this table doesn't kill the entire scorer.
+  // conversion_action.last_conversion_date was removed — field does not exist in Google Ads API v23.
+  // Staleness is now derived from a separate metrics query (see below).
   const convActions = await safeQuery(
     () => customer.query(`
       SELECT
         conversion_action.id,
         conversion_action.status,
         conversion_action.type,
-        conversion_action.primary_for_goal,
-        conversion_action.last_conversion_date
+        conversion_action.primary_for_goal
       FROM conversion_action
       WHERE conversion_action.status = 'ENABLED'
     `),
@@ -517,19 +516,35 @@ async function fetchMeasurementSignals(customer: Customer): Promise<MeasurementS
   );
   const hasMerchantCenterLinked = merchantLinks.length > 0;
 
-  // Conversion staleness: enabled actions that have never fired or haven't fired in 90+ days
-  const today = new Date();
-  let staleConversionCount = 0;
+  // Conversion staleness: detect actions with zero conversions in the last 90 days.
+  // last_conversion_date does not exist in v23, so we use a 90-day metrics window instead.
+  const { start: staleStart } = (() => {
+    const d = new Date(); d.setDate(d.getDate() - 90);
+    return { start: d.toISOString().slice(0, 10) };
+  })();
+  const { end: staleEnd } = last30Days();
+  const activeIds = activeConversions.map((r) => r.conversion_action?.id).filter(Boolean);
+  const recentlyFiredIds = new Set<number | string>();
+  if (activeIds.length > 0) {
+    const recentRows = await safeQuery(
+      () => customer.query(`
+        SELECT conversion_action.id, metrics.conversions
+        FROM conversion_action
+        WHERE conversion_action.id IN (${activeIds.join(",")})
+          AND segments.date BETWEEN '${staleStart}' AND '${staleEnd}'
+          AND metrics.conversions > 0
+      `),
+      "conversion staleness check"
+    );
+    for (const r of recentRows) {
+      if (r.conversion_action?.id != null) recentlyFiredIds.add(r.conversion_action.id);
+    }
+  }
+  let staleConversionCount   = 0;
   let neverFiredConversionCount = 0;
   for (const row of activeConversions) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const lastDate = (row.conversion_action as any)?.last_conversion_date as string | null | undefined;
-    if (!lastDate) {
-      neverFiredConversionCount++;
-    } else {
-      const daysAgo = Math.floor((today.getTime() - new Date(lastDate).getTime()) / 86_400_000);
-      if (daysAgo > 90) staleConversionCount++;
-    }
+    const id = row.conversion_action?.id;
+    if (id == null || !recentlyFiredIds.has(id)) neverFiredConversionCount++;
   }
 
   return {
