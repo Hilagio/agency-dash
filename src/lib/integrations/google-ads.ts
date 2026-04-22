@@ -330,16 +330,20 @@ function days15to180(): { start: string; end: string } {
 
 async function fetchMeasurementSignals(customer: Customer): Promise<MeasurementSignals> {
   // Conversion actions — include last_conversion_date for staleness detection
-  const convActions = await customer.query(`
-    SELECT
-      conversion_action.id,
-      conversion_action.status,
-      conversion_action.type,
-      conversion_action.primary_for_goal,
-      conversion_action.last_conversion_date
-    FROM conversion_action
-    WHERE conversion_action.status = 'ENABLED'
-  `);
+  // Wrapped in safeQuery so a permissions/auth error on this table doesn't kill the entire scorer.
+  const convActions = await safeQuery(
+    () => customer.query(`
+      SELECT
+        conversion_action.id,
+        conversion_action.status,
+        conversion_action.type,
+        conversion_action.primary_for_goal,
+        conversion_action.last_conversion_date
+      FROM conversion_action
+      WHERE conversion_action.status = 'ENABLED'
+    `),
+    "conversion_action list"
+  );
 
   const activeConversions = convActions.filter(
     (r) => r.conversion_action?.status === enums.ConversionActionStatus.ENABLED
