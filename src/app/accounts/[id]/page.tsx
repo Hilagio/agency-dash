@@ -17,6 +17,7 @@ import { PersonaView } from "@/components/PersonaView";
 import { MetricExplorer } from "@/components/MetricExplorer";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AdCopyTab } from "@/components/AdCopyTab";
+import { ProactiveFeed } from "@/components/ProactiveFeed";
 import { BUCKET_LABELS } from "@/lib/engine/types";
 
 type Tab = "overview" | "actions" | "products" | "search-terms" | "ads" | "persona" | "explorer" | "playbook" | "chat" | "notes" | "sops" | "peers";
@@ -2505,6 +2506,20 @@ export default function AccountPage() {
 
   useEffect(() => { load(); }, [load]);
 
+  // Auto-rescore on load if account has Google Ads connected but no snapshot yet,
+  // or if the last snapshot is older than 4 hours.
+  useEffect(() => {
+    if (loading) return;
+    if (rescoring) return;
+    const snapAge = snapshot
+      ? (Date.now() - new Date(snapshot.createdAt).getTime()) / 1000 / 3600
+      : Infinity;
+    if (snapAge > 4 && account?.googleAdsId) {
+      rescore();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, account?.googleAdsId]);
+
   const rescore = async () => {
     setRescoring(true);
     setRescoreError(null);
@@ -2790,34 +2805,68 @@ export default function AccountPage() {
                 background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)",
                 borderRadius: 10, padding: "12px 16px", marginBottom: 20,
                 fontSize: 13, color: "#ef4444",
+                display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
               }}>
-                <strong>Scoring failed:</strong> {rescoreError}
+                <span><strong>Scoring failed:</strong> {rescoreError}</span>
+                <button
+                  onClick={rescore}
+                  style={{
+                    background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.3)",
+                    borderRadius: 6, padding: "4px 10px", fontSize: 11, color: "#f87171",
+                    cursor: "pointer", flexShrink: 0,
+                  }}
+                >
+                  Retry
+                </button>
               </div>
             )}
             {!snapshot ? (
+              /* Auto-scoring in progress */
               <div style={{
-                border: "1px dashed var(--border-2)", borderRadius: 14,
-                padding: "60px 32px", textAlign: "center",
+                border: "1px solid var(--border)", borderRadius: 14,
+                padding: "48px 32px", textAlign: "center",
               }}>
-                <p style={{ color: "var(--text-dim)", fontSize: 14, marginBottom: 20 }}>
-                  No score yet — pull live data from Google Ads to get started.
-                </p>
-                <button
-                  onClick={rescore}
-                  disabled={rescoring}
-                  style={{
-                    display: "inline-flex", alignItems: "center", gap: 8,
-                    background: "var(--btn-primary)", border: "none", borderRadius: 8,
-                    color: "#fff", fontSize: 13, fontWeight: 600,
-                    padding: "10px 22px", cursor: rescoring ? "not-allowed" : "pointer",
-                    opacity: rescoring ? 0.6 : 1,
-                  }}
-                >
-                  {rescoring ? <><Loader2 size={13} className="animate-spin" /> Scoring…</> : <><RefreshCw size={13} /> Score this account</>}
-                </button>
+                {rescoring ? (
+                  <>
+                    <Loader2 size={22} className="animate-spin" style={{ color: "var(--accent)", margin: "0 auto 14px" }} />
+                    <p style={{ color: "var(--text-dim)", fontSize: 14, margin: 0 }}>
+                      Analysing account data…
+                    </p>
+                    <p style={{ color: "var(--text-faint)", fontSize: 12, marginTop: 6 }}>
+                      Pulling live data from Google Ads · usually takes 5–15 seconds
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p style={{ color: "var(--text-dim)", fontSize: 14, marginBottom: 16 }}>
+                      {account?.googleAdsId
+                        ? "No data yet — connect Google Ads to start automatic analysis."
+                        : "No Google Ads account linked. Add one in account settings."}
+                    </p>
+                    {account?.googleAdsId && (
+                      <button
+                        onClick={rescore}
+                        style={{
+                          display: "inline-flex", alignItems: "center", gap: 8,
+                          background: "var(--btn-primary)", border: "none", borderRadius: 8,
+                          color: "#fff", fontSize: 13, fontWeight: 600,
+                          padding: "10px 22px", cursor: "pointer",
+                        }}
+                      >
+                        <RefreshCw size={13} /> Run analysis
+                      </button>
+                    )}
+                  </>
+                )}
               </div>
             ) : (
               <>
+                {/* ── Proactive diagnostic feed ────────────────────────────── */}
+                <ProactiveFeed
+                  buckets={buckets}
+                  onNavigate={(tabKey) => setTab(tabKey as typeof tab)}
+                />
+
                 {/* ── Diagnosis ───────────────────────────────────────────── */}
                 <ScoreBuckets buckets={buckets} accountId={id} />
 
