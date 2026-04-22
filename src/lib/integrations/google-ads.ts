@@ -15,7 +15,7 @@
  *   GOOGLE_ADS_LOGIN_CUSTOMER_ID   (MCC id, optional)
  */
 
-import { GoogleAdsApi, Customer, enums } from "google-ads-api";
+import { GoogleAdsApi, Customer, enums, errors as gadsErrors } from "google-ads-api";
 import { prisma } from "@/lib/db";
 import {
   ConstraintSignals,
@@ -35,42 +35,43 @@ function safeQuery<T>(
     setTimeout(() => reject(new Error(`${label} timed out after ${timeoutMs}ms`)), timeoutMs)
   );
   return Promise.race([queryFn(), timeout]).catch((err: unknown) => {
-    console.warn(`[google-ads] ${label} failed:`, err instanceof Error ? err.message : err);
+    console.warn(`[google-ads] ${label} failed:`, extractGoogleAdsError(err));
     return [];
   });
 }
 
 /** Extract a human-readable message from any error shape the Google Ads library may throw. */
 export function extractGoogleAdsError(err: unknown): string {
+  // Use the library's documented instanceof check (google-ads-api README pattern).
+  // GoogleAdsFailure has `errors: GoogleAdsError[]` where each entry has
+  // `message: string` and `error_code` (snake_case, not camelCase).
+  if (err instanceof gadsErrors.GoogleAdsFailure) {
+    const msgs = err.errors.map((e) => {
+      if (e.message) return e.message;
+      // Fallback: find the non-zero entry in the ErrorCode oneof (snake_case keys)
+      const code = e.error_code as Record<string, unknown> | undefined;
+      if (code && typeof code === "object") {
+        const entry = Object.entries(code).find(([, v]) => v != null && v !== 0);
+        if (entry) return `${entry[0]}: ${entry[1]}`;
+      }
+      return "(no message)";
+    });
+    return msgs.join("; ") || "GoogleAdsFailure (empty errors array)";
+  }
   if (err instanceof Error) return err.message || err.toString();
-  if (typeof err === "string") return err || "(empty string error)";
+  if (typeof err === "string") return err || "(empty string)";
   if (typeof err === "object" && err !== null) {
     const e = err as Record<string, unknown>;
-    // Plain message field
     if (typeof e.message === "string" && e.message) return e.message;
-    // google-ads-api v23 throws GoogleAdsFailure protobuf objects with an `errors` array
-    if (Array.isArray(e.errors) && e.errors.length > 0) {
-      const msgs: string[] = [];
-      for (const item of e.errors) {
-        if (typeof item === "object" && item !== null) {
-          const fe = item as Record<string, unknown>;
-          if (typeof fe.message === "string" && fe.message) msgs.push(fe.message);
-          else if (typeof fe.errorCode === "object") msgs.push(JSON.stringify(fe.errorCode));
-        }
-      }
-      if (msgs.length > 0) return msgs.join("; ");
-    }
-    // Safe JSON serialization — protobuf objects can be circular
     try {
       const json = JSON.stringify(err);
       if (json && json !== "{}") return json;
-    } catch { /* circular reference — fall through */ }
-    // Last resort: enumerate own keys
+    } catch { /* circular */ }
     const keys = Object.keys(e);
-    console.error("[extractGoogleAdsError] unhandled error shape — keys:", keys, "constructor:", (err as object).constructor?.name);
-    if (keys.length > 0) return `GoogleAdsError(${keys.join(",")})`;
+    console.error("[extractGoogleAdsError] unknown shape — keys:", keys, "ctor:", (err as object).constructor?.name);
+    return keys.length ? `UnknownError(${keys.join(",")})` : "UnknownError";
   }
-  return `GoogleAdsError(${typeof err})`;
+  return `UnknownError(${typeof err})`;
 }
 
 // ─── Client factory ───────────────────────────────────────────────────────────

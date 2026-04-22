@@ -107,36 +107,52 @@ export async function POST(req: NextRequest, { params }: Params) {
   const acctExtra = account as any;
   if (acctExtra.monthlyChurnRate != null) signals.economics.monthlyChurnRate    = acctExtra.monthlyChurnRate;
 
-  const result = scoreConstraints(signals);
+  let result: ReturnType<typeof scoreConstraints>;
+  try {
+    result = scoreConstraints(signals);
+  } catch (err) {
+    console.error("[snapshot] scoreConstraints threw:", err);
+    return NextResponse.json(
+      { error: `Scoring engine error: ${err instanceof Error ? err.message : String(err)}` },
+      { status: 500 }
+    );
+  }
 
-  const snapshot = await prisma.constraintSnapshot.create({
-    data: {
-      accountId: id,
-      rawSignals: JSON.stringify(signals),
-      scoreMeasurement: result.buckets.find((b) => b.bucket === "MEASUREMENT")!.score,
-      scoreTraffic:     result.buckets.find((b) => b.bucket === "TRAFFIC")!.score,
-      scoreConversion:  result.buckets.find((b) => b.bucket === "CONVERSION")!.score,
-      scoreFunnel:      result.buckets.find((b) => b.bucket === "FUNNEL")!.score,
-      scoreEconomics:   result.buckets.find((b) => b.bucket === "ECONOMICS")!.score,
-      governingConstraint: result.governingConstraint,
-      constraintReason: result.constraintReason,
-      actions: {
-        create: result.recommendations.slice(0, 8).map((r) => ({
-          accountId: id,
-          bucket: r.bucket,
-          title: r.title,
-          description: r.description,
-          impact: r.impact,
-          effort: r.effort,
-          safeToAutomate: r.safeToAutomate,
-          actionType: r.actionType,
-          actionPayload: r.actionPayload ? JSON.stringify(r.actionPayload) : null,
-          isEscalation: r.isEscalation,
-        })),
+  try {
+    const snapshot = await prisma.constraintSnapshot.create({
+      data: {
+        accountId: id,
+        rawSignals: JSON.stringify(signals),
+        scoreMeasurement: result.buckets.find((b) => b.bucket === "MEASUREMENT")!.score,
+        scoreTraffic:     result.buckets.find((b) => b.bucket === "TRAFFIC")!.score,
+        scoreConversion:  result.buckets.find((b) => b.bucket === "CONVERSION")!.score,
+        scoreFunnel:      result.buckets.find((b) => b.bucket === "FUNNEL")!.score,
+        scoreEconomics:   result.buckets.find((b) => b.bucket === "ECONOMICS")!.score,
+        governingConstraint: result.governingConstraint,
+        constraintReason: result.constraintReason,
+        actions: {
+          create: result.recommendations.slice(0, 8).map((r) => ({
+            accountId: id,
+            bucket: r.bucket,
+            title: r.title,
+            description: r.description,
+            impact: r.impact,
+            effort: r.effort,
+            safeToAutomate: r.safeToAutomate,
+            actionType: r.actionType,
+            actionPayload: r.actionPayload ? JSON.stringify(r.actionPayload) : null,
+            isEscalation: r.isEscalation,
+          })),
+        },
       },
-    },
-    include: { actions: true },
-  });
-
-  return NextResponse.json(snapshot, { status: 201 });
+      include: { actions: true },
+    });
+    return NextResponse.json(snapshot, { status: 201 });
+  } catch (err) {
+    console.error("[snapshot] prisma.create threw:", err);
+    return NextResponse.json(
+      { error: `Database error saving snapshot` },
+      { status: 500 }
+    );
+  }
 }
