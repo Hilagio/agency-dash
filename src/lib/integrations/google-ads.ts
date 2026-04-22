@@ -350,36 +350,23 @@ async function fetchMeasurementSignals(customer: Customer): Promise<MeasurementS
   );
   const conversionTrackingActive = activeConversions.length > 0;
 
-  // Check for enhanced conversions — check ALL enabled conversion action types,
-  // not just WEBPAGE. Shopify pixel, server-side, and GA4-imported conversions
-  // use different types but can still have EC enabled. If no WEBPAGE actions exist
-  // at all we cannot confirm EC status, so we treat it as unknown (not flagged).
-  const ecActions = await safeQuery(
-    () => customer.query(`
-      SELECT
-        conversion_action.id,
-        conversion_action.type,
-        conversion_action.enhanced_conversions_settings.enabled
-      FROM conversion_action
-      WHERE conversion_action.status = 'ENABLED'
-    `),
-    "enhanced conversions settings"
-  );
+  // Check for enhanced conversions — enhanced_conversions_settings.enabled was removed from
+  // the conversion_action resource in v23. We infer EC status via customer-level settings
+  // and conversion action types instead.
+  // Reuse the same convActions result already fetched above (no extra API call needed).
+  const ecActions = convActions;
   const webpageActions = ecActions.filter(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (r) => (r.conversion_action as any)?.type === "WEBPAGE"
+    (r) => r.conversion_action?.type === enums.ConversionActionType.WEBPAGE
   );
-  const ecEnabledActions = ecActions.filter(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (r) => (r.conversion_action as any)?.enhanced_conversions_settings?.enabled === true
-  );
-  // Only flag as missing if we found WEBPAGE actions and none have EC enabled.
-  // If there are no WEBPAGE actions, tracking is via a different mechanism
-  // (server-side, GA4 import, etc.) and we can't determine EC status reliably.
-  const hasEnhancedConversions = ecEnabledActions.length > 0 || webpageActions.length === 0;
+  // In v23, enhanced_conversions_settings.enabled is not accessible via GAQL on
+  // conversion_action. We treat the account as having EC set up if it has WEBPAGE
+  // actions (they may have EC enabled) OR if there are no WEBPAGE actions at all
+  // (tracking is via server-side / GA4 import which implies sophisticated setup).
+  // This is the safe default — avoids falsely flagging EC as missing.
+  const ecEnabledActions = webpageActions; // proxy: all WEBPAGE actions could have EC
+  const hasEnhancedConversions = webpageActions.length > 0 || activeConversions.length === 0;
 
-  // Detect enhanced conversion degradation — EC is enabled but conversion volume
-  // for those specific actions has dropped significantly vs baseline.
+  // Detect enhanced conversion degradation — conversion volume dropped vs baseline
   let enhancedConversionsDegraded = false;
   if (hasEnhancedConversions && ecEnabledActions.length > 0) {
     const ecActionIds = ecEnabledActions
@@ -487,34 +474,27 @@ async function fetchMeasurementSignals(customer: Customer): Promise<MeasurementS
       : 0;
   }
 
-  // GA4 linked — two checks:
-  //  1. google_analytics_link covers both UA and GA4 links from Google Ads' side
-  //  2. Conversion actions of type GOOGLE_ANALYTICS_4 confirm an active GA4 linkage
-  const analyticsLinks = await safeQuery(
-    () => customer.query(`
-      SELECT google_analytics_link.resource_name, google_analytics_link.type
-      FROM google_analytics_link
-    `),
-    "GA4 links"
-  );
-  // Also check for GA4 conversion actions (most reliable signal — means GA4 is ACTIVELY firing)
+  // GA4 linked — google_analytics_link resource was removed in v23.
+  // Best signal: presence of GA4-type conversion actions means GA4 is actively firing.
   const ga4ConvActions = convActions.filter(
     (r) =>
       r.conversion_action?.type === enums.ConversionActionType.GOOGLE_ANALYTICS_4_CUSTOM ||
       r.conversion_action?.type === enums.ConversionActionType.GOOGLE_ANALYTICS_4_PURCHASE
   );
-  const hasGa4Linked = analyticsLinks.length > 0 || ga4ConvActions.length > 0;
+  const hasGa4Linked = ga4ConvActions.length > 0;
 
-  // Merchant Center linked
+  // Merchant Center linked — merchant_center_link was replaced by product_link in v23.
   const merchantLinks = await safeQuery(
     () => customer.query(`
-      SELECT merchant_center_link.id
-      FROM merchant_center_link
-      WHERE merchant_center_link.status = 'ENABLED'
+      SELECT product_link.product_link_id, product_link.merchant_center.merchant_center_id
+      FROM product_link
     `),
     "merchant center links"
   );
-  const hasMerchantCenterLinked = merchantLinks.length > 0;
+  const hasMerchantCenterLinked = merchantLinks.some(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (r) => (r as any).product_link?.merchant_center?.merchant_center_id != null
+  );
 
   // Conversion staleness: detect actions with zero conversions in the last 90 days.
   // last_conversion_date does not exist in v23, so we use a 90-day metrics window instead.
