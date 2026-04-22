@@ -42,23 +42,35 @@ function safeQuery<T>(
 
 /** Extract a human-readable message from any error shape the Google Ads library may throw. */
 export function extractGoogleAdsError(err: unknown): string {
-  if (err instanceof Error) return err.message;
-  if (typeof err === "string") return err;
+  if (err instanceof Error) return err.message || err.toString();
+  if (typeof err === "string") return err || "(empty string error)";
   if (typeof err === "object" && err !== null) {
     const e = err as Record<string, unknown>;
-    if (typeof e.message === "string") return e.message;
-    // google-ads-api throws objects with an `errors` array
+    // Plain message field
+    if (typeof e.message === "string" && e.message) return e.message;
+    // google-ads-api v23 throws GoogleAdsFailure protobuf objects with an `errors` array
     if (Array.isArray(e.errors) && e.errors.length > 0) {
-      const first = e.errors[0];
-      if (typeof first === "object" && first !== null) {
-        const fe = first as Record<string, unknown>;
-        if (typeof fe.message === "string") return fe.message;
-        if (typeof fe.errorCode === "object") return JSON.stringify(fe.errorCode);
+      const msgs: string[] = [];
+      for (const item of e.errors) {
+        if (typeof item === "object" && item !== null) {
+          const fe = item as Record<string, unknown>;
+          if (typeof fe.message === "string" && fe.message) msgs.push(fe.message);
+          else if (typeof fe.errorCode === "object") msgs.push(JSON.stringify(fe.errorCode));
+        }
       }
+      if (msgs.length > 0) return msgs.join("; ");
     }
-    try { return JSON.stringify(err); } catch { /* circular */ }
+    // Safe JSON serialization — protobuf objects can be circular
+    try {
+      const json = JSON.stringify(err);
+      if (json && json !== "{}") return json;
+    } catch { /* circular reference — fall through */ }
+    // Last resort: enumerate own keys
+    const keys = Object.keys(e);
+    console.error("[extractGoogleAdsError] unhandled error shape — keys:", keys, "constructor:", (err as object).constructor?.name);
+    if (keys.length > 0) return `GoogleAdsError(${keys.join(",")})`;
   }
-  return String(err);
+  return `GoogleAdsError(${typeof err})`;
 }
 
 // ─── Client factory ───────────────────────────────────────────────────────────
