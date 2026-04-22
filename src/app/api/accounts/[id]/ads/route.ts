@@ -4,6 +4,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleAdsApi } from "google-ads-api";
+import { extractGoogleAdsError } from "@/lib/integrations/google-ads";
 import { prisma } from "@/lib/db";
 import { getAuthContext, unauthorized, forbidden } from "@/lib/auth";
 
@@ -191,7 +192,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
 
     return NextResponse.json({ ads });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
+    const msg = extractGoogleAdsError(err);
     return NextResponse.json({ error: `Failed to fetch ads: ${msg}` }, { status: 502 });
   }
 }
