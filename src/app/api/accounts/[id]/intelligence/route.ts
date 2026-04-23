@@ -440,9 +440,6 @@ ${AGENCY_PHILOSOPHY}`;
           }
         }
         // Stream the KB section as a separate labelled block after the main brief
-        if (kbSection) {
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: kbSection })}\n\n`));
-        }
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true, slackError: slackError || undefined })}\n\n`));
         controller.close();
       } catch (err) {
