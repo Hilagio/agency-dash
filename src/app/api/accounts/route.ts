@@ -23,30 +23,39 @@ export async function GET() {
   const ctx = await getAuthContext();
   if (!ctx) return unauthorized();
 
-  const accounts = await prisma.account.findMany({
-    where: { organizationId: ctx.orgId },
-    orderBy: { name: "asc" },
-    include: {
-      snapshots: {
-        orderBy: { createdAt: "desc" },
-        take: 2,          // current + previous for delta
-        select: SNAP_SELECT,
+  const [accounts, members] = await Promise.all([
+    prisma.account.findMany({
+      where: { organizationId: ctx.orgId },
+      orderBy: { name: "asc" },
+      include: {
+        snapshots: {
+          orderBy: { createdAt: "desc" },
+          take: 2,
+          select: SNAP_SELECT,
+        },
       },
-    },
-  });
+    }),
+    prisma.organizationMember.findMany({
+      where: { organizationId: ctx.orgId },
+      include: { user: { select: { id: true, name: true, email: true } } },
+    }),
+  ]);
+
+  const userMap = new Map(members.map(m => [m.userId, m.user.name || m.user.email]));
 
   return NextResponse.json(accounts.map((a) => {
     const snap = a.snapshots[0];
     const prev = a.snapshots[1];
 
-    let roas = 0, budgetUtil = 0;
+    let roas = 0, budgetUtil = 0, spend30d = 0;
     if (snap?.rawSignals) {
       try {
         const raw = JSON.parse(snap.rawSignals) as {
-          economics?: { actualRoas?: number; budgetUtilizationPercent?: number };
+          economics?: { actualRoas?: number; budgetUtilizationPercent?: number; totalSpend?: number };
         };
         roas       = raw.economics?.actualRoas               ?? 0;
         budgetUtil = raw.economics?.budgetUtilizationPercent  ?? 0;
+        spend30d   = raw.economics?.totalSpend               ?? 0;
       } catch { /* ignore */ }
     }
 
@@ -60,7 +69,8 @@ export async function GET() {
     const { rawSignals: _, ...snapOut } = snap ?? {} as typeof snap;
     return {
       ...a,
-      snapshots: snap ? [{ ...snapOut, roas, budgetUtil }] : [],
+      assignedUserName: a.assignedUserId ? (userMap.get(a.assignedUserId) ?? null) : null,
+      snapshots: snap ? [{ ...snapOut, roas, budgetUtil, spend30d }] : [],
       scoreDelta: delta,
       prevScoredAt: prev?.createdAt ?? null,
     };

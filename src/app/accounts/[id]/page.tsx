@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, RefreshCw, MessageSquare, ListChecks, BarChart2, Loader2, Search, BookOpen, ClipboardList, Send, Pencil, X, CheckSquare, Sparkles, Package, Brain, FlaskConical, Zap, Copy, Check, Users, Wand2 } from "lucide-react";
@@ -1515,13 +1515,14 @@ function renderIntelligence(text: string, streaming: boolean): React.ReactNode {
 
 // ─── AI Intelligence Panel ────────────────────────────────────────────────────
 
-function IntelligencePanel({ accountId, onContinueInAdvisor }: { accountId: string; onContinueInAdvisor?: (brief: string) => void }) {
+function IntelligencePanel({ accountId, autoRun, onContinueInAdvisor }: { accountId: string; autoRun?: boolean; onContinueInAdvisor?: (brief: string) => void }) {
   const [text, setText]               = useState("");
   const [loading, setLoading]         = useState(false);
   const [done, setDone]               = useState(false);
   const [error, setError]             = useState<string | null>(null);
   const [slackWarning, setSlackWarning] = useState<string | null>(null);
   const [copied, setCopied]           = useState(false);
+  const hasAutoRun = useRef(false);
 
   const copyToClipboard = () => {
     navigator.clipboard.writeText(text).then(() => {
@@ -1529,6 +1530,14 @@ function IntelligencePanel({ accountId, onContinueInAdvisor }: { accountId: stri
       setTimeout(() => setCopied(false), 2000);
     });
   };
+
+  useEffect(() => {
+    if (autoRun && !hasAutoRun.current) {
+      hasAutoRun.current = true;
+      generate();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoRun]);
 
   const generate = async () => {
     if (loading) return;
@@ -1615,7 +1624,7 @@ function IntelligencePanel({ accountId, onContinueInAdvisor }: { accountId: stri
               ? <><Loader2 size={11} className="animate-spin" /> Analysing…</>
               : done
                 ? <><Sparkles size={11} /> Regenerate</>
-                : <><Sparkles size={11} /> Generate insight</>}
+                : <><Sparkles size={11} /> Run brief</>}
           </button>
         </div>
       </div>
@@ -2761,18 +2770,13 @@ export default function AccountPage() {
   const automatable     = pendingActions.filter((a) => a.safeToAutomate);
 
   const TABS: { key: Tab; label: string; icon: React.ReactNode; badge?: number }[] = [
-    { key: "overview",      label: "Overview",     icon: <BarChart2    size={14} /> },
-    { key: "actions",       label: "Actions",      icon: <ListChecks   size={14} />, badge: pendingActions.length },
-    { key: "products",      label: "Products",     icon: <Package      size={14} /> },
-    { key: "search-terms",  label: "Search terms", icon: <Search       size={14} /> },
-    { key: "ads",           label: "Ad copy",      icon: <Wand2          size={14} /> },
-    { key: "persona",       label: "Audience",     icon: <Brain          size={14} /> },
-    { key: "explorer",      label: "Explorer",     icon: <FlaskConical   size={14} /> },
-    { key: "playbook",      label: "Playbook",     icon: <BookOpen       size={14} /> },
-    { key: "chat",          label: "AI Advisor",   icon: <MessageSquare size={14} /> },
-    { key: "peers",         label: "Peer analysis",icon: <Users         size={14} /> },
-    { key: "sops",          label: "SOPs",         icon: <CheckSquare   size={14} /> },
-    { key: "notes",         label: "Change log",   icon: <ClipboardList size={14} /> },
+    { key: "overview",      label: "Intelligence",  icon: <Sparkles     size={14} /> },
+    { key: "actions",       label: "Actions",       icon: <ListChecks   size={14} />, badge: pendingActions.length },
+    { key: "search-terms",  label: "Search terms",  icon: <Search       size={14} /> },
+    { key: "products",      label: "Products",      icon: <Package      size={14} /> },
+    { key: "ads",           label: "Ad copy",       icon: <Wand2        size={14} /> },
+    { key: "chat",          label: "Ask AI",        icon: <MessageSquare size={14} /> },
+    { key: "notes",         label: "Notes",         icon: <ClipboardList size={14} /> },
   ];
 
   return (
@@ -2857,32 +2861,32 @@ export default function AccountPage() {
             )}
           </div>
 
-          {/* Row 2: 5 bucket scores */}
+          {/* Row 2: Constraint chain — buckets as a flow, bottleneck highlighted, no numbers */}
           {snapshot && (
-            <div style={{ display: "flex", gap: 6, marginBottom: 14, flexWrap: "wrap" }}>
-              {buckets.map(({ bucket: b, score: s, isGoverning }) => {
+            <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 14, flexWrap: "wrap" }}>
+              {buckets.map(({ bucket: b, score: s, isGoverning }, i) => {
                 const bucketLabel = BUCKET_LABELS[b as keyof typeof BUCKET_LABELS] ?? b;
-                const scoreCol = s >= 70 ? "#22c55e" : s >= 45 ? "#eab308" : "#ef4444";
+                const hasIssue = s < 70;
+                const color = isGoverning
+                  ? (CONSTRAINT_ACCENT[b] ?? "#60a5fa")
+                  : hasIssue ? "#64748b" : "var(--text-faint)";
                 return (
-                  <div
-                    key={b}
-                    title={`${bucketLabel}: ${Math.round(s)}`}
-                    style={{
-                      display: "flex", alignItems: "center", gap: 6,
-                      background: isGoverning ? scoreCol + "12" : "var(--surface)",
-                      border: `1px solid ${isGoverning ? scoreCol + "40" : "var(--border)"}`,
-                      borderRadius: 8, padding: "5px 11px",
-                      transition: "border-color 0.1s",
-                    }}
-                  >
-                    <div style={{ width: 6, height: 6, borderRadius: "50%", background: scoreCol, flexShrink: 0 }} />
-                    <span style={{ fontSize: 11, color: isGoverning ? "var(--text-muted)" : "var(--text-dim)" }}>{bucketLabel}</span>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: scoreCol, letterSpacing: "-0.3px" }}>{Math.round(s)}</span>
-                    {isGoverning && (
-                      <span style={{ fontSize: 9, fontWeight: 700, color: scoreCol, letterSpacing: "0.4px", textTransform: "uppercase" }}>
-                        ← bottleneck
-                      </span>
+                  <div key={b} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                    {i > 0 && (
+                      <span style={{ fontSize: 12, color: "var(--border-3)", fontWeight: 300 }}>→</span>
                     )}
+                    <span style={{
+                      fontSize: 11, fontWeight: isGoverning ? 700 : 500,
+                      letterSpacing: isGoverning ? "0.2px" : "0",
+                      color,
+                      background: isGoverning ? color + "15" : "transparent",
+                      border: `1px solid ${isGoverning ? color + "35" : "transparent"}`,
+                      borderRadius: 6, padding: isGoverning ? "3px 9px" : "3px 6px",
+                      whiteSpace: "nowrap",
+                    }}>
+                      {isGoverning && <span style={{ marginRight: 4, opacity: 0.8 }}>▲</span>}
+                      {bucketLabel}
+                    </span>
                   </div>
                 );
               })}
@@ -3042,6 +3046,7 @@ export default function AccountPage() {
                 {/* AI Intelligence Brief */}
                 <IntelligencePanel
                   accountId={id}
+                  autoRun={true}
                   onContinueInAdvisor={(brief) => {
                     setIntelligenceBriefText(brief);
                     setTab("chat");

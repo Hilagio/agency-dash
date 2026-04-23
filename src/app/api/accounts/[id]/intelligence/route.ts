@@ -15,6 +15,7 @@ import { AGENCY_PHILOSOPHY } from "@/lib/agencyPhilosophy";
 import { fetchSlackMessages, formatSlackForContext } from "@/lib/integrations/slack";
 import { fetchProductPerformance } from "@/lib/integrations/google-ads";
 import { getMerchantCenterIds, fetchPriceCompetitiveness } from "@/lib/integrations/merchant-center";
+import { searchKnowledge } from "@/lib/knowledge-search";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -348,15 +349,8 @@ ${isLeadGen ? `- LEAD GEN RULES: Never mention ROAS, product feeds, Shopping, or
 - If products are spending with zero conversions: name them and give a specific recommendation (exclude, price review, or landing page check).
 - STATISTICAL SIGNIFICANCE RULE: NEVER recommend scaling or increasing budget on a product with fewer than 10 conversions OR less than €50 spend. A product with 1–2 sales is statistical noise — it tells you nothing about scalability. If a low-spend product has a high ROAS, say "worth watching as spend grows" at most. Only recommend scaling products that have proven volume (10+ conversions or sustained spend with positive ROAS over time).`}`;
 
-  const encoder = new TextEncoder();
-  const stream = new ReadableStream({
-    async start(controller) {
-      try {
-        const aiStream = await client.messages.stream({
-          model: "claude-sonnet-4-6",
-          max_tokens: 1200,
-          system: isLeadGen
-            ? `You are the senior lead generation Google Ads specialist at a Dutch performance agency. You have deep expertise in B2B and B2C lead gen campaigns — search intent mapping, CPL optimisation, lead quality vs volume trade-offs, offline conversion tracking, CRM integration, and funnel handoff.
+  const systemPrompt = isLeadGen
+    ? `You are the senior lead generation Google Ads specialist at a Dutch performance agency. You have deep expertise in B2B and B2C lead gen campaigns — search intent mapping, CPL optimisation, lead quality vs volume trade-offs, offline conversion tracking, CRM integration, and funnel handoff.
 
 You think like a revenue operations expert: you don't just care about leads, you care about leads that turn into clients. You diagnose the full funnel — from keyword intent to form submission to sales outcome.
 
@@ -365,20 +359,89 @@ You write for understudies. Your brief tells a junior specialist exactly what to
 You never use generic advice. Every sentence cites actual numbers from the data provided. You never mention ROAS or product feeds — they are irrelevant for this account type.
 
 ${AGENCY_PHILOSOPHY}`
-            : `You are the senior ecommerce Google Ads specialist at a Dutch performance agency. You have deep expertise in Shopping, Performance Max, feed optimisation, product segmentation (Heroes/Sidekicks/Zombies/Villains via ProductHero), conversion rate diagnosis, and scaling strategy.
+    : `You are the senior ecommerce Google Ads specialist at a Dutch performance agency. You have deep expertise in Shopping, Performance Max, feed optimisation, product segmentation (Heroes/Sidekicks/Zombies/Villains via ProductHero), conversion rate diagnosis, and scaling strategy.
 
 You think like a diagnostician, not a commentator. You find the one thing blocking growth and prescribe the exact fix. You write for understudies — someone reading your brief should know exactly what to do this week without needing to ask a follow-up question.
 
 You never explain what a metric is. You never say "you may want to consider". You never give advice that applies to every account equally. Everything you write is specific to THIS account's numbers and account type.
 
-${AGENCY_PHILOSOPHY}`,
-          messages: [{ role: "user", content: prompt }],
+${AGENCY_PHILOSOPHY}`;
+
+  // ── Agentic KB lookup ─────────────────────────────────────────────────────
+  // Ask Claude what SOP to retrieve, execute the search, inject results.
+  // This keeps Claude's reasoning grounded in the agency's actual playbook.
+  const kbTool: Anthropic.Messages.Tool = {
+    name: "search_knowledge_base",
+    description: "Search the agency's PPC Mastery knowledge base for the most relevant SOP, checklist, or guideline for this account's constraint. Call this ONCE with a specific query — e.g. 'search term hygiene SQR exclusion process' or 'landing page CVR CRO checklist' or 'budget pacing IS lost'. The exact SOP steps will be injected into your brief.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        query: {
+          type: "string",
+          description: "Specific query to find the right SOP or checklist. Be precise about the problem, not generic.",
+        },
+      },
+      required: ["query"],
+    },
+  };
+
+  let kbSection = "";
+  const conversationMessages: Anthropic.Messages.MessageParam[] = [
+    { role: "user", content: prompt },
+  ];
+
+  try {
+    // Phase 1: Force Claude to decide what SOP to look up (fast, non-streaming)
+    const toolCallResponse = await client.messages.create({
+      model: "claude-sonnet-4-6",
+      max_tokens: 400,
+      system: systemPrompt,
+      tools: [kbTool],
+      tool_choice: { type: "any" },
+      messages: conversationMessages,
+    });
+
+    const toolUseBlock = toolCallResponse.content.find(b => b.type === "tool_use");
+    if (toolUseBlock && toolUseBlock.type === "tool_use") {
+      const query = (toolUseBlock.input as { query: string }).query ?? "";
+      const kbResults = searchKnowledge(query, snapshot.governingConstraint);
+
+      if (kbResults) {
+        kbSection = `\n\n---\n${kbResults}`;
+      }
+
+      // Add the tool exchange to the conversation so the final call has full context
+      conversationMessages.push({ role: "assistant", content: toolCallResponse.content });
+      conversationMessages.push({
+        role: "user",
+        content: [{
+          type: "tool_result",
+          tool_use_id: toolUseBlock.id,
+          content: kbResults || "No matching SOP found — rely on your own expertise.",
+        }],
+      });
+    }
+  } catch { /* KB tool call failed — proceed without it */ }
+
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream({
+    async start(controller) {
+      try {
+        const aiStream = await client.messages.stream({
+          model: "claude-sonnet-4-6",
+          max_tokens: 1400,
+          system: systemPrompt,
+          messages: conversationMessages,
         });
 
         for await (const chunk of aiStream) {
           if (chunk.type === "content_block_delta" && chunk.delta.type === "text_delta") {
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: chunk.delta.text })}\n\n`));
           }
+        }
+        // Stream the KB section as a separate labelled block after the main brief
+        if (kbSection) {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: kbSection })}\n\n`));
         }
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true, slackError: slackError || undefined })}\n\n`));
         controller.close();
