@@ -1515,7 +1515,7 @@ function renderIntelligence(text: string, streaming: boolean): React.ReactNode {
 
 // ─── AI Intelligence Panel ────────────────────────────────────────────────────
 
-function IntelligencePanel({ accountId, autoRun, onContinueInAdvisor }: { accountId: string; autoRun?: boolean; onContinueInAdvisor?: (brief: string) => void }) {
+function IntelligencePanel({ accountId, autoRun, onContinueInAdvisor }: { accountId: string; autoRun?: boolean; onContinueInAdvisor?: (brief: string, question: string) => void }) {
   const [text, setText]               = useState("");
   const [loading, setLoading]         = useState(false);
   const [done, setDone]               = useState(false);
@@ -1665,7 +1665,7 @@ function IntelligencePanel({ accountId, autoRun, onContinueInAdvisor }: { accoun
             ].map(q => (
               <button
                 key={q}
-                onClick={() => onContinueInAdvisor(`${text}\n\n---\n${q}`)}
+                onClick={() => onContinueInAdvisor(text, q)}
                 style={{
                   fontSize: 11, fontWeight: 500,
                   color: "#c084fc",
@@ -2653,7 +2653,8 @@ export default function AccountPage() {
   const [actions, setActions] = useState<Action[]>([]);
   const [orgMembers, setOrgMembers] = useState<{ email: string; name: string | null }[]>([]);
   const [tab, setTab] = useState<Tab>("overview");
-  const [intelligenceBriefText, setIntelligenceBriefText] = useState<string | undefined>(undefined);
+  const [intelligenceBriefText, setIntelligenceBriefText]         = useState<string | undefined>(undefined);
+  const [intelligenceBriefQuestion, setIntelligenceBriefQuestion] = useState<string | undefined>(undefined);
   const [loading, setLoading] = useState(true);
   const [rescoring, setRescoring] = useState(false);
   const [rescoreError, setRescoreError] = useState<string | null>(null);
@@ -3062,8 +3063,9 @@ export default function AccountPage() {
                 <IntelligencePanel
                   accountId={id}
                   autoRun={true}
-                  onContinueInAdvisor={(brief) => {
+                  onContinueInAdvisor={(brief, question) => {
                     setIntelligenceBriefText(brief);
+                    setIntelligenceBriefQuestion(question);
                     setTab("chat");
                   }}
                 />
@@ -3265,6 +3267,7 @@ export default function AccountPage() {
               constraintBucket={label}
               constraintReason={snapshot.constraintReason}
               intelligenceBrief={intelligenceBriefText}
+              initialQuestion={intelligenceBriefQuestion}
             />
           </div>
         )}
