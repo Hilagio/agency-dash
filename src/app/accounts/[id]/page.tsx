@@ -2796,196 +2796,184 @@ export default function AccountPage() {
   ];
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)" }}>
+    <div style={{ display: "flex", height: "100vh", background: "var(--bg)", color: "var(--text)", overflow: "hidden" }}>
 
-      {/* Top nav */}
-      <header style={{
-        borderBottom: "1px solid var(--border)", padding: "0 32px", height: 52,
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-        position: "sticky", top: 0,
-        background: "var(--header-bg)", backdropFilter: "blur(12px)", zIndex: 10,
+      {/* ─── Left sidebar ─────────────────────────────────────────────────────── */}
+      <aside style={{
+        width: 220, flexShrink: 0,
+        borderRight: "1px solid var(--border)",
+        background: "var(--surface)",
+        display: "flex", flexDirection: "column",
+        height: "100vh", overflow: "hidden",
       }}>
-        <Link href="/" style={{
-          display: "flex", alignItems: "center", gap: 6,
-          color: "var(--text-dim)", fontSize: 13, textDecoration: "none",
-          transition: "color 0.15s",
-        }}
-        onMouseEnter={e => (e.currentTarget as HTMLAnchorElement).style.color = "var(--text-muted)"}
-        onMouseLeave={e => (e.currentTarget as HTMLAnchorElement).style.color = "var(--text-dim)"}
-        >
-          <ArrowLeft size={14} />
-          All accounts
-        </Link>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <button
-            onClick={rescore}
-            disabled={rescoring}
-            style={{
-              display: "flex", alignItems: "center", gap: 6,
-              background: "transparent", border: "1px solid var(--border-2)",
-              borderRadius: 7, color: "var(--text-dim)", fontSize: 12, fontWeight: 500,
-              padding: "6px 12px", cursor: rescoring ? "not-allowed" : "pointer",
-              opacity: rescoring ? 0.5 : 1,
-            }}
+        {/* Back link */}
+        <div style={{ padding: "20px 18px 12px" }}>
+          <Link href="/" style={{
+            display: "inline-flex", alignItems: "center", gap: 5,
+            color: "var(--text-dim)", fontSize: 12, textDecoration: "none",
+            transition: "color 0.15s",
+          }}
+          onMouseEnter={e => (e.currentTarget as HTMLAnchorElement).style.color = "var(--text-muted)"}
+          onMouseLeave={e => (e.currentTarget as HTMLAnchorElement).style.color = "var(--text-dim)"}
           >
-            {rescoring ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
-            {rescoring ? "Scoring…" : "Rescore"}
-          </button>
-          <ThemeToggle />
+            <ArrowLeft size={12} /> All accounts
+          </Link>
         </div>
-      </header>
 
-      {/* Account hero */}
-      <div style={{
-        padding: "24px 32px 20px",
-        borderBottom: "1px solid var(--border)",
-      }}>
-        <div style={{ maxWidth: 860, margin: "0 auto" }}>
-
-          {/* Row 1: Account name + automatable badge */}
-          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, marginBottom: 14 }}>
-            <div>
-              <h1 style={{ fontSize: 24, fontWeight: 800, letterSpacing: "-0.6px", color: "var(--text)", margin: 0, lineHeight: 1.2 }}>
-                {account.name}
-              </h1>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
-                {account.industry && (
-                  <span style={{
-                    fontSize: 11, color: "var(--text-dim)", background: "var(--surface-2)",
-                    border: "1px solid var(--border)", borderRadius: 5, padding: "2px 8px",
-                  }}>
-                    {account.industry}
-                  </span>
-                )}
-                <span style={{ fontSize: 11, color: "var(--text-faint)" }}>{account.googleAdsId}</span>
-              </div>
-            </div>
-            {automatable.length > 0 && (
-              <button
-                onClick={() => setTab("actions")}
-                style={{
-                  flexShrink: 0,
-                  background: "rgba(59,130,246,0.1)", border: "1px solid rgba(59,130,246,0.2)",
-                  borderRadius: 8, padding: "6px 14px", fontSize: 11, fontWeight: 600,
-                  color: "#60a5fa", cursor: "pointer",
-                  display: "flex", alignItems: "center", gap: 5,
-                }}
-              >
-                <Zap size={11} /> {automatable.length} action{automatable.length > 1 ? "s" : ""} ready
-              </button>
-            )}
-          </div>
-
-          {/* Row 2: Constraint chain — buckets as a flow, bottleneck highlighted, no numbers */}
-          {snapshot && (
-            <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 14, flexWrap: "wrap" }}>
-              {buckets.map(({ bucket: b, score: s, isGoverning }, i) => {
-                const bucketLabel = BUCKET_LABELS[b as keyof typeof BUCKET_LABELS] ?? b;
-                const hasIssue = s < 70;
-                const color = isGoverning
-                  ? (CONSTRAINT_ACCENT[b] ?? "#60a5fa")
-                  : hasIssue ? "#64748b" : "var(--text-faint)";
-                return (
-                  <div key={b} style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                    {i > 0 && (
-                      <span style={{ fontSize: 12, color: "var(--border-3)", fontWeight: 300 }}>→</span>
-                    )}
-                    <span style={{
-                      fontSize: 11, fontWeight: isGoverning ? 700 : 500,
-                      letterSpacing: isGoverning ? "0.2px" : "0",
-                      color,
-                      background: isGoverning ? color + "15" : "transparent",
-                      border: `1px solid ${isGoverning ? color + "35" : "transparent"}`,
-                      borderRadius: 6, padding: isGoverning ? "3px 9px" : "3px 6px",
-                      whiteSpace: "nowrap",
-                    }}>
-                      {isGoverning && <span style={{ marginRight: 4, opacity: 0.8 }}>▲</span>}
-                      {bucketLabel}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Row 3: Constraint reason */}
-          {snapshot && (
-            <div style={{
-              borderLeft: `3px solid ${accent}`,
-              paddingLeft: 12,
-              display: "flex", alignItems: "flex-start", gap: 10,
-            }}>
+        {/* Account info block */}
+        <div style={{ padding: "0 18px 16px", borderBottom: "1px solid var(--border)" }}>
+          <h2 style={{
+            fontSize: 14, fontWeight: 700, color: "var(--text)",
+            margin: "0 0 5px", letterSpacing: "-0.3px", lineHeight: 1.3,
+            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+          }}>
+            {account.name}
+          </h2>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 8 }}>
+            {account.industry && (
               <span style={{
-                fontSize: 10, fontWeight: 700, letterSpacing: "0.4px", textTransform: "uppercase",
-                color: accent, background: accent + "18",
-                padding: "3px 8px", borderRadius: 20, flexShrink: 0, marginTop: 2,
+                fontSize: 10, color: "var(--text-dim)", background: "var(--surface-2)",
+                border: "1px solid var(--border-2)", borderRadius: 4, padding: "1px 6px",
               }}>
-                {label}
+                {account.industry}
               </span>
-              <p style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.6, margin: 0 }}>
-                {snapshot.constraintReason}
-              </p>
-            </div>
-          )}
-
-          <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 12 }}>
-            {snapshot
-              ? `Last scored ${new Date(snapshot.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`
-              : "Not scored yet"}
+            )}
+            <span style={{ fontSize: 10, color: "var(--text-very-dim)", padding: "1px 0" }}>
+              {account.googleAdsId}
+            </span>
           </div>
+          {snapshot && (
+            <span style={{
+              fontSize: 10, fontWeight: 700, letterSpacing: "0.3px",
+              color: accent, background: accent + "18",
+              border: `1px solid ${accent}30`,
+              borderRadius: 5, padding: "2px 8px", display: "inline-block",
+            }}>
+              ▲ {label}
+            </span>
+          )}
         </div>
-      </div>
 
-      {/* Setup wizard — shown on first open when account has no targets */}
-      {showWizard && (
-        <div style={{ padding: "24px 32px", borderBottom: "1px solid var(--border)", background: "var(--bg)" }}>
-          <AccountSetupWizard
-            accountId={id}
-            accountName={account.name}
-            currency={account.currency}
-            onSaved={(values) => setAccount(prev => prev ? { ...prev, ...values } : prev)}
-            onSkip={dismissWizard}
-            onScore={() => { dismissWizard(); rescore(); }}
-          />
-        </div>
-      )}
-
-      {/* Tabs */}
-      <div style={{ borderBottom: "1px solid var(--border)", padding: "0 32px", overflowX: "auto" }}>
-        <div style={{ maxWidth: 860, margin: "0 auto", display: "flex", gap: 0, minWidth: "max-content" }}>
+        {/* Navigation */}
+        <nav style={{ flex: 1, padding: "10px 10px", overflowY: "auto" }}>
           {TABS.map((t) => (
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
               style={{
-                display: "flex", alignItems: "center", gap: 6,
-                padding: "12px 14px", fontSize: 12, fontWeight: tab === t.key ? 600 : 500,
-                borderTop: "none", borderLeft: "none", borderRight: "none",
-                borderBottom: `2px solid ${tab === t.key ? accent : "transparent"}`,
-                color: tab === t.key ? "var(--text)" : "var(--text-dim)",
-                background: "transparent",
-                cursor: "pointer", transition: "color 0.15s",
-                marginBottom: -1, whiteSpace: "nowrap",
+                display: "flex", alignItems: "center", gap: 9,
+                width: "100%", padding: "8px 10px",
+                borderRadius: 7, border: "none",
+                background: tab === t.key ? "var(--accent-dim)" : "transparent",
+                color: tab === t.key ? "var(--text)" : "var(--text-muted)",
+                fontSize: 13, fontWeight: tab === t.key ? 600 : 400,
+                cursor: "pointer", textAlign: "left",
+                transition: "background 0.12s, color 0.12s",
+                marginBottom: 1,
+              }}
+              onMouseEnter={e => {
+                if (tab !== t.key) (e.currentTarget as HTMLButtonElement).style.background = "var(--surface-2)";
+              }}
+              onMouseLeave={e => {
+                if (tab !== t.key) (e.currentTarget as HTMLButtonElement).style.background = "transparent";
               }}
             >
-              {t.icon}
-              {t.label}
+              <span style={{ color: tab === t.key ? "var(--accent)" : "inherit", display: "flex" }}>
+                {t.icon}
+              </span>
+              <span style={{ flex: 1 }}>{t.label}</span>
               {t.badge !== undefined && t.badge > 0 && (
                 <span style={{
-                  background: "rgba(59,130,246,0.15)", color: "#60a5fa",
-                  borderRadius: 20, padding: "1px 6px", fontSize: 10, fontWeight: 700,
+                  background: "rgba(99,102,241,0.15)", color: "var(--accent)",
+                  borderRadius: 20, padding: "0 6px", fontSize: 10, fontWeight: 700,
+                  minWidth: 18, textAlign: "center",
                 }}>
                   {t.badge}
                 </span>
               )}
             </button>
           ))}
-        </div>
-      </div>
+        </nav>
 
-      {/* Content */}
-      <div style={{ maxWidth: 860, margin: "0 auto", padding: "28px 32px" }}>
+        {/* Bottom: rescore + theme toggle + scored date */}
+        <div style={{ padding: "12px 14px", borderTop: "1px solid var(--border)" }}>
+          {rescoreError && (
+            <p style={{ fontSize: 10, color: "#ef4444", margin: "0 0 8px", lineHeight: 1.4 }}>
+              {rescoreError.slice(0, 70)}{rescoreError.length > 70 ? "…" : ""}
+            </p>
+          )}
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+            <button
+              onClick={rescore}
+              disabled={rescoring}
+              style={{
+                flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
+                background: "transparent", border: "1px solid var(--border-2)",
+                borderRadius: 7, color: "var(--text-dim)", fontSize: 11, fontWeight: 500,
+                padding: "7px 10px", cursor: rescoring ? "not-allowed" : "pointer",
+                opacity: rescoring ? 0.5 : 1,
+              }}
+            >
+              {rescoring ? <Loader2 size={11} className="animate-spin" /> : <RefreshCw size={11} />}
+              {rescoring ? "Scoring…" : "Rescore"}
+            </button>
+            <ThemeToggle />
+          </div>
+          <div style={{ fontSize: 10, color: "var(--text-very-dim)", textAlign: "center" }}>
+            {snapshot
+              ? `Scored ${new Date(snapshot.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
+              : "Not scored yet"}
+          </div>
+        </div>
+      </aside>
+
+      {/* ─── Main content ─────────────────────────────────────────────────────── */}
+      <main style={{
+        flex: 1, minWidth: 0, height: "100vh",
+        overflowY: tab === "chat" ? "hidden" : "auto",
+        display: "flex", flexDirection: "column",
+      }}>
+
+        {/* Chat tab: full-height fill */}
+        {tab === "chat" && snapshot && (
+          <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+            <ChatAssistant
+              accountId={id}
+              constraintBucket={label}
+              constraintReason={snapshot.constraintReason}
+              intelligenceBrief={intelligenceBriefText}
+              initialQuestion={intelligenceBriefQuestion}
+            />
+          </div>
+        )}
+
+        {tab === "chat" && !snapshot && (
+          <div style={{
+            flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
+            color: "var(--text-dim)", fontSize: 13,
+          }}>
+            Run a constraint score first to unlock the advisor.
+          </div>
+        )}
+
+        {/* All other tabs: scrollable content */}
+        {tab !== "chat" && (
+          <div style={{ flex: 1, padding: "28px 32px", maxWidth: 860, width: "100%", margin: "0 auto", boxSizing: "border-box" }}>
+
+        {/* Setup wizard — shown on first open when account has no targets */}
+        {showWizard && (
+          <div style={{ marginBottom: 24 }}>
+            <AccountSetupWizard
+              accountId={id}
+              accountName={account.name}
+              currency={account.currency}
+              onSaved={(values) => setAccount(prev => prev ? { ...prev, ...values } : prev)}
+              onSkip={dismissWizard}
+              onScore={() => { dismissWizard(); rescore(); }}
+            />
+          </div>
+        )}
 
         {tab === "overview" && (
           <>
@@ -3050,10 +3038,43 @@ export default function AccountPage() {
               </div>
             ) : (
               <>
+                {/* ── Constraint summary ──────────────────────────────────── */}
+                <div style={{
+                  marginBottom: 20, padding: "14px 18px",
+                  background: "var(--surface)", border: "1px solid var(--border)",
+                  borderLeft: `3px solid ${accent}`, borderRadius: 10,
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8, flexWrap: "wrap" }}>
+                    {buckets.map(({ bucket: b, score: s, isGoverning }, i) => {
+                      const bLabel = BUCKET_LABELS[b as keyof typeof BUCKET_LABELS] ?? b;
+                      const bColor = isGoverning ? (CONSTRAINT_ACCENT[b] ?? "#60a5fa") : s < 70 ? "#64748b" : "var(--text-faint)";
+                      return (
+                        <div key={b} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                          {i > 0 && <span style={{ fontSize: 11, color: "var(--border-3)" }}>→</span>}
+                          <span style={{
+                            fontSize: 11, fontWeight: isGoverning ? 700 : 500, color: bColor,
+                            background: isGoverning ? bColor + "15" : "transparent",
+                            border: `1px solid ${isGoverning ? bColor + "35" : "transparent"}`,
+                            borderRadius: 5, padding: isGoverning ? "2px 8px" : "2px 5px",
+                          }}>
+                            {isGoverning && "▲ "}{bLabel}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <p style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.65, margin: 0 }}>
+                    {snapshot.constraintReason}
+                  </p>
+                </div>
+
                 {/* ── Proactive diagnostic feed ────────────────────────────── */}
                 <ProactiveFeed
                   buckets={buckets}
-                  onNavigate={(tabKey) => setTab(tabKey as typeof tab)}
+                  onNavigate={(tabKey, question?) => {
+                    if (question) setIntelligenceBriefQuestion(question);
+                    setTab(tabKey as typeof tab);
+                  }}
                 />
 
                 {/* ── Diagnosis ───────────────────────────────────────────── */}
@@ -3257,30 +3278,6 @@ export default function AccountPage() {
           />
         )}
 
-        {tab === "chat" && snapshot && (
-          <div style={{
-            height: 580, borderRadius: 14, border: "1px solid var(--border)",
-            background: "var(--bg-deep)", overflow: "hidden",
-          }}>
-            <ChatAssistant
-              accountId={id}
-              constraintBucket={label}
-              constraintReason={snapshot.constraintReason}
-              intelligenceBrief={intelligenceBriefText}
-              initialQuestion={intelligenceBriefQuestion}
-            />
-          </div>
-        )}
-
-        {tab === "chat" && !snapshot && (
-          <div style={{
-            border: "1px dashed var(--border-2)", borderRadius: 14,
-            padding: "60px 32px", textAlign: "center", color: "var(--text-dim)", fontSize: 13,
-          }}>
-            Run a constraint score first to unlock the advisor.
-          </div>
-        )}
-
         {tab === "peers" && (
           <PeersPanel accountId={id} accountName={account.name} peerGroupId={account.peerGroupId} />
         )}
@@ -3320,7 +3317,9 @@ export default function AccountPage() {
             <NotesLog accountId={id} />
           </>
         )}
-      </div>
+        </div>
+        )}
+      </main>
     </div>
   );
 }

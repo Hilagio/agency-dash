@@ -30,7 +30,7 @@ interface BucketSignals {
 
 interface Props {
   buckets: BucketSignals[];
-  onNavigate: (tab: string) => void;
+  onNavigate: (tab: string, question?: string) => void;
 }
 
 // ─── Signal → FeedItem mapping ────────────────────────────────────────────────
@@ -414,7 +414,7 @@ export function ProactiveFeed({ buckets, onNavigate }: Props) {
   );
 }
 
-function FeedCard({ item, onNavigate }: { item: FeedItem; onNavigate: (tab: string) => void }) {
+function FeedCard({ item, onNavigate }: { item: FeedItem; onNavigate: (tab: string, question?: string) => void }) {
   const sev = SEVERITY_CONFIG[item.severity];
   const bucketColor = BUCKET_COLORS[item.bucket];
   const bucketLabel = BUCKET_LABELS[item.bucket];
@@ -479,7 +479,14 @@ function FeedCard({ item, onNavigate }: { item: FeedItem; onNavigate: (tab: stri
       {/* Right: action */}
       {item.action && (
         <button
-          onClick={() => item.action?.tab && onNavigate(item.action.tab)}
+          onClick={() => {
+            if (item.action?.tab) {
+              const question = item.action.tab === "chat"
+                ? `${item.title}: ${item.body}`
+                : undefined;
+              onNavigate(item.action.tab, question);
+            }
+          }}
           style={{
             display: "inline-flex", alignItems: "center", gap: 5,
             background: "var(--surface-2)", border: "1px solid var(--border-2)",

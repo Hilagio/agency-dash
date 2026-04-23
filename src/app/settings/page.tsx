@@ -72,7 +72,7 @@ function Avatar({ name, image, size = 28 }: { name: string | null; image?: strin
   return (
     <div style={{
       width: size, height: size, borderRadius: "50%",
-      background: "linear-gradient(135deg, #c49a0a, #9a7808)",
+      background: "linear-gradient(135deg, #6366f1, #4f46e5)",
       display: "flex", alignItems: "center", justifyContent: "center",
       fontSize: size * 0.36, fontWeight: 700, color: "#fff", flexShrink: 0,
     }}>{initials}</div>
