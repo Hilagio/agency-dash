@@ -29,29 +29,29 @@
 
 /* ─── Light theme ───────────────────────────────────────────────────────────── */
 :root.light {
-  --bg:            #f5f4ef;
-  --bg-deep:       #eceae2;
+  --bg:            #ffffff;
+  --bg-deep:       #f4f5f7;
   --surface:       #ffffff;
-  --surface-hover: #fafaf7;
-  --surface-2:     #f2f1ea;
-  --surface-3:     #e8e7de;
-  --border:        rgba(100, 78, 4, 0.12);
-  --border-2:      rgba(100, 78, 4, 0.18);
-  --border-3:      rgba(100, 78, 4, 0.28);
-  --text:          #18180e;
-  --text-2:        #2e2c1c;
-  --text-3:        #524e38;
-  --text-muted:    #6e6a52;
-  --text-dim:      #908c74;
-  --text-very-dim: #a8a490;
-  --text-faint:    #bab6a4;
-  --header-bg:     rgba(245, 244, 239, 0.92);
-  --input-bg:      #fafaf7;
+  --surface-hover: #f8f9fa;
+  --surface-2:     #f1f3f5;
+  --surface-3:     #e5e7eb;
+  --border:        rgba(0, 0, 0, 0.08);
+  --border-2:      rgba(0, 0, 0, 0.13);
+  --border-3:      rgba(0, 0, 0, 0.22);
+  --text:          #111827;
+  --text-2:        #1f2937;
+  --text-3:        #374151;
+  --text-muted:    #4b5563;
+  --text-dim:      #6b7280;
+  --text-very-dim: #9ca3af;
+  --text-faint:    #c4c9d4;
+  --header-bg:     rgba(255, 255, 255, 0.95);
+  --input-bg:      #f4f5f7;
   --accent:        #9a7808;
-  --accent-blue:   #9a7808;
-  --accent-dim:    rgba(154, 120, 8, 0.08);
-  --btn-primary:   #9a7808;
-  --btn-primary-hover: #b08808;
+  --accent-blue:   #2563eb;
+  --accent-dim:    rgba(154, 120, 8, 0.09);
+  --btn-primary:   #a88500;
+  --btn-primary-hover: #c49a0a;
 }
 
 body {
@@ -62,11 +62,6 @@ body {
   -moz-osx-font-smoothing: grayscale;
   letter-spacing: 0em;
   font-size: 15px;
-  /* Subtle warm ambient glow */
-  background-image:
-    radial-gradient(ellipse 80% 50% at 10% 0%, rgba(196, 154, 10, 0.05) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 40% at 90% 100%, rgba(160, 120, 8, 0.04) 0%, transparent 55%);
-  background-attachment: fixed;
 }
 
 /* ─── Global interactive states ──────────────────────────────────────────────── */

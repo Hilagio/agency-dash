@@ -145,70 +145,72 @@ function AccountRow({
       onMouseLeave={e => (e.currentTarget.style.background = "")}
     >
       {/* Account name */}
-      <td style={{ padding: "12px 16px" }}>
+      <td style={{ padding: "14px 16px" }}>
         <Link href={`/accounts/${account.id}`} style={{ textDecoration: "none" }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", letterSpacing: "-0.2px", lineHeight: 1.3 }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text)", letterSpacing: "-0.2px", lineHeight: 1.3 }}>
             {account.name}
           </div>
           {account.industry && (
-            <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 2 }}>{account.industry}</div>
+            <div style={{ fontSize: 12, color: "var(--text-dim)", marginTop: 2 }}>{account.industry}</div>
           )}
         </Link>
       </td>
 
       {/* Manager */}
-      <td style={{ padding: "12px 16px" }}>
+      <td style={{ padding: "14px 16px" }}>
         {account.assignedUserName ? (
-          <span style={{ fontSize: 12, color: "var(--text-2)", display: "flex", alignItems: "center", gap: 5 }}>
-            <UserCircle size={13} style={{ color: "var(--text-faint)", flexShrink: 0 }} />
+          <span style={{ fontSize: 13, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 5 }}>
+            <UserCircle size={13} style={{ color: "var(--text-dim)", flexShrink: 0 }} />
             {account.assignedUserName}
           </span>
         ) : (
-          <span style={{ fontSize: 11, color: "var(--text-faint)", fontStyle: "italic" }}>Unassigned</span>
+          <span style={{ fontSize: 13, color: "var(--text-faint)" }}>—</span>
         )}
       </td>
 
       {/* 30d spend */}
-      <td style={{ padding: "12px 16px", textAlign: "right" }}>
-        <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-2)", letterSpacing: "-0.3px" }}>
+      <td style={{ padding: "14px 16px", textAlign: "right" }}>
+        <span style={{ fontSize: 13, fontWeight: 600, color: spend === "—" ? "var(--text-faint)" : "var(--text-2)", letterSpacing: "-0.3px" }}>
           {spend}
         </span>
-        {snap?.budgetUtil != null && snap.budgetUtil > 0 && (
-          <div style={{ fontSize: 10, color: snap.budgetUtil > 0.9 ? "#22c55e" : snap.budgetUtil > 0.6 ? "var(--text-faint)" : "#f97316", marginTop: 2 }}>
+        {snap?.budgetUtil != null && snap.budgetUtil > 0 && snap.budgetUtil < 0.9 && (
+          <div style={{ fontSize: 11, color: "#f97316", marginTop: 2 }}>
             {Math.round(snap.budgetUtil * 100)}% utilised
           </div>
         )}
       </td>
 
       {/* Bottleneck */}
-      <td style={{ padding: "12px 16px" }}>
+      <td style={{ padding: "14px 16px" }}>
         {bucket ? (
           <BucketPill bucket={bucket} />
         ) : (
-          <span style={{ fontSize: 11, color: "var(--text-faint)", fontStyle: "italic" }}>—</span>
+          <span style={{ fontSize: 13, color: "var(--text-faint)" }}>—</span>
         )}
       </td>
 
-      {/* Constraint summary */}
-      <td style={{ padding: "12px 16px", maxWidth: 340 }}>
+      {/* Constraint summary — single line, ellipsis */}
+      <td style={{ padding: "14px 16px" }}>
         {snap?.constraintReason ? (
           <span style={{
-            fontSize: 12, color: "var(--text-muted)", lineHeight: 1.5,
-            display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical",
-            overflow: "hidden",
-          }}>
+            fontSize: 13, color: "var(--text-muted)", lineHeight: 1.5,
+            display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+            maxWidth: 360,
+          }}
+            title={snap.constraintReason}
+          >
             {snap.constraintReason}
           </span>
         ) : (
-          <span style={{ fontSize: 11, color: "var(--text-faint)", fontStyle: "italic" }}>
+          <span style={{ fontSize: 13, color: "var(--text-faint)", fontStyle: "italic" }}>
             {hasData ? "—" : "Not scored yet"}
           </span>
         )}
       </td>
 
       {/* Last scored */}
-      <td style={{ padding: "12px 16px", whiteSpace: "nowrap" }}>
-        <span style={{ fontSize: 11, color: "var(--text-faint)" }}>
+      <td style={{ padding: "14px 16px", whiteSpace: "nowrap" }}>
+        <span style={{ fontSize: 12, color: "var(--text-dim)" }}>
           {snap ? timeAgo(snap.createdAt) : "—"}
         </span>
       </td>
@@ -555,6 +557,7 @@ function HomePageInner() {
             </div>
 
             {/* Bucket filter chips */}
+            <span style={{ fontSize: 12, color: "var(--text-dim)", fontWeight: 500 }}>Filter:</span>
             {(Object.keys(BUCKET_COLOR) as ConstraintBucket[])
               .filter(b => bucketCounts.has(b))
               .map(b => {
@@ -565,18 +568,19 @@ function HomePageInner() {
                   <button
                     key={b}
                     onClick={() => setFilterBucket(active ? null : b)}
+                    title={`${count} accounts`}
                     style={{
                       display: "flex", alignItems: "center", gap: 5,
-                      fontSize: 11, fontWeight: 600, letterSpacing: "0.3px",
+                      fontSize: 12, fontWeight: active ? 700 : 500,
                       color: active ? "#fff" : color,
-                      background: active ? color : color + "18",
-                      border: `1px solid ${color}40`,
-                      padding: "4px 10px", borderRadius: 20, cursor: "pointer",
+                      background: active ? color : "transparent",
+                      border: `1px solid ${active ? color : color + "50"}`,
+                      padding: "4px 12px", borderRadius: 20, cursor: "pointer",
                       transition: "all 0.1s",
                     }}
                   >
                     {BUCKET_LABELS[b]}
-                    <span style={{ opacity: 0.7, fontWeight: 500 }}>{count}</span>
+                    {active && <span style={{ fontWeight: 600, opacity: 0.85 }}>{count}</span>}
                   </button>
                 );
               })}

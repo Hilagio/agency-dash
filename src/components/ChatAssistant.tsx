@@ -41,7 +41,7 @@ function renderMarkdown(content: string, streaming?: boolean): React.ReactNode {
     // H2
     if (line.startsWith("## ") && !line.startsWith("### ")) {
       nodes.push(
-        <p key={i} style={{ fontWeight: 700, color: "var(--text-2)", fontSize: 14, marginTop: 16, marginBottom: 4, lineHeight: 1.4 }}>
+        <p key={i} style={{ fontWeight: 700, color: "var(--text)", fontSize: 16, marginTop: 20, marginBottom: 6, lineHeight: 1.3 }}>
           {inlineMarkdown(line.slice(3))}
         </p>
       );
@@ -51,7 +51,7 @@ function renderMarkdown(content: string, streaming?: boolean): React.ReactNode {
     // H3
     if (line.startsWith("### ")) {
       nodes.push(
-        <p key={i} style={{ fontWeight: 600, color: "var(--text-3)", fontSize: 12, marginTop: 12, marginBottom: 3, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+        <p key={i} style={{ fontWeight: 600, color: "var(--text-2)", fontSize: 13, marginTop: 14, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.5px" }}>
           {inlineMarkdown(line.slice(4))}
         </p>
       );
@@ -87,9 +87,9 @@ function renderMarkdown(content: string, streaming?: boolean): React.ReactNode {
         i++;
       }
       nodes.push(
-        <ul key={i} style={{ paddingLeft: 18, margin: "6px 0", display: "flex", flexDirection: "column", gap: 4 }}>
+        <ul key={i} style={{ paddingLeft: 20, margin: "8px 0", display: "flex", flexDirection: "column", gap: 6 }}>
           {items.map((item, j) => (
-            <li key={j} style={{ fontSize: 13, color: "var(--text-2)", lineHeight: 1.65, listStyleType: "disc" }}>
+            <li key={j} style={{ fontSize: 15, color: "var(--text-2)", lineHeight: 1.7, listStyleType: "disc" }}>
               {inlineMarkdown(item)}
             </li>
           ))}
@@ -106,9 +106,9 @@ function renderMarkdown(content: string, streaming?: boolean): React.ReactNode {
         i++;
       }
       nodes.push(
-        <ol key={i} style={{ paddingLeft: 20, margin: "6px 0", display: "flex", flexDirection: "column", gap: 4 }}>
+        <ol key={i} style={{ paddingLeft: 20, margin: "8px 0", display: "flex", flexDirection: "column", gap: 8 }}>
           {items.map((item, j) => (
-            <li key={j} style={{ fontSize: 13, color: "var(--text-2)", lineHeight: 1.65, listStyleType: "decimal" }}>
+            <li key={j} style={{ fontSize: 15, color: "var(--text-2)", lineHeight: 1.7, listStyleType: "decimal" }}>
               {inlineMarkdown(item)}
             </li>
           ))}
@@ -131,7 +131,7 @@ function renderMarkdown(content: string, streaming?: boolean): React.ReactNode {
 
     // Regular paragraph
     nodes.push(
-      <p key={i} style={{ fontSize: 13, color: "var(--text-2)", lineHeight: 1.75, margin: 0 }}>
+      <p key={i} style={{ fontSize: 15, color: "var(--text-2)", lineHeight: 1.75, margin: 0 }}>
         {inlineMarkdown(line)}
       </p>
     );
@@ -366,7 +366,7 @@ export function ChatAssistant({ accountId, constraintBucket, constraintReason, i
                   {msg.content
                     ? (msg.role === "assistant"
                         ? renderMarkdown(msg.content, msg.streaming)
-                        : <p style={{ fontSize: 13, color: "#fff", lineHeight: 1.65, margin: 0 }}>{msg.content}</p>)
+                        : <p style={{ fontSize: 15, color: "#fff", lineHeight: 1.65, margin: 0 }}>{msg.content}</p>)
                     : <span style={{ fontSize: 13, color: "var(--text-dim)", display: "flex", alignItems: "center", gap: 6 }}>
                         <Loader2 size={12} className="animate-spin" />
                         Thinking…
