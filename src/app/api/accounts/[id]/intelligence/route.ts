@@ -307,47 +307,22 @@ ${clientBrief}${productContext}${notionContext}${slackContext}
 
 ---
 
-Produce a specialist briefing using EXACTLY this structure:
+Produce a 5-line at-a-glance brief. Use EXACTLY this format — no headers, no paragraphs, no bullet sub-lists:
 
-## [Constraint] — [one-line diagnosis that names the specific problem, not just the bucket]
+**Bottleneck:** [bucket name] — [one-line diagnosis naming the specific problem, not just the bucket label]
+**Numbers:** [2–4 key metrics separated by · — cite actual values from the data above]
+**Root cause:** [one sentence — most likely specific cause, or two candidates with the distinguishing signal]
+**Priority action:** [one concrete action a specialist can execute today — specific enough to act on without a follow-up question]
+**Watch:** [one metric · target threshold · timeframe]
 
-**What the data shows**
-Two or three sentences. Cite actual numbers from the metrics above. No filler. State what is happening, not what could be happening.
-
-**Why this is the constraint**
-One or two sentences. Explain the mechanism: how does this specific constraint block the downstream result (revenue / conversions)? Be mechanistic, not generic.
-
-**Root cause**
-One sentence. Name the most likely specific cause given this account's data. Cross-reference account type, business model, and metrics. If the data is ambiguous, name the two most likely causes and which signal would distinguish them.
-
-**Actions this week**
-Numbered list. Each action must be:
-- Specific enough that a junior specialist can execute it without asking a follow-up question
-- Tied to the agency's actual toolset and doctrine (PMax feed-only, ProductHero labels, feed titles, search term exclusions, etc.)
-- Ordered by priority — the action that unlocks the most is first
-Maximum 3 actions. If you can only justify 1 or 2, write 1 or 2.
-
-**Watch**
-One sentence: which metric to check in 7 days, and what threshold means the fix is working vs. not working.
-
-${slackContext ? "If Slack messages are provided: before writing actions, check whether any team change in the last 14 days correlates with a metric shift. If yes, name it explicitly in Root cause.\n" : ""}
 HARD RULES:
-- Every number you cite must appear in the data provided above. Zero fabrication.
-- Do not explain what the constraint framework is. Do not define terms. Write for someone who already knows Google Ads.
-- For new accounts with no conversion history: actions must focus on setup and data collection, not performance optimisation.
-- If a pattern from the agency doctrine applies, apply it and name the conclusion directly.
-- FRAMING RULE: Refer to the client by their name or as "the account" / "the store". Never call them a "dropshipper" — if the business model is dropshipping, it is a fulfilment detail, not their identity. They are an ecommerce retailer.
-- BUDGET INCREASE RULE: NEVER recommend increasing budget if actual ROAS is below the target ROAS. Spending more money at a loss makes the situation worse. If IS lost to budget is high but ROAS is below target, the problem is efficiency — fix conversion rate, search term hygiene, or pricing FIRST. Only recommend a budget increase when actual ROAS ≥ target ROAS AND budget utilisation is at 100%.
-${isLeadGen ? `- LEAD GEN RULES: Never mention ROAS, product feeds, Shopping, or ProductHero labels. Focus on CPL vs target, lead volume, lead quality, form CVR, search intent quality, offline conversion import.
-- If offline conversion import is NOT active: this is always action #1 — without it, the account is optimising for form fills, not actual revenue, and the AI has no signal on lead quality.
-- If CPL is above target: diagnose whether it's a volume problem (not enough clicks → bid/budget) or a quality problem (clicks not converting → landing page, form UX, keyword intent mismatch).
-- Lead quality below par: recommend reviewing which search terms are generating leads and whether they match the actual buyer profile. Suggest adding negative keywords for low-intent queries.
-- Always address the full funnel: clicks → form CVR → lead quality → lead-to-sale rate. A high form CVR with low lead-to-sale rate means the traffic is unqualified, not the landing page.`
-: `- ECOMMERCE RULES: For Shopping/PMax, never mention Quality Score.
-- If product data is available: NAME specific products in your actions. "Your top 3 revenue products are X, Y, Z — but X and Y are priced 18% above market. Dropping their price by 10% could unlock more volume given their existing click traction." That is the required level of specificity.
-- If price competitiveness data shows products above market: quantify the gap and name the products. Do not speak in generalities.
-- If products are spending with zero conversions: name them and give a specific recommendation (exclude, price review, or landing page check).
-- STATISTICAL SIGNIFICANCE RULE: NEVER recommend scaling or increasing budget on a product with fewer than 10 conversions OR less than €50 spend. A product with 1–2 sales is statistical noise — it tells you nothing about scalability. If a low-spend product has a high ROAS, say "worth watching as spend grows" at most. Only recommend scaling products that have proven volume (10+ conversions or sustained spend with positive ROAS over time).`}`;
+- Maximum 80 words total across all 5 lines.
+- Every number must appear in the data provided above. Zero fabrication.
+- No filler. No explanation of what metrics mean. Write for someone who already knows Google Ads.
+- Do not recommend a budget increase if ROAS is below target.
+- FRAMING RULE: refer to the client by name or "the account". Never call them a "dropshipper".
+${isLeadGen ? `- Never mention ROAS, product feeds, or Shopping. Focus on CPL, form CVR, lead quality, offline conversion import.` : `- For Shopping/PMax accounts: never mention Quality Score.`}
+${slackContext ? "- If a team change in the last 14 days correlates with a metric shift, name it in Root cause." : ""}`;
 
   const systemPrompt = isLeadGen
     ? `You are the senior lead generation Google Ads specialist at a Dutch performance agency. You have deep expertise in B2B and B2C lead gen campaigns — search intent mapping, CPL optimisation, lead quality vs volume trade-offs, offline conversion tracking, CRM integration, and funnel handoff.
@@ -429,7 +404,7 @@ ${AGENCY_PHILOSOPHY}`;
       try {
         const aiStream = await client.messages.stream({
           model: "claude-sonnet-4-6",
-          max_tokens: 1400,
+          max_tokens: 400,
           system: systemPrompt,
           messages: conversationMessages,
         });

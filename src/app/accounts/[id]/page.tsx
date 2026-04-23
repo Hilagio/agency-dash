@@ -1653,20 +1653,35 @@ function IntelligencePanel({ accountId, autoRun, onContinueInAdvisor }: { accoun
 
       {done && text && onContinueInAdvisor && (
         <div style={{ marginTop: 14, borderTop: "1px solid var(--border)", paddingTop: 12 }}>
-          <button
-            onClick={() => onContinueInAdvisor(text)}
-            style={{
-              display: "flex", alignItems: "center", gap: 6,
-              background: "rgba(192,132,252,0.07)",
-              border: "1px solid rgba(192,132,252,0.2)",
-              borderRadius: 8, padding: "6px 14px",
-              fontSize: 12, fontWeight: 500, color: "#c084fc",
-              cursor: "pointer",
-            }}
-          >
-            <MessageSquare size={12} />
-            Continue in Advisor →
-          </button>
+          <p style={{ fontSize: 11, color: "var(--text-faint)", margin: "0 0 8px", letterSpacing: "0.3px" }}>
+            Go deeper →
+          </p>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            {[
+              "Walk me through the full diagnosis",
+              "What are the exact steps to fix this?",
+              "What do I tell the client?",
+              "What should I check in the search terms?",
+            ].map(q => (
+              <button
+                key={q}
+                onClick={() => onContinueInAdvisor(`${text}\n\n---\n${q}`)}
+                style={{
+                  fontSize: 11, fontWeight: 500,
+                  color: "#c084fc",
+                  background: "rgba(192,132,252,0.07)",
+                  border: "1px solid rgba(192,132,252,0.2)",
+                  borderRadius: 20, padding: "5px 12px",
+                  cursor: "pointer", whiteSpace: "nowrap",
+                  transition: "background 0.1s",
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = "rgba(192,132,252,0.14)")}
+                onMouseLeave={e => (e.currentTarget.style.background = "rgba(192,132,252,0.07)")}
+              >
+                {q}
+              </button>
+            ))}
+          </div>
         </div>
       )}
     </div>
