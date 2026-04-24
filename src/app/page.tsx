@@ -430,12 +430,19 @@ function HomePageInner() {
       return 0;
     });
 
-  // Bucket distribution for filter chips
+  // Bucket distribution for filter chips + constraint strip
   const bucketCounts = new Map<string, number>();
   for (const a of accounts) {
     const b = a.snapshots[0]?.governingConstraint;
     if (b) bucketCounts.set(b, (bucketCounts.get(b) ?? 0) + 1);
   }
+
+  // Portfolio stats
+  const scoredAccounts  = accounts.filter(a => a.snapshots.length > 0);
+  const totalSpend      = scoredAccounts.reduce((s, a) => s + (a.snapshots[0]?.spend30d ?? 0), 0);
+  const criticalCount   = scoredAccounts.filter(a => a.snapshots[0]?.governingConstraint === "MEASUREMENT").length;
+  const scoredToday     = scoredAccounts.filter(a => Date.now() - new Date(a.snapshots[0].createdAt).getTime() < 86_400_000).length;
+  const bucketTotal     = [...bucketCounts.values()].reduce((s, n) => s + n, 0);
 
   if (connected === null) return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -444,201 +451,360 @@ function HomePageInner() {
   );
   if (connected === false) return <LoginPage />;
 
-  return (
-    <div style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)" }}>
+  const BUCKET_ORDER: ConstraintBucket[] = ["MEASUREMENT", "TRAFFIC", "CONVERSION", "FUNNEL", "ECONOMICS"];
 
-      {/* Header */}
-      <header style={{
-        borderBottom: "1px solid var(--border)", padding: "0 28px", height: 52,
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-        position: "sticky", top: 0, background: "var(--header-bg)",
-        backdropFilter: "blur(12px)", zIndex: 10,
+  return (
+    <div style={{ display: "flex", height: "100vh", background: "var(--bg)", color: "var(--text)", overflow: "hidden" }}>
+
+      {/* ─── Left sidebar ─────────────────────────────────────────────────────── */}
+      <aside style={{
+        width: 220, flexShrink: 0,
+        borderRight: "1px solid var(--border)",
+        background: "var(--surface)",
+        display: "flex", flexDirection: "column",
+        height: "100vh", overflow: "hidden",
       }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <div style={{ width: 24, height: 24, borderRadius: 6, background: "linear-gradient(135deg, #6366f1, #4f46e5)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: "#fff" }}>C</div>
-          <span style={{ fontWeight: 600, fontSize: 14, letterSpacing: "-0.3px", color: "var(--text)" }}>Agency Dashboard</span>
-          {accounts.length > 0 && (
-            <span style={{ fontSize: 11, color: "var(--text-faint)", marginLeft: 4 }}>
-              {accounts.length} account{accounts.length !== 1 ? "s" : ""}
-            </span>
-          )}
+
+        {/* Brand */}
+        <div style={{ padding: "20px 18px 20px", borderBottom: "1px solid var(--border)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+            <div style={{ width: 28, height: 28, borderRadius: 8, background: "linear-gradient(135deg, #6366f1, #4f46e5)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "#fff", flexShrink: 0 }}>
+              C
+            </div>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", letterSpacing: "-0.3px" }}>Agency Dash</div>
+              {accounts.length > 0 && (
+                <div style={{ fontSize: 10, color: "var(--text-very-dim)", marginTop: 1 }}>{accounts.length} accounts</div>
+              )}
+            </div>
+          </div>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        {/* Nav */}
+        <nav style={{ padding: "10px 10px", flex: 1 }}>
+          {/* Dashboard — always active on this page */}
+          <div style={{
+            display: "flex", alignItems: "center", gap: 9,
+            padding: "8px 10px", borderRadius: 7,
+            background: "var(--accent-dim)",
+            color: "var(--text)", fontSize: 13, fontWeight: 600, marginBottom: 1,
+          }}>
+            <span style={{ color: "var(--accent)", display: "flex" }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /><rect x="14" y="14" width="7" height="7" />
+              </svg>
+            </span>
+            Dashboard
+          </div>
+          <Link href="/settings" style={{
+            display: "flex", alignItems: "center", gap: 9,
+            padding: "8px 10px", borderRadius: 7,
+            color: "var(--text-muted)", fontSize: 13, fontWeight: 400,
+            textDecoration: "none", transition: "background 0.12s",
+            marginBottom: 1,
+          }}
+          onMouseEnter={e => (e.currentTarget as HTMLAnchorElement).style.background = "var(--surface-2)"}
+          onMouseLeave={e => (e.currentTarget as HTMLAnchorElement).style.background = "transparent"}
+          >
+            <Settings size={14} />
+            Settings
+          </Link>
+          <Link href="/sops" style={{
+            display: "flex", alignItems: "center", gap: 9,
+            padding: "8px 10px", borderRadius: 7,
+            color: "var(--text-muted)", fontSize: 13, fontWeight: 400,
+            textDecoration: "none", transition: "background 0.12s",
+          }}
+          onMouseEnter={e => (e.currentTarget as HTMLAnchorElement).style.background = "var(--surface-2)"}
+          onMouseLeave={e => (e.currentTarget as HTMLAnchorElement).style.background = "transparent"}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><polyline points="10 9 9 9 8 9" />
+            </svg>
+            SOPs
+          </Link>
+        </nav>
+
+        {/* Actions */}
+        <div style={{ padding: "12px 14px", borderTop: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: 6 }}>
           {accounts.length > 0 && (
-            <button onClick={runScoreAll} disabled={scoringAll || !!scoring} style={{
-              display: "flex", alignItems: "center", gap: 6,
-              background: scoringAll ? "var(--surface-2)" : "var(--btn-primary)",
-              border: "none", borderRadius: 7, color: scoringAll ? "var(--text-muted)" : "#fff",
-              fontSize: 12, fontWeight: 600, padding: "6px 14px", cursor: scoringAll ? "not-allowed" : "pointer",
-              opacity: scoringAll || !!scoring ? 0.7 : 1,
-            }}>
+            <button
+              onClick={runScoreAll}
+              disabled={scoringAll || !!scoring}
+              style={{
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                background: scoringAll ? "var(--surface-2)" : "var(--btn-primary)",
+                border: "none", borderRadius: 7,
+                color: scoringAll ? "var(--text-muted)" : "#fff",
+                fontSize: 12, fontWeight: 600, padding: "8px 14px",
+                cursor: scoringAll || !!scoring ? "not-allowed" : "pointer",
+                opacity: scoringAll || !!scoring ? 0.7 : 1, width: "100%",
+              }}
+            >
               {scoringAll
                 ? <><Loader2 size={12} className="animate-spin" />{scoringProgress ? `${scoringProgress.done}/${scoringProgress.total}` : "Scoring…"}</>
                 : <><Zap size={12} /> Score all</>}
             </button>
           )}
-          <button onClick={() => setShowImporter(!showImporter)} style={{ display: "flex", alignItems: "center", gap: 5, background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: 7, color: "var(--text-muted)", fontSize: 12, padding: "6px 12px", cursor: "pointer" }}>
+          <button
+            onClick={() => setShowImporter(!showImporter)}
+            style={{
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
+              background: "transparent", border: "1px solid var(--border-2)",
+              borderRadius: 7, color: "var(--text-dim)", fontSize: 12, padding: "7px 14px",
+              cursor: "pointer", width: "100%",
+            }}
+          >
             <Plus size={12} /> Add accounts
           </button>
-          <ThemeToggle />
-          <Link href="/settings" style={{ display: "flex", alignItems: "center", gap: 5, background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: 7, color: "var(--text-muted)", fontSize: 12, padding: "6px 12px", textDecoration: "none" }} title="Settings">
-            <Settings size={12} />
-          </Link>
+        </div>
+
+        {/* User + theme at bottom */}
+        <div style={{
+          padding: "12px 14px", borderTop: "1px solid var(--border)",
+          display: "flex", alignItems: "center", gap: 8,
+        }}>
           {sessionUser && (
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <div style={{ width: 26, height: 26, borderRadius: "50%", background: "linear-gradient(135deg, #6366f1, #4f46e5)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, color: "#fff" }}>
+            <>
+              <div style={{
+                width: 28, height: 28, borderRadius: "50%", flexShrink: 0,
+                background: "linear-gradient(135deg, #6366f1, #4f46e5)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 11, fontWeight: 700, color: "#fff",
+              }}>
                 {(sessionUser.name ?? sessionUser.email).charAt(0).toUpperCase()}
               </div>
-              <button
-                onClick={() => { const f = document.createElement("form"); f.method = "POST"; f.action = "/api/auth/signout"; document.body.appendChild(f); f.submit(); }}
-                title="Sign out"
-                style={{ display: "flex", alignItems: "center", background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", padding: 0 }}
-              >
-                <LogOut size={11} />
-              </button>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {sessionUser.name ?? sessionUser.email.split("@")[0]}
+                </div>
+                <button
+                  onClick={() => { const f = document.createElement("form"); f.method = "POST"; f.action = "/api/auth/signout"; document.body.appendChild(f); f.submit(); }}
+                  style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: 10, padding: 0, display: "flex", alignItems: "center", gap: 3 }}
+                >
+                  <LogOut size={9} /> Sign out
+                </button>
+              </div>
+              <ThemeToggle />
+            </>
+          )}
+          {!sessionUser && <ThemeToggle />}
+        </div>
+      </aside>
+
+      {/* ─── Main content ─────────────────────────────────────────────────────── */}
+      <main style={{ flex: 1, minWidth: 0, height: "100vh", overflowY: "auto" }}>
+        <div style={{ maxWidth: 1100, margin: "0 auto", padding: "28px 32px" }}>
+
+          {/* Page title */}
+          <div style={{ marginBottom: 24 }}>
+            <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", letterSpacing: "-0.5px", margin: "0 0 4px" }}>
+              Portfolio overview
+            </h1>
+            <p style={{ fontSize: 13, color: "var(--text-dim)", margin: 0 }}>
+              {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
+            </p>
+          </div>
+
+          {/* Error / status banners */}
+          {authError && (
+            <div style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: "#ef4444" }}>
+              {authError === "missing_developer_token" ? "Developer token not set." : `Auth error: ${authError}`}
+            </div>
+          )}
+          {(autoImporting || scoringAll) && (
+            <div style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(99,102,241,0.06)", border: "1px solid rgba(99,102,241,0.18)", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: "var(--accent)" }}>
+              <Loader2 size={13} className="animate-spin" />
+              {autoImporting ? (importStep || "Importing accounts from Google Ads…") : scoringProgress ? `Scoring accounts… ${scoringProgress.done} / ${scoringProgress.total}` : "Scoring all accounts…"}
+            </div>
+          )}
+          {autoImportError && (
+            <div style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: "#ef4444", display: "flex", alignItems: "center", gap: 8 }}>
+              <AlertTriangle size={13} /> {autoImportError}
+              <button onClick={() => { setAutoImportError(null); autoImportAttempted.current = false; }} style={{ marginLeft: "auto", fontSize: 11, color: "#ef4444", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>Retry</button>
+            </div>
+          )}
+          {showImporter && (
+            <div style={{ marginBottom: 20 }}>
+              <AccountImporter onImported={() => { loadAccounts(); setShowImporter(false); }} onClose={() => setShowImporter(false)} onAuthFailed={() => setConnected(false)} />
+            </div>
+          )}
+
+          {/* Portfolio stats — only when there's data */}
+          {accounts.length > 0 && !loading && (
+            <>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 20 }}>
+                {/* Accounts */}
+                <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "16px 18px" }}>
+                  <div style={{ fontSize: 26, fontWeight: 700, color: "var(--text)", letterSpacing: "-1px", lineHeight: 1 }}>{accounts.length}</div>
+                  <div style={{ fontSize: 11, color: "var(--text-dim)", marginTop: 5, fontWeight: 500 }}>Accounts</div>
+                </div>
+                {/* Portfolio spend */}
+                <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "16px 18px" }}>
+                  <div style={{ fontSize: 26, fontWeight: 700, color: "var(--text)", letterSpacing: "-1px", lineHeight: 1 }}>
+                    {totalSpend > 0 ? fmtCurrency(totalSpend, "EUR") : "—"}
+                  </div>
+                  <div style={{ fontSize: 11, color: "var(--text-dim)", marginTop: 5, fontWeight: 500 }}>30d portfolio spend</div>
+                </div>
+                {/* Critical (measurement issues) */}
+                <div style={{
+                  background: criticalCount > 0 ? "rgba(239,68,68,0.05)" : "var(--surface)",
+                  border: `1px solid ${criticalCount > 0 ? "rgba(239,68,68,0.2)" : "var(--border)"}`,
+                  borderRadius: 10, padding: "16px 18px",
+                }}>
+                  <div style={{ fontSize: 26, fontWeight: 700, letterSpacing: "-1px", lineHeight: 1, color: criticalCount > 0 ? "#ef4444" : "var(--text-dim)" }}>
+                    {criticalCount}
+                  </div>
+                  <div style={{ fontSize: 11, color: criticalCount > 0 ? "#ef4444" : "var(--text-dim)", marginTop: 5, fontWeight: 500, opacity: criticalCount > 0 ? 1 : 0.7 }}>
+                    Tracking issues
+                  </div>
+                </div>
+                {/* Scored today */}
+                <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "16px 18px" }}>
+                  <div style={{ fontSize: 26, fontWeight: 700, color: "var(--text)", letterSpacing: "-1px", lineHeight: 1 }}>
+                    {scoredToday}<span style={{ fontSize: 14, fontWeight: 500, color: "var(--text-dim)", marginLeft: 4 }}>/ {accounts.length}</span>
+                  </div>
+                  <div style={{ fontSize: 11, color: "var(--text-dim)", marginTop: 5, fontWeight: 500 }}>Scored today</div>
+                </div>
+              </div>
+
+              {/* Constraint distribution strip */}
+              {bucketTotal > 0 && (
+                <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "16px 18px", marginBottom: 20 }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-dim)", letterSpacing: "0.5px", textTransform: "uppercase", marginBottom: 12 }}>
+                    Constraint distribution
+                  </div>
+                  {/* Stacked bar */}
+                  <div style={{ display: "flex", height: 8, borderRadius: 6, overflow: "hidden", gap: 2, marginBottom: 12 }}>
+                    {BUCKET_ORDER.filter(b => bucketCounts.has(b)).map(b => (
+                      <div
+                        key={b}
+                        title={`${BUCKET_LABELS[b]}: ${bucketCounts.get(b)} accounts`}
+                        style={{
+                          flex: bucketCounts.get(b),
+                          background: BUCKET_COLOR[b],
+                          borderRadius: 3,
+                          transition: "flex 0.3s",
+                        }}
+                      />
+                    ))}
+                  </div>
+                  {/* Legend */}
+                  <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+                    {BUCKET_ORDER.filter(b => bucketCounts.has(b)).map(b => {
+                      const count = bucketCounts.get(b) ?? 0;
+                      const pct   = Math.round((count / bucketTotal) * 100);
+                      return (
+                        <button
+                          key={b}
+                          onClick={() => setFilterBucket(filterBucket === b ? null : b)}
+                          style={{
+                            display: "flex", alignItems: "center", gap: 7,
+                            background: "none", border: "none", cursor: "pointer",
+                            padding: 0, opacity: filterBucket && filterBucket !== b ? 0.4 : 1,
+                            transition: "opacity 0.15s",
+                          }}
+                        >
+                          <div style={{ width: 10, height: 10, borderRadius: 3, background: BUCKET_COLOR[b], flexShrink: 0 }} />
+                          <span style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 500 }}>
+                            {BUCKET_LABELS[b]}
+                          </span>
+                          <span style={{ fontSize: 12, color: "var(--text-dim)", fontWeight: 700 }}>{count}</span>
+                          <span style={{ fontSize: 10, color: "var(--text-very-dim)" }}>{pct}%</span>
+                        </button>
+                      );
+                    })}
+                    {filterBucket && (
+                      <button
+                        onClick={() => setFilterBucket(null)}
+                        style={{ fontSize: 11, color: "var(--text-faint)", background: "none", border: "1px solid var(--border-2)", borderRadius: 20, padding: "2px 8px", cursor: "pointer" }}
+                      >
+                        Clear filter
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Search */}
+          {accounts.length > 0 && (
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
+              <div style={{ position: "relative", flex: "1 1 240px", maxWidth: 340 }}>
+                <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--text-faint)", pointerEvents: "none" }} />
+                <input
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  placeholder="Search accounts…"
+                  style={{
+                    width: "100%", boxSizing: "border-box",
+                    padding: "7px 10px 7px 30px",
+                    background: "var(--surface)", border: "1px solid var(--border-2)",
+                    borderRadius: 7, color: "var(--text-2)", fontSize: 13, outline: "none",
+                    fontFamily: "inherit",
+                  }}
+                  onFocus={e => (e.currentTarget.style.borderColor = "var(--border-3)")}
+                  onBlur={e => (e.currentTarget.style.borderColor = "var(--border-2)")}
+                />
+                {search && (
+                  <button onClick={() => setSearch("")} style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", display: "flex", padding: 2 }}>
+                    <X size={11} />
+                  </button>
+                )}
+              </div>
+              <span style={{ fontSize: 12, color: "var(--text-dim)" }}>{sorted.length} of {accounts.length}</span>
+            </div>
+          )}
+
+          {/* Table */}
+          {loading ? (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, padding: "80px 0", color: "var(--text-dim)", fontSize: 13 }}>
+              <Loader2 size={16} className="animate-spin" /> Loading accounts…
+            </div>
+          ) : sorted.length === 0 ? (
+            <div style={{ border: "1px dashed var(--border-3)", borderRadius: 12, padding: "60px 32px", textAlign: "center" }}>
+              {search ? (
+                <>
+                  <p style={{ color: "var(--text-dim)", fontSize: 14, marginBottom: 6 }}>No accounts match &ldquo;{search}&rdquo;</p>
+                  <button onClick={() => setSearch("")} style={{ fontSize: 12, color: "var(--accent)", background: "none", border: "none", cursor: "pointer" }}>Clear search</button>
+                </>
+              ) : (
+                <>
+                  <p style={{ color: "var(--text-dim)", fontSize: 14, marginBottom: 6 }}>No accounts yet.</p>
+                  <p style={{ color: "var(--text-faint)", fontSize: 12 }}>Click <strong>Add accounts</strong> in the sidebar to import from your Google Ads MCC.</p>
+                </>
+              )}
+            </div>
+          ) : (
+            <div style={{ border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr>
+                    <ColHeader label="Account"    col="name"       sortBy={sortBy} sortDir={sortDir} onSort={toggleSort} />
+                    <ColHeader label="Manager"    col="manager"    sortBy={sortBy} sortDir={sortDir} onSort={toggleSort} />
+                    <ColHeader label="30d Spend"  col="spend"      sortBy={sortBy} sortDir={sortDir} onSort={toggleSort} align="right" />
+                    <ColHeader label="Bottleneck" col="bucket"     sortBy={sortBy} sortDir={sortDir} onSort={toggleSort} />
+                    <ColHeader label="Constraint" col="constraint" sortBy={sortBy} sortDir={sortDir} onSort={toggleSort} />
+                    <ColHeader label="Scored"     col="scored"     sortBy={sortBy} sortDir={sortDir} onSort={toggleSort} />
+                    <th style={{ padding: "10px 16px", borderBottom: "1px solid var(--border)", background: "var(--surface)", width: 110 }} />
+                  </tr>
+                </thead>
+                <tbody>
+                  {sorted.map(account => (
+                    <AccountRow
+                      key={account.id}
+                      account={account}
+                      scoring={scoring === account.id}
+                      onRescore={runScore}
+                      onRemove={handleRemove}
+                    />
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </div>
-      </header>
-
-      <main style={{ maxWidth: 1280, margin: "0 auto", padding: "24px 28px" }}>
-
-        {authError && (
-          <div style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: "#ef4444" }}>
-            {authError === "missing_developer_token" ? "Developer token not set." : `Auth error: ${authError}`}
-          </div>
-        )}
-
-        {(autoImporting || scoringAll) && (
-          <div style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(59,130,246,0.06)", border: "1px solid rgba(59,130,246,0.15)", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: "#60a5fa" }}>
-            <Loader2 size={13} className="animate-spin" />
-            {autoImporting ? (importStep || "Importing accounts from Google Ads…") : scoringProgress ? `Scoring accounts… ${scoringProgress.done} / ${scoringProgress.total}` : "Scoring all accounts…"}
-          </div>
-        )}
-
-        {autoImportError && (
-          <div style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: "#ef4444", display: "flex", alignItems: "center", gap: 8 }}>
-            <AlertTriangle size={13} /> {autoImportError}
-            <button onClick={() => { setAutoImportError(null); autoImportAttempted.current = false; }} style={{ marginLeft: "auto", fontSize: 11, color: "#ef4444", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>Retry</button>
-          </div>
-        )}
-
-        {showImporter && (
-          <div style={{ marginBottom: 20 }}>
-            <AccountImporter onImported={() => { loadAccounts(); setShowImporter(false); }} onClose={() => setShowImporter(false)} onAuthFailed={() => setConnected(false)} />
-          </div>
-        )}
-
-        {/* Toolbar: search + bucket filters */}
-        {accounts.length > 0 && (
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
-            <div style={{ position: "relative", flex: "1 1 240px", maxWidth: 320 }}>
-              <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--text-faint)", pointerEvents: "none" }} />
-              <input
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                placeholder="Search accounts…"
-                style={{
-                  width: "100%", boxSizing: "border-box",
-                  padding: "7px 10px 7px 30px",
-                  background: "var(--surface)", border: "1px solid var(--border-2)",
-                  borderRadius: 7, color: "var(--text-2)", fontSize: 12, outline: "none",
-                  fontFamily: "inherit",
-                }}
-                onFocus={e => (e.currentTarget.style.borderColor = "var(--border-3)")}
-                onBlur={e => (e.currentTarget.style.borderColor = "var(--border-2)")}
-              />
-              {search && (
-                <button onClick={() => setSearch("")} style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", display: "flex", padding: 2 }}>
-                  <X size={11} />
-                </button>
-              )}
-            </div>
-
-            {/* Bucket filter chips */}
-            <span style={{ fontSize: 12, color: "var(--text-dim)", fontWeight: 500 }}>Filter:</span>
-            {(Object.keys(BUCKET_COLOR) as ConstraintBucket[])
-              .filter(b => bucketCounts.has(b))
-              .map(b => {
-                const count = bucketCounts.get(b) ?? 0;
-                const active = filterBucket === b;
-                const color = BUCKET_COLOR[b];
-                return (
-                  <button
-                    key={b}
-                    onClick={() => setFilterBucket(active ? null : b)}
-                    title={`${count} accounts`}
-                    style={{
-                      display: "flex", alignItems: "center", gap: 5,
-                      fontSize: 12, fontWeight: active ? 700 : 500,
-                      color: active ? "#fff" : color,
-                      background: active ? color : "transparent",
-                      border: `1px solid ${active ? color : color + "50"}`,
-                      padding: "4px 12px", borderRadius: 20, cursor: "pointer",
-                      transition: "all 0.1s",
-                    }}
-                  >
-                    {BUCKET_LABELS[b]}
-                    {active && <span style={{ fontWeight: 600, opacity: 0.85 }}>{count}</span>}
-                  </button>
-                );
-              })}
-            {filterBucket && (
-              <button onClick={() => setFilterBucket(null)} style={{ fontSize: 11, color: "var(--text-faint)", background: "none", border: "1px solid var(--border-2)", borderRadius: 20, padding: "4px 10px", cursor: "pointer" }}>
-                Clear
-              </button>
-            )}
-          </div>
-        )}
-
-        {/* Table */}
-        {loading ? (
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, padding: "80px 0", color: "var(--text-dim)", fontSize: 13 }}>
-            <Loader2 size={16} className="animate-spin" /> Loading accounts…
-          </div>
-        ) : sorted.length === 0 ? (
-          <div style={{ border: "1px dashed var(--border-3)", borderRadius: 12, padding: "60px 32px", textAlign: "center" }}>
-            {search ? (
-              <>
-                <p style={{ color: "var(--text-dim)", fontSize: 14, marginBottom: 6 }}>No accounts match &ldquo;{search}&rdquo;</p>
-                <button onClick={() => setSearch("")} style={{ fontSize: 12, color: "#3b82f6", background: "none", border: "none", cursor: "pointer" }}>Clear search</button>
-              </>
-            ) : (
-              <>
-                <p style={{ color: "var(--text-dim)", fontSize: 14, marginBottom: 6 }}>No accounts yet.</p>
-                <p style={{ color: "var(--text-faint)", fontSize: 12 }}>Click <strong>Add accounts</strong> to import from your Google Ads MCC.</p>
-              </>
-            )}
-          </div>
-        ) : (
-          <div style={{ border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead>
-                <tr>
-                  <ColHeader label="Account"    col="name"    sortBy={sortBy} sortDir={sortDir} onSort={toggleSort} />
-                  <ColHeader label="Manager"    col="manager" sortBy={sortBy} sortDir={sortDir} onSort={toggleSort} />
-                  <ColHeader label="30d Spend"  col="spend"   sortBy={sortBy} sortDir={sortDir} onSort={toggleSort} align="right" />
-                  <ColHeader label="Bottleneck" col="bucket"  sortBy={sortBy} sortDir={sortDir} onSort={toggleSort} />
-                  <ColHeader label="Constraint" col="constraint" sortBy={sortBy} sortDir={sortDir} onSort={toggleSort} />
-                  <ColHeader label="Scored"     col="scored"  sortBy={sortBy} sortDir={sortDir} onSort={toggleSort} />
-                  <th style={{ padding: "10px 16px", borderBottom: "1px solid var(--border)", background: "var(--surface)", width: 120 }} />
-                </tr>
-              </thead>
-              <tbody>
-                {sorted.map(account => (
-                  <AccountRow
-                    key={account.id}
-                    account={account}
-                    scoring={scoring === account.id}
-                    onRescore={runScore}
-                    onRemove={handleRemove}
-                  />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
       </main>
     </div>
   );
