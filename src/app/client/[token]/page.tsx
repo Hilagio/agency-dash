@@ -325,14 +325,16 @@ export default function ClientIntakePage({ params }: { params: Promise<{ token: 
         {/* ── Number ── */}
         {currentStep.type === "number" && currentStep.field && (
           <div style={{ position: "relative" }}>
-            <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)",
-              color: MUTED, fontSize: 15 }}>€</span>
+            {currentStep.id !== 4 && (
+              <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)",
+                color: MUTED, fontSize: 15 }}>€</span>
+            )}
             <input
               type="number"
               placeholder={currentStep.id === 3 ? "2000" : "e.g. 4"}
               value={form[currentStep.field as keyof FormData] as string}
               onChange={e => set(currentStep.field as keyof FormData, e.target.value as never)}
-              style={{ ...inputStyle, paddingLeft: 30 }}
+              style={{ ...inputStyle, paddingLeft: currentStep.id !== 4 ? 30 : 14 }}
             />
           </div>
         )}
@@ -396,7 +398,9 @@ export default function ClientIntakePage({ params }: { params: Promise<{ token: 
             <div style={{ background: "#1e1e1e", border: `1px solid ${BORDER}`, borderRadius: 10,
               padding: "16px 18px", marginBottom: 16, fontSize: 14, color: MUTED, lineHeight: 1.7 }}>
               <p style={{ margin: "0 0 8px" }}>
-                By continuing, you agree to <strong style={{ color: TEXT }}>Ecomtrada B.V.&apos;s</strong> standard terms of service.
+                By continuing, you agree to <strong style={{ color: TEXT }}>Ecomtrada B.V.&apos;s</strong>{" "}
+                <a href="https://ecomtradatos.lovable.app" target="_blank" rel="noopener noreferrer"
+                  style={{ color: GOLD, textDecoration: "underline" }}>standard terms of service</a>.
               </p>
               <p style={{ margin: "0 0 4px" }}>These cover scope of work, billing, cancellation, and responsibilities on both sides.</p>
               <p style={{ margin: "0 0 4px" }}>Ad spend is paid directly to the advertising platforms.</p>
