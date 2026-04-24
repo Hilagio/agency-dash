@@ -13,7 +13,7 @@ import { ConstraintSignals, BUCKET_LABELS } from "@/lib/engine/types";
 import { getAuthContext, unauthorized, forbidden } from "@/lib/auth";
 import { AGENCY_PHILOSOPHY } from "@/lib/agencyPhilosophy";
 import { fetchSlackMessages, formatSlackForContext } from "@/lib/integrations/slack";
-import { fetchProductPerformance } from "@/lib/integrations/google-ads";
+import { fetchProductPerformance, fetchCampaignBreakdown } from "@/lib/integrations/google-ads";
 import { getMerchantCenterIds, fetchPriceCompetitiveness } from "@/lib/integrations/merchant-center";
 import { searchKnowledge } from "@/lib/knowledge-search";
 
@@ -110,22 +110,23 @@ export async function POST(_req: NextRequest, { params }: Params) {
     const c = signals.conversion;
     const f = signals.funnel;
     const rows = [
-      `CTR: ${(t.clickThroughRate * 100).toFixed(2)}%`,
+      `CTR (14d): ${(t.clickThroughRate * 100).toFixed(2)}%`,
       (!isShoppingAccount && t.qualityScoreCount > 0)
         ? `Quality Score: ${t.qualityScoreAvg.toFixed(1)}/10 (${t.qualityScoreCount} keywords)`
         : isShoppingAccount ? `Feed-based (Shopping/PMax) — QS not applicable` : null,
-      `IS lost to budget: ${Math.round(t.impressionShareLost_budget * 100)}%`,
-      `IS lost to rank: ${Math.round(t.impressionShareLost_rank * 100)}%`,
+      `IS lost to budget (14d): ${Math.round(t.impressionShareLost_budget * 100)}%`,
+      `IS lost to rank (14d): ${Math.round(t.impressionShareLost_rank * 100)}%`,
       // Ecommerce metrics
-      (!isLeadGen && e.actualRoas > 0) ? `Actual ROAS: ${e.actualRoas.toFixed(2)}x` : null,
-      (!isLeadGen && e.actualCpa  > 0) ? `Actual CPA: ${e.actualCpa.toFixed(0)}` : null,
+      (!isLeadGen && e.actualRoas > 0) ? `Actual ROAS (14d): ${e.actualRoas.toFixed(2)}x` : null,
+      (!isLeadGen && e.actualRoas === 0 && !isLeadGen) ? `Actual ROAS (14d): NOT AVAILABLE via campaign resource — use PRODUCT PERFORMANCE Account ROAS below if present` : null,
+      (!isLeadGen && e.actualCpa  > 0) ? `Actual CPA (14d): ${e.actualCpa.toFixed(0)}` : null,
       // Lead gen metrics
-      (isLeadGen && f?.costPerLead   > 0)                          ? `CPL: ${e.actualCpa > 0 ? e.actualCpa.toFixed(0) : f.costPerLead.toFixed(0)} (target: ${account.targetCpa ?? "not set"})` : null,
+      (isLeadGen && f?.costPerLead   > 0)                          ? `CPL (14d): ${e.actualCpa > 0 ? e.actualCpa.toFixed(0) : f.costPerLead.toFixed(0)} (target: ${account.targetCpa ?? "not set"})` : null,
       (isLeadGen && f?.leadToSaleRate > 0)                         ? `Lead-to-sale rate: ${(f.leadToSaleRate * 100).toFixed(1)}%` : null,
       (isLeadGen && f?.averageLeadQualityScore > 0)                 ? `Avg lead quality: ${f.averageLeadQualityScore.toFixed(1)}/10` : null,
       (isLeadGen)                                                   ? `Offline conversion import: ${f?.offlineConversionImportActive ? "active" : "NOT active — sales not tracked back to clicks"}` : null,
-      c.conversionRate > 0 ? `${isLeadGen ? "Form CVR" : "CVR"}: ${(c.conversionRate * 100).toFixed(2)}% (benchmark: ${(c.industryBenchmarkConversionRate * 100).toFixed(1)}%)` : null,
-      `Budget utilisation: ${Math.round(e.budgetUtilizationPercent * 100)}%`,
+      c.conversionRate > 0 ? `${isLeadGen ? "Form CVR" : "CVR"} (14d): ${(c.conversionRate * 100).toFixed(2)}% (benchmark: ${(c.industryBenchmarkConversionRate * 100).toFixed(1)}%)` : null,
+      `Budget utilisation (30d): ${Math.round(e.budgetUtilizationPercent * 100)}%`,
       !hasRealData ? `⚠ LOW DATA WARNING: This account has very little performance data. Scores are based on setup signals, not conversion history.` : null,
     ].filter(Boolean);
     metricsBlock = rows.join(" | ");
@@ -154,6 +155,28 @@ export async function POST(_req: NextRequest, { params }: Params) {
     } catch (e) {
       slackError = `Slack fetch failed: ${e instanceof Error ? e.message : String(e)}`;
     }
+  }
+
+  // ── Campaign breakdown (all accounts) ────────────────────────────────────────
+  let campaignContext = "";
+  if (account.googleAdsId) {
+    try {
+      const breakdown = await Promise.race([
+        fetchCampaignBreakdown(account.googleAdsId, ctx.orgId).catch(() => [] as Awaited<ReturnType<typeof fetchCampaignBreakdown>>),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error("campaign breakdown timed out")), 15_000)),
+      ]);
+      if (breakdown.length > 0) {
+        const curr = account.currency === "EUR" ? "€" : account.currency === "GBP" ? "£" : "$";
+        const lines = [`\nCAMPAIGN BREAKDOWN (last 30 days):`];
+        for (const c of breakdown) {
+          const roasStr = c.roas > 0 ? ` | ROAS ${c.roas.toFixed(2)}x` : " | ROAS n/a";
+          const cvrStr  = c.cvr  > 0 ? ` | CVR ${(c.cvr * 100).toFixed(2)}%` : "";
+          const typeStr = c.channelType ? ` [${c.channelType}]` : "";
+          lines.push(`  - ${c.campaignName}${typeStr}: ${curr}${Math.round(c.spend)} spend${roasStr}${cvrStr}`);
+        }
+        campaignContext = lines.join("\n");
+      }
+    } catch { /* non-fatal */ }
   }
 
   // ── Product + pricing context (all ecommerce accounts — not just Shopping/PMax) ─
@@ -299,19 +322,19 @@ GOVERNING CONSTRAINT: ${governing} — score ${governingScore}/100
 BUCKET SCORES:
 ${bucketBlock}
 
-LIVE METRICS:
+LIVE METRICS [all metrics = last 14 days unless labelled otherwise | snapshot age: ${dataAge != null ? `${dataAge}d` : "recent"}]:
 ${metricsBlock || "insufficient data"}
 
 TARGETS: ${targetsBlock}
-${clientBrief}${productContext}${notionContext}${slackContext}
+${clientBrief}${campaignContext}${productContext}${notionContext}${slackContext}
 
 ---
 
 Produce a 5-line at-a-glance brief. Use EXACTLY this format — no headers, no paragraphs, no bullet sub-lists:
 
 **Bottleneck:** [bucket name] — [one-line diagnosis naming the specific problem, not just the bucket label]
-**Numbers:** [2–4 key metrics separated by · — cite actual values from the data above]
-**Root cause:** [one sentence — most likely specific cause, or two candidates with the distinguishing signal]
+**Numbers:** [2–4 key metrics separated by · — cite actual values from the data above, always state the time window e.g. "ROAS 2.55x (30d)"]
+**Root cause:** [one sentence — most likely specific cause, or two candidates with the distinguishing signal. Name specific campaigns if CAMPAIGN BREAKDOWN is available.]
 **Priority action:** [one concrete action a specialist can execute today — specific enough to act on without a follow-up question]
 **Watch:** [one metric · target threshold · timeframe]
 
@@ -321,6 +344,8 @@ HARD RULES:
 - No filler. No explanation of what metrics mean. Write for someone who already knows Google Ads.
 - Do not recommend a budget increase if ROAS is below target.
 - FRAMING RULE: refer to the client by name or "the account". Never call them a "dropshipper".
+- ROAS RULE: If LIVE METRICS shows "ROAS NOT AVAILABLE via campaign resource", use the Account ROAS from the PRODUCT PERFORMANCE block. NEVER write "ROAS 0.00x" or "ROAS is 0" — if you have no ROAS from either source, omit ROAS entirely.
+- TIME WINDOW RULE: always state the time window next to every metric you cite (e.g. "CVR 1.04% (14d)", "ROAS 2.55x (30d)"). Never cite a bare number without its window.
 ${isLeadGen ? `- Never mention ROAS, product feeds, or Shopping. Focus on CPL, form CVR, lead quality, offline conversion import.` : `- For Shopping/PMax accounts: never mention Quality Score.`}
 ${slackContext ? "- If a team change in the last 14 days correlates with a metric shift, name it in Root cause." : ""}`;
 

@@ -1564,6 +1564,73 @@ export async function fetchProductSpend(
   }
 }
 
+// ─── Campaign breakdown (for intelligence brief) ──────────────────────────────
+
+export interface CampaignBreakdownRow {
+  campaignId:   string;
+  campaignName: string;
+  channelType:  string;
+  spend:        number;
+  revenue:      number;
+  conversions:  number;
+  clicks:       number;
+  roas:         number;
+  cvr:          number;
+}
+
+export async function fetchCampaignBreakdown(
+  customerId: string,
+  orgId?: string
+): Promise<CampaignBreakdownRow[]> {
+  const client   = getClient();
+  const customer = await getCustomer(client, customerId, orgId);
+  const { start, end } = last30Days();
+
+  const rows = await safeQuery(
+    () => customer.query(`
+      SELECT
+        campaign.id,
+        campaign.name,
+        campaign.advertising_channel_type,
+        metrics.cost_micros,
+        metrics.conversions_value,
+        metrics.conversions,
+        metrics.clicks
+      FROM campaign
+      WHERE campaign.status = 'ENABLED'
+        AND segments.date BETWEEN '${start}' AND '${end}'
+    `),
+    "campaign breakdown 30d"
+  );
+
+  const map = new Map<string, CampaignBreakdownRow>();
+  for (const r of rows) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const id   = String((r as any).campaign?.id   ?? "");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const name = String((r as any).campaign?.name ?? "Unknown");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const ct   = String((r as any).campaign?.advertising_channel_type ?? "");
+    if (!id) continue;
+    const entry = map.get(id) ?? {
+      campaignId: id, campaignName: name, channelType: ct,
+      spend: 0, revenue: 0, conversions: 0, clicks: 0, roas: 0, cvr: 0,
+    };
+    entry.spend       += Number(r.metrics?.cost_micros      ?? 0) / 1_000_000;
+    entry.revenue     += Number(r.metrics?.conversions_value ?? 0);
+    entry.conversions += Number(r.metrics?.conversions       ?? 0);
+    entry.clicks      += Number(r.metrics?.clicks            ?? 0);
+    map.set(id, entry);
+  }
+
+  for (const row of map.values()) {
+    row.roas = row.spend > 0 ? row.revenue / row.spend : 0;
+    row.cvr  = row.clicks > 0 ? row.conversions / row.clicks : 0;
+  }
+
+  return [...map.values()].sort((a, b) => b.spend - a.spend);
+}
+
 // ─── Demographics ─────────────────────────────────────────────────────────────
 
 export interface DemographicRow {
