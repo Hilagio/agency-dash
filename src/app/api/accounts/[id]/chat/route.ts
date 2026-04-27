@@ -360,10 +360,17 @@ export async function POST(req: NextRequest, { params }: Params) {
       where: { isActive: true, OR: [{ orgId: ctx.orgId }, { orgId: null }] },
       orderBy: { seenCount: "desc" },
       take: 20,
-    }),
+    }).catch(() => [] as Awaited<ReturnType<typeof prisma.learnedPattern.findMany>>),
   ]);
 
-  if (!account) return forbidden();
+  if (!account) {
+    // Account either doesn't exist or belongs to a different org.
+    // Return 400 with enough context to diagnose without exposing org internals.
+    return NextResponse.json(
+      { error: `Account not found (id=${id}). Try refreshing the page.` },
+      { status: 400 }
+    );
+  }
 
   const snapshot = await prisma.constraintSnapshot.findFirst({
     where: { accountId: id },

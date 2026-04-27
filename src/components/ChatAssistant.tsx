@@ -261,7 +261,13 @@ export function ChatAssistant({ accountId, constraintBucket, constraintReason, i
         }),
       });
 
-      if (!res.ok) throw new Error(await res.text());
+      if (!res.ok) {
+        const text = await res.text();
+        try {
+          const json = JSON.parse(text) as { error?: string };
+          throw new Error(json.error ?? text);
+        } catch { throw new Error(text); }
+      }
 
       const reader = res.body!.getReader();
       const decoder = new TextDecoder();

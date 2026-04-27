@@ -498,12 +498,18 @@ async function fetchMeasurementSignals(customer: Customer): Promise<MeasurementS
 
   // Conversion staleness: detect actions with zero conversions in the last 90 days.
   // last_conversion_date does not exist in v23, so we use a 90-day metrics window instead.
+  // Only check primary_for_goal actions — secondary/informational actions are not meant
+  // to fire on every conversion and would generate constant false-positive warnings.
+  const primaryConversions = activeConversions.filter(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (r) => (r as any).conversion_action?.primary_for_goal === true
+  );
   const { start: staleStart } = (() => {
     const d = new Date(); d.setDate(d.getDate() - 90);
     return { start: d.toISOString().slice(0, 10) };
   })();
   const { end: staleEnd } = last30Days();
-  const activeIds = activeConversions.map((r) => r.conversion_action?.id).filter(Boolean);
+  const activeIds = primaryConversions.map((r) => r.conversion_action?.id).filter(Boolean);
   const recentlyFiredIds = new Set<number | string>();
   if (activeIds.length > 0) {
     const recentRows = await safeQuery(
@@ -522,7 +528,7 @@ async function fetchMeasurementSignals(customer: Customer): Promise<MeasurementS
   }
   let staleConversionCount   = 0;
   let neverFiredConversionCount = 0;
-  for (const row of activeConversions) {
+  for (const row of primaryConversions) {
     const id = row.conversion_action?.id;
     if (id == null || !recentlyFiredIds.has(id)) neverFiredConversionCount++;
   }
