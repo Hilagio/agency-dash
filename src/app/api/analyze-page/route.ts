@@ -105,7 +105,80 @@ function extractContent(html: string) {
   const detectedTools     = TRACKING_TOOLS.filter(t => t.pattern.test(html)).map(t => t.name);
   const detectedAttrib    = detectedTools.filter(n => ATTRIBUTION_TOOLS.includes(n));
 
-  return { title, metaDesc, h1s, h2s, h3s, buttons, ctaLinks, bodyText, trustSignals, detectedTools, detectedAttrib };
+  // CSS partner detection from page source
+  const CSS_PARTNERS = [
+    { name: "ProductHero",  pattern: /producthero/i },
+    { name: "Bigshopper",   pattern: /bigshopper/i },
+    { name: "ShopForward",  pattern: /shopforward/i },
+    { name: "Channable",    pattern: /channable/i },
+    { name: "Echelonn",     pattern: /echelonn/i },
+    { name: "Shoptimised",  pattern: /shoptimised/i },
+    { name: "Kliken",       pattern: /kliken/i },
+    { name: "Feedonomics",  pattern: /feedonomics/i },
+    { name: "DataFeedWatch", pattern: /datafeedwatch/i },
+  ];
+  const detectedCss = CSS_PARTNERS.filter(p => p.pattern.test(html)).map(p => p.name);
+
+  return { title, metaDesc, h1s, h2s, h3s, buttons, ctaLinks, bodyText, trustSignals, detectedTools, detectedAttrib, detectedCss };
+}
+
+// Try to detect CSS partner from Google Shopping SERP by searching for the domain
+async function detectCssFromShopping(domain: string, productKeyword: string): Promise<string | null> {
+  try {
+    const query = encodeURIComponent(`${productKeyword} site:${domain}`);
+    const serpUrl = `https://www.google.nl/search?q=${query}&tbm=shop&hl=nl&gl=nl&num=10`;
+    const res = await Promise.race([
+      fetch(serpUrl, {
+        headers: {
+          "User-Agent":      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+          "Accept":          "text/html,application/xhtml+xml;q=0.9,*/*;q=0.8",
+          "Accept-Language": "nl-NL,nl;q=0.9,en;q=0.8",
+          "Cache-Control":   "no-cache",
+        },
+      }),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error("SERP timeout")), 8_000)),
+    ]);
+    if (!res.ok) return null;
+    const html = await res.text();
+
+    // Google Shopping shows CSS as "Van [partner]" (NL) or "By [partner]" (EN)
+    // Pattern: the attribution appears near the merchant name in Shopping results
+    // Look for the domain in context, then find nearby "Van" attribution
+    const domainBase = domain.replace(/^www\./, "");
+    const domainEscaped = domainBase.replace(/\./g, "\\.");
+
+    // Find the block containing this domain and extract CSS attribution
+    // Google encodes merchant info in data attributes and JSON blobs
+    const lowerHtml = html.toLowerCase();
+    const domainIdx = lowerHtml.indexOf(domainBase.toLowerCase());
+    if (domainIdx === -1) return null;
+
+    // Search in a ~3000 char window around the domain mention
+    const window = html.slice(Math.max(0, domainIdx - 500), domainIdx + 2500);
+
+    // "Van [Partner]" is the Dutch CSS label in Shopping results
+    const vanMatch = window.match(/[Vv]an\s+([A-Za-z][A-Za-z0-9\s]{2,30}?)(?:<|"|'|&|\\n)/);
+    if (vanMatch?.[1]) {
+      const candidate = vanMatch[1].trim();
+      // Filter out generic words like "Google", domain names, or garbage
+      if (candidate.length > 2 && candidate.length < 40 && !/^(google|bing|shopping|web|ads)$/i.test(candidate)) {
+        return candidate === "Google" ? "Google (no CSS partner — paying full CPC premium)" : candidate;
+      }
+    }
+
+    // English fallback: "By [Partner]"
+    const byMatch = window.match(/[Bb]y\s+([A-Z][A-Za-z0-9\s]{2,30}?)(?:<|"|'|&|\n)/);
+    if (byMatch?.[1]) {
+      const candidate = byMatch[1].trim();
+      if (candidate.length > 2 && candidate.length < 40) {
+        return candidate === "Google" ? "Google (no CSS partner)" : candidate;
+      }
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -147,6 +220,11 @@ export async function POST(req: NextRequest) {
   const c = extractContent(html);
   const domain = parsedUrl.hostname;
 
+  // Try to detect CSS partner from Google Shopping SERP (non-blocking — run in parallel with content extraction)
+  // Use the first H1 or title as the product keyword for the search
+  const productKeyword = c.h1s[0] ?? c.title.split("|")[0].trim() ?? domain;
+  const cssFromSerp = await detectCssFromShopping(domain, productKeyword).catch(() => null);
+
   const ts = c.trustSignals;
 
   // Payment methods present
@@ -175,16 +253,28 @@ export async function POST(req: NextRequest) {
     `Payment icons visible: ${paymentMethods.length > 0 ? paymentMethods.join(", ") : "NONE DETECTED — major trust gap for checkout"}`,
   ].join("\n");
 
+  // CSS partner summary
+  const cssPartner = cssFromSerp ?? (c.detectedCss.length > 0 ? c.detectedCss[0] : null);
+  const cssLine = cssPartner
+    ? `CSS PARTNER (Google Shopping): ${cssPartner}`
+    : c.detectedCss.length > 0
+    ? `CSS PARTNER (detected on page): ${c.detectedCss.join(", ")}`
+    : `CSS PARTNER: NOT DETECTED — if running Shopping ads they may be paying Google's standard CPC (no CSS discount). Switching to ProductHero, Bigshopper, or ShopForward saves ~20% on every Shopping click.`;
+
   // Tracking / attribution tech stack
-  const trackingSection = c.detectedTools.length > 0
-    ? `TRACKING & ANALYTICS DETECTED:\n${c.detectedTools.map(t => `  - ${t}`).join("\n")}${
-        c.detectedAttrib.length >= 2
-          ? `\n\n⚠ DOUBLE ATTRIBUTION WARNING: ${c.detectedAttrib.join(" + ")} are both active. These tools measure conversions independently — they will double-count orders and inflate ROAS in both dashboards. One must be the source of truth.`
-          : c.detectedAttrib.length === 1
-          ? `\n  Attribution tool: ${c.detectedAttrib[0]}`
-          : ""
-      }`
-    : "TRACKING: No major tracking scripts detected in page source (may be loaded async or via GTM)";
+  const trackingSection = [
+    cssLine,
+    "",
+    c.detectedTools.length > 0
+      ? `TRACKING & ANALYTICS DETECTED:\n${c.detectedTools.map(t => `  - ${t}`).join("\n")}${
+          c.detectedAttrib.length >= 2
+            ? `\n\n⚠ DOUBLE ATTRIBUTION WARNING: ${c.detectedAttrib.join(" + ")} are both active. These tools measure conversions independently — they will double-count orders and inflate ROAS in both dashboards. One must be the source of truth.`
+            : c.detectedAttrib.length === 1
+            ? `\n  Attribution tool: ${c.detectedAttrib[0]}`
+            : ""
+        }`
+      : "TRACKING: No major tracking scripts detected in page source (may be loaded async or via GTM)",
+  ].join("\n");
 
   const ctaSet = [...new Set([...c.buttons, ...c.ctaLinks])].filter(Boolean).slice(0, 15);
 
@@ -225,6 +315,7 @@ Write EXACTLY these five sections with these exact headers:
 
 ## Tracking & Tech Stack
 Flag any issues with the detected tracking setup:
+- CSS PARTNER: if detected, name the partner and note what it means. If "Google (no CSS partner)" or not detected: explain that using ProductHero, Bigshopper, or ShopForward as a CSS saves ~20% on every Shopping click — this is an immediate cost saving we can implement.
 - If DOUBLE ATTRIBUTION WARNING is present: explain the risk in plain terms and the fix (pick one attribution source of truth)
 - If cookie consent tool is missing or undetected: flag as a GDPR/tracking risk
 - Note anything unusual or missing from the tech stack that would affect data quality for Google Ads
