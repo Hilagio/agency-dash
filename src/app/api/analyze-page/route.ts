@@ -68,9 +68,44 @@ function extractContent(html: string) {
     hasSocialProof: /\d[\d,]+\s*(customers|clients|orders|bestellingen|reviews)|joined by/i.test(html),
     hasPrice:       /<.*price|prijs|€[\d,.]+|\$[\d,.]+|£[\d,.]+/i.test(html),
     hasBadges:      /badge|award|certified|keurmerk|winner|iso\s*\d+/i.test(html),
+    // Payment methods — absence is a friction point for Dutch/EU ecommerce
+    hasIdeal:       /ideal|iDEAL/i.test(html),
+    hasKlarna:      /klarna/i.test(html),
+    hasPaypal:      /paypal/i.test(html),
+    hasAfterPay:    /afterpay|clearpay/i.test(html),
+    hasCreditCard:  /visa|mastercard|maestro|american express|amex/i.test(html),
+    hasMollie:      /mollie/i.test(html),
+    // Cookie consent
+    hasCookieBanner: /cookiebot|cookieconsent|cookie.?notice|cookie.?banner|cookie.?wall|cookiehub|axeptio|onetrust/i.test(html),
   };
 
-  return { title, metaDesc, h1s, h2s, h3s, buttons, ctaLinks, bodyText, trustSignals };
+  // Attribution & tracking tool detection — flag duplicates as a tracking risk
+  const TRACKING_TOOLS = [
+    { name: "Google Analytics 4",  pattern: /gtag\(|G-[A-Z0-9]{8,}|google-analytics\.com\/g\/collect/i },
+    { name: "Google Tag Manager",  pattern: /googletagmanager\.com\/gtm/i },
+    { name: "Meta Pixel",          pattern: /fbq\(|facebook\.com\/tr\b|connect\.facebook\.net/i },
+    { name: "Trackbee",            pattern: /trackbee/i },
+    { name: "Wetracked",           pattern: /wetracked/i },
+    { name: "Triple Whale",        pattern: /triplewhale|pixel\.triplewhale/i },
+    { name: "Northbeam",           pattern: /northbeam/i },
+    { name: "Elevar",              pattern: /elevar/i },
+    { name: "Littledata",          pattern: /littledata/i },
+    { name: "Rockerbox",           pattern: /rockerbox/i },
+    { name: "Hyros",               pattern: /hyros/i },
+    { name: "TrueROAS",            pattern: /trueroas/i },
+    { name: "Klaviyo",             pattern: /klaviyo/i },
+    { name: "Hotjar",              pattern: /hotjar/i },
+    { name: "Microsoft Clarity",   pattern: /clarity\.ms|microsoft.*clarity/i },
+    { name: "Snapchat Pixel",      pattern: /sc-static\.net|snapchat.*pixel/i },
+    { name: "TikTok Pixel",        pattern: /analytics\.tiktok\.com|tiktok.*pixel/i },
+    { name: "Pinterest Tag",       pattern: /pintrk\(|ct\.pinterest\.com/i },
+  ];
+  // Attribution tools specifically (those that claim to do cross-channel attribution)
+  const ATTRIBUTION_TOOLS = ["Trackbee", "Wetracked", "Triple Whale", "Northbeam", "Elevar", "Littledata", "Rockerbox", "Hyros", "TrueROAS"];
+  const detectedTools     = TRACKING_TOOLS.filter(t => t.pattern.test(html)).map(t => t.name);
+  const detectedAttrib    = detectedTools.filter(n => ATTRIBUTION_TOOLS.includes(n));
+
+  return { title, metaDesc, h1s, h2s, h3s, buttons, ctaLinks, bodyText, trustSignals, detectedTools, detectedAttrib };
 }
 
 export async function POST(req: NextRequest) {
@@ -113,19 +148,43 @@ export async function POST(req: NextRequest) {
   const domain = parsedUrl.hostname;
 
   const ts = c.trustSignals;
+
+  // Payment methods present
+  const paymentMethods = [
+    ts.hasIdeal      && "iDEAL",
+    ts.hasKlarna     && "Klarna",
+    ts.hasPaypal     && "PayPal",
+    ts.hasAfterPay   && "Afterpay/Clearpay",
+    ts.hasCreditCard && "Visa/Mastercard/Maestro",
+    ts.hasMollie     && "Mollie",
+  ].filter(Boolean) as string[];
+
   const trustLines = [
-    ts.hasReviews     ? "Reviews/ratings: YES" : "Reviews/ratings: MISSING",
-    ts.hasGuarantee   ? "Money-back/returns: YES" : "Money-back/returns: MISSING",
-    ts.hasShipping    ? "Shipping info: YES" : "Shipping info: MISSING",
-    ts.hasPhone       ? "Phone number: YES" : "Phone number: MISSING",
-    ts.hasLiveChat    ? "Live chat: YES" : "Live chat: MISSING",
-    ts.hasVideo       ? "Video: YES" : "Video: MISSING",
-    ts.hasFaq         ? "FAQ: YES" : "FAQ: MISSING",
-    ts.hasUrgency     ? "Urgency/scarcity: YES" : "Urgency/scarcity: MISSING",
-    ts.hasSocialProof ? "Social proof numbers: YES" : "Social proof numbers: MISSING",
-    ts.hasPrice       ? "Pricing visible: YES" : "Pricing visible: MISSING",
-    ts.hasBadges      ? "Trust badges/awards: YES" : "Trust badges/awards: MISSING",
+    ts.hasReviews      ? "Reviews/ratings: YES" : "Reviews/ratings: MISSING",
+    ts.hasGuarantee    ? "Money-back/returns: YES" : "Money-back/returns: MISSING",
+    ts.hasShipping     ? "Shipping info: YES" : "Shipping info: MISSING",
+    ts.hasPhone        ? "Phone number: YES" : "Phone number: MISSING",
+    ts.hasLiveChat     ? "Live chat: YES" : "Live chat: MISSING",
+    ts.hasVideo        ? "Video: YES" : "Video: MISSING",
+    ts.hasFaq          ? "FAQ: YES" : "FAQ: MISSING",
+    ts.hasUrgency      ? "Urgency/scarcity: YES" : "Urgency/scarcity: MISSING",
+    ts.hasSocialProof  ? "Social proof numbers: YES" : "Social proof numbers: MISSING",
+    ts.hasPrice        ? "Pricing visible: YES" : "Pricing visible: MISSING",
+    ts.hasBadges       ? "Trust badges/awards: YES" : "Trust badges/awards: MISSING",
+    ts.hasCookieBanner ? "Cookie consent tool: YES" : "Cookie consent tool: NOT DETECTED — may cause tracking gaps",
+    `Payment icons visible: ${paymentMethods.length > 0 ? paymentMethods.join(", ") : "NONE DETECTED — major trust gap for checkout"}`,
   ].join("\n");
+
+  // Tracking / attribution tech stack
+  const trackingSection = c.detectedTools.length > 0
+    ? `TRACKING & ANALYTICS DETECTED:\n${c.detectedTools.map(t => `  - ${t}`).join("\n")}${
+        c.detectedAttrib.length >= 2
+          ? `\n\n⚠ DOUBLE ATTRIBUTION WARNING: ${c.detectedAttrib.join(" + ")} are both active. These tools measure conversions independently — they will double-count orders and inflate ROAS in both dashboards. One must be the source of truth.`
+          : c.detectedAttrib.length === 1
+          ? `\n  Attribution tool: ${c.detectedAttrib[0]}`
+          : ""
+      }`
+    : "TRACKING: No major tracking scripts detected in page source (may be loaded async or via GTM)";
 
   const ctaSet = [...new Set([...c.buttons, ...c.ctaLinks])].filter(Boolean).slice(0, 15);
 
@@ -140,6 +199,8 @@ CTAs / BUTTONS: ${ctaSet.join(" | ") || "none detected"}
 
 TRUST SIGNAL SCAN:
 ${trustLines}
+
+${trackingSection}
 
 PAGE TEXT SAMPLE:
 ${c.bodyText}`;
@@ -161,6 +222,12 @@ Write EXACTLY these five sections with these exact headers:
 
 ## What's Missing
 4–5 conversion elements that are absent but that serious competitors have. Each item: what's missing, why it matters, and what it's costing them in conversion rate.
+
+## Tracking & Tech Stack
+Flag any issues with the detected tracking setup:
+- If DOUBLE ATTRIBUTION WARNING is present: explain the risk in plain terms and the fix (pick one attribution source of truth)
+- If cookie consent tool is missing or undetected: flag as a GDPR/tracking risk
+- Note anything unusual or missing from the tech stack that would affect data quality for Google Ads
 
 ## Google Ads Alignment
 4 specific observations for someone running Google Ads to this page:
