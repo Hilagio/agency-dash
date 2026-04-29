@@ -22,7 +22,10 @@ function stripTags(html: string): string {
     .trim();
 }
 
-function extractContent(html: string) {
+function extractContent(html: string, gtmJs: string = "") {
+  // scanSource combines page HTML + GTM container JS (if available) for tool detection
+  const scanSource = html + "\n" + gtmJs;
+
   const clean = html
     .replace(/<script[\s\S]*?<\/script>/gi, "")
     .replace(/<style[\s\S]*?<\/style>/gi, "")
@@ -56,30 +59,43 @@ function extractContent(html: string) {
       .replace(/<aside[\s\S]*?<\/aside>/gi, "")
   ).slice(0, 6000);
 
+  // iDEAL: require exact brand capitalisation OR payment-context pattern to avoid matching "ideal" in body copy
+  const hasIdeal =
+    /\biDEAL\b/.test(html) ||
+    /ideal[-_](logo|icon|payment|method|button)|payment[-_]ideal|betaalmethode.*ideal/i.test(html);
+
+  // Cookie consent: expanded to cover CookieYes, Pandectes, IAB TCF 2.0, Consent Mode v2, and many more
+  const hasCookieBanner =
+    /cookiebot\.com|cookieyes|cdn\.cookieyes\.com|pandectes\.io|cookiehub\.com|axeptio|onetrust|cookieinformation\.com|termly\.io|iubenda\.com|usercentrics|consentmanager\.net|complianz|borlabs.?cookie|wp.?gdpr|cookieconsent|cookie[._-]?notice|cookie[._-]?banner|cookie[._-]?wall|__cmp\s*\(|__tcfapi\s*\(|gtag\s*\(\s*['"]consent['"]/i.test(scanSource);
+
+  // Consent Mode v2 specifically (useful to call out as a positive signal)
+  const hasConsentModeV2 =
+    /gtag\s*\(\s*['"]consent['"]\s*,\s*['"]default['"]/i.test(scanSource);
+
   const trustSignals = {
-    hasReviews:     /review|rating|stars|trustpilot|kiyoh|feedback|beoordelingen/i.test(html),
-    hasGuarantee:   /guarantee|garanti|money.back|retour|teruggave|not satisfied/i.test(html),
-    hasShipping:    /shipping|bezorg|gratis.*levering|free.*deliver|verzend/i.test(html),
-    hasPhone:       /\+\d{2}[\s-]?\d{7,}|\(\d{2,}\)[\s-]?\d+|tel:/i.test(html),
-    hasLiveChat:    /livechat|live.?chat|intercom|drift|zendesk|tidio|crisp/i.test(html),
-    hasVideo:       /<video|youtube\.com\/embed|vimeo\.com\/video|player\.vimeo/i.test(html),
-    hasFaq:         /faq|frequently asked|veelgestelde|common question/i.test(html),
-    hasUrgency:     /countdown|limited.*stock|beperkt.*voorraad|only \d+ left|ends in/i.test(html),
-    hasSocialProof: /\d[\d,]+\s*(customers|clients|orders|bestellingen|reviews)|joined by/i.test(html),
-    hasPrice:       /<.*price|prijs|€[\d,.]+|\$[\d,.]+|£[\d,.]+/i.test(html),
-    hasBadges:      /badge|award|certified|keurmerk|winner|iso\s*\d+/i.test(html),
+    hasReviews:       /review|rating|stars|trustpilot|kiyoh|feedback|beoordelingen/i.test(html),
+    hasGuarantee:     /guarantee|garanti|money.back|retour|teruggave|not satisfied/i.test(html),
+    hasShipping:      /shipping|bezorg|gratis.*levering|free.*deliver|verzend/i.test(html),
+    hasPhone:         /\+\d{2}[\s-]?\d{7,}|\(\d{2,}\)[\s-]?\d+|tel:/i.test(html),
+    hasLiveChat:      /livechat|live.?chat|intercom|drift|zendesk|tidio|crisp/i.test(html),
+    hasVideo:         /<video|youtube\.com\/embed|vimeo\.com\/video|player\.vimeo/i.test(html),
+    hasFaq:           /faq|frequently asked|veelgestelde|common question/i.test(html),
+    hasUrgency:       /countdown|limited.*stock|beperkt.*voorraad|only \d+ left|ends in/i.test(html),
+    hasSocialProof:   /\d[\d,]+\s*(customers|clients|orders|bestellingen|reviews)|joined by/i.test(html),
+    hasPrice:         /<.*price|prijs|€[\d,.]+|\$[\d,.]+|£[\d,.]+/i.test(html),
+    hasBadges:        /badge|award|certified|keurmerk|winner|iso\s*\d+/i.test(html),
     // Payment methods — absence is a friction point for Dutch/EU ecommerce
-    hasIdeal:       /ideal|iDEAL/i.test(html),
-    hasKlarna:      /klarna/i.test(html),
-    hasPaypal:      /paypal/i.test(html),
-    hasAfterPay:    /afterpay|clearpay/i.test(html),
-    hasCreditCard:  /visa|mastercard|maestro|american express|amex/i.test(html),
-    hasMollie:      /mollie/i.test(html),
-    // Cookie consent
-    hasCookieBanner: /cookiebot|cookieconsent|cookie.?notice|cookie.?banner|cookie.?wall|cookiehub|axeptio|onetrust/i.test(html),
+    hasIdeal,
+    hasKlarna:        /klarna/i.test(html),
+    hasPaypal:        /paypal/i.test(html),
+    hasAfterPay:      /afterpay|clearpay/i.test(html),
+    hasCreditCard:    /visa|mastercard|maestro|american express|amex/i.test(html),
+    hasMollie:        /mollie/i.test(html),
+    hasCookieBanner,
+    hasConsentModeV2,
   };
 
-  // Attribution & tracking tool detection — flag duplicates as a tracking risk
+  // Attribution & tracking tool detection — scan both page source and GTM container
   const TRACKING_TOOLS = [
     { name: "Google Analytics 4",  pattern: /gtag\(|G-[A-Z0-9]{8,}|google-analytics\.com\/g\/collect/i },
     { name: "Google Tag Manager",  pattern: /googletagmanager\.com\/gtm/i },
@@ -102,24 +118,42 @@ function extractContent(html: string) {
   ];
   // Attribution tools specifically (those that claim to do cross-channel attribution)
   const ATTRIBUTION_TOOLS = ["Trackbee", "Wetracked", "Triple Whale", "Northbeam", "Elevar", "Littledata", "Rockerbox", "Hyros", "TrueROAS"];
-  const detectedTools     = TRACKING_TOOLS.filter(t => t.pattern.test(html)).map(t => t.name);
+  const detectedTools     = TRACKING_TOOLS.filter(t => t.pattern.test(scanSource)).map(t => t.name);
   const detectedAttrib    = detectedTools.filter(n => ATTRIBUTION_TOOLS.includes(n));
 
-  // CSS partner detection from page source
+  // CSS partner detection — scan both page source and GTM container
   const CSS_PARTNERS = [
-    { name: "ProductHero",  pattern: /producthero/i },
-    { name: "Bigshopper",   pattern: /bigshopper/i },
-    { name: "ShopForward",  pattern: /shopforward/i },
-    { name: "Channable",    pattern: /channable/i },
-    { name: "Echelonn",     pattern: /echelonn/i },
-    { name: "Shoptimised",  pattern: /shoptimised/i },
-    { name: "Kliken",       pattern: /kliken/i },
-    { name: "Feedonomics",  pattern: /feedonomics/i },
+    { name: "ProductHero",   pattern: /producthero/i },
+    { name: "Bigshopper",    pattern: /bigshopper/i },
+    { name: "ShopForward",   pattern: /shopforward/i },
+    { name: "Channable",     pattern: /channable/i },
+    { name: "Echelonn",      pattern: /echelonn/i },
+    { name: "Shoptimised",   pattern: /shoptimised/i },
+    { name: "Kliken",        pattern: /kliken/i },
+    { name: "Feedonomics",   pattern: /feedonomics/i },
     { name: "DataFeedWatch", pattern: /datafeedwatch/i },
   ];
-  const detectedCss = CSS_PARTNERS.filter(p => p.pattern.test(html)).map(p => p.name);
+  const detectedCss = CSS_PARTNERS.filter(p => p.pattern.test(scanSource)).map(p => p.name);
 
   return { title, metaDesc, h1s, h2s, h3s, buttons, ctaLinks, bodyText, trustSignals, detectedTools, detectedAttrib, detectedCss };
+}
+
+// Fetch GTM container JS to detect tools loaded dynamically via GTM
+async function fetchGtmContainer(html: string): Promise<string> {
+  const gtmId = html.match(/GTM-[A-Z0-9]+/)?.[0];
+  if (!gtmId) return "";
+  try {
+    const res = await Promise.race([
+      fetch(`https://www.googletagmanager.com/gtm.js?id=${gtmId}`, {
+        headers: { "User-Agent": "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)" },
+      }),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error("GTM timeout")), 6_000)),
+    ]);
+    if (!res.ok) return "";
+    return await res.text();
+  } catch {
+    return "";
+  }
 }
 
 // Try to detect CSS partner from Google Shopping SERP by searching for the domain
@@ -217,13 +251,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: err instanceof Error ? err.message : "Failed to fetch page" }, { status: 422 });
   }
 
-  const c = extractContent(html);
   const domain = parsedUrl.hostname;
 
-  // Try to detect CSS partner from Google Shopping SERP (non-blocking — run in parallel with content extraction)
-  // Use the first H1 or title as the product keyword for the search
-  const productKeyword = c.h1s[0] ?? c.title.split("|")[0].trim() ?? domain;
-  const cssFromSerp = await detectCssFromShopping(domain, productKeyword).catch(() => null);
+  // Extract basic content first (needed for product keyword)
+  const cPrelim = extractContent(html);
+  const productKeyword = cPrelim.h1s[0] ?? cPrelim.title.split("|")[0].trim() ?? domain;
+
+  // Fetch GTM container + SERP in parallel (both non-blocking)
+  const [gtmJs, cssFromSerp] = await Promise.all([
+    fetchGtmContainer(html).catch(() => ""),
+    detectCssFromShopping(domain, productKeyword).catch(() => null),
+  ]);
+  const gtmFetched = gtmJs.length > 0;
+
+  // Re-extract with GTM container included for more accurate tool detection
+  const c = extractContent(html, gtmJs);
 
   const ts = c.trustSignals;
 
@@ -249,7 +291,11 @@ export async function POST(req: NextRequest) {
     ts.hasSocialProof  ? "Social proof numbers: YES" : "Social proof numbers: MISSING",
     ts.hasPrice        ? "Pricing visible: YES" : "Pricing visible: MISSING",
     ts.hasBadges       ? "Trust badges/awards: YES" : "Trust badges/awards: MISSING",
-    ts.hasCookieBanner ? "Cookie consent tool: YES" : "Cookie consent tool: NOT DETECTED — may cause tracking gaps",
+    ts.hasCookieBanner
+      ? `Cookie consent tool: YES${ts.hasConsentModeV2 ? " (Consent Mode v2 active — good for GA4/Google Ads)" : ""}`
+      : gtmFetched
+        ? "Cookie consent tool: NOT DETECTED (page HTML + GTM container checked)"
+        : "Cookie consent tool: NOT FOUND IN STATIC HTML — may load via GTM. Verify manually.",
     `Payment icons visible: ${paymentMethods.length > 0 ? paymentMethods.join(", ") : "NONE DETECTED — major trust gap for checkout"}`,
   ].join("\n");
 
