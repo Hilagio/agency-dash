@@ -2661,8 +2661,8 @@ export default function AccountPage() {
   const [error, setError] = useState<string | null>(null);
   const [showWizard, setShowWizard] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     setError(null);
     try {
       const [acctRes, snapRes, orgRes] = await Promise.all([
@@ -2694,7 +2694,7 @@ export default function AccountPage() {
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unknown error");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [id]);
 
@@ -2724,7 +2724,7 @@ export default function AccountPage() {
         setRescoreError(body.error ?? `Scoring failed (${res.status})`);
         return;
       }
-      await load();
+      await load(true); // silent: don't replace the page with a loading spinner
     } catch (e) {
       setRescoreError(e instanceof Error ? e.message : "Network error");
     } finally {
