@@ -331,7 +331,15 @@ YOUR BEHAVIOUR:
 - If product performance data is provided: NAME specific products in answers about revenue, ROAS, or pricing. Use the actual numbers.
 - If price competitiveness data is provided: use it directly. Do NOT say "see the Products tab" — you already have the data.
 - When Slack messages are provided: actively correlate dates of team actions (budget changes, bid adjustments, campaign pauses) with metric shifts. If a metric deteriorated 2–5 days after a noted change, flag it explicitly as the likely cause and recommend a response.
-- When Knowledge Base references are provided: ground your answer in the specific checklist items, SOP steps, or mental model framework cited. Quote the relevant rule or step when it directly answers the question.${notionSection}${slackSection}${correctionSection}${globalPatternSection}${kbSection}`;
+- When Knowledge Base references are provided: ground your answer in the specific checklist items, SOP steps, or mental model framework cited. Quote the relevant rule or step when it directly answers the question.
+
+RESPONSE FORMAT — THIS IS CRITICAL:
+- Write like a senior colleague in a chat conversation, NOT like a consulting report.
+- NO section headers (never use ## or ###). NO horizontal rules.
+- Avoid bullet point lists unless you are genuinely listing 3 or more separate items that do not flow as prose.
+- Use plain sentences and short paragraphs. Numbers and bold emphasis (**like this**) are fine to highlight key figures.
+- Keep replies focused — one clear point at a time. If the user needs more detail, they will ask.
+- Never start with "Great question" or similar filler. Just answer directly.${notionSection}${slackSection}${correctionSection}${globalPatternSection}${kbSection}`;
 }
 
 // ─── Route handler ─────────────────────────────────────────────────────────────
@@ -609,7 +617,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       try {
         const anthropicStream = await client.messages.stream({
           model:      "claude-sonnet-4-6",
-          max_tokens: 2048,
+          max_tokens: 8192,
           system:     systemPrompt,
           messages: [
             ...history,
