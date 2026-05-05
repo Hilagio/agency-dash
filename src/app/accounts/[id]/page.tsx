@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, RefreshCw, MessageSquare, ListChecks, BarChart2, Loader2, Search, BookOpen, ClipboardList, Send, Pencil, X, CheckSquare, Sparkles, Package, Brain, FlaskConical, Zap, Copy, Check, Users, Wand2 } from "lucide-react";
 import { ScoreBuckets } from "@/components/ScoreBuckets";
@@ -2648,6 +2648,7 @@ const CONSTRAINT_GLOW: Record<string, string> = {
 
 export default function AccountPage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
   const [account, setAccount] = useState<Account | null>(null);
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [actions, setActions] = useState<Action[]>([]);
@@ -2660,6 +2661,14 @@ export default function AccountPage() {
   const [rescoreError, setRescoreError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showWizard, setShowWizard] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const deleteAccount = async () => {
+    setDeleting(true);
+    await fetch(`/api/accounts/${id}`, { method: "DELETE" });
+    router.push("/");
+  };
 
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -2925,6 +2934,39 @@ export default function AccountPage() {
               ? `Scored ${new Date(snapshot.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
               : "Not scored yet"}
           </div>
+
+          {/* Delete account */}
+          {confirmDelete ? (
+            <div style={{ marginTop: 10, padding: "8px 10px", background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 8 }}>
+              <p style={{ fontSize: 11, color: "#ef4444", margin: "0 0 8px", lineHeight: 1.4 }}>
+                Remove this account and all its data? This cannot be undone.
+              </p>
+              <div style={{ display: "flex", gap: 6 }}>
+                <button
+                  onClick={deleteAccount}
+                  disabled={deleting}
+                  style={{ flex: 1, padding: "5px 0", borderRadius: 6, background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.3)", color: "#ef4444", fontSize: 11, fontWeight: 600, cursor: deleting ? "not-allowed" : "pointer" }}
+                >
+                  {deleting ? <Loader2 size={10} className="animate-spin" style={{ display: "inline" }} /> : "Yes, remove"}
+                </button>
+                <button
+                  onClick={() => setConfirmDelete(false)}
+                  style={{ padding: "5px 8px", borderRadius: 6, background: "none", border: "1px solid var(--border-2)", color: "var(--text-faint)", fontSize: 11, cursor: "pointer" }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => setConfirmDelete(true)}
+              style={{ marginTop: 8, width: "100%", padding: "5px 0", background: "none", border: "none", color: "var(--text-very-dim)", fontSize: 11, cursor: "pointer", textAlign: "center" }}
+              onMouseEnter={e => (e.currentTarget.style.color = "#ef4444")}
+              onMouseLeave={e => (e.currentTarget.style.color = "var(--text-very-dim)")}
+            >
+              Remove account
+            </button>
+          )}
         </div>
       </aside>
 
