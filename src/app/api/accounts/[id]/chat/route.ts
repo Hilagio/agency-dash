@@ -83,7 +83,12 @@ function buildSignalContext(signals: ConstraintSignals, currency: string): strin
   lines.push(`  CVR (last 14d): ${pct(c.conversionRate, 2)}`);
   if (c.conversionRateBaseline > 0) {
     const trend = ((c.conversionRate / c.conversionRateBaseline) - 1) * 100;
-    lines.push(`  CVR vs 6-month baseline: ${trend >= 0 ? "+" : ""}${trend.toFixed(1)}% (baseline: ${pct(c.conversionRateBaseline, 2)})`);
+    // Baselines above 10% are almost always inflated by broken tracking history.
+    // Flag this explicitly so the AI doesn't treat them as meaningful benchmarks.
+    const baselineWarning = c.conversionRateBaseline > 0.10
+      ? ` ⚠ UNRELIABLE — baseline >10% strongly indicates historical tracking errors (e.g. non-purchase events counted as conversions). Do NOT cite this as a real CVR decline. Use the industry benchmark instead.`
+      : "";
+    lines.push(`  CVR vs 6-month baseline: ${trend >= 0 ? "+" : ""}${trend.toFixed(1)}% (baseline: ${pct(c.conversionRateBaseline, 2)})${baselineWarning}`);
   }
   if (c.industryBenchmarkConversionRate > 0) {
     lines.push(`  Industry CVR benchmark: ${pct(c.industryBenchmarkConversionRate, 2)}`);
@@ -594,7 +599,9 @@ export async function POST(req: NextRequest, { params }: Params) {
     kbContext,
     isLeadGen,
     isShoppingAccount,
-  });
+  }) + (intelligenceBrief
+    ? `\n\n---\nINTELLIGENCE BRIEF (freshly generated — these numbers are MORE ACCURATE than the rawSignals above which may be from a stale snapshot):\n${intelligenceBrief}\n\nCRITICAL: When the brief above and the rawSignals conflict on any metric (CVR, ROAS, CTR, baseline, etc.), ALWAYS use the brief's figures — they were pulled from Google Ads moments ago. Do not blend or average them. Never cite the rawSignal figure if it contradicts the brief.`
+    : "");
 
   const history = (session.messages ?? []).map(m => ({
     role:    m.role as "user" | "assistant",
