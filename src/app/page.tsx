@@ -210,9 +210,15 @@ function AccountRow({
 
       {/* Last scored */}
       <td style={{ padding: "14px 16px", whiteSpace: "nowrap" }}>
-        <span style={{ fontSize: 12, color: "var(--text-dim)" }}>
-          {snap ? timeAgo(snap.createdAt) : "—"}
-        </span>
+        {snap ? (() => {
+          const ageH = (Date.now() - new Date(snap.createdAt).getTime()) / 3_600_000;
+          const stale = ageH > 24;
+          return (
+            <span style={{ fontSize: 12, color: stale ? "#f97316" : "var(--text-dim)" }} title={stale ? "Data >24h old — rescore for fresh signals" : undefined}>
+              {timeAgo(snap.createdAt)}{stale ? " ⚠" : ""}
+            </span>
+          );
+        })() : <span style={{ fontSize: 12, color: "var(--text-faint)" }}>—</span>}
       </td>
 
       {/* Actions */}
@@ -382,7 +388,15 @@ function HomePageInner() {
     setScoringAll(true);
     setScoringProgress(null);
     try {
-      const toScore = accounts;
+      // Only rescore accounts that are stale (>24h old or never scored)
+      const now = Date.now();
+      const toScore = accounts.filter(a => {
+        const snap = a.snapshots[0];
+        if (!snap) return true;
+        const ageH = (now - new Date(snap.createdAt).getTime()) / 3_600_000;
+        return ageH > 24;
+      });
+      if (toScore.length === 0) { setScoringAll(false); return; }
       setScoringProgress({ done: 0, total: toScore.length });
       for (let i = 0; i < toScore.length; i++) {
         await fetch(`/api/accounts/${toScore[i].id}/snapshot?source=google-ads`, { method: "POST" });
@@ -542,25 +556,36 @@ function HomePageInner() {
 
         {/* Actions */}
         <div style={{ padding: "12px 14px", borderTop: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: 6 }}>
-          {accounts.length > 0 && (
-            <button
-              onClick={runScoreAll}
-              disabled={scoringAll || !!scoring}
-              style={{
-                display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-                background: scoringAll ? "var(--surface-2)" : "var(--btn-primary)",
-                border: "none", borderRadius: 7,
-                color: scoringAll ? "var(--text-muted)" : "#fff",
-                fontSize: 12, fontWeight: 600, padding: "8px 14px",
-                cursor: scoringAll || !!scoring ? "not-allowed" : "pointer",
-                opacity: scoringAll || !!scoring ? 0.7 : 1, width: "100%",
-              }}
-            >
-              {scoringAll
-                ? <><Loader2 size={12} className="animate-spin" />{scoringProgress ? `${scoringProgress.done}/${scoringProgress.total}` : "Scoring…"}</>
-                : <><Zap size={12} /> Score all</>}
-            </button>
-          )}
+          {accounts.length > 0 && (() => {
+            const now = Date.now();
+            const staleCount = accounts.filter(a => {
+              const snap = a.snapshots[0];
+              if (!snap) return true;
+              return (now - new Date(snap.createdAt).getTime()) / 3_600_000 > 24;
+            }).length;
+            return (
+              <button
+                onClick={runScoreAll}
+                disabled={scoringAll || !!scoring || staleCount === 0}
+                title={staleCount === 0 ? "All accounts scored within 24h" : `${staleCount} account${staleCount !== 1 ? "s" : ""} not scored in >24h`}
+                style={{
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                  background: scoringAll ? "var(--surface-2)" : staleCount === 0 ? "var(--surface-2)" : "var(--btn-primary)",
+                  border: "none", borderRadius: 7,
+                  color: scoringAll || staleCount === 0 ? "var(--text-muted)" : "#fff",
+                  fontSize: 12, fontWeight: 600, padding: "8px 14px",
+                  cursor: scoringAll || !!scoring || staleCount === 0 ? "not-allowed" : "pointer",
+                  opacity: scoringAll || !!scoring ? 0.7 : 1, width: "100%",
+                }}
+              >
+                {scoringAll
+                  ? <><Loader2 size={12} className="animate-spin" />{scoringProgress ? `${scoringProgress.done}/${scoringProgress.total}` : "Scoring…"}</>
+                  : staleCount === 0
+                    ? <><Zap size={12} /> All up to date</>
+                    : <><Zap size={12} /> Rescore {staleCount} stale</>}
+              </button>
+            );
+          })()}
           <button
             onClick={() => setShowImporter(!showImporter)}
             style={{
