@@ -1238,6 +1238,62 @@ export interface ShoppingOverview {
   labelDistribution:    LabelDistribution[];
 }
 
+/** 31–60 days ago — used for prior-period product comparison */
+function prior30Days(): { start: string; end: string } {
+  const fmt   = (d: Date) => d.toISOString().slice(0, 10);
+  const end   = new Date(); end.setDate(end.getDate() - 31);
+  const start = new Date(); start.setDate(start.getDate() - 60);
+  return { start: fmt(start), end: fmt(end) };
+}
+
+/**
+ * Fetch product-level performance for the prior 30-day period (31–60 days ago).
+ * Returns a lightweight map of itemId → { conversions, revenue, cost } for
+ * period-over-period comparison in the intelligence brief and chat context.
+ */
+export interface PriorProductRow {
+  itemId:      string;
+  title:       string;
+  conversions: number;
+  revenue:     number;
+  cost:        number;
+}
+
+export async function fetchPriorPeriodProducts(
+  customerId: string,
+  orgId?: string,
+): Promise<PriorProductRow[]> {
+  const client   = getClient();
+  const customer = await getCustomer(client, customerId, orgId);
+  const { start, end } = prior30Days();
+
+  const rows = await safeQuery(
+    () => customer.query(`
+      SELECT
+        segments.product_item_id,
+        segments.product_title,
+        metrics.conversions,
+        metrics.conversions_value,
+        metrics.cost_micros
+      FROM shopping_performance_view
+      WHERE segments.date BETWEEN '${start}' AND '${end}'
+        AND (metrics.impressions > 0 OR metrics.cost_micros > 0)
+      ORDER BY metrics.conversions_value DESC, metrics.cost_micros DESC
+      LIMIT 50
+    `),
+    "prior period product performance",
+    20_000
+  );
+
+  return rows.map(r => ({
+    itemId:      String(r.segments?.product_item_id ?? "unknown"),
+    title:       String(r.segments?.product_title   ?? "Unknown product"),
+    conversions: Number(r.metrics?.conversions       ?? 0),
+    revenue:     Number(r.metrics?.conversions_value ?? 0),
+    cost:        Number(r.metrics?.cost_micros       ?? 0) / 1_000_000,
+  }));
+}
+
 export async function fetchProductPerformance(
   customerId: string,
   orgId?: string,

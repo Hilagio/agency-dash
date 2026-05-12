@@ -10,7 +10,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { prisma } from "@/lib/db";
 import { BUCKET_LABELS, BUCKET_DESCRIPTIONS, ConstraintSignals } from "@/lib/engine/types";
-import { fetchDemographics, fetchSearchTermReport, fetchProductPerformance, DemographicRow, SearchTermRow } from "@/lib/integrations/google-ads";
+import { fetchDemographics, fetchSearchTermReport, fetchProductPerformance, fetchPriorPeriodProducts, DemographicRow, SearchTermRow } from "@/lib/integrations/google-ads";
 import { fetchSlackMessages, formatSlackForContext } from "@/lib/integrations/slack";
 import { getMerchantCenterIds, fetchPriceCompetitiveness } from "@/lib/integrations/merchant-center";
 import { getAuthContext, unauthorized, forbidden } from "@/lib/auth";
@@ -456,12 +456,13 @@ export async function POST(req: NextRequest, { params }: Params) {
   let productContext = "";
   if (googleAdsId && !isLeadGen) {
     try {
-      const [productData, mcIds] = await Promise.race([
+      const [productData, priorProducts, mcIds] = await Promise.race([
         Promise.all([
           fetchProductPerformance(googleAdsId, ctx.orgId).catch(() => null),
+          fetchPriorPeriodProducts(googleAdsId, ctx.orgId).catch(() => []),
           getMerchantCenterIds(googleAdsId, ctx.orgId).catch(() => [] as string[]),
         ]),
-        new Promise<[null, string[]]>((_, reject) => setTimeout(() => reject(new Error("product+MCC timed out")), 20_000)),
+        new Promise<[null, [], string[]]>((_, reject) => setTimeout(() => reject(new Error("product+MCC timed out")), 20_000)),
       ]);
 
       let priceRows: { itemId: string; priceDiffPercent: number; status: string }[] = [];
@@ -518,6 +519,65 @@ export async function POST(req: NextRequest, { params }: Params) {
           const above     = priceRows.filter(p => p.status === "above").length;
           const below     = priceRows.filter(p => p.status === "below" || p.status === "competitive").length;
           lines.push(`\nPrice competitiveness (${priceRows.length} products with benchmark data): ${wellAbove} well above market, ${above} above market, ${below} competitive/below market`);
+        }
+
+        // Prior-period comparison (31–60 days ago) — surfaces seasonality shifts and what was working before
+        if (priorProducts && priorProducts.length > 0) {
+          const priorMap = new Map(priorProducts.map(p => [p.itemId, p]));
+          const curr = account.currency === "EUR" ? "€" : account.currency === "GBP" ? "£" : "$";
+
+          // Products that sold well previously but are now stalling
+          const droppedOff = productData.products
+            .filter(p => {
+              const prev = priorMap.get(p.itemId);
+              return prev && prev.conversions >= 2 && p.conversions < prev.conversions * 0.5;
+            })
+            .sort((a, b) => {
+              const pa = priorMap.get(a.itemId)!.conversions;
+              const pb = priorMap.get(b.itemId)!.conversions;
+              return pb - pa;
+            })
+            .slice(0, 6);
+
+          // Products that were invisible before but are converting now
+          const emerging = productData.products
+            .filter(p => {
+              const prev = priorMap.get(p.itemId);
+              return p.conversions >= 2 && (!prev || prev.conversions === 0);
+            })
+            .sort((a, b) => b.conversions - a.conversions)
+            .slice(0, 4);
+
+          if (droppedOff.length > 0 || emerging.length > 0) {
+            lines.push(`\nPERIOD-OVER-PERIOD SHIFT (last 30d vs 31–60 days ago):`);
+            lines.push(`This comparison reveals seasonality, feed changes, or product pivots.`);
+
+            if (droppedOff.length > 0) {
+              lines.push(`Products that sold 31–60d ago but are NOT converting now:`);
+              droppedOff.forEach(p => {
+                const prev = priorMap.get(p.itemId)!;
+                lines.push(`  - "${p.title}": ${prev.conversions.toFixed(0)} sales prev period → ${p.conversions.toFixed(0)} now (-${Math.round((1 - p.conversions / prev.conversions) * 100)}%)`);
+              });
+            }
+
+            if (emerging.length > 0) {
+              lines.push(`Products newly converting in the last 30 days (not in prior period):`);
+              emerging.forEach(p => {
+                lines.push(`  - "${p.title}": ${p.conversions.toFixed(0)} sales now, 0 in prior period | ${curr}${Math.round(p.revenue)} rev`);
+              });
+            }
+          }
+
+          // Products in prior period that don't appear at all in current period
+          const disappeared = priorProducts
+            .filter(p => p.conversions >= 3 && !productData.products.find(c => c.itemId === p.itemId))
+            .slice(0, 4);
+          if (disappeared.length > 0) {
+            lines.push(`Products with sales 31–60d ago that are no longer getting traffic/spend now:`);
+            disappeared.forEach(p => {
+              lines.push(`  - "${p.title}": ${p.conversions.toFixed(0)} sales prev period, 0 impressions/spend now`);
+            });
+          }
         }
 
         productContext = lines.join("\n");

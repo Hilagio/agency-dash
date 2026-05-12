@@ -13,7 +13,7 @@ import { ConstraintSignals, BUCKET_LABELS } from "@/lib/engine/types";
 import { getAuthContext, unauthorized, forbidden } from "@/lib/auth";
 import { AGENCY_PHILOSOPHY } from "@/lib/agencyPhilosophy";
 import { fetchSlackMessages, formatSlackForContext } from "@/lib/integrations/slack";
-import { fetchProductPerformance, fetchCampaignBreakdown } from "@/lib/integrations/google-ads";
+import { fetchProductPerformance, fetchCampaignBreakdown, fetchPriorPeriodProducts } from "@/lib/integrations/google-ads";
 import { getMerchantCenterIds, fetchPriceCompetitiveness } from "@/lib/integrations/merchant-center";
 import { searchKnowledge } from "@/lib/knowledge-search";
 
@@ -186,12 +186,13 @@ export async function POST(_req: NextRequest, { params }: Params) {
       const productTimeout = new Promise<null>((_, reject) =>
         setTimeout(() => reject(new Error("product+MCC fetch timed out")), 20_000)
       );
-      const [productData, mcIds] = await Promise.race([
+      const [productData, priorProducts, mcIds] = await Promise.race([
         Promise.all([
           fetchProductPerformance(account.googleAdsId, ctx.orgId).catch(() => null),
+          fetchPriorPeriodProducts(account.googleAdsId, ctx.orgId).catch(() => []),
           getMerchantCenterIds(account.googleAdsId, ctx.orgId).catch(() => [] as string[]),
         ]),
-        productTimeout.then(() => [null, [] as string[]] as const),
+        productTimeout.then(() => [null, [], [] as string[]] as const),
       ]);
 
       // Price competitiveness — use first Merchant Center ID
@@ -277,6 +278,50 @@ export async function POST(_req: NextRequest, { params }: Params) {
           labelLines.forEach(l => lines.push(l));
           lines.push(`  NOTE: "unlabeled" = new products being tested this week (Villain testing cycle) or products awaiting first impression.`);
           lines.push(`  Sidekicks = too few clicks/conversions to classify yet. Villains = failed test — spending without return. Heroes = proven performers.`);
+        }
+
+        // Prior-period comparison (31–60 days ago) — surfaces seasonality and feed pivots
+        if (priorProducts && priorProducts.length > 0) {
+          const priorMap = new Map(priorProducts.map(p => [p.itemId, p]));
+
+          const droppedOff = productData.products
+            .filter(p => {
+              const prev = priorMap.get(p.itemId);
+              return prev && prev.conversions >= 2 && p.conversions < prev.conversions * 0.5;
+            })
+            .sort((a, b) => (priorMap.get(b.itemId)?.conversions ?? 0) - (priorMap.get(a.itemId)?.conversions ?? 0))
+            .slice(0, 6);
+
+          const emerging = productData.products
+            .filter(p => {
+              const prev = priorMap.get(p.itemId);
+              return p.conversions >= 2 && (!prev || prev.conversions === 0);
+            })
+            .sort((a, b) => b.conversions - a.conversions)
+            .slice(0, 4);
+
+          const disappeared = priorProducts
+            .filter(p => p.conversions >= 3 && !productData.products.find(c => c.itemId === p.itemId))
+            .slice(0, 4);
+
+          if (droppedOff.length > 0 || emerging.length > 0 || disappeared.length > 0) {
+            lines.push(`\nPERIOD-OVER-PERIOD SHIFT (last 30d vs 31–60 days ago — use this to spot seasonality, feed pivots, or bid changes):`);
+            if (droppedOff.length > 0) {
+              lines.push(`Products that converted 31–60d ago but are underperforming now:`);
+              droppedOff.forEach(p => {
+                const prev = priorMap.get(p.itemId)!;
+                lines.push(`  - "${p.title}": ${prev.conversions.toFixed(0)} sales → ${p.conversions.toFixed(0)} now (-${Math.round((1 - p.conversions / prev.conversions) * 100)}%)`);
+              });
+            }
+            if (emerging.length > 0) {
+              lines.push(`Products newly converting in the last 30 days (were not converting before):`);
+              emerging.forEach(p => lines.push(`  - "${p.title}": ${p.conversions.toFixed(0)} sales, ${curr}${Math.round(p.revenue)} rev`));
+            }
+            if (disappeared.length > 0) {
+              lines.push(`Products with sales 31–60d ago that are no longer receiving traffic/spend:`);
+              disappeared.forEach(p => lines.push(`  - "${p.title}": ${p.conversions.toFixed(0)} sales prev period, now absent`));
+            }
+          }
         }
 
         productContext = lines.join("\n");
