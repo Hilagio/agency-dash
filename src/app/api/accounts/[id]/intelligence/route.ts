@@ -13,7 +13,7 @@ import { ConstraintSignals, BUCKET_LABELS } from "@/lib/engine/types";
 import { getAuthContext, unauthorized, forbidden } from "@/lib/auth";
 import { AGENCY_PHILOSOPHY } from "@/lib/agencyPhilosophy";
 import { fetchSlackMessages, formatSlackForContext } from "@/lib/integrations/slack";
-import { fetchProductPerformance, fetchCampaignBreakdown, fetchPriorPeriodProducts } from "@/lib/integrations/google-ads";
+import { fetchProductPerformance, fetchCampaignBreakdown, fetchPriorPeriodProducts, fetchScalingReadiness } from "@/lib/integrations/google-ads";
 import { getMerchantCenterIds, fetchPriceCompetitiveness } from "@/lib/integrations/merchant-center";
 import { searchKnowledge } from "@/lib/knowledge-search";
 
@@ -329,6 +329,31 @@ export async function POST(_req: NextRequest, { params }: Params) {
     } catch { /* non-fatal — intelligence still runs without product data */ }
   }
 
+  // ── Scaling readiness ─────────────────────────────────────────────────────
+  let scalingContext = "";
+  if (account.googleAdsId) {
+    try {
+      const sr = await Promise.race([
+        fetchScalingReadiness(account.googleAdsId, account.targetRoas ?? null, ctx.orgId),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error("scaling readiness timed out")), 20_000)),
+      ]);
+      const curr = account.currency === "EUR" ? "€" : account.currency === "GBP" ? "£" : "$";
+      const roasRow = [
+        sr.roas3d  != null ? `3d: ${sr.roas3d.toFixed(2)}x`   : null,
+        sr.roas7d  != null ? `7d: ${sr.roas7d.toFixed(2)}x`   : null,
+        sr.roas14d != null ? `14d: ${sr.roas14d.toFixed(2)}x` : null,
+        sr.roas30d != null ? `30d: ${sr.roas30d.toFixed(2)}x` : null,
+      ].filter(Boolean).join(" | ");
+      const lastScaled = sr.lastScaledDate
+        ? `Last budget increase: ${sr.lastScaledDate}${sr.lastScaledDelta != null ? ` (+${curr}${Math.round(sr.lastScaledDelta)}/day)` : ""}`
+        : "No budget increase found in last 90 days";
+      scalingContext = `\nSCALING READINESS:
+ROAS windows: ${roasRow || "no spend data"}
+${lastScaled}
+Verdict: ${sr.scalingNote}`;
+    } catch { /* non-fatal */ }
+  }
+
   const accountTypeNote = isLeadGen
     ? `ACCOUNT TYPE: Lead generation (${account.businessModel ?? "service/lead gen"}). This is NOT an ecommerce account. Do not mention ROAS, product feeds, or purchase revenue. Focus on: CPL vs target, lead volume, lead quality, form CVR, offline conversion import status, search intent quality, funnel handoff to sales team.`
     : isShoppingAccount
@@ -371,7 +396,7 @@ LIVE METRICS [all metrics = last 14 days unless labelled otherwise | snapshot ag
 ${metricsBlock || "insufficient data"}
 
 TARGETS: ${targetsBlock}
-${clientBrief}${campaignContext}${productContext}${notionContext}${slackContext}
+${clientBrief}${campaignContext}${productContext}${scalingContext}${notionContext}${slackContext}
 
 ---
 

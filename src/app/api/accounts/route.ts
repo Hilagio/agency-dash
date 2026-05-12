@@ -73,6 +73,7 @@ export async function GET() {
       snapshots: snap ? [{ ...snapOut, roas, budgetUtil, spend30d }] : [],
       scoreDelta: delta,
       prevScoredAt: prev?.createdAt ?? null,
+      targetRoas: a.targetRoas ?? null,
     };
   }));
 }

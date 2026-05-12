@@ -2663,6 +2663,14 @@ export default function AccountPage() {
   const [showWizard, setShowWizard] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [scalingData, setScalingData] = useState<{
+    roas3d: number | null; roas7d: number | null;
+    roas14d: number | null; roas30d: number | null;
+    budgetUtil7d: number | null;
+    lastScaledDate: string | null; lastScaledDelta: number | null;
+    readyToScale: boolean; scalingNote: string;
+  } | null>(null);
+  const [scalingLoading, setScalingLoading] = useState(false);
 
   const deleteAccount = async () => {
     setDeleting(true);
@@ -2708,6 +2716,18 @@ export default function AccountPage() {
   }, [id]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Fetch scaling readiness when account is loaded (non-blocking)
+  useEffect(() => {
+    if (!account?.googleAdsId || loading) return;
+    setScalingLoading(true);
+    fetch(`/api/accounts/${id}/scaling`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setScalingData(d); })
+      .catch(() => {})
+      .finally(() => setScalingLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [account?.googleAdsId, loading]);
 
   // Auto-rescore on load if account has Google Ads connected but no snapshot yet,
   // or if the last snapshot is older than 4 hours.
@@ -3132,6 +3152,75 @@ export default function AccountPage() {
                     setTab("chat");
                   }}
                 />
+
+                {/* ── Scaling readiness ────────────────────────────────────── */}
+                {(scalingLoading || scalingData) && (
+                  <div style={{
+                    marginBottom: 20, padding: "16px 18px",
+                    background: "var(--surface)", border: "1px solid var(--border)",
+                    borderLeft: scalingData
+                      ? `3px solid ${scalingData.readyToScale ? "#22c55e" : "var(--text-faint)"}`
+                      : "3px solid var(--border)",
+                    borderRadius: 10,
+                  }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.5px", textTransform: "uppercase", color: "var(--text-faint)" }}>
+                        Scaling readiness
+                      </span>
+                      {scalingLoading && <Loader2 size={11} className="animate-spin" style={{ color: "var(--text-faint)" }} />}
+                      {scalingData && (
+                        <span style={{
+                          fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 20,
+                          background: scalingData.readyToScale ? "rgba(34,197,94,0.12)" : "rgba(113,113,122,0.12)",
+                          color: scalingData.readyToScale ? "#22c55e" : "var(--text-dim)",
+                        }}>
+                          {scalingData.readyToScale ? "Ready to scale" : "Not yet"}
+                        </span>
+                      )}
+                    </div>
+                    {scalingData && (
+                      <>
+                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
+                          {[
+                            { label: "3d",  val: scalingData.roas3d },
+                            { label: "7d",  val: scalingData.roas7d },
+                            { label: "14d", val: scalingData.roas14d },
+                            { label: "30d", val: scalingData.roas30d },
+                          ].map(({ label, val }) => (
+                            <div key={label} style={{
+                              display: "flex", flexDirection: "column", alignItems: "center",
+                              background: "var(--surface-2)", borderRadius: 8, padding: "8px 14px", minWidth: 60,
+                            }}>
+                              <span style={{ fontSize: 10, color: "var(--text-faint)", marginBottom: 3 }}>{label}</span>
+                              <span style={{ fontSize: 14, fontWeight: 700, color: val != null ? "var(--text)" : "var(--text-faint)" }}>
+                                {val != null ? `${val.toFixed(2)}x` : "—"}
+                              </span>
+                            </div>
+                          ))}
+                          {scalingData.budgetUtil7d != null && (
+                            <div style={{
+                              display: "flex", flexDirection: "column", alignItems: "center",
+                              background: "var(--surface-2)", borderRadius: 8, padding: "8px 14px", minWidth: 70,
+                            }}>
+                              <span style={{ fontSize: 10, color: "var(--text-faint)", marginBottom: 3 }}>IS lost (7d)</span>
+                              <span style={{ fontSize: 14, fontWeight: 700, color: scalingData.budgetUtil7d > 0.10 ? "#f97316" : "var(--text)" }}>
+                                {Math.round(scalingData.budgetUtil7d * 100)}%
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        <p style={{ fontSize: 12, color: "var(--text-muted)", margin: "0 0 6px", lineHeight: 1.55 }}>
+                          {scalingData.scalingNote}
+                        </p>
+                        <p style={{ fontSize: 11, color: "var(--text-faint)", margin: 0 }}>
+                          {scalingData.lastScaledDate
+                            ? `Last budget increase: ${scalingData.lastScaledDate}${scalingData.lastScaledDelta != null ? ` (+${account?.currency === "EUR" ? "€" : account?.currency === "GBP" ? "£" : "$"}${Math.round(scalingData.lastScaledDelta)}/day)` : ""}`
+                            : "No budget increase found in last 90 days"}
+                        </p>
+                      </>
+                    )}
+                  </div>
+                )}
 
                 <ScoreHistory accountId={id} governingConstraint={constraint} />
 

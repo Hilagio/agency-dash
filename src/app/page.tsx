@@ -37,6 +37,7 @@ interface Account {
   industry:         string | null;
   monthlyBudget:    number | null;
   currency:         string;
+  targetRoas:       number | null;
   snapshots:        Snapshot[];
   scoreDelta:       number | null;
   prevScoredAt:     string | null;
@@ -147,8 +148,18 @@ function AccountRow({
       {/* Account name */}
       <td style={{ padding: "14px 16px" }}>
         <Link href={`/accounts/${account.id}`} style={{ textDecoration: "none" }}>
-          <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text)", letterSpacing: "-0.2px", lineHeight: 1.3 }}>
-            {account.name}
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text)", letterSpacing: "-0.2px", lineHeight: 1.3 }}>
+              {account.name}
+            </span>
+            {snap && account.targetRoas && snap.roas >= account.targetRoas && snap.budgetUtil > 0.80 && (
+              <span style={{
+                fontSize: 10, fontWeight: 700, padding: "1px 6px", borderRadius: 20, flexShrink: 0,
+                background: "rgba(34,197,94,0.12)", color: "#22c55e", letterSpacing: "0.2px",
+              }}>
+                ↑ Scale
+              </span>
+            )}
           </div>
           {account.industry && (
             <div style={{ fontSize: 12, color: "var(--text-dim)", marginTop: 2 }}>{account.industry}</div>

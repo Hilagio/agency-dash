@@ -1294,6 +1294,153 @@ export async function fetchPriorPeriodProducts(
   }));
 }
 
+// ─── Scaling readiness ─────────────────────────────────────────────────────────
+
+export interface ScalingReadiness {
+  /** ROAS over each window. null = no spend data for that window. */
+  roas3d:   number | null;
+  roas7d:   number | null;
+  roas14d:  number | null;
+  roas30d:  number | null;
+  /** Budget utilisation over last 7 days (0–1). High = constrained by budget. */
+  budgetUtil7d: number | null;
+  /** Date of the last budget increase (ISO string). null = no change found in 90d. */
+  lastScaledDate: string | null;
+  /** Amount of the last budget increase in account currency (positive = increase). */
+  lastScaledDelta: number | null;
+  /** Whether the account is ready to scale based on ROAS and utilisation. */
+  readyToScale: boolean;
+  /** Human-readable reason for the readiness verdict. */
+  scalingNote: string;
+}
+
+export async function fetchScalingReadiness(
+  customerId: string,
+  targetRoas: number | null,
+  orgId?: string,
+): Promise<ScalingReadiness> {
+  const client   = getClient();
+  const customer = await getCustomer(client, customerId, orgId);
+  const fmt      = (d: Date) => d.toISOString().slice(0, 10);
+
+  // ── Multi-window ROAS ───────────────────────────────────────────────────────
+  const now  = new Date();
+  const yd   = new Date(); yd.setDate(now.getDate() - 1);   // yesterday (today incomplete)
+
+  const mkStart = (daysBack: number) => { const d = new Date(yd); d.setDate(yd.getDate() - daysBack); return d; };
+  const windows = [
+    { label: "3d",  start: mkStart(2) },
+    { label: "7d",  start: mkStart(6) },
+    { label: "14d", start: mkStart(13) },
+    { label: "30d", start: mkStart(29) },
+  ];
+
+  const roasResults: Record<string, number | null> = {};
+
+  for (const w of windows) {
+    const rows = await safeQuery(
+      () => customer.query(`
+        SELECT
+          metrics.cost_micros,
+          metrics.conversions_value
+        FROM campaign
+        WHERE campaign.status = 'ENABLED'
+          AND segments.date BETWEEN '${fmt(w.start)}' AND '${fmt(yd)}'
+      `),
+      `ROAS ${w.label}`,
+      10_000
+    );
+    const cost = rows.reduce((s, r) => s + Number(r.metrics?.cost_micros ?? 0), 0) / 1_000_000;
+    const rev  = rows.reduce((s, r) => s + Number(r.metrics?.conversions_value ?? 0), 0);
+    roasResults[w.label] = cost > 0 ? rev / cost : null;
+  }
+
+  // ── Budget utilisation (7d) ─────────────────────────────────────────────────
+  const util7Start = new Date(yd); util7Start.setDate(yd.getDate() - 6);
+  const utilRows = await safeQuery(
+    () => customer.query(`
+      SELECT
+        metrics.cost_micros,
+        metrics.search_budget_lost_impression_share
+      FROM campaign
+      WHERE campaign.status = 'ENABLED'
+        AND segments.date BETWEEN '${fmt(util7Start)}' AND '${fmt(yd)}'
+    `),
+    "budget util 7d",
+    10_000
+  );
+  const isLostBudget = utilRows.length > 0
+    ? utilRows.reduce((s, r) => s + Number(r.metrics?.search_budget_lost_impression_share ?? 0), 0) / utilRows.length
+    : null;
+
+  // ── Last budget change (change_event, last 90d) ─────────────────────────────
+  const d90 = new Date(); d90.setDate(now.getDate() - 90);
+  let lastScaledDate: string | null = null;
+  let lastScaledDelta: number | null = null;
+
+  const changeRows = await safeQuery(
+    () => customer.query(`
+      SELECT
+        change_event.change_date_time,
+        change_event.new_resource.campaign_budget.amount_micros,
+        change_event.old_resource.campaign_budget.amount_micros
+      FROM change_event
+      WHERE change_event.change_resource_type = 'CAMPAIGN_BUDGET'
+        AND change_event.change_date_time >= '${d90.toISOString().slice(0, 10)} 00:00:00'
+      ORDER BY change_event.change_date_time DESC
+      LIMIT 20
+    `),
+    "budget change events",
+    10_000
+  );
+
+  for (const row of changeRows) {
+    const newAmt = Number((row as any).change_event?.new_resource?.campaign_budget?.amount_micros ?? 0);
+    const oldAmt = Number((row as any).change_event?.old_resource?.campaign_budget?.amount_micros ?? 0);
+    const delta  = (newAmt - oldAmt) / 1_000_000;
+    if (delta > 0) {
+      lastScaledDate  = String((row as any).change_event?.change_date_time ?? "").slice(0, 10);
+      lastScaledDelta = delta;
+      break;
+    }
+  }
+
+  // ── Scaling verdict ─────────────────────────────────────────────────────────
+  const roas7   = roasResults["7d"];
+  const roas14  = roasResults["14d"];
+  const roas30  = roasResults["30d"];
+  const tgt     = targetRoas ?? 0;
+
+  let readyToScale = false;
+  let scalingNote  = "";
+
+  if (!roas7) {
+    scalingNote = "Not enough spend data to assess scaling readiness.";
+  } else if (tgt > 0 && roas7 < tgt) {
+    scalingNote = `ROAS ${roas7.toFixed(2)}x (7d) is below target ${tgt.toFixed(2)}x — do not scale until ROAS recovers.`;
+  } else if (tgt > 0 && roas14 && roas14 < tgt) {
+    scalingNote = `7d ROAS looks OK (${roas7.toFixed(2)}x) but 14d ROAS is still below target (${roas14.toFixed(2)}x) — wait for consistency before scaling.`;
+  } else if (isLostBudget !== null && isLostBudget < 0.05) {
+    scalingNote = `ROAS healthy (7d: ${roas7.toFixed(2)}x${tgt ? ` vs ${tgt.toFixed(2)}x target` : ""}) but IS lost to budget is only ${Math.round(isLostBudget * 100)}% — budget is not the constraint. Focus on bid/quality before adding budget.`;
+  } else {
+    readyToScale = true;
+    const trend = roas7 && roas30 && roas7 > roas30 * 1.05 ? " and trending up" : "";
+    scalingNote  = `ROAS ${roas7.toFixed(2)}x (7d)${tgt ? ` above target ${tgt.toFixed(2)}x` : ""}${trend}. IS lost to budget ${isLostBudget !== null ? Math.round(isLostBudget * 100) + "%" : "n/a"} — room to scale.`;
+  }
+
+  return {
+    roas3d:   roasResults["3d"],
+    roas7d:   roas7,
+    roas14d:  roas14,
+    roas30d:  roas30,
+    budgetUtil7d: isLostBudget,
+    lastScaledDate,
+    lastScaledDelta,
+    readyToScale,
+    scalingNote,
+  };
+}
+
 export async function fetchProductPerformance(
   customerId: string,
   orgId?: string,
