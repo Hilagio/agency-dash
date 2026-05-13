@@ -6,7 +6,7 @@ import Link from "next/link";
 import { BUCKET_LABELS } from "@/lib/engine/types";
 import {
   Zap, RefreshCw, Loader2, Plus, AlertTriangle,
-  X, Settings, LogOut, Search, ChevronUp, ChevronDown, UserCircle,
+  X, Settings, LogOut, Search, ChevronUp, ChevronDown, UserCircle, TrendingUp,
 } from "lucide-react";
 import { AccountImporter } from "@/components/AccountImporter";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -148,18 +148,8 @@ function AccountRow({
       {/* Account name */}
       <td style={{ padding: "14px 16px" }}>
         <Link href={`/accounts/${account.id}`} style={{ textDecoration: "none" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text)", letterSpacing: "-0.2px", lineHeight: 1.3 }}>
-              {account.name}
-            </span>
-            {snap && account.targetRoas && snap.roas >= account.targetRoas && snap.budgetUtil > 0.80 && (
-              <span style={{
-                fontSize: 10, fontWeight: 700, padding: "1px 6px", borderRadius: 20, flexShrink: 0,
-                background: "rgba(34,197,94,0.12)", color: "#22c55e", letterSpacing: "0.2px",
-              }}>
-                ↑ Scale
-              </span>
-            )}
+          <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text)", letterSpacing: "-0.2px", lineHeight: 1.3 }}>
+            {account.name}
           </div>
           {account.industry && (
             <div style={{ fontSize: 12, color: "var(--text-dim)", marginTop: 2 }}>{account.industry}</div>
@@ -548,6 +538,19 @@ function HomePageInner() {
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><polyline points="10 9 9 9 8 9" />
             </svg>
             SOPs
+          </Link>
+          <Link href="/scaling" style={{
+            display: "flex", alignItems: "center", gap: 9,
+            padding: "8px 10px", borderRadius: 7,
+            color: "var(--text-muted)", fontSize: 13, fontWeight: 400,
+            textDecoration: "none", transition: "background 0.12s",
+            marginBottom: 1,
+          }}
+          onMouseEnter={e => (e.currentTarget as HTMLAnchorElement).style.background = "var(--surface-2)"}
+          onMouseLeave={e => (e.currentTarget as HTMLAnchorElement).style.background = "transparent"}
+          >
+            <TrendingUp size={14} />
+            Scaling
           </Link>
           <Link href="/analyze" style={{
             display: "flex", alignItems: "center", gap: 9,

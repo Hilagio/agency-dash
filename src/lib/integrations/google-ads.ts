@@ -1323,55 +1323,79 @@ export async function fetchScalingReadiness(
   const customer = await getCustomer(client, customerId, orgId);
   const fmt      = (d: Date) => d.toISOString().slice(0, 10);
 
-  // ── Multi-window ROAS ───────────────────────────────────────────────────────
+  // ── Multi-window ROAS — single 30d query, aggregate per window in code ────────
   const now  = new Date();
   const yd   = new Date(); yd.setDate(now.getDate() - 1);   // yesterday (today incomplete)
+  const d30Start = new Date(yd); d30Start.setDate(yd.getDate() - 29);
 
-  const mkStart = (daysBack: number) => { const d = new Date(yd); d.setDate(yd.getDate() - daysBack); return d; };
-  const windows = [
-    { label: "3d",  start: mkStart(2) },
-    { label: "7d",  start: mkStart(6) },
-    { label: "14d", start: mkStart(13) },
-    { label: "30d", start: mkStart(29) },
-  ];
-
-  const roasResults: Record<string, number | null> = {};
-
-  for (const w of windows) {
-    const rows = await safeQuery(
-      () => customer.query(`
-        SELECT
-          metrics.cost_micros,
-          metrics.conversions_value
-        FROM campaign
-        WHERE campaign.status = 'ENABLED'
-          AND segments.date BETWEEN '${fmt(w.start)}' AND '${fmt(yd)}'
-      `),
-      `ROAS ${w.label}`,
-      10_000
-    );
-    const cost = rows.reduce((s, r) => s + Number(r.metrics?.cost_micros ?? 0), 0) / 1_000_000;
-    const rev  = rows.reduce((s, r) => s + Number(r.metrics?.conversions_value ?? 0), 0);
-    roasResults[w.label] = cost > 0 ? rev / cost : null;
-  }
-
-  // ── Budget utilisation (7d) ─────────────────────────────────────────────────
-  const util7Start = new Date(yd); util7Start.setDate(yd.getDate() - 6);
-  const utilRows = await safeQuery(
+  // Single query covering 30 days with date segmentation.
+  // No campaign.status filter — include all campaigns that actually spent
+  // so recently-paused campaigns don't inflate ROAS by being excluded.
+  const dailyRows = await safeQuery(
     () => customer.query(`
       SELECT
+        segments.date,
         metrics.cost_micros,
+        metrics.conversions_value,
         metrics.search_budget_lost_impression_share
       FROM campaign
-      WHERE campaign.status = 'ENABLED'
-        AND segments.date BETWEEN '${fmt(util7Start)}' AND '${fmt(yd)}'
+      WHERE segments.date BETWEEN '${fmt(d30Start)}' AND '${fmt(yd)}'
     `),
-    "budget util 7d",
-    10_000
+    "scaling ROAS 30d",
+    20_000
   );
-  const isLostBudget = utilRows.length > 0
-    ? utilRows.reduce((s, r) => s + Number(r.metrics?.search_budget_lost_impression_share ?? 0), 0) / utilRows.length
-    : null;
+
+  // Aggregate cost + revenue per calendar date so we can slice any window
+  const byDate = new Map<string, { cost: number; rev: number; isLostBudget: number; costForIS: number }>();
+  for (const r of dailyRows) {
+    const date = String((r as any).segments?.date ?? "");
+    if (!date) continue;
+    const cost  = Number(r.metrics?.cost_micros ?? 0) / 1_000_000;
+    const rev   = Number(r.metrics?.conversions_value ?? 0);
+    const isLB  = Number(r.metrics?.search_budget_lost_impression_share ?? 0);
+    const prev  = byDate.get(date) ?? { cost: 0, rev: 0, isLostBudget: 0, costForIS: 0 };
+    byDate.set(date, {
+      cost:       prev.cost + cost,
+      rev:        prev.rev + rev,
+      isLostBudget: prev.isLostBudget + isLB * cost,  // cost-weighted accumulator
+      costForIS:  prev.costForIS + cost,
+    });
+  }
+
+  const aggWindow = (daysBack: number): { cost: number; rev: number } => {
+    const cutoff = new Date(yd); cutoff.setDate(yd.getDate() - (daysBack - 1));
+    const cutStr = fmt(cutoff);
+    let cost = 0, rev = 0;
+    byDate.forEach((v, date) => { if (date >= cutStr) { cost += v.cost; rev += v.rev; } });
+    return { cost, rev };
+  };
+
+  const roasOrNull = (cost: number, rev: number) => cost > 0 ? rev / cost : null;
+
+  const w3  = aggWindow(3);
+  const w7  = aggWindow(7);
+  const w14 = aggWindow(14);
+  const w30 = aggWindow(30);
+
+  const roasResults: Record<string, number | null> = {
+    "3d":  roasOrNull(w3.cost,  w3.rev),
+    "7d":  roasOrNull(w7.cost,  w7.rev),
+    "14d": roasOrNull(w14.cost, w14.rev),
+    "30d": roasOrNull(w30.cost, w30.rev),
+  };
+
+  // ── Budget utilisation (7d) — cost-weighted avg of IS lost to budget ─────────
+  // Note: search_budget_lost_impression_share is 0 for Shopping/PMax campaigns.
+  const d7cutoff = new Date(yd); d7cutoff.setDate(yd.getDate() - 6);
+  const cutoff7  = fmt(d7cutoff);
+  let totalCostForIS = 0, weightedISLost = 0;
+  byDate.forEach((v, date) => {
+    if (date >= cutoff7) {
+      totalCostForIS += v.costForIS;
+      weightedISLost += v.isLostBudget;
+    }
+  });
+  const isLostBudget = totalCostForIS > 0 ? weightedISLost / totalCostForIS : null;
 
   // ── Last budget change (change_event, last 90d) ─────────────────────────────
   const d90 = new Date(); d90.setDate(now.getDate() - 90);
