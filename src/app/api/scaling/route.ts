@@ -48,9 +48,31 @@ function detectLastScaled(snapshots: { createdAt: Date; rawSignals: string | nul
 function parseBudget(rawSignals: string | null): number | null {
   if (!rawSignals) return null;
   try {
-    const parsed = JSON.parse(rawSignals) as { economics?: { totalDailyBudget?: number } };
-    const v = parsed.economics?.totalDailyBudget;
-    return typeof v === "number" && v > 0 ? v : null;
+    const parsed = JSON.parse(rawSignals) as {
+      economics?: {
+        totalDailyBudget?: number;
+        totalSpend?: number;
+        budgetUtilizationPercent?: number;
+      };
+    };
+    const e = parsed.economics;
+    if (!e) return null;
+
+    // New snapshots: direct budget stored at score time
+    if (typeof e.totalDailyBudget === "number" && e.totalDailyBudget > 0) {
+      return e.totalDailyBudget;
+    }
+
+    // Old snapshots: infer from spend / utilization.
+    // budgetUtilization = spend30d / (dailyBudget × 30)
+    // → dailyBudget = spend30d / (utilization × 30)
+    const spend = e.totalSpend;
+    const util  = e.budgetUtilizationPercent;
+    if (typeof spend === "number" && spend > 0 && typeof util === "number" && util > 0.05 && util <= 1) {
+      return spend / (util * 30);
+    }
+
+    return null;
   } catch {
     return null;
   }

@@ -111,6 +111,7 @@ export interface EconomicsSignals {
   avgOrderValue: number;                   // computed: conversions_value / conversions (0 = unknown)
   monthlyChurnRate: number;                // 0–1, subscription only — drives LTV = AOV / churnRate
   totalDailyBudget?: number;              // sum of enabled campaign daily budgets at score time (currency units)
+  totalSpend?: number;                    // total spend over the last 30 days (for budget inference)
 }
 
 export interface ConstraintSignals {

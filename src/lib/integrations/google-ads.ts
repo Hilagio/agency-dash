@@ -1173,6 +1173,7 @@ async function fetchEconomicsSignals(customer: Customer): Promise<EconomicsSigna
     monthlyChurnRate: 0,     // Overridden in snapshot route from account.monthlyChurnRate
     budgetUtilizationPercent,
     totalDailyBudget,
+    totalSpend: totalCost30,
   };
 }
 
