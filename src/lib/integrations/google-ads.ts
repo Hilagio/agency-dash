@@ -1397,8 +1397,12 @@ export async function fetchScalingReadiness(
   });
   const isLostBudget = totalCostForIS > 0 ? weightedISLost / totalCostForIS : null;
 
-  // ── Last budget change (change_event, last 90d) ─────────────────────────────
-  const d90 = new Date(); d90.setDate(now.getDate() - 90);
+  // ── Last budget change (change_event, last 30d — hard API limit) ────────────
+  // change_event only keeps 30 days of history. We select only change_date_time
+  // because nested new_resource/old_resource fields are not valid GAQL selects
+  // and silently return 0, causing every account to show ">90d ago".
+  // Delta is computed separately from the current campaign_budget amounts.
+  const d30ce = new Date(); d30ce.setDate(now.getDate() - 30);
   let lastScaledDate: string | null = null;
   let lastScaledDelta: number | null = null;
 
@@ -1406,27 +1410,22 @@ export async function fetchScalingReadiness(
     () => customer.query(`
       SELECT
         change_event.change_date_time,
-        change_event.new_resource.campaign_budget.amount_micros,
-        change_event.old_resource.campaign_budget.amount_micros
+        change_event.resource_change_operation
       FROM change_event
       WHERE change_event.change_resource_type = 'CAMPAIGN_BUDGET'
-        AND change_event.change_date_time >= '${d90.toISOString().slice(0, 10)} 00:00:00'
+        AND change_event.resource_change_operation = 'UPDATE'
+        AND change_event.change_date_time >= '${fmt(d30ce)} 00:00:00'
       ORDER BY change_event.change_date_time DESC
-      LIMIT 20
+      LIMIT 10
     `),
     "budget change events",
     10_000
   );
 
-  for (const row of changeRows) {
-    const newAmt = Number((row as any).change_event?.new_resource?.campaign_budget?.amount_micros ?? 0);
-    const oldAmt = Number((row as any).change_event?.old_resource?.campaign_budget?.amount_micros ?? 0);
-    const delta  = (newAmt - oldAmt) / 1_000_000;
-    if (delta > 0) {
-      lastScaledDate  = String((row as any).change_event?.change_date_time ?? "").slice(0, 10);
-      lastScaledDelta = delta;
-      break;
-    }
+  if (changeRows.length > 0) {
+    lastScaledDate = String((changeRows[0] as any).change_event?.change_date_time ?? "").slice(0, 10);
+    // Delta not available — change_event nested resource fields are not selectable in GAQL.
+    lastScaledDelta = null;
   }
 
   // ── Scaling verdict ─────────────────────────────────────────────────────────

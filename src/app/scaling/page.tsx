@@ -269,20 +269,12 @@ export default function ScalingPage() {
                       {/* Last scaled */}
                       <td style={{ padding: "14px 16px" }}>
                         {row.scaling?.lastScaledDate ? (
-                          <div>
-                            <div style={{ fontSize: 13, color: "var(--text)" }}>
-                              {timeAgo(row.scaling.lastScaledDate)}
-                            </div>
-                            {row.scaling.lastScaledDelta != null && (
-                              <div style={{ fontSize: 11, color: "var(--text-dim)", marginTop: 2 }}>
-                                +{row.currency === "EUR" ? "€" : row.currency === "GBP" ? "£" : "$"}
-                                {Math.round(row.scaling.lastScaledDelta)}/day
-                              </div>
-                            )}
-                          </div>
+                          <span style={{ fontSize: 13, color: "var(--text)" }}>
+                            {timeAgo(row.scaling.lastScaledDate)}
+                          </span>
                         ) : (
                           <span style={{ fontSize: 12, color: "var(--text-faint)", fontStyle: "italic" }}>
-                            {row.scaling ? ">90d ago" : "—"}
+                            {row.scaling ? "Not in last 30d" : "—"}
                           </span>
                         )}
                       </td>
@@ -348,9 +340,9 @@ export default function ScalingPage() {
           )}
 
           <p style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 20, lineHeight: 1.6 }}>
-            ROAS = conv. value / cost (all campaigns, last N days to yesterday).
-            IS lost to budget is search campaign data only — 0% for Shopping/PMax accounts is expected.
-            Last scaled = last detected budget increase in change history (90-day lookback).
+            ROAS = conv. value / cost (all campaigns, last N days to yesterday). ·
+            IS lost to budget is search-only — Shopping/PMax accounts will show 0%, that is expected. ·
+            Last scaled = last budget UPDATE event in change history (30-day API limit).
           </p>
         </div>
       </main>

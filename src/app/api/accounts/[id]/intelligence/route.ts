@@ -345,8 +345,8 @@ export async function POST(_req: NextRequest, { params }: Params) {
         sr.roas30d != null ? `30d: ${sr.roas30d.toFixed(2)}x` : null,
       ].filter(Boolean).join(" | ");
       const lastScaled = sr.lastScaledDate
-        ? `Last budget increase: ${sr.lastScaledDate}${sr.lastScaledDelta != null ? ` (+${curr}${Math.round(sr.lastScaledDelta)}/day)` : ""}`
-        : "No budget increase found in last 90 days";
+        ? `Last budget change detected: ${sr.lastScaledDate}`
+        : "No budget changes detected in last 30 days (change_event 30d limit)";
       scalingContext = `\nSCALING READINESS:
 ROAS windows: ${roasRow || "no spend data"}
 ${lastScaled}

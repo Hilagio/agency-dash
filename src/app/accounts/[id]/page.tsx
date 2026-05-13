@@ -3214,8 +3214,8 @@ export default function AccountPage() {
                         </p>
                         <p style={{ fontSize: 11, color: "var(--text-faint)", margin: 0 }}>
                           {scalingData.lastScaledDate
-                            ? `Last budget increase: ${scalingData.lastScaledDate}${scalingData.lastScaledDelta != null ? ` (+${account?.currency === "EUR" ? "€" : account?.currency === "GBP" ? "£" : "$"}${Math.round(scalingData.lastScaledDelta)}/day)` : ""}`
-                            : "No budget increase found in last 90 days"}
+                            ? `Last budget change: ${scalingData.lastScaledDate}`
+                            : "No budget changes detected in last 30 days"}
                         </p>
                       </>
                     )}
