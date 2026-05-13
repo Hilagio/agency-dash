@@ -110,6 +110,7 @@ export interface EconomicsSignals {
   budgetUtilizationPercent: number;        // 0–1 (how much of budget is spent)
   avgOrderValue: number;                   // computed: conversions_value / conversions (0 = unknown)
   monthlyChurnRate: number;                // 0–1, subscription only — drives LTV = AOV / churnRate
+  totalDailyBudget?: number;              // sum of enabled campaign daily budgets at score time (currency units)
 }
 
 export interface ConstraintSignals {

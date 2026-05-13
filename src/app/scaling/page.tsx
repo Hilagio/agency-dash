@@ -268,13 +268,22 @@ export default function ScalingPage() {
 
                       {/* Last scaled */}
                       <td style={{ padding: "14px 16px" }}>
-                        {row.scaling?.lastScaledDate ? (
-                          <span style={{ fontSize: 13, color: "var(--text)" }}>
-                            {timeAgo(row.scaling.lastScaledDate)}
-                          </span>
+                        {row.lastScaledDate ? (
+                          <div>
+                            <div style={{ fontSize: 13, color: "var(--text)" }}>
+                              {timeAgo(row.lastScaledDate)}
+                            </div>
+                            {row.lastScaledFrom != null && row.lastScaledTo != null && (
+                              <div style={{ fontSize: 11, color: "var(--text-dim)", marginTop: 2 }}>
+                                {row.currency === "EUR" ? "€" : row.currency === "GBP" ? "£" : "$"}
+                                {row.lastScaledFrom}/d → {row.currency === "EUR" ? "€" : row.currency === "GBP" ? "£" : "$"}
+                                {row.lastScaledTo}/d
+                              </div>
+                            )}
+                          </div>
                         ) : (
                           <span style={{ fontSize: 12, color: "var(--text-faint)", fontStyle: "italic" }}>
-                            {row.scaling ? "Not in last 30d" : "—"}
+                            {row.scaling ? "Not detected yet" : "—"}
                           </span>
                         )}
                       </td>
@@ -341,8 +350,9 @@ export default function ScalingPage() {
 
           <p style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 20, lineHeight: 1.6 }}>
             ROAS = conv. value / cost (all campaigns, last N days to yesterday). ·
-            IS lost to budget is search-only — Shopping/PMax accounts will show 0%, that is expected. ·
-            Last scaled = last budget UPDATE event in change history (30-day API limit).
+            IS lost to budget is search-only — 0% for Shopping/PMax is expected. ·
+            Last scaled = detected from consecutive account scores (budget stored at each rescore).
+            Accounts without a budget history yet will show "Not detected yet" until rescored twice.
           </p>
         </div>
       </main>

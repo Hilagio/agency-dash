@@ -1137,6 +1137,26 @@ async function fetchEconomicsSignals(customer: Customer): Promise<EconomicsSigna
     ? Math.min(1, totalCost30 / totalBudget)
     : 0.8;
 
+  // Current total daily budget — query without date segmentation to get snapshot values.
+  // Stored in rawSignals so consecutive snapshots can detect budget changes.
+  const currentBudgetRows = await safeQuery(
+    () => customer.query(`
+      SELECT campaign.campaign_budget, campaign_budget.amount_micros
+      FROM campaign
+      WHERE campaign.status = 'ENABLED'
+    `),
+    "current daily budget"
+  );
+  // Deduplicate by budget resource (multiple campaigns can share a budget)
+  const seenBudgets = new Set<string>();
+  let totalDailyBudget = 0;
+  for (const r of currentBudgetRows) {
+    const key = String((r as any).campaign?.campaign_budget ?? "");
+    if (key && seenBudgets.has(key)) continue;
+    if (key) seenBudgets.add(key);
+    totalDailyBudget += Number((r as any).campaign_budget?.amount_micros ?? 0) / 1_000_000;
+  }
+
   // AOV — computed from recent 14-day window
   const avgOrderValue = totalConversions > 0 ? totalConversionValue / totalConversions : 0;
 
@@ -1152,6 +1172,7 @@ async function fetchEconomicsSignals(customer: Customer): Promise<EconomicsSigna
     avgOrderValue,
     monthlyChurnRate: 0,     // Overridden in snapshot route from account.monthlyChurnRate
     budgetUtilizationPercent,
+    totalDailyBudget,
   };
 }
 
@@ -1397,38 +1418,11 @@ export async function fetchScalingReadiness(
   });
   const isLostBudget = totalCostForIS > 0 ? weightedISLost / totalCostForIS : null;
 
-  // ── Last budget change (change_event, last 30d — hard API limit) ────────────
-  // change_event only keeps 30 days of history. We select only change_date_time
-  // because nested new_resource/old_resource fields are not valid GAQL selects
-  // and silently return 0, causing every account to show ">90d ago".
-  // Delta is computed separately from the current campaign_budget amounts.
-  const d30ce = new Date(); d30ce.setDate(now.getDate() - 30);
-  let lastScaledDate: string | null = null;
-  let lastScaledDelta: number | null = null;
-
-  const changeRows = await safeQuery(
-    () => customer.query(`
-      SELECT
-        change_event.change_date_time,
-        change_event.resource_change_operation
-      FROM change_event
-      WHERE change_event.change_resource_type = 'CAMPAIGN_BUDGET'
-        AND change_event.resource_change_operation = 'UPDATE'
-        AND change_event.change_date_time >= '${fmt(d30ce)} 00:00:00'
-      ORDER BY change_event.change_date_time DESC
-      LIMIT 10
-    `),
-    "budget change events",
-    10_000
-  );
-
-  if (changeRows.length > 0) {
-    lastScaledDate = String((changeRows[0] as any).change_event?.change_date_time ?? "").slice(0, 10);
-    // Delta not available — change_event nested resource fields are not selectable in GAQL.
-    lastScaledDelta = null;
-  }
-
   // ── Scaling verdict ─────────────────────────────────────────────────────────
+  // lastScaledDate/Delta are now derived from snapshot history in the batch API,
+  // not from change_event (which has unreliable nested field access in GAQL).
+  const lastScaledDate: string | null = null;
+  const lastScaledDelta: number | null = null;
   const roas7   = roasResults["7d"];
   const roas14  = roasResults["14d"];
   const roas30  = roasResults["30d"];
