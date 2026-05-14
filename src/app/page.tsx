@@ -181,6 +181,39 @@ function AccountRow({
         )}
       </td>
 
+      {/* ROAS */}
+      <td style={{ padding: "14px 16px", textAlign: "right" }}>
+        {snap?.roas != null && snap.roas > 0 ? (() => {
+          const actual  = snap.roas;
+          const target  = account.targetRoas;
+          const ratio   = target ? actual / target : null;
+          const color   = !ratio ? "var(--text-2)"
+                        : ratio >= 1     ? "#22c55e"
+                        : ratio >= 0.85  ? "#f97316"
+                        :                  "#ef4444";
+          const scaleReady = target != null && actual >= target && (snap.budgetUtil ?? 0) >= 0.8;
+          return (
+            <div>
+              <span style={{ fontSize: 13, fontWeight: 600, color, letterSpacing: "-0.3px" }}>
+                {actual.toFixed(1)}×
+              </span>
+              {target != null && (
+                <div style={{ fontSize: 11, color: "var(--text-very-dim)", marginTop: 2 }}>
+                  target {target.toFixed(1)}×
+                </div>
+              )}
+              {scaleReady && (
+                <div style={{ fontSize: 10, fontWeight: 700, color: "#22c55e", marginTop: 3, letterSpacing: "0.3px" }}>
+                  ↑ SCALE
+                </div>
+              )}
+            </div>
+          );
+        })() : (
+          <span style={{ fontSize: 13, color: "var(--text-faint)" }}>—</span>
+        )}
+      </td>
+
       {/* Bottleneck */}
       <td style={{ padding: "14px 16px" }}>
         {bucket ? (
@@ -441,6 +474,11 @@ function HomePageInner() {
         const ta = a.snapshots[0] ? new Date(a.snapshots[0].createdAt).getTime() : 0;
         const tb = b.snapshots[0] ? new Date(b.snapshots[0].createdAt).getTime() : 0;
         return (ta - tb) * dir;
+      }
+      if (sortBy === "roas") {
+        const ra = a.snapshots[0]?.roas ?? -1;
+        const rb = b.snapshots[0]?.roas ?? -1;
+        return (ra - rb) * dir;
       }
       return 0;
     });
@@ -838,6 +876,7 @@ function HomePageInner() {
                     <ColHeader label="Account"    col="name"       sortBy={sortBy} sortDir={sortDir} onSort={toggleSort} />
                     <ColHeader label="Manager"    col="manager"    sortBy={sortBy} sortDir={sortDir} onSort={toggleSort} />
                     <ColHeader label="30d Spend"  col="spend"      sortBy={sortBy} sortDir={sortDir} onSort={toggleSort} align="right" />
+                    <ColHeader label="ROAS"       col="roas"       sortBy={sortBy} sortDir={sortDir} onSort={toggleSort} align="right" />
                     <ColHeader label="Bottleneck" col="bucket"     sortBy={sortBy} sortDir={sortDir} onSort={toggleSort} />
                     <ColHeader label="Constraint" col="constraint" sortBy={sortBy} sortDir={sortDir} onSort={toggleSort} />
                     <ColHeader label="Scored"     col="scored"     sortBy={sortBy} sortDir={sortDir} onSort={toggleSort} />
