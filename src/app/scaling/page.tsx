@@ -282,9 +282,17 @@ export default function ScalingPage() {
                             )}
                           </div>
                         ) : (
-                          <span style={{ fontSize: 12, color: "var(--text-faint)", fontStyle: "italic" }}>
-                            {row.scaling ? "Not detected yet" : "—"}
-                          </span>
+                          <div>
+                            <span style={{ fontSize: 12, color: "var(--text-faint)", fontStyle: "italic" }}>
+                              No change detected
+                            </span>
+                            {row.scaling?.currentDailyBudget != null && (
+                              <div style={{ fontSize: 11, color: "var(--text-dim)", marginTop: 2 }}>
+                                Current: {row.currency === "EUR" ? "€" : row.currency === "GBP" ? "£" : "$"}
+                                {Math.round(row.scaling.currentDailyBudget)}/d
+                              </div>
+                            )}
+                          </div>
                         )}
                       </td>
 

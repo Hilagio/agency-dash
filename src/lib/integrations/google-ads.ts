@@ -1065,7 +1065,7 @@ async function fetchEconomicsSignals(customer: Customer): Promise<EconomicsSigna
     () => customer.query(`
       SELECT
         metrics.cost_micros,
-        metrics.conversions_value,
+        metrics.all_conversions_value,
         metrics.conversions,
         campaign.target_roas.target_roas,
         campaign.target_cpa.target_cpa_micros,
@@ -1078,7 +1078,7 @@ async function fetchEconomicsSignals(customer: Customer): Promise<EconomicsSigna
   );
 
   const totalCost            = rows.reduce((s, r) => s + Number(r.metrics?.cost_micros ?? 0), 0) / 1_000_000;
-  const totalConversionValue = rows.reduce((s, r) => s + Number(r.metrics?.conversions_value ?? 0), 0);
+  const totalConversionValue = rows.reduce((s, r) => s + Number((r.metrics as any)?.all_conversions_value ?? 0), 0);
   const totalConversions     = rows.reduce((s, r) => s + Number(r.metrics?.conversions ?? 0), 0);
 
   const actualRoas = totalCost > 0 ? totalConversionValue / totalCost : 0;
@@ -1334,6 +1334,8 @@ export interface ScalingReadiness {
   readyToScale: boolean;
   /** Human-readable reason for the readiness verdict. */
   scalingNote: string;
+  /** Current total daily budget across enabled campaigns (currency units). */
+  currentDailyBudget: number | null;
 }
 
 export async function fetchScalingReadiness(
@@ -1358,7 +1360,7 @@ export async function fetchScalingReadiness(
       SELECT
         segments.date,
         metrics.cost_micros,
-        metrics.conversions_value,
+        metrics.all_conversions_value,
         metrics.search_budget_lost_impression_share
       FROM campaign
       WHERE segments.date BETWEEN '${fmt(d30Start)}' AND '${fmt(yd)}'
@@ -1373,7 +1375,7 @@ export async function fetchScalingReadiness(
     const date = String((r as any).segments?.date ?? "");
     if (!date) continue;
     const cost  = Number(r.metrics?.cost_micros ?? 0) / 1_000_000;
-    const rev   = Number(r.metrics?.conversions_value ?? 0);
+    const rev   = Number((r.metrics as any)?.all_conversions_value ?? 0);
     const isLB  = Number(r.metrics?.search_budget_lost_impression_share ?? 0);
     const prev  = byDate.get(date) ?? { cost: 0, rev: 0, isLostBudget: 0, costForIS: 0 };
     byDate.set(date, {
@@ -1419,9 +1421,27 @@ export async function fetchScalingReadiness(
   });
   const isLostBudget = totalCostForIS > 0 ? weightedISLost / totalCostForIS : null;
 
+  // ── Current daily budget ─────────────────────────────────────────────────────
+  const budgetQueryRows = await safeQuery(
+    () => customer.query(`
+      SELECT campaign.campaign_budget, campaign_budget.amount_micros
+      FROM campaign
+      WHERE campaign.status = 'ENABLED'
+    `),
+    "current budget snapshot",
+    8_000
+  );
+  const seenBudgetRes = new Set<string>();
+  let currentDailyBudget = 0;
+  for (const r of budgetQueryRows) {
+    const key = String((r as any).campaign?.campaign_budget ?? "");
+    if (key && seenBudgetRes.has(key)) continue;
+    if (key) seenBudgetRes.add(key);
+    currentDailyBudget += Number((r as any).campaign_budget?.amount_micros ?? 0) / 1_000_000;
+  }
+
   // ── Scaling verdict ─────────────────────────────────────────────────────────
-  // lastScaledDate/Delta are now derived from snapshot history in the batch API,
-  // not from change_event (which has unreliable nested field access in GAQL).
+  // lastScaledDate/Delta are now derived from snapshot history in the batch API.
   const lastScaledDate: string | null = null;
   const lastScaledDelta: number | null = null;
   const roas7   = roasResults["7d"];
@@ -1456,6 +1476,7 @@ export async function fetchScalingReadiness(
     lastScaledDelta,
     readyToScale,
     scalingNote,
+    currentDailyBudget: currentDailyBudget > 0 ? currentDailyBudget : null,
   };
 }
 
