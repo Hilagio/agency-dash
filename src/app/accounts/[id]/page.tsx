@@ -3452,7 +3452,12 @@ export default function AccountPage() {
         )}
 
         {tab === "plan" && account && (
-          <ActionPlanTab accountId={id} accountName={account.name} />
+          <ActionPlanTab
+            accountId={id}
+            accountName={account.name}
+            targetRoasDefault={account.targetRoas}
+            currency={account.currency}
+          />
         )}
         </div>
         )}
