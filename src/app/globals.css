@@ -80,6 +80,54 @@ button, [role="button"] {
 }
 
 
+/* ─── Print / PDF ───────────────────────────────────────────────────────── */
+@media print {
+  @page { margin: 12mm 14mm; size: A4; }
+
+  /* Light theme on paper */
+  :root {
+    --bg:            #ffffff !important;
+    --bg-deep:       #f9f9fb !important;
+    --surface:       #ffffff !important;
+    --surface-2:     #f4f4f5 !important;
+    --surface-3:     #e4e4e7 !important;
+    --border:        rgba(0,0,0,0.12) !important;
+    --border-2:      rgba(0,0,0,0.16) !important;
+    --border-3:      rgba(0,0,0,0.22) !important;
+    --text:          #09090b !important;
+    --text-2:        #18181b !important;
+    --text-3:        #3f3f46 !important;
+    --text-muted:    #52525b !important;
+    --text-dim:      #71717a !important;
+    --text-very-dim: #a1a1aa !important;
+    --text-faint:    #d4d4d8 !important;
+    --accent:        #4f46e5 !important;
+  }
+
+  body { background: #fff !important; color: #09090b !important; overflow: auto !important; height: auto !important; font-size: 13px !important; }
+
+  /* Hide nav and UI chrome */
+  aside, .plan-toolbar, nav { display: none !important; }
+
+  /* Full-width main area */
+  main { height: auto !important; overflow: visible !important; flex: none !important; width: 100% !important; }
+
+  /* Plan board fills page */
+  .plan-board { max-width: 100% !important; }
+
+  /* 3-column → single column for print (action cards, roadmap phases) */
+  .plan-3col-grid { grid-template-columns: 1fr !important; gap: 10px !important; }
+
+  /* KPI strip → 2×2 */
+  .plan-kpi-grid { grid-template-columns: 1fr 1fr !important; }
+
+  /* No page breaks mid-card */
+  .plan-board > div { page-break-inside: avoid; break-inside: avoid; }
+
+  /* SVG charts don't clip */
+  svg { overflow: visible !important; max-width: 100% !important; }
+}
+
 /* ─── Chat streaming cursor ──────────────────────────────────────────────── */
 @keyframes chat-blink {
   0%, 100% { opacity: 1; }

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { scoreConstraints } from "@/lib/engine";
 import { ConstraintSignals, BUCKET_LABELS } from "@/lib/engine/types";
 import { getAuthContext, unauthorized, forbidden } from "@/lib/auth";
+import { fetchLiveRoas } from "@/lib/integrations/google-ads";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -43,7 +44,7 @@ export interface PlanV2 {
 export interface StoredPlan {
   version:       2;
   plan:          PlanV2;
-  settings:      { targetRoas: number | null; monthlyGoal: number | null; contextNotes: string | null };
+  settings:      { targetRoas: number | null; monthlyGoal: number | null; contextNotes: string | null; liveRoas: number | null; liveSpend: number | null; };
   generatedAt:   string;  // ISO date
   snapshotDate:  string;  // when the underlying snapshot was taken
 }
@@ -75,16 +76,32 @@ export async function GET(_req: NextRequest, { params }: Params) {
     }),
   ]);
 
-  // Parse metrics from snapshot
+  // Parse stored plan first — it contains live ROAS from generation time
+  let plan: StoredPlan | null = null;
+  if (record?.content) {
+    try {
+      const parsed = JSON.parse(record.content) as StoredPlan;
+      if (parsed.version === 2) plan = parsed;
+    } catch { /* old format or invalid */ }
+  }
+
+  // Build metrics: prefer liveRoas stored in plan (all_conversions_value at generation time)
+  // over snapshot rawSignals (may be stale or use conversions_value)
   let metrics: {
     actualRoas: number | null;
     spend30d:   number | null;
     snapshotAt: string | null;
   } | null = null;
 
-  if (snapshot) {
+  if (plan?.settings.liveRoas != null && plan.settings.liveRoas > 0) {
+    metrics = {
+      actualRoas: plan.settings.liveRoas,
+      spend30d:   plan.settings.liveSpend ?? null,
+      snapshotAt: snapshot?.createdAt.toISOString() ?? null,
+    };
+  } else if (snapshot) {
     try {
-      const sig = JSON.parse(snapshot.rawSignals) as ConstraintSignals;
+      const sig  = JSON.parse(snapshot.rawSignals) as ConstraintSignals;
       const roas = sig.economics?.actualRoas ?? null;
       metrics = {
         actualRoas: roas && roas > 0 ? roas : null,
@@ -92,15 +109,6 @@ export async function GET(_req: NextRequest, { params }: Params) {
         snapshotAt: snapshot.createdAt.toISOString(),
       };
     } catch { /* no metrics */ }
-  }
-
-  // Parse stored plan
-  let plan: StoredPlan | null = null;
-  if (record?.content) {
-    try {
-      const parsed = JSON.parse(record.content) as StoredPlan;
-      if (parsed.version === 2) plan = parsed;
-    } catch { /* old format or invalid */ }
   }
 
   return NextResponse.json({ plan, metrics });
@@ -152,9 +160,18 @@ export async function POST(req: NextRequest, { params }: Params) {
   const eco  = signals?.economics;
   const conv = signals?.conversion;
 
+  // Fetch live ROAS from Google Ads (all_conversions_value) — more reliable than
+  // snapshot economics which may have been scored with conversions_value only.
+  let liveRoasData: { roas: number; spend30d: number } | null = null;
+  try {
+    liveRoasData = await fetchLiveRoas(account.googleAdsId, ctx.orgId);
+    if (liveRoasData.roas === 0) liveRoasData = null;
+  } catch { /* fall back to snapshot */ }
+
   const effectiveTargetRoas = body.targetRoas ?? account.targetRoas ?? null;
-  const actualRoas          = (eco?.actualRoas && eco.actualRoas > 0) ? eco.actualRoas : null;
-  const spend30d            = eco?.totalSpend ?? null;
+  const snapshotRoas        = (eco?.actualRoas && eco.actualRoas > 0) ? eco.actualRoas : null;
+  const actualRoas          = liveRoasData?.roas ?? snapshotRoas;
+  const spend30d            = liveRoasData?.spend30d ?? eco?.totalSpend ?? null;
   const revenue30d          = (actualRoas && spend30d) ? Math.round(actualRoas * spend30d) : null;
   const cvr                 = conv?.conversionRate ?? null;
 
@@ -330,6 +347,8 @@ RULES:
         targetRoas:   body.targetRoas   ?? null,
         monthlyGoal:  body.monthlyGoal  ?? null,
         contextNotes: body.contextNotes ?? null,
+        liveRoas:     actualRoas        ?? null,
+        liveSpend:    spend30d          ?? null,
       },
       generatedAt:  new Date().toISOString(),
       snapshotDate: snapshot.createdAt.toISOString(),

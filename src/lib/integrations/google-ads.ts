@@ -1498,7 +1498,7 @@ export async function fetchProductPerformance(
         campaign.name,
         campaign.advertising_channel_type,
         metrics.cost_micros,
-        metrics.conversions_value,
+        metrics.all_conversions_value,
         metrics.conversions,
         metrics.search_budget_lost_impression_share,
         metrics.search_rank_lost_impression_share
@@ -1520,7 +1520,7 @@ export async function fetchProductPerformance(
   }
 
   const totalCost        = campaignRows.reduce((s, r) => s + Number(r.metrics?.cost_micros ?? 0), 0) / 1_000_000;
-  const totalRevenue     = campaignRows.reduce((s, r) => s + Number(r.metrics?.conversions_value ?? 0), 0);
+  const totalRevenue     = campaignRows.reduce((s, r) => s + Number((r.metrics as any)?.all_conversions_value ?? 0), 0);
   const totalConversions = campaignRows.reduce((s, r) => s + Number(r.metrics?.conversions ?? 0), 0);
   const isLostBudget     = campaignRows.reduce((s, r) => s + Number(r.metrics?.search_budget_lost_impression_share ?? 0), 0) / campaignRows.length;
   const isLostRank       = campaignRows.reduce((s, r) => s + Number(r.metrics?.search_rank_lost_impression_share ?? 0), 0) / campaignRows.length;
@@ -1602,6 +1602,32 @@ export async function fetchProductPerformance(
     products,
     labelDistribution,
   };
+}
+
+// ─── Live ROAS (all_conversions_value, last 30 days) ─────────────────────────
+// Used by action plan generation to get accurate ROAS independent of snapshot age.
+
+export async function fetchLiveRoas(
+  customerId: string,
+  orgId?: string,
+): Promise<{ roas: number; spend30d: number }> {
+  const client   = getClient();
+  const customer = await getCustomer(client, customerId, orgId);
+  const { start, end } = last30Days();
+
+  const rows = await safeQuery(
+    () => customer.query(`
+      SELECT metrics.cost_micros, metrics.all_conversions_value
+      FROM campaign
+      WHERE campaign.status = 'ENABLED'
+        AND segments.date BETWEEN '${start}' AND '${end}'
+    `),
+    "live roas 30d"
+  );
+
+  const spend30d = rows.reduce((s, r) => s + Number(r.metrics?.cost_micros ?? 0), 0) / 1_000_000;
+  const value30d = rows.reduce((s, r) => s + Number((r.metrics as any)?.all_conversions_value ?? 0), 0);
+  return { roas: spend30d > 0 ? value30d / spend30d : 0, spend30d };
 }
 
 // ─── Search Term Report ───────────────────────────────────────────────────────

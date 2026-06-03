@@ -21,6 +21,7 @@ interface SimpleProduct {
   revenue:     number;
   conversions: number;
   roas:        number;
+  cost?:       number;
 }
 
 // ─── Seasonal indices (ecommerce — indexed so May = 1.0) ─────────────────────
@@ -149,13 +150,19 @@ function PlanBoard({
   const actualRoas = metrics?.actualRoas ?? null;
   const spend30d   = metrics?.spend30d ?? null;
   const revenue30d = (actualRoas && spend30d) ? Math.round(actualRoas * spend30d) : null;
-  const topProducts = products?.filter(p => p.revenue > 0).slice(0, 8) ?? [];
+  // Show top 8 products: first by revenue, then by conversions, then by cost
+  const topProducts = products
+    ? [...products]
+        .sort((a, b) => b.revenue - a.revenue || b.conversions - a.conversions || (b.cost ?? 0) - (a.cost ?? 0))
+        .filter(p => p.revenue > 0 || p.conversions > 0 || (p.cost ?? 0) > 1)
+        .slice(0, 8)
+    : [];
 
   return (
-    <div style={{ maxWidth: 900 }}>
+    <div className="plan-board" style={{ maxWidth: 900 }}>
 
       {/* ── KPI Strip ─────────────────────────────────────────────────────── */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 16 }}>
+      <div className="plan-kpi-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 16 }}>
         <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "16px 18px" }}>
           <div style={{ fontSize: 10, fontWeight: 700, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: "0.6px", marginBottom: 6 }}>Current ROAS</div>
           <div style={{ fontSize: 24, fontWeight: 700, color: actualRoas ? "var(--text)" : "var(--text-muted)", letterSpacing: "-0.8px" }}>
@@ -200,7 +207,7 @@ function PlanBoard({
       </div>
 
       {/* ── Action Cards ──────────────────────────────────────────────────── */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 16 }}>
+      <div className="plan-3col-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 16 }}>
         {plan.actions.map((action, i) => {
           const color = ACTION_COLORS[i % ACTION_COLORS.length];
           return (
@@ -239,7 +246,7 @@ function PlanBoard({
           90-Day Roadmap
         </div>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 16 }}>
+      <div className="plan-3col-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 16 }}>
         {plan.phases.map((phase, i) => {
           const color = ACTION_COLORS[i % ACTION_COLORS.length];
           return (
@@ -294,25 +301,36 @@ function PlanBoard({
             Top Products — Last 30 Days
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 0 }}>
-            {topProducts.map((p, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 4px", borderBottom: i < topProducts.length - 2 ? "1px solid var(--border)" : "none" }}>
-                <span style={{ fontSize: 11, color: "var(--text-very-dim)", fontWeight: 700, minWidth: 20, textAlign: "right" }}>#{i + 1}</span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 12, color: "var(--text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={p.title}>
-                    {p.title}
+            {topProducts.map((p, i) => {
+              const hasRevenue = p.revenue > 0;
+              return (
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 4px", borderBottom: i < topProducts.length - 2 ? "1px solid var(--border)" : "none" }}>
+                  <span style={{ fontSize: 11, color: "var(--text-very-dim)", fontWeight: 700, minWidth: 20, textAlign: "right" }}>#{i + 1}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 12, color: "var(--text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={p.title}>
+                      {p.title}
+                    </div>
+                    <div style={{ fontSize: 10, color: "var(--text-dim)", marginTop: 1 }}>
+                      {p.conversions > 0 ? `${p.conversions} orders` : `${sym}${Math.round(p.cost ?? 0)} spend`}
+                    </div>
                   </div>
-                  <div style={{ fontSize: 10, color: "var(--text-dim)", marginTop: 1 }}>{p.conversions} orders</div>
-                </div>
-                <div style={{ textAlign: "right", flexShrink: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", letterSpacing: "-0.3px" }}>
-                    {sym}{Math.round(p.revenue).toLocaleString()}
+                  <div style={{ textAlign: "right", flexShrink: 0 }}>
+                    {hasRevenue ? (
+                      <>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", letterSpacing: "-0.3px" }}>
+                          {sym}{Math.round(p.revenue).toLocaleString()}
+                        </div>
+                        {p.roas > 0 && (
+                          <div style={{ fontSize: 10, color: "var(--text-dim)" }}>{p.roas.toFixed(1)}× ROAS</div>
+                        )}
+                      </>
+                    ) : (
+                      <div style={{ fontSize: 11, color: "var(--text-muted)" }}>{p.conversions} conv.</div>
+                    )}
                   </div>
-                  {p.roas > 0 && (
-                    <div style={{ fontSize: 10, color: "var(--text-dim)" }}>{p.roas.toFixed(1)}×</div>
-                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -395,9 +413,9 @@ export function ActionPlanTab({
       try {
         const res = await fetch(`/api/accounts/${accountId}/products`);
         if (!res.ok) return;
-        const data = await res.json() as { products?: { title: string; revenue: number; conversions: number; roas: number }[] };
+        const data = await res.json() as { products?: { title: string; revenue: number; conversions: number; roas: number; cost: number }[] };
         if (data.products?.length) {
-          setProducts(data.products.map(p => ({ title: p.title, revenue: p.revenue, conversions: p.conversions, roas: p.roas })));
+          setProducts(data.products.map(p => ({ title: p.title, revenue: p.revenue, conversions: p.conversions, roas: p.roas, cost: p.cost })));
         }
       } catch { /* products are optional */ }
     })();
@@ -416,12 +434,20 @@ export function ActionPlanTab({
 
     // Format products as a context string for Claude
     let productContext: string | null = null;
-    const topProducts = products?.filter(p => p.revenue > 0 || p.conversions > 0).slice(0, 12);
-    if (topProducts && topProducts.length > 0) {
+    const planProducts = products
+      ? [...products]
+          .sort((a, b) => b.revenue - a.revenue || b.conversions - a.conversions || (b.cost ?? 0) - (a.cost ?? 0))
+          .filter(p => p.revenue > 0 || p.conversions > 0 || (p.cost ?? 0) > 1)
+          .slice(0, 12)
+      : [];
+    if (planProducts.length > 0) {
       productContext =
-        `Top ${topProducts.length} products by revenue (last 30 days):\n` +
-        topProducts.map((p, i) => {
-          const parts = [`${i + 1}. ${p.title}`, `${sym}${Math.round(p.revenue)} revenue`, `${p.conversions} orders`];
+        `Top ${planProducts.length} products by activity (last 30 days):\n` +
+        planProducts.map((p, i) => {
+          const parts = [`${i + 1}. ${p.title}`];
+          if (p.revenue > 0) parts.push(`${sym}${Math.round(p.revenue)} revenue`);
+          if (p.conversions > 0) parts.push(`${p.conversions} orders`);
+          if (p.cost && p.cost > 0) parts.push(`${sym}${Math.round(p.cost)} spend`);
           if (p.roas > 0) parts.push(`ROAS ${p.roas.toFixed(1)}×`);
           return parts.join(" — ");
         }).join("\n");
@@ -457,7 +483,7 @@ export function ActionPlanTab({
   return (
     <div>
       {/* ── Toolbar ─────────────────────────────────────────────────────── */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 10 }}>
+      <div className="plan-toolbar" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 10 }}>
         <div>
           <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.8px", textTransform: "uppercase", color: "var(--text-dim)" }}>
             Client Action Plan
