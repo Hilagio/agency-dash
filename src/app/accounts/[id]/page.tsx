@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, RefreshCw, MessageSquare, ListChecks, BarChart2, Loader2, Search, BookOpen, ClipboardList, Send, Pencil, X, CheckSquare, Sparkles, Package, Brain, FlaskConical, Zap, Copy, Check, Users, Wand2 } from "lucide-react";
+import { ArrowLeft, RefreshCw, MessageSquare, ListChecks, BarChart2, Loader2, Search, BookOpen, ClipboardList, Send, Pencil, X, CheckSquare, Sparkles, Package, Brain, FlaskConical, Zap, Copy, Check, Users, Wand2, FileText } from "lucide-react";
 import { ScoreBuckets } from "@/components/ScoreBuckets";
 import { ScoreHistory } from "@/components/ScoreHistory";
 import { ActionList } from "@/components/ActionList";
@@ -18,9 +18,10 @@ import { MetricExplorer } from "@/components/MetricExplorer";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AdCopyTab } from "@/components/AdCopyTab";
 import { ProactiveFeed } from "@/components/ProactiveFeed";
+import { ActionPlanTab } from "@/components/ActionPlanTab";
 import { BUCKET_LABELS } from "@/lib/engine/types";
 
-type Tab = "overview" | "actions" | "products" | "search-terms" | "ads" | "persona" | "explorer" | "playbook" | "chat" | "notes" | "sops" | "peers";
+type Tab = "overview" | "actions" | "products" | "search-terms" | "ads" | "persona" | "explorer" | "playbook" | "chat" | "notes" | "sops" | "peers" | "plan";
 
 interface Note {
   id: string;
@@ -2820,6 +2821,7 @@ export default function AccountPage() {
     { key: "search-terms",  label: "Search terms",  icon: <Search       size={14} /> },
     { key: "products",      label: "Products",      icon: <Package      size={14} /> },
     { key: "ads",           label: "Ad copy",       icon: <Wand2        size={14} /> },
+    { key: "plan",          label: "Action Plan",   icon: <FileText     size={14} /> },
     { key: "chat",          label: "Ask AI",        icon: <MessageSquare size={14} /> },
     { key: "notes",         label: "Notes",         icon: <ClipboardList size={14} /> },
   ];
@@ -3447,6 +3449,10 @@ export default function AccountPage() {
             </div>
             <NotesLog accountId={id} />
           </>
+        )}
+
+        {tab === "plan" && account && (
+          <ActionPlanTab accountId={id} accountName={account.name} />
         )}
         </div>
         )}

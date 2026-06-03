@@ -118,9 +118,10 @@ model Account {
 
   snapshots    ConstraintSnapshot[]
   actions      ActionRecommendation[]
-  chatSessions ChatSession[]
-  notes        AccountNote[]
-  sopProgress  AccountSopProgress[]
+  chatSessions  ChatSession[]
+  notes         AccountNote[]
+  sopProgress   AccountSopProgress[]
+  actionPlans   ClientActionPlan[]
 }
 
 // ─── Constraint Snapshot ─────────────────────────────────────────────────────
@@ -296,6 +297,18 @@ model AccountNote {
   content   String
   author    String   @default("")
   createdAt DateTime @default(now())
+}
+
+// ─── Client Action Plans ─────────────────────────────────────────────────────
+
+model ClientActionPlan {
+  id        String   @id @default(cuid())
+  accountId String
+  account   Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  content    String  // Full markdown from Claude
+  snapshotId String? // Snapshot this plan was generated from
 }
 
 // ─── SOP Progress Tracking ───────────────────────────────────────────────────
