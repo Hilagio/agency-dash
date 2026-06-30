@@ -2408,3 +2408,170 @@ export async function fetchProductEngineRows(
       feedLabel:   r.segments.product_feed_label || undefined,
     } satisfies RawRow));
 }
+
+// ─── Growth-plan data (90/30/14/7-day windows + campaign reads) ───────────────
+
+/** One time window of account totals, used for the momentum diagnosis. */
+export interface GrowthWindow {
+  days:            number;
+  spend:           number;
+  convValue:       number;  // all_conversions_value (matches Google Ads UI ROAS)
+  conv:            number;
+  clicks:          number;
+  roas:            number;
+  spendPerDay:     number;
+  convValuePerDay: number;
+  convRate:        number;  // decimal
+  cpc:             number;
+}
+
+/**
+ * Window the last 90 days of campaign metrics into 90/30/14/7-day buckets.
+ * Uses all_conversions_value so ROAS matches what the client sees in the UI.
+ */
+export async function fetchGrowthWindows(
+  customerId: string,
+  orgId?: string,
+): Promise<{ d90: GrowthWindow; d30: GrowthWindow; d14: GrowthWindow; d7: GrowthWindow }> {
+  const client   = getClient();
+  const customer = await getCustomer(client, customerId, orgId);
+  const fmt      = (d: Date) => d.toISOString().slice(0, 10);
+
+  const now = new Date();
+  const yd  = new Date(); yd.setDate(now.getDate() - 1);  // today is incomplete
+  const start90 = new Date(yd); start90.setDate(yd.getDate() - 89);
+
+  const rows = await safeQuery(
+    () => customer.query(`
+      SELECT segments.date, metrics.cost_micros, metrics.all_conversions_value,
+             metrics.conversions, metrics.clicks
+      FROM campaign
+      WHERE segments.date BETWEEN '${fmt(start90)}' AND '${fmt(yd)}'
+    `),
+    "growth windows 90d"
+  );
+
+  const mk = (days: number): GrowthWindow => ({
+    days, spend: 0, convValue: 0, conv: 0, clicks: 0,
+    roas: 0, spendPerDay: 0, convValuePerDay: 0, convRate: 0, cpc: 0,
+  });
+  const d90 = mk(90), d30 = mk(30), d14 = mk(14), d7 = mk(7);
+
+  const cut = (n: number) => { const d = new Date(yd); d.setDate(yd.getDate() - (n - 1)); return fmt(d); };
+  const c30 = cut(30), c14 = cut(14), c7 = cut(7);
+
+  for (const r of rows) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const date  = String((r as any).segments?.date ?? "");
+    const spend = Number(r.metrics?.cost_micros ?? 0) / 1e6;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const cv    = Number((r.metrics as any)?.all_conversions_value ?? 0);
+    const conv  = Number(r.metrics?.conversions ?? 0);
+    const clk   = Number(r.metrics?.clicks ?? 0);
+    const add = (w: GrowthWindow) => { w.spend += spend; w.convValue += cv; w.conv += conv; w.clicks += clk; };
+    add(d90);
+    if (date >= c30) add(d30);
+    if (date >= c14) add(d14);
+    if (date >= c7)  add(d7);
+  }
+
+  for (const w of [d90, d30, d14, d7]) {
+    w.roas            = w.spend > 0 ? w.convValue / w.spend : 0;
+    w.spendPerDay     = w.spend / w.days;
+    w.convValuePerDay = w.convValue / w.days;
+    w.convRate        = w.clicks > 0 ? w.conv / w.clicks : 0;
+    w.cpc             = w.clicks > 0 ? w.spend / w.clicks : 0;
+  }
+
+  return { d90, d30, d14, d7 };
+}
+
+/** A campaign read for the plan: name, 90-day economics, and why it's constrained. */
+export interface PlanCampaign {
+  name:           string;
+  channelType:    string;
+  spend:          number;
+  convValue:      number;
+  roas:           number;
+  cvr:            number;
+  budgetLimited:  boolean;
+  biddingLimited: boolean;
+  statusReasons:  string[];
+}
+
+// Subset of CampaignPrimaryStatusReason enum we surface in the plan.
+const PRIMARY_STATUS_REASON_LABELS: Record<string, string> = {
+  "8": "BIDDING_STRATEGY_LIMITED",
+  "10": "BIDDING_STRATEGY_CONSTRAINED",
+  "11": "BUDGET_CONSTRAINED",
+};
+
+/**
+ * Per-campaign 90-day economics plus primary_status_reasons, so the plan can
+ * call out budget-/bidding-limited winners (the central "unlock" narrative).
+ */
+export async function fetchCampaignsForPlan(
+  customerId: string,
+  orgId?: string,
+): Promise<PlanCampaign[]> {
+  const client   = getClient();
+  const customer = await getCustomer(client, customerId, orgId);
+  const fmt      = (d: Date) => d.toISOString().slice(0, 10);
+
+  const now = new Date();
+  const yd  = new Date(); yd.setDate(now.getDate() - 1);
+  const start = new Date(yd); start.setDate(yd.getDate() - 89);
+
+  const rows = await safeQuery(
+    () => customer.query(`
+      SELECT campaign.id, campaign.name, campaign.advertising_channel_type,
+             campaign.primary_status_reasons,
+             metrics.cost_micros, metrics.all_conversions_value,
+             metrics.conversions, metrics.clicks
+      FROM campaign
+      WHERE segments.date BETWEEN '${fmt(start)}' AND '${fmt(yd)}'
+        AND campaign.status = 'ENABLED'
+    `),
+    "campaigns for plan"
+  );
+
+  interface Acc extends PlanCampaign { clicks: number; conv: number; }
+  const map = new Map<string, Acc>();
+
+  for (const r of rows) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rc = r as any;
+    const id = String(rc.campaign?.id ?? "");
+    if (!id) continue;
+    const reasons: string[] = (rc.campaign?.primary_status_reasons ?? [])
+      .map((x: unknown) => PRIMARY_STATUS_REASON_LABELS[String(x)] ?? String(x));
+    const e = map.get(id) ?? {
+      name: String(rc.campaign?.name ?? "Unknown"),
+      channelType: String(rc.campaign?.advertising_channel_type ?? ""),
+      spend: 0, convValue: 0, roas: 0, cvr: 0,
+      budgetLimited: false, biddingLimited: false, statusReasons: [],
+      clicks: 0, conv: 0,
+    };
+    e.spend     += Number(r.metrics?.cost_micros ?? 0) / 1e6;
+    e.convValue += Number((r.metrics as any)?.all_conversions_value ?? 0);
+    e.conv      += Number(r.metrics?.conversions ?? 0);
+    e.clicks    += Number(r.metrics?.clicks ?? 0);
+    if (reasons.length && !e.statusReasons.length) e.statusReasons = reasons;
+    map.set(id, e);
+  }
+
+  const out: PlanCampaign[] = [];
+  for (const e of map.values()) {
+    const reasons = e.statusReasons;
+    out.push({
+      name: e.name, channelType: e.channelType,
+      spend: e.spend, convValue: e.convValue,
+      roas: e.spend > 0 ? e.convValue / e.spend : 0,
+      cvr:  e.clicks > 0 ? e.conv / e.clicks : 0,
+      budgetLimited:  reasons.includes("BUDGET_CONSTRAINED"),
+      biddingLimited: reasons.some((x) => x.startsWith("BIDDING_STRATEGY")),
+      statusReasons:  reasons,
+    });
+  }
+  return out.sort((a, b) => b.spend - a.spend).slice(0, 12);
+}

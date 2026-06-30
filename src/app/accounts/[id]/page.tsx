@@ -20,8 +20,7 @@ import { AdCopyTab } from "@/components/AdCopyTab";
 import { ProactiveFeed } from "@/components/ProactiveFeed";
 import { ActionPlanTab } from "@/components/ActionPlanTab";
 import ProductAnalyzer from "@/components/product-engine/ProductAnalyzer";
-import NinetyDayPlan from "@/components/product-engine/NinetyDayPlan";
-import { AnalysisResult } from "@/lib/product-engine/engine/types";
+import GrowthPlanGenerator from "@/components/product-engine/GrowthPlanGenerator";
 import { BUCKET_LABELS } from "@/lib/engine/types";
 
 type Tab = "overview" | "actions" | "products" | "search-terms" | "ads" | "persona" | "explorer" | "playbook" | "chat" | "notes" | "sops" | "peers" | "plan" | "product-engine";
@@ -2658,7 +2657,6 @@ export default function AccountPage() {
   const [actions, setActions] = useState<Action[]>([]);
   const [orgMembers, setOrgMembers] = useState<{ email: string; name: string | null }[]>([]);
   const [tab, setTab] = useState<Tab>("overview");
-  const [productAnalysisResult, setProductAnalysisResult] = useState<AnalysisResult | null>(null);
   const [intelligenceBriefText, setIntelligenceBriefText]         = useState<string | undefined>(undefined);
   const [intelligenceBriefQuestion, setIntelligenceBriefQuestion] = useState<string | undefined>(undefined);
   const [loading, setLoading] = useState(true);
@@ -3467,6 +3465,10 @@ export default function AccountPage() {
 
         {tab === "product-engine" && account && (
           <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+            <GrowthPlanGenerator
+              accountId={id}
+              defaultClient={account.name}
+            />
             <ProductAnalyzer
               defaultClient={account.name}
               fetchRows={async () => {
@@ -3474,11 +3476,6 @@ export default function AccountPage() {
                 if (!res.ok) throw new Error((await res.json()).error ?? "Failed to load product rows");
                 return res.json();
               }}
-              onResult={setProductAnalysisResult}
-            />
-            <NinetyDayPlan
-              result={productAnalysisResult}
-              defaultClient={account.name}
             />
           </div>
         )}
