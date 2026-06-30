@@ -21,6 +21,7 @@ import { ProactiveFeed } from "@/components/ProactiveFeed";
 import { ActionPlanTab } from "@/components/ActionPlanTab";
 import ProductAnalyzer from "@/components/product-engine/ProductAnalyzer";
 import GrowthPlanGenerator from "@/components/product-engine/GrowthPlanGenerator";
+import ShopifyConnect from "@/components/product-engine/ShopifyConnect";
 import { BUCKET_LABELS } from "@/lib/engine/types";
 
 type Tab = "overview" | "actions" | "products" | "search-terms" | "ads" | "persona" | "explorer" | "playbook" | "chat" | "notes" | "sops" | "peers" | "plan" | "product-engine";
@@ -3465,6 +3466,7 @@ export default function AccountPage() {
 
         {tab === "product-engine" && account && (
           <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+            <ShopifyConnect accountId={id} />
             <GrowthPlanGenerator
               accountId={id}
               defaultClient={account.name}

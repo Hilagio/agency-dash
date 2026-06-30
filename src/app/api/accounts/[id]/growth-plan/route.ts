@@ -14,6 +14,7 @@ import {
   fetchScalingReadiness, extractGoogleAdsError, type GrowthWindow,
 } from "@/lib/integrations/google-ads";
 import { analyze } from "@/lib/product-engine/engine/productEngine";
+import { fetchShopifyMetrics } from "@/lib/integrations/shopify";
 import { authorGrowthPlan, planPeriodLabel, PLAN_MARKER } from "@/lib/product-engine/plan/authorGrowthPlan";
 import { GrowthPlanData, MomentumWindow, Lang, ContextPack } from "@/lib/product-engine/plan/growthPlanTypes";
 
@@ -109,6 +110,24 @@ export async function POST(req: NextRequest, { params }: Params) {
       scalingNote = scaling.scalingNote;
     } catch { /* non-fatal */ }
 
+    // ── Shopify (Phase 1 — auto-fetch total revenue/AOV when connected) ──────────
+    let shopify: GrowthPlanData["shopify"] = null;
+    const conn = await prisma.shopifyConnection.findUnique({ where: { accountId: id } });
+    if (conn) {
+      try {
+        const m = await fetchShopifyMetrics(conn.shopDomain, conn.accessToken);
+        const tot = m.windows.d90.totalSales;
+        shopify = {
+          totalRevenue: tot,
+          grossMarginPct: null,   // Phase 1: COGS/margin not fetched — stays manual
+          cogsConfigured: false,
+          netSales: m.windows.d90.netSales,
+          googleSharePct: tot > 0 ? (windows.d90.convValue / tot) * 100 : null,
+          aov: m.windows.d90.aov,
+        };
+      } catch { /* non-fatal — fall back to no Shopify data */ }
+    }
+
     data = {
       client: account.name,
       currency: account.currency,
@@ -141,7 +160,7 @@ export async function POST(req: NextRequest, { params }: Params) {
         })),
         dailyBudget, readyToScale, scalingNote,
       },
-      shopify: null,
+      shopify,
     };
   } catch (err) {
     return NextResponse.json({ error: extractGoogleAdsError(err) }, { status: 500 });

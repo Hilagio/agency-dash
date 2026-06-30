@@ -123,6 +123,20 @@ model Account {
   notes         AccountNote[]
   sopProgress   AccountSopProgress[]
   actionPlans   ClientActionPlan[]
+  shopify       ShopifyConnection?
+}
+
+// ─── Shopify (custom-app Admin API token, per account) ────────────────────────
+
+model ShopifyConnection {
+  id          String   @id @default(cuid())
+  accountId   String   @unique
+  account     Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  shopDomain  String   // e.g. "brillers.myshopify.com"
+  accessToken String   // Admin API access token from the client's custom app
+  scopes      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 // ─── Constraint Snapshot ─────────────────────────────────────────────────────
