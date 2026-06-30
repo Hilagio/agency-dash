@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, RefreshCw, MessageSquare, ListChecks, BarChart2, Loader2, Search, BookOpen, ClipboardList, Send, Pencil, X, CheckSquare, Sparkles, Package, Brain, FlaskConical, Zap, Copy, Check, Users, Wand2, FileText } from "lucide-react";
+import { ArrowLeft, RefreshCw, MessageSquare, ListChecks, BarChart2, Loader2, Search, BookOpen, ClipboardList, Send, Pencil, X, CheckSquare, Sparkles, Package, Brain, FlaskConical, Zap, Copy, Check, Users, Wand2, FileText, BarChart } from "lucide-react";
 import { ScoreBuckets } from "@/components/ScoreBuckets";
 import { ScoreHistory } from "@/components/ScoreHistory";
 import { ActionList } from "@/components/ActionList";
@@ -19,9 +19,12 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { AdCopyTab } from "@/components/AdCopyTab";
 import { ProactiveFeed } from "@/components/ProactiveFeed";
 import { ActionPlanTab } from "@/components/ActionPlanTab";
+import ProductAnalyzer from "@/components/product-engine/ProductAnalyzer";
+import NinetyDayPlan from "@/components/product-engine/NinetyDayPlan";
+import { AnalysisResult } from "@/lib/product-engine/engine/types";
 import { BUCKET_LABELS } from "@/lib/engine/types";
 
-type Tab = "overview" | "actions" | "products" | "search-terms" | "ads" | "persona" | "explorer" | "playbook" | "chat" | "notes" | "sops" | "peers" | "plan";
+type Tab = "overview" | "actions" | "products" | "search-terms" | "ads" | "persona" | "explorer" | "playbook" | "chat" | "notes" | "sops" | "peers" | "plan" | "product-engine";
 
 interface Note {
   id: string;
@@ -2655,6 +2658,7 @@ export default function AccountPage() {
   const [actions, setActions] = useState<Action[]>([]);
   const [orgMembers, setOrgMembers] = useState<{ email: string; name: string | null }[]>([]);
   const [tab, setTab] = useState<Tab>("overview");
+  const [productAnalysisResult, setProductAnalysisResult] = useState<AnalysisResult | null>(null);
   const [intelligenceBriefText, setIntelligenceBriefText]         = useState<string | undefined>(undefined);
   const [intelligenceBriefQuestion, setIntelligenceBriefQuestion] = useState<string | undefined>(undefined);
   const [loading, setLoading] = useState(true);
@@ -2822,6 +2826,7 @@ export default function AccountPage() {
     { key: "products",      label: "Products",      icon: <Package      size={14} /> },
     { key: "ads",           label: "Ad copy",       icon: <Wand2        size={14} /> },
     { key: "plan",          label: "Action Plan",   icon: <FileText     size={14} /> },
+    { key: "product-engine", label: "Product Engine", icon: <BarChart    size={14} /> },
     { key: "chat",          label: "Ask AI",        icon: <MessageSquare size={14} /> },
     { key: "notes",         label: "Notes",         icon: <ClipboardList size={14} /> },
   ];
@@ -3458,6 +3463,24 @@ export default function AccountPage() {
             targetRoasDefault={account.targetRoas}
             currency={account.currency}
           />
+        )}
+
+        {tab === "product-engine" && account && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+            <ProductAnalyzer
+              defaultClient={account.name}
+              fetchRows={async () => {
+                const res = await fetch(`/api/accounts/${id}/product-rows`);
+                if (!res.ok) throw new Error((await res.json()).error ?? "Failed to load product rows");
+                return res.json();
+              }}
+              onResult={setProductAnalysisResult}
+            />
+            <NinetyDayPlan
+              result={productAnalysisResult}
+              defaultClient={account.name}
+            />
+          </div>
         )}
         </div>
         )}

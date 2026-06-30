@@ -2352,3 +2352,59 @@ export async function fetchPersonaData(
     interests,
   };
 }
+
+// ─── Product Engine Rows ─────────────────────────────────────────────────────
+
+import type { RawRow } from '@/lib/product-engine/engine/types';
+
+/**
+ * Fetch shopping_performance_view rows for the product engine.
+ * Returns RawRow[] ready to pass to analyze().
+ */
+export async function fetchProductEngineRows(
+  customerId: string,
+  orgId?: string,
+  period: "LAST_30_DAYS" | "LAST_60_DAYS" | "LAST_90_DAYS" = "LAST_90_DAYS",
+): Promise<RawRow[]> {
+  const client   = getClient();
+  const customer = await getCustomer(client, customerId, orgId);
+
+  // Fetch currency from customer resource
+  const custRows = await safeQuery(
+    () => customer.query(`SELECT customer.currency_code FROM customer LIMIT 1`),
+    "customer currency"
+  );
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const currency: string = (custRows[0] as any)?.customer?.currency_code ?? "EUR";
+
+  const rows = await safeQuery(
+    () => customer.query(`
+      SELECT
+        segments.product_item_id,
+        segments.product_title,
+        segments.product_feed_label,
+        metrics.clicks,
+        metrics.cost_micros,
+        metrics.conversions,
+        metrics.conversions_value
+      FROM shopping_performance_view
+      WHERE segments.date DURING ${period}
+    `),
+    "product engine rows"
+  );
+
+  return rows
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .filter((r: any) => r.segments?.product_item_id)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .map((r: any) => ({
+      itemId:      String(r.segments.product_item_id),
+      title:       String(r.segments.product_title ?? ''),
+      clicks:      Number(r.metrics?.clicks ?? 0),
+      cost:        Number(r.metrics?.cost_micros ?? 0) / 1e6,
+      conversions: Number(r.metrics?.conversions ?? 0),
+      convValue:   Number(r.metrics?.conversions_value ?? 0),
+      currency,
+      feedLabel:   r.segments.product_feed_label || undefined,
+    } satisfies RawRow));
+}
