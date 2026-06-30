@@ -10,6 +10,16 @@
 
 export type Lang = 'en' | 'nl';
 
+/** The Client Context Pack — the six human-supplied "why" inputs (replaces the Typeform). */
+export interface ContextPack {
+  goalAmbition?: string;   // goal + target/proven ROAS beyond the data window
+  usps?:         string;   // USPs & positioning
+  audience?:     string;   // audience nuances (different products = different buyers)
+  makeOrBreak?:  string;   // ⭐ the client-specific dynamic invisible in the numbers
+  constraints?:  string;   // budget ceiling, countries, hard no-go's
+  stockInputs?:  string;   // core product list, limited-edition alerts, restock cadence
+}
+
 /** One time window of account totals (mirrors GrowthWindow from google-ads.ts, decoupled). */
 export interface MomentumWindow {
   label:           string;   // e.g. "90 days"
@@ -39,7 +49,9 @@ export interface GrowthPlanData {
   periodLabel:  string;
   amName:       string | null;
   targetRoas:   number | null;
-  goalNotes:    string | null;   // AM free-text: KPI / goal / scaling strategy / make-or-break
+  goalNotes:    string | null;   // legacy free-text fallback
+  contextPack:  ContextPack | null;  // the six structured human inputs
+  scalingStrategy: string | null;    // cashflow-efficient | profitable | aggressive
   language:     Lang;
 
   google: {
@@ -47,7 +59,7 @@ export interface GrowthPlanData {
       d90: MomentumWindow;
       d30: MomentumWindow;
       d14: MomentumWindow;
-      d7:  MomentumWindow;
+      d7?: MomentumWindow;   // live mode only; manual SOP uploads cover 90/30/14
     };
     breakEven:        number;
     breakEvenAssumed: boolean;

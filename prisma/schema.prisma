@@ -71,6 +71,7 @@ model Account {
   monthlyBudget  Float?
   industry       String?
   clientContext  String?  // free-text: what they sell, landing page, target CPA, USPs etc.
+  contextPack    String?  // JSON: Client Context Pack (goal/ambition, USPs, audience, make-or-break, constraints, stock inputs) — the human input for the 90-day plan
 
   // ─── Per-account scoring targets ───────────────────────────────────────────
   // Set these to get accurate FUNNEL + ECONOMICS scores.
