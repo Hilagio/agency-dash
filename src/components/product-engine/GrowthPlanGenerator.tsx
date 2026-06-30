@@ -12,6 +12,8 @@ import { renderGrowthPlanHtml } from '@/lib/product-engine/plan/growthPlanHtml';
 import { GrowthPlanContent, GrowthPlanRender, Lang, ContextPack } from '@/lib/product-engine/plan/growthPlanTypes';
 import { parseGoogleAdsCampaignCsv, CampaignCsvResult } from '@/lib/product-engine/adapters/campaignCsvAdapter';
 import { parseGoogleAdsProductCsv } from '@/lib/product-engine/adapters/csvAdapter';
+import { importPlanZip } from '@/lib/product-engine/adapters/zipImport';
+import { parseTypeformCsv } from '@/lib/product-engine/adapters/typeformAdapter';
 import { RawRow } from '@/lib/product-engine/engine/types';
 
 export interface GrowthPlanGeneratorProps {
@@ -53,6 +55,8 @@ export default function GrowthPlanGenerator({ accountId, defaultClient }: Growth
   const [camp, setCamp] = useState<{ d90?: CampaignCsvResult; d30?: CampaignCsvResult; d14?: CampaignCsvResult }>({});
   const [prod, setProd] = useState<{ rows: RawRow[]; range: string } | null>(null);
   const [shop, setShop] = useState<ShopifyForm>({ totalRevenue: '', aov: '', grossMarginPct: '', cogs: '', netSales: '', mostSold: '', inStock: '' });
+  const [zipInfo, setZipInfo] = useState<{ files: number; warnings: string[]; shopify: boolean } | null>(null);
+  const [importedTf, setImportedTf] = useState(false);
 
   // output
   const [content, setContent] = useState<GrowthPlanContent | null>(null);
@@ -105,6 +109,44 @@ export default function GrowthPlanGenerator({ accountId, defaultClient }: Growth
     } catch (e: unknown) { setError((e as Error).message); }
   }
 
+  // Drop the whole client_90day ZIP — auto-route Google Ads + Shopify files.
+  async function onZip(f: File) {
+    setError('');
+    try {
+      const r = await importPlanZip(f);
+      setCamp(r.campaign);
+      if (r.products90) setProd(r.products90);
+      if (r.shopify) {
+        const s = r.shopify;
+        setShop({
+          totalRevenue: s.totalRevenue != null ? String(s.totalRevenue) : '',
+          aov: s.aov != null ? String(s.aov) : '',
+          grossMarginPct: s.grossMarginPct != null ? String(s.grossMarginPct) : '',
+          cogs: s.cogs != null ? String(s.cogs) : '',
+          netSales: s.netSales != null ? String(s.netSales) : '',
+          mostSold: s.mostSold ?? '',
+          inStock: s.inStock ?? '',
+        });
+      }
+      setZipInfo({ files: r.files.length, warnings: r.warnings, shopify: !!r.shopify });
+    } catch (e: unknown) { setError('Kon de ZIP niet lezen: ' + (e as Error).message); }
+  }
+
+  // Upload the Typeform responses CSV — auto-fill the Context Pack.
+  async function onTypeform(f: File) {
+    setError('');
+    try {
+      const t = parseTypeformCsv(await readFile(f));
+      setPack((p) => ({ ...p, ...Object.fromEntries(Object.entries(t.contextPack).filter(([, v]) => v)) }));
+      setIdentity((s) => ({
+        ...s,
+        amName: t.amName ?? s.amName,
+        scalingStrategy: t.scalingStrategy ?? s.scalingStrategy,
+      }));
+      setImportedTf(true);
+    } catch (e: unknown) { setError('Kon de Typeform-CSV niet lezen: ' + (e as Error).message); }
+  }
+
   function applyResult(j: { content: GrowthPlanContent; render: GrowthPlanRender; generatedAt?: string }) {
     setContent(j.content); setRender(j.render);
     setGeneratedAt(j.generatedAt ?? new Date().toISOString());
@@ -140,6 +182,7 @@ export default function GrowthPlanGenerator({ accountId, defaultClient }: Growth
         products: prod.rows,
         campaigns: camp.d90.campaigns.map((c) => ({
           name: c.name, channelType: c.channelType, spend: c.spend, convValue: c.convValue, conv: c.conv, clicks: c.clicks,
+          budgetLimited: c.budgetLimited, biddingLimited: c.biddingLimited,
         })),
         shopify: {
           totalRevenue: num(shop.totalRevenue), aov: num(shop.aov), grossMarginPct: num(shop.grossMarginPct),
@@ -194,12 +237,12 @@ export default function GrowthPlanGenerator({ accountId, defaultClient }: Growth
         <input placeholder="Account manager" value={identity.amName} onChange={setId('amName')} style={inp} />
         <input placeholder="Markt (bv. NL, USA)" value={identity.market} onChange={setId('market')} style={inp} />
         <input placeholder="Vertical (bv. men's jewellery)" value={identity.vertical} onChange={setId('vertical')} style={inp} />
-        <select value={identity.scalingStrategy} onChange={setId('scalingStrategy')} style={inp}>
-          <option value="">Schaalstrategie…</option>
-          <option value="cashflow-efficient">Cashflow-efficiënt</option>
-          <option value="profitable">Winstgevend</option>
-          <option value="aggressive">Agressief schalen</option>
-        </select>
+        <input list="scaling-strategies" placeholder="Schaalstrategie" value={identity.scalingStrategy} onChange={setId('scalingStrategy')} style={inp} />
+        <datalist id="scaling-strategies">
+          <option value="Cashflow-efficient" />
+          <option value="Profitable / as profitable as possible" />
+          <option value="Aggressive scaling" />
+        </datalist>
         <input placeholder="Periode-label (auto)" value={identity.periodLabel} onChange={setId('periodLabel')} style={inp} />
         <select value={identity.language} onChange={setId('language')} style={inp}>
           <option value="en">English</option>
@@ -209,7 +252,13 @@ export default function GrowthPlanGenerator({ accountId, defaultClient }: Growth
 
       {/* ── Client Context Pack ───────────────────────────────────────── */}
       <div style={section}>
-        <div style={sectionTitle}>Client Context Pack <span style={{ color: BRAND.dim, fontWeight: 400 }}>— de zes dingen die niet in de data zitten</span></div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+          <div style={{ ...sectionTitle, marginBottom: 0 }}>Client Context Pack <span style={{ color: BRAND.dim, fontWeight: 400 }}>— de zes dingen die niet in de data zitten</span></div>
+          <label style={{ ...btnGhost, fontSize: 12, padding: '6px 12px', cursor: 'pointer' }}>
+            {importedTf ? '✓ Typeform geladen — opnieuw' : 'Importeer Typeform-CSV'}
+            <input type="file" accept=".csv" hidden onChange={(e) => e.target.files?.[0] && onTypeform(e.target.files[0])} />
+          </label>
+        </div>
         <Field label="1 · Doel & ambitie" hint="wat de klant wil + hun doel/bewezen ROAS (buiten het datavenster)" value={pack.goalAmbition} onChange={setP('goalAmbition')} />
         <Field label="2 · USP's & positionering" hint="wat hen anders maakt" value={pack.usps} onChange={setP('usps')} />
         <Field label="3 · Doelgroep-nuances" hint="verschillende producten = verschillende kopers die het algoritme apart moet leren" value={pack.audience} onChange={setP('audience')} />
@@ -221,8 +270,25 @@ export default function GrowthPlanGenerator({ accountId, defaultClient }: Growth
       {/* ── Manual upload ─────────────────────────────────────────────── */}
       {mode === 'manual' && (
         <div style={section}>
-          <div style={sectionTitle}>SOP-data <span style={{ color: BRAND.dim, fontWeight: 400 }}>— Google Ads CSV’s + Shopify</span></div>
+          <div style={sectionTitle}>SOP-data <span style={{ color: BRAND.dim, fontWeight: 400 }}>— upload de hele ZIP, of losse bestanden</span></div>
 
+          {/* One-ZIP import */}
+          <label style={{ display: 'block', background: 'rgba(249,195,31,0.06)', border: `1px dashed ${BRAND.gold}`, borderRadius: 10, padding: '14px 16px', cursor: 'pointer' }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: BRAND.gold }}>📦 Upload client_90day.zip</div>
+            <div style={{ fontSize: 11.5, color: BRAND.dim, marginTop: 3 }}>
+              Pakt automatisch de Google Ads-campagnes (90/30/14d), producten en de Shopify Sidekick-cijfers uit.
+            </div>
+            <input type="file" accept=".zip" hidden onChange={(e) => e.target.files?.[0] && onZip(e.target.files[0])} />
+          </label>
+
+          {zipInfo && (
+            <div style={{ marginTop: 10, fontSize: 12, color: BRAND.dim }}>
+              ✓ {zipInfo.files} bestanden gelezen{zipInfo.shopify ? ' · Shopify-cijfers ingevuld (controleer hieronder)' : ''}.
+              {zipInfo.warnings.length > 0 && <span style={{ color: BRAND.redAlt }}> ⚠ {zipInfo.warnings.join(' ')}</span>}
+            </div>
+          )}
+
+          <div style={{ ...sectionTitle, marginTop: 18, fontSize: 12, color: BRAND.dim, fontWeight: 600 }}>…of losse bestanden</div>
           <div style={{ ...grid3, marginTop: 4 }}>
             <FileInput label="Campagnes — 90 dagen" sub={campSummary(camp.d90)} onFile={(f) => onCampaign('d90', f)} />
             <FileInput label="Campagnes — 30 dagen" sub={campSummary(camp.d30)} onFile={(f) => onCampaign('d30', f)} />
@@ -232,7 +298,10 @@ export default function GrowthPlanGenerator({ accountId, defaultClient }: Growth
             <FileInput label="Producten — 90 dagen (met Issues-kolom)" sub={prod ? `${prod.rows.length} regels${prod.range ? ' · ' + prod.range : ''}` : 'geen bestand'} onFile={onProducts} />
           </div>
 
-          <div style={{ ...sectionTitle, marginTop: 18, fontSize: 12 }}>Shopify (uit Sidekick / P&L)</div>
+          <div style={{ ...sectionTitle, marginTop: 18, fontSize: 12 }}>
+            Shopify (uit Sidekick / P&L)
+            {zipInfo?.shopify && <span style={{ color: BRAND.gold, fontWeight: 600, marginLeft: 8 }}>— ingevuld uit de ZIP, controleer & corrigeer</span>}
+          </div>
           <div style={grid3}>
             <input placeholder="Totale omzet (90d)" value={shop.totalRevenue} onChange={setS('totalRevenue')} style={inp} />
             <input placeholder="AOV" value={shop.aov} onChange={setS('aov')} style={inp} />

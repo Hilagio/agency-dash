@@ -29,7 +29,7 @@ interface ManualPayload {
   grossMarginPct?: number | null;   // percentage 0–100 (from P/L or Shopify)
   windows: { d90: WindowTotals; d30: WindowTotals; d14: WindowTotals };
   products: RawRow[];
-  campaigns?: { name: string; channelType?: string; spend: number; convValue: number; conv: number; clicks: number }[];
+  campaigns?: { name: string; channelType?: string; spend: number; convValue: number; conv: number; clicks: number; budgetLimited?: boolean; biddingLimited?: boolean }[];
   shopify?: {
     totalRevenue?: number | null; aov?: number | null; grossMarginPct?: number | null;
     cogs?: number | null; netSales?: number | null; mostSold?: string | null; inStock?: string | null;
@@ -124,7 +124,7 @@ export async function POST(req: NextRequest, { params }: Params) {
         name: c.name, channelType: c.channelType ?? "",
         spend: c.spend, roas: c.spend > 0 ? c.convValue / c.spend : 0,
         cvr: c.clicks > 0 ? c.conv / c.clicks : 0,
-        budgetLimited: false, biddingLimited: false,   // not available from manual CSVs
+        budgetLimited: !!c.budgetLimited, biddingLimited: !!c.biddingLimited,
       })),
       dailyBudget: null, readyToScale: null, scalingNote: null,
     },
