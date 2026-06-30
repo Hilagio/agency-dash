@@ -137,7 +137,7 @@ export function PriceCompetitiveness({ accountId, merchantCenterId }: { accountI
         href={`/api/auth/google-ads?returnTo=${encodeURIComponent(typeof window !== "undefined" ? window.location.pathname : "/")}`}
         style={{
           display: "inline-flex", alignItems: "center", gap: 6,
-          background: "var(--accent)", color: "#fff",
+          background: "var(--accent)", color: "#0B130F",
           padding: "8px 18px", borderRadius: 7, fontSize: 12, fontWeight: 600,
           textDecoration: "none",
         }}

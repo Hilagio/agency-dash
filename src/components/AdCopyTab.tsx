@@ -167,7 +167,7 @@ function AdCard({ ad, accountId }: { ad: RsaAd; accountId: string }) {
             disabled={gen.loading}
             style={{
               display: "flex", alignItems: "center", gap: 5,
-              background: "var(--accent)", color: "#fff", border: "none",
+              background: "var(--accent)", color: "#0B130F", border: "none",
               borderRadius: 7, padding: "5px 11px", fontSize: 11, fontWeight: 600,
               cursor: gen.loading ? "not-allowed" : "pointer",
               opacity: gen.loading ? 0.7 : 1,

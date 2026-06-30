@@ -13,8 +13,9 @@ import { ConstraintSignals, BUCKET_LABELS } from "@/lib/engine/types";
 import { getAuthContext, unauthorized, forbidden } from "@/lib/auth";
 import { AGENCY_PHILOSOPHY } from "@/lib/agencyPhilosophy";
 import { fetchSlackMessages, formatSlackForContext } from "@/lib/integrations/slack";
-import { fetchProductPerformance } from "@/lib/integrations/google-ads";
+import { fetchProductPerformance, fetchCampaignBreakdown, fetchPriorPeriodProducts, fetchScalingReadiness } from "@/lib/integrations/google-ads";
 import { getMerchantCenterIds, fetchPriceCompetitiveness } from "@/lib/integrations/merchant-center";
+import { searchKnowledge } from "@/lib/knowledge-search";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -109,22 +110,23 @@ export async function POST(_req: NextRequest, { params }: Params) {
     const c = signals.conversion;
     const f = signals.funnel;
     const rows = [
-      `CTR: ${(t.clickThroughRate * 100).toFixed(2)}%`,
+      `CTR (14d): ${(t.clickThroughRate * 100).toFixed(2)}%`,
       (!isShoppingAccount && t.qualityScoreCount > 0)
         ? `Quality Score: ${t.qualityScoreAvg.toFixed(1)}/10 (${t.qualityScoreCount} keywords)`
         : isShoppingAccount ? `Feed-based (Shopping/PMax) — QS not applicable` : null,
-      `IS lost to budget: ${Math.round(t.impressionShareLost_budget * 100)}%`,
-      `IS lost to rank: ${Math.round(t.impressionShareLost_rank * 100)}%`,
+      `IS lost to budget (14d): ${Math.round(t.impressionShareLost_budget * 100)}%`,
+      `IS lost to rank (14d): ${Math.round(t.impressionShareLost_rank * 100)}%`,
       // Ecommerce metrics
-      (!isLeadGen && e.actualRoas > 0) ? `Actual ROAS: ${e.actualRoas.toFixed(2)}x` : null,
-      (!isLeadGen && e.actualCpa  > 0) ? `Actual CPA: ${e.actualCpa.toFixed(0)}` : null,
+      (!isLeadGen && e.actualRoas > 0) ? `Actual ROAS (14d): ${e.actualRoas.toFixed(2)}x` : null,
+      (!isLeadGen && e.actualRoas === 0 && !isLeadGen) ? `Actual ROAS (14d): NOT AVAILABLE via campaign resource — use PRODUCT PERFORMANCE Account ROAS below if present` : null,
+      (!isLeadGen && e.actualCpa  > 0) ? `Actual CPA (14d): ${e.actualCpa.toFixed(0)}` : null,
       // Lead gen metrics
-      (isLeadGen && f?.costPerLead   > 0)                          ? `CPL: ${e.actualCpa > 0 ? e.actualCpa.toFixed(0) : f.costPerLead.toFixed(0)} (target: ${account.targetCpa ?? "not set"})` : null,
+      (isLeadGen && f?.costPerLead   > 0)                          ? `CPL (14d): ${e.actualCpa > 0 ? e.actualCpa.toFixed(0) : f.costPerLead.toFixed(0)} (target: ${account.targetCpa ?? "not set"})` : null,
       (isLeadGen && f?.leadToSaleRate > 0)                         ? `Lead-to-sale rate: ${(f.leadToSaleRate * 100).toFixed(1)}%` : null,
       (isLeadGen && f?.averageLeadQualityScore > 0)                 ? `Avg lead quality: ${f.averageLeadQualityScore.toFixed(1)}/10` : null,
       (isLeadGen)                                                   ? `Offline conversion import: ${f?.offlineConversionImportActive ? "active" : "NOT active — sales not tracked back to clicks"}` : null,
-      c.conversionRate > 0 ? `${isLeadGen ? "Form CVR" : "CVR"}: ${(c.conversionRate * 100).toFixed(2)}% (benchmark: ${(c.industryBenchmarkConversionRate * 100).toFixed(1)}%)` : null,
-      `Budget utilisation: ${Math.round(e.budgetUtilizationPercent * 100)}%`,
+      c.conversionRate > 0 ? `${isLeadGen ? "Form CVR" : "CVR"} (14d): ${(c.conversionRate * 100).toFixed(2)}% (benchmark: ${(c.industryBenchmarkConversionRate * 100).toFixed(1)}%)` : null,
+      `Budget utilisation (30d): ${Math.round(e.budgetUtilizationPercent * 100)}%`,
       !hasRealData ? `⚠ LOW DATA WARNING: This account has very little performance data. Scores are based on setup signals, not conversion history.` : null,
     ].filter(Boolean);
     metricsBlock = rows.join(" | ");
@@ -155,6 +157,28 @@ export async function POST(_req: NextRequest, { params }: Params) {
     }
   }
 
+  // ── Campaign breakdown (all accounts) ────────────────────────────────────────
+  let campaignContext = "";
+  if (account.googleAdsId) {
+    try {
+      const breakdown = await Promise.race([
+        fetchCampaignBreakdown(account.googleAdsId, ctx.orgId).catch(() => [] as Awaited<ReturnType<typeof fetchCampaignBreakdown>>),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error("campaign breakdown timed out")), 15_000)),
+      ]);
+      if (breakdown.length > 0) {
+        const curr = account.currency === "EUR" ? "€" : account.currency === "GBP" ? "£" : "$";
+        const lines = [`\nCAMPAIGN BREAKDOWN (last 30 days):`];
+        for (const c of breakdown) {
+          const roasStr = c.roas > 0 ? ` | ROAS ${c.roas.toFixed(2)}x` : " | ROAS n/a";
+          const cvrStr  = c.cvr  > 0 ? ` | CVR ${(c.cvr * 100).toFixed(2)}%` : "";
+          const typeStr = c.channelType ? ` [${c.channelType}]` : "";
+          lines.push(`  - ${c.campaignName}${typeStr}: ${curr}${Math.round(c.spend)} spend${roasStr}${cvrStr}`);
+        }
+        campaignContext = lines.join("\n");
+      }
+    } catch { /* non-fatal */ }
+  }
+
   // ── Product + pricing context (all ecommerce accounts — not just Shopping/PMax) ─
   let productContext = "";
   if (account.googleAdsId && !isLeadGen) {
@@ -162,12 +186,13 @@ export async function POST(_req: NextRequest, { params }: Params) {
       const productTimeout = new Promise<null>((_, reject) =>
         setTimeout(() => reject(new Error("product+MCC fetch timed out")), 20_000)
       );
-      const [productData, mcIds] = await Promise.race([
+      const [productData, priorProducts, mcIds] = await Promise.race([
         Promise.all([
           fetchProductPerformance(account.googleAdsId, ctx.orgId).catch(() => null),
+          fetchPriorPeriodProducts(account.googleAdsId, ctx.orgId).catch(() => []),
           getMerchantCenterIds(account.googleAdsId, ctx.orgId).catch(() => [] as string[]),
         ]),
-        productTimeout.then(() => [null, [] as string[]] as const),
+        productTimeout.then(() => [null, [], [] as string[]] as const),
       ]);
 
       // Price competitiveness — use first Merchant Center ID
@@ -255,9 +280,78 @@ export async function POST(_req: NextRequest, { params }: Params) {
           lines.push(`  Sidekicks = too few clicks/conversions to classify yet. Villains = failed test — spending without return. Heroes = proven performers.`);
         }
 
+        // Prior-period comparison (31–60 days ago) — surfaces seasonality and feed pivots
+        if (priorProducts && priorProducts.length > 0) {
+          const priorMap = new Map(priorProducts.map(p => [p.itemId, p]));
+
+          const droppedOff = productData.products
+            .filter(p => {
+              const prev = priorMap.get(p.itemId);
+              return prev && prev.conversions >= 2 && p.conversions < prev.conversions * 0.5;
+            })
+            .sort((a, b) => (priorMap.get(b.itemId)?.conversions ?? 0) - (priorMap.get(a.itemId)?.conversions ?? 0))
+            .slice(0, 6);
+
+          const emerging = productData.products
+            .filter(p => {
+              const prev = priorMap.get(p.itemId);
+              return p.conversions >= 2 && (!prev || prev.conversions === 0);
+            })
+            .sort((a, b) => b.conversions - a.conversions)
+            .slice(0, 4);
+
+          const disappeared = priorProducts
+            .filter(p => p.conversions >= 3 && !productData.products.find(c => c.itemId === p.itemId))
+            .slice(0, 4);
+
+          if (droppedOff.length > 0 || emerging.length > 0 || disappeared.length > 0) {
+            lines.push(`\nPERIOD-OVER-PERIOD SHIFT (last 30d vs 31–60 days ago — use this to spot seasonality, feed pivots, or bid changes):`);
+            if (droppedOff.length > 0) {
+              lines.push(`Products that converted 31–60d ago but are underperforming now:`);
+              droppedOff.forEach(p => {
+                const prev = priorMap.get(p.itemId)!;
+                lines.push(`  - "${p.title}": ${prev.conversions.toFixed(0)} sales → ${p.conversions.toFixed(0)} now (-${Math.round((1 - p.conversions / prev.conversions) * 100)}%)`);
+              });
+            }
+            if (emerging.length > 0) {
+              lines.push(`Products newly converting in the last 30 days (were not converting before):`);
+              emerging.forEach(p => lines.push(`  - "${p.title}": ${p.conversions.toFixed(0)} sales, ${curr}${Math.round(p.revenue)} rev`));
+            }
+            if (disappeared.length > 0) {
+              lines.push(`Products with sales 31–60d ago that are no longer receiving traffic/spend:`);
+              disappeared.forEach(p => lines.push(`  - "${p.title}": ${p.conversions.toFixed(0)} sales prev period, now absent`));
+            }
+          }
+        }
+
         productContext = lines.join("\n");
       }
     } catch { /* non-fatal — intelligence still runs without product data */ }
+  }
+
+  // ── Scaling readiness ─────────────────────────────────────────────────────
+  let scalingContext = "";
+  if (account.googleAdsId) {
+    try {
+      const sr = await Promise.race([
+        fetchScalingReadiness(account.googleAdsId, account.targetRoas ?? null, ctx.orgId),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error("scaling readiness timed out")), 20_000)),
+      ]);
+      const curr = account.currency === "EUR" ? "€" : account.currency === "GBP" ? "£" : "$";
+      const roasRow = [
+        sr.roas3d  != null ? `3d: ${sr.roas3d.toFixed(2)}x`   : null,
+        sr.roas7d  != null ? `7d: ${sr.roas7d.toFixed(2)}x`   : null,
+        sr.roas14d != null ? `14d: ${sr.roas14d.toFixed(2)}x` : null,
+        sr.roas30d != null ? `30d: ${sr.roas30d.toFixed(2)}x` : null,
+      ].filter(Boolean).join(" | ");
+      const lastScaled = sr.lastScaledDate
+        ? `Last budget change detected: ${sr.lastScaledDate}`
+        : "No budget changes detected in last 30 days (change_event 30d limit)";
+      scalingContext = `\nSCALING READINESS:
+ROAS windows: ${roasRow || "no spend data"}
+${lastScaled}
+Verdict: ${sr.scalingNote}`;
+    } catch { /* non-fatal */ }
   }
 
   const accountTypeNote = isLeadGen
@@ -298,65 +392,35 @@ GOVERNING CONSTRAINT: ${governing} — score ${governingScore}/100
 BUCKET SCORES:
 ${bucketBlock}
 
-LIVE METRICS:
+LIVE METRICS [all metrics = last 14 days unless labelled otherwise | snapshot age: ${dataAge != null ? `${dataAge}d` : "recent"}]:
 ${metricsBlock || "insufficient data"}
 
 TARGETS: ${targetsBlock}
-${clientBrief}${productContext}${notionContext}${slackContext}
+${clientBrief}${campaignContext}${productContext}${scalingContext}${notionContext}${slackContext}
 
 ---
 
-Produce a specialist briefing using EXACTLY this structure:
+Produce a 5-line at-a-glance brief. Use EXACTLY this format — no headers, no paragraphs, no bullet sub-lists:
 
-## [Constraint] — [one-line diagnosis that names the specific problem, not just the bucket]
+**Bottleneck:** [bucket name] — [one-line diagnosis naming the specific problem, not just the bucket label]
+**Numbers:** [2–4 key metrics separated by · — cite actual values from the data above, always state the time window e.g. "ROAS 2.55x (30d)"]
+**Root cause:** [one sentence — most likely specific cause, or two candidates with the distinguishing signal. Name specific campaigns if CAMPAIGN BREAKDOWN is available.]
+**Priority action:** [one concrete action a specialist can execute today — specific enough to act on without a follow-up question]
+**Watch:** [one metric · target threshold · timeframe]
 
-**What the data shows**
-Two or three sentences. Cite actual numbers from the metrics above. No filler. State what is happening, not what could be happening.
-
-**Why this is the constraint**
-One or two sentences. Explain the mechanism: how does this specific constraint block the downstream result (revenue / conversions)? Be mechanistic, not generic.
-
-**Root cause**
-One sentence. Name the most likely specific cause given this account's data. Cross-reference account type, business model, and metrics. If the data is ambiguous, name the two most likely causes and which signal would distinguish them.
-
-**Actions this week**
-Numbered list. Each action must be:
-- Specific enough that a junior specialist can execute it without asking a follow-up question
-- Tied to the agency's actual toolset and doctrine (PMax feed-only, ProductHero labels, feed titles, search term exclusions, etc.)
-- Ordered by priority — the action that unlocks the most is first
-Maximum 3 actions. If you can only justify 1 or 2, write 1 or 2.
-
-**Watch**
-One sentence: which metric to check in 7 days, and what threshold means the fix is working vs. not working.
-
-${slackContext ? "If Slack messages are provided: before writing actions, check whether any team change in the last 14 days correlates with a metric shift. If yes, name it explicitly in Root cause.\n" : ""}
 HARD RULES:
-- Every number you cite must appear in the data provided above. Zero fabrication.
-- Do not explain what the constraint framework is. Do not define terms. Write for someone who already knows Google Ads.
-- For new accounts with no conversion history: actions must focus on setup and data collection, not performance optimisation.
-- If a pattern from the agency doctrine applies, apply it and name the conclusion directly.
-- FRAMING RULE: Refer to the client by their name or as "the account" / "the store". Never call them a "dropshipper" — if the business model is dropshipping, it is a fulfilment detail, not their identity. They are an ecommerce retailer.
-- BUDGET INCREASE RULE: NEVER recommend increasing budget if actual ROAS is below the target ROAS. Spending more money at a loss makes the situation worse. If IS lost to budget is high but ROAS is below target, the problem is efficiency — fix conversion rate, search term hygiene, or pricing FIRST. Only recommend a budget increase when actual ROAS ≥ target ROAS AND budget utilisation is at 100%.
-${isLeadGen ? `- LEAD GEN RULES: Never mention ROAS, product feeds, Shopping, or ProductHero labels. Focus on CPL vs target, lead volume, lead quality, form CVR, search intent quality, offline conversion import.
-- If offline conversion import is NOT active: this is always action #1 — without it, the account is optimising for form fills, not actual revenue, and the AI has no signal on lead quality.
-- If CPL is above target: diagnose whether it's a volume problem (not enough clicks → bid/budget) or a quality problem (clicks not converting → landing page, form UX, keyword intent mismatch).
-- Lead quality below par: recommend reviewing which search terms are generating leads and whether they match the actual buyer profile. Suggest adding negative keywords for low-intent queries.
-- Always address the full funnel: clicks → form CVR → lead quality → lead-to-sale rate. A high form CVR with low lead-to-sale rate means the traffic is unqualified, not the landing page.`
-: `- ECOMMERCE RULES: For Shopping/PMax, never mention Quality Score.
-- If product data is available: NAME specific products in your actions. "Your top 3 revenue products are X, Y, Z — but X and Y are priced 18% above market. Dropping their price by 10% could unlock more volume given their existing click traction." That is the required level of specificity.
-- If price competitiveness data shows products above market: quantify the gap and name the products. Do not speak in generalities.
-- If products are spending with zero conversions: name them and give a specific recommendation (exclude, price review, or landing page check).
-- STATISTICAL SIGNIFICANCE RULE: NEVER recommend scaling or increasing budget on a product with fewer than 10 conversions OR less than €50 spend. A product with 1–2 sales is statistical noise — it tells you nothing about scalability. If a low-spend product has a high ROAS, say "worth watching as spend grows" at most. Only recommend scaling products that have proven volume (10+ conversions or sustained spend with positive ROAS over time).`}`;
+- Maximum 80 words total across all 5 lines.
+- Every number must appear in the data provided above. Zero fabrication.
+- No filler. No explanation of what metrics mean. Write for someone who already knows Google Ads.
+- Do not recommend a budget increase if ROAS is below target.
+- FRAMING RULE: refer to the client by name or "the account". Never call them a "dropshipper".
+- ROAS RULE: If LIVE METRICS shows "ROAS NOT AVAILABLE via campaign resource", use the Account ROAS from the PRODUCT PERFORMANCE block. NEVER write "ROAS 0.00x" or "ROAS is 0" — if you have no ROAS from either source, omit ROAS entirely.
+- TIME WINDOW RULE: always state the time window next to every metric you cite (e.g. "CVR 1.04% (14d)", "ROAS 2.55x (30d)"). Never cite a bare number without its window.
+${isLeadGen ? `- Never mention ROAS, product feeds, or Shopping. Focus on CPL, form CVR, lead quality, offline conversion import.` : `- For Shopping/PMax accounts: never mention Quality Score.`}
+${slackContext ? "- If a team change in the last 14 days correlates with a metric shift, name it in Root cause." : ""}`;
 
-  const encoder = new TextEncoder();
-  const stream = new ReadableStream({
-    async start(controller) {
-      try {
-        const aiStream = await client.messages.stream({
-          model: "claude-sonnet-4-6",
-          max_tokens: 1200,
-          system: isLeadGen
-            ? `You are the senior lead generation Google Ads specialist at a Dutch performance agency. You have deep expertise in B2B and B2C lead gen campaigns — search intent mapping, CPL optimisation, lead quality vs volume trade-offs, offline conversion tracking, CRM integration, and funnel handoff.
+  const systemPrompt = isLeadGen
+    ? `You are the senior lead generation Google Ads specialist at a Dutch performance agency. You have deep expertise in B2B and B2C lead gen campaigns — search intent mapping, CPL optimisation, lead quality vs volume trade-offs, offline conversion tracking, CRM integration, and funnel handoff.
 
 You think like a revenue operations expert: you don't just care about leads, you care about leads that turn into clients. You diagnose the full funnel — from keyword intent to form submission to sales outcome.
 
@@ -365,14 +429,79 @@ You write for understudies. Your brief tells a junior specialist exactly what to
 You never use generic advice. Every sentence cites actual numbers from the data provided. You never mention ROAS or product feeds — they are irrelevant for this account type.
 
 ${AGENCY_PHILOSOPHY}`
-            : `You are the senior ecommerce Google Ads specialist at a Dutch performance agency. You have deep expertise in Shopping, Performance Max, feed optimisation, product segmentation (Heroes/Sidekicks/Zombies/Villains via ProductHero), conversion rate diagnosis, and scaling strategy.
+    : `You are the senior ecommerce Google Ads specialist at a Dutch performance agency. You have deep expertise in Shopping, Performance Max, feed optimisation, product segmentation (Heroes/Sidekicks/Zombies/Villains via ProductHero), conversion rate diagnosis, and scaling strategy.
 
 You think like a diagnostician, not a commentator. You find the one thing blocking growth and prescribe the exact fix. You write for understudies — someone reading your brief should know exactly what to do this week without needing to ask a follow-up question.
 
 You never explain what a metric is. You never say "you may want to consider". You never give advice that applies to every account equally. Everything you write is specific to THIS account's numbers and account type.
 
-${AGENCY_PHILOSOPHY}`,
-          messages: [{ role: "user", content: prompt }],
+${AGENCY_PHILOSOPHY}`;
+
+  // ── Agentic KB lookup ─────────────────────────────────────────────────────
+  // Ask Claude what SOP to retrieve, execute the search, inject results.
+  // This keeps Claude's reasoning grounded in the agency's actual playbook.
+  const kbTool: Anthropic.Messages.Tool = {
+    name: "search_knowledge_base",
+    description: "Search the agency's PPC Mastery knowledge base for the most relevant SOP, checklist, or guideline for this account's constraint. Call this ONCE with a specific query — e.g. 'search term hygiene SQR exclusion process' or 'landing page CVR CRO checklist' or 'budget pacing IS lost'. The exact SOP steps will be injected into your brief.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        query: {
+          type: "string",
+          description: "Specific query to find the right SOP or checklist. Be precise about the problem, not generic.",
+        },
+      },
+      required: ["query"],
+    },
+  };
+
+  let kbSection = "";
+  const conversationMessages: Anthropic.Messages.MessageParam[] = [
+    { role: "user", content: prompt },
+  ];
+
+  try {
+    // Phase 1: Force Claude to decide what SOP to look up (fast, non-streaming)
+    const toolCallResponse = await client.messages.create({
+      model: "claude-sonnet-4-6",
+      max_tokens: 400,
+      system: systemPrompt,
+      tools: [kbTool],
+      tool_choice: { type: "any" },
+      messages: conversationMessages,
+    });
+
+    const toolUseBlock = toolCallResponse.content.find(b => b.type === "tool_use");
+    if (toolUseBlock && toolUseBlock.type === "tool_use") {
+      const query = (toolUseBlock.input as { query: string }).query ?? "";
+      const kbResults = searchKnowledge(query, snapshot.governingConstraint);
+
+      if (kbResults) {
+        kbSection = `\n\n---\n${kbResults}`;
+      }
+
+      // Add the tool exchange to the conversation so the final call has full context
+      conversationMessages.push({ role: "assistant", content: toolCallResponse.content });
+      conversationMessages.push({
+        role: "user",
+        content: [{
+          type: "tool_result",
+          tool_use_id: toolUseBlock.id,
+          content: kbResults || "No matching SOP found — rely on your own expertise.",
+        }],
+      });
+    }
+  } catch { /* KB tool call failed — proceed without it */ }
+
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream({
+    async start(controller) {
+      try {
+        const aiStream = await client.messages.stream({
+          model: "claude-sonnet-4-6",
+          max_tokens: 400,
+          system: systemPrompt,
+          messages: conversationMessages,
         });
 
         for await (const chunk of aiStream) {
@@ -380,6 +509,7 @@ ${AGENCY_PHILOSOPHY}`,
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: chunk.delta.text })}\n\n`));
           }
         }
+        // Stream the KB section as a separate labelled block after the main brief
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true, slackError: slackError || undefined })}\n\n`));
         controller.close();
       } catch (err) {

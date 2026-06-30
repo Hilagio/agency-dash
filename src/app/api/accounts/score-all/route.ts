@@ -7,7 +7,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { scoreConstraints } from "@/lib/engine";
-import { fetchGoogleAdsSignals, isGoogleAdsConfigured } from "@/lib/integrations/google-ads";
+import { fetchGoogleAdsSignals, isGoogleAdsConfigured, extractGoogleAdsError } from "@/lib/integrations/google-ads";
 import { getAuthContext, unauthorized } from "@/lib/auth";
 
 export async function POST() {
@@ -69,7 +69,7 @@ export async function POST() {
     } catch (err) {
       failed.push({
         name:  account.name,
-        error: err instanceof Error ? err.message : String(err),
+        error: extractGoogleAdsError(err),
       });
     }
   }

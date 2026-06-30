@@ -6,7 +6,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { fetchProductPerformance } from "@/lib/integrations/google-ads";
+import { fetchProductPerformance, extractGoogleAdsError } from "@/lib/integrations/google-ads";
 import { getMerchantCenterIds, fetchMerchantCenterProductList } from "@/lib/integrations/merchant-center";
 import { getAuthContext, unauthorized, forbidden } from "@/lib/auth";
 
@@ -60,7 +60,7 @@ export async function GET(req: NextRequest, { params }: Params) {
 
     return NextResponse.json(data);
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
+    const msg = extractGoogleAdsError(err);
     return NextResponse.json({ error: `Google Ads API error: ${msg}` }, { status: 502 });
   }
 }

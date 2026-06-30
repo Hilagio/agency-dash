@@ -5,9 +5,8 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { BUCKET_LABELS } from "@/lib/engine/types";
 import {
-  Zap, RefreshCw, Loader2, Plus, AlertTriangle, TrendingUp,
-  BookOpen, ListChecks, TrendingDown, Check, X, Settings, LogOut,
-  Trash2, Search, ChevronUp, ChevronDown,
+  Zap, RefreshCw, Loader2, Plus, AlertTriangle,
+  X, Settings, LogOut, Search, ChevronUp, ChevronDown, UserCircle, TrendingUp,
 } from "lucide-react";
 import { AccountImporter } from "@/components/AccountImporter";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -17,37 +16,33 @@ interface SessionUser {
   orgId:  string | null;
   email:  string;
   name:   string | null;
+  role:   string;
 }
 
 type ConstraintBucket = "MEASUREMENT" | "TRAFFIC" | "CONVERSION" | "FUNNEL" | "ECONOMICS";
 
 interface Snapshot {
-  scoreMeasurement: number;
-  scoreTraffic:     number;
-  scoreConversion:  number;
-  scoreFunnel:      number;
-  scoreEconomics:   number;
   governingConstraint: string;
-  constraintReason: string;
-  roas:       number;
-  budgetUtil: number;
-  createdAt:  string;
+  constraintReason:    string;
+  roas:                number;
+  budgetUtil:          number;
+  spend30d:            number;
+  createdAt:           string;
 }
 
 interface Account {
-  id:            string;
-  name:          string;
-  googleAdsId:   string;
-  industry:      string | null;
-  monthlyBudget: number | null;
-  currency:      string;
-  snapshots:     Snapshot[];
-  scoreDelta:    number | null;
-  prevScoredAt:  string | null;
-}
-
-function minScore(snap: Snapshot): number {
-  return Math.min(snap.scoreMeasurement, snap.scoreTraffic, snap.scoreConversion, snap.scoreFunnel, snap.scoreEconomics);
+  id:               string;
+  name:             string;
+  googleAdsId:      string;
+  industry:         string | null;
+  monthlyBudget:    number | null;
+  currency:         string;
+  targetRoas:       number | null;
+  snapshots:        Snapshot[];
+  scoreDelta:       number | null;
+  prevScoredAt:     string | null;
+  assignedUserId:   string | null;
+  assignedUserName: string | null;
 }
 
 const BUCKET_COLOR: Record<ConstraintBucket, string> = {
@@ -58,15 +53,22 @@ const BUCKET_COLOR: Record<ConstraintBucket, string> = {
   ECONOMICS:   "#22c55e",
 };
 
-function scoreColor(s: number) {
-  if (s >= 70) return "#22c55e";
-  if (s >= 45) return "#eab308";
-  return "#ef4444";
+function fmtCurrency(n: number, currency: string): string {
+  if (n === 0) return "—";
+  const symbol = currency === "EUR" ? "€" : currency === "GBP" ? "£" : "$";
+  if (n >= 1_000_000) return `${symbol}${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000)     return `${symbol}${(n / 1_000).toFixed(0)}k`;
+  return `${symbol}${n.toFixed(0)}`;
 }
 
-function fmt(n: number, digits = 1) {
-  if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
-  return n.toFixed(digits);
+function timeAgo(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const h = Math.floor(diff / 3_600_000);
+  const d = Math.floor(h / 24);
+  if (h < 1)  return "just now";
+  if (h < 24) return `${h}h ago`;
+  if (d < 7)  return `${d}d ago`;
+  return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 }
 
 // ─── Login screen ─────────────────────────────────────────────────────────────
@@ -84,8 +86,8 @@ function LoginPage() {
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center" }}>
       <div style={{ textAlign: "center", maxWidth: 360, padding: "0 24px" }}>
-        <div style={{ width: 56, height: 56, borderRadius: 16, background: "linear-gradient(135deg, #c49a0a, #9a7808)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, fontWeight: 700, color: "#fff", margin: "0 auto 24px" }}>C</div>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", marginBottom: 8, letterSpacing: "-0.4px" }}>Constraint Optimizer</h1>
+        <div style={{ fontSize: 34, fontWeight: 800, color: "var(--text)", letterSpacing: "-1px", margin: "0 auto 18px" }}>ecomtrada<span style={{ color: "#F9C31F" }}>.</span></div>
+        <h1 style={{ fontSize: 19, fontWeight: 700, color: "var(--text)", marginBottom: 8, letterSpacing: "-0.4px" }}>Google Ads for webshops</h1>
         <p style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 32, lineHeight: 1.6 }}>Find and fix the single bottleneck limiting your Google Ads performance.</p>
         <a href="/api/auth/google-ads" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, background: "var(--surface)", border: "1px solid var(--border-3)", borderRadius: 10, color: "var(--text-2)", fontSize: 13, fontWeight: 600, padding: "12px 24px", textDecoration: "none", width: "100%", boxSizing: "border-box" }}>
           {GOOGLE_LOGO} Continue with Google
@@ -95,9 +97,25 @@ function LoginPage() {
   );
 }
 
-// ─── Account card ─────────────────────────────────────────────────────────────
+// ─── Bucket pill ──────────────────────────────────────────────────────────────
 
-function AccountCard({
+function BucketPill({ bucket }: { bucket: ConstraintBucket | string }) {
+  const color = BUCKET_COLOR[bucket as ConstraintBucket] ?? "var(--text-dim)";
+  return (
+    <span style={{
+      display: "inline-block",
+      fontSize: 10, fontWeight: 700, letterSpacing: "0.5px", textTransform: "uppercase",
+      color, background: color + "18", border: `1px solid ${color}30`,
+      padding: "2px 8px", borderRadius: 20, whiteSpace: "nowrap",
+    }}>
+      {BUCKET_LABELS[bucket as ConstraintBucket] ?? bucket}
+    </span>
+  );
+}
+
+// ─── Account row ──────────────────────────────────────────────────────────────
+
+function AccountRow({
   account, scoring, onRescore, onRemove,
 }: {
   account:   Account;
@@ -105,280 +123,217 @@ function AccountCard({
   onRescore: (id: string, e: React.MouseEvent) => void;
   onRemove:  (id: string) => void;
 }) {
-  const [hovered, setHovered]           = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [removing, setRemoving]           = useState(false);
 
   const snap   = account.snapshots[0];
-  const score  = snap ? minScore(snap) : null;
-  const delta  = account.scoreDelta;
   const bucket = snap?.governingConstraint as ConstraintBucket | undefined;
 
-  const isCritical = score !== null && score < 45;
-  const isAtRisk   = score !== null && score >= 45 && score < 70;
-  const isHealthy  = score !== null && score >= 70;
+  const spend = snap?.spend30d
+    ? fmtCurrency(snap.spend30d, account.currency)
+    : account.monthlyBudget
+    ? fmtCurrency(account.monthlyBudget * (snap?.budgetUtil ?? 0), account.currency)
+    : "—";
 
-  const accentColor = isCritical ? "#ef4444" : isAtRisk ? "#eab308" : isHealthy ? "#22c55e" : "var(--border-3)";
-  const deltaColor  = delta === null ? "var(--text-faint)" : delta > 0 ? "#22c55e" : delta < 0 ? "#ef4444" : "var(--text-faint)";
+  const hasData = !!snap;
 
   return (
-    <Link href={`/accounts/${account.id}`} style={{ textDecoration: "none", display: "block" }}>
-      <div
-        style={{
-          background: "var(--surface)",
-          border: `1px solid ${hovered ? "var(--border-3)" : "var(--border)"}`,
-          borderRadius: 14,
-          overflow: "hidden",
-          cursor: "pointer",
-          transition: "border-color 0.15s, box-shadow 0.15s",
-          boxShadow: hovered ? "0 4px 24px rgba(0,0,0,0.18)" : "0 1px 3px rgba(0,0,0,0.08)",
-        }}
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => { setHovered(false); if (!confirmDelete) return; }}
-      >
-        {/* Top accent bar */}
-        <div style={{ height: 3, background: accentColor, transition: "background 0.2s" }} />
-
-        <div style={{ padding: "16px 18px 15px" }}>
-
-          {/* Row 1: Name + Score */}
-          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 14 }}>
-            <div style={{ minWidth: 0 }}>
-              <div style={{
-                fontSize: 14, fontWeight: 700, color: "var(--text)",
-                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                letterSpacing: "-0.3px", lineHeight: 1.3,
-              }}>
-                {account.name}
-              </div>
-              {account.industry && (
-                <div style={{ fontSize: 11, color: "var(--text-dim)", marginTop: 3 }}>{account.industry}</div>
-              )}
-            </div>
-
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2, flexShrink: 0 }}>
-              {score !== null ? (
-                <span style={{
-                  fontSize: 26, fontWeight: 800, letterSpacing: "-1.5px", lineHeight: 1,
-                  color: scoreColor(score),
-                }}>
-                  {score}
-                </span>
-              ) : (
-                <span style={{ fontSize: 13, color: "var(--text-faint)", fontStyle: "italic", lineHeight: 1 }}>—</span>
-              )}
-              {delta !== null && delta !== 0 && (
-                <div style={{ display: "flex", alignItems: "center", gap: 2, fontSize: 10, fontWeight: 600, color: deltaColor }}>
-                  {delta > 0 ? <TrendingUp size={9} /> : <TrendingDown size={9} />}
-                  {delta > 0 ? `+${delta}` : delta}
-                </div>
-              )}
-            </div>
+    <tr style={{
+      borderBottom: "1px solid var(--border)",
+      transition: "background 0.1s",
+    }}
+      onMouseEnter={e => (e.currentTarget.style.background = "var(--surface-2)")}
+      onMouseLeave={e => (e.currentTarget.style.background = "")}
+    >
+      {/* Account name */}
+      <td style={{ padding: "14px 16px" }}>
+        <Link href={`/accounts/${account.id}`} style={{ textDecoration: "none" }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text)", letterSpacing: "-0.2px", lineHeight: 1.3 }}>
+            {account.name}
           </div>
-
-          {/* Row 2: Health buckets */}
-          {snap ? (
-            <div style={{ display: "flex", gap: 5, marginBottom: 14 }}>
-              {(
-                [
-                  ["scoreMeasurement", "M"] as const,
-                  ["scoreTraffic",     "T"] as const,
-                  ["scoreConversion",  "W"] as const,
-                  ["scoreFunnel",      "F"] as const,
-                  ["scoreEconomics",   "E"] as const,
-                ] as [keyof Snapshot, string][]
-              ).map(([key, initial]) => {
-                const s = snap[key] as number;
-                const dotColor = s >= 70 ? "#22c55e" : s >= 45 ? "#eab308" : "#ef4444";
-                return (
-                  <div
-                    key={key}
-                    title={`${initial}: ${Math.round(s)}`}
-                    style={{
-                      flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
-                      background: dotColor + "14", borderRadius: 7, padding: "6px 0",
-                    }}
-                  >
-                    <div style={{ width: 6, height: 6, borderRadius: "50%", background: dotColor }} />
-                    <span style={{ fontSize: 8, fontWeight: 700, letterSpacing: "0.3px", color: "var(--text-dim)" }}>{initial}</span>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div style={{ height: 38, display: "flex", alignItems: "center", marginBottom: 14 }}>
-              <span style={{ fontSize: 11, color: "var(--text-faint)", fontStyle: "italic" }}>Not scored yet</span>
-            </div>
+          {account.industry && (
+            <div style={{ fontSize: 12, color: "var(--text-dim)", marginTop: 2 }}>{account.industry}</div>
           )}
+        </Link>
+      </td>
 
-          {/* Row 3: Metrics + Constraint */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-            <div style={{ display: "flex", gap: 6 }}>
-              {snap && snap.roas > 0 && (
-                <div style={{
-                  background: "var(--surface-2)", borderRadius: 6, padding: "4px 10px",
-                  fontSize: 12, fontWeight: 700, color: "var(--text-2)", letterSpacing: "-0.3px",
-                  display: "flex", alignItems: "baseline", gap: 4,
-                }}>
-                  {fmt(snap.roas)}x
-                  <span style={{ fontSize: 9, fontWeight: 500, color: "var(--text-dim)", letterSpacing: 0 }}>ROAS</span>
+      {/* Manager */}
+      <td style={{ padding: "14px 16px" }}>
+        {account.assignedUserName ? (
+          <span style={{ fontSize: 13, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 5 }}>
+            <UserCircle size={13} style={{ color: "var(--text-dim)", flexShrink: 0 }} />
+            {account.assignedUserName}
+          </span>
+        ) : (
+          <span style={{ fontSize: 13, color: "var(--text-faint)" }}>—</span>
+        )}
+      </td>
+
+      {/* 30d spend */}
+      <td style={{ padding: "14px 16px", textAlign: "right" }}>
+        <span style={{ fontSize: 13, fontWeight: 600, color: spend === "—" ? "var(--text-faint)" : "var(--text-2)", letterSpacing: "-0.3px" }}>
+          {spend}
+        </span>
+        {snap?.budgetUtil != null && snap.budgetUtil > 0 && snap.budgetUtil < 0.9 && (
+          <div style={{ fontSize: 11, color: "#f97316", marginTop: 2 }}>
+            {Math.round(snap.budgetUtil * 100)}% utilised
+          </div>
+        )}
+      </td>
+
+      {/* ROAS */}
+      <td style={{ padding: "14px 16px", textAlign: "right" }}>
+        {snap?.roas != null && snap.roas > 0 ? (() => {
+          const actual  = snap.roas;
+          const target  = account.targetRoas;
+          const ratio   = target ? actual / target : null;
+          const color   = !ratio ? "var(--text-2)"
+                        : ratio >= 1     ? "#22c55e"
+                        : ratio >= 0.85  ? "#f97316"
+                        :                  "#ef4444";
+          const scaleReady = target != null && actual >= target && (snap.budgetUtil ?? 0) >= 0.8;
+          return (
+            <div>
+              <span style={{ fontSize: 13, fontWeight: 600, color, letterSpacing: "-0.3px" }}>
+                {actual.toFixed(1)}×
+              </span>
+              {target != null && (
+                <div style={{ fontSize: 11, color: "var(--text-very-dim)", marginTop: 2 }}>
+                  target {target.toFixed(1)}×
                 </div>
               )}
-              {snap && snap.budgetUtil > 0 && (
-                <div style={{
-                  background: "var(--surface-2)", borderRadius: 6, padding: "4px 10px",
-                  fontSize: 12, fontWeight: 700, letterSpacing: "-0.3px",
-                  color: snap.budgetUtil > 0.9 ? "#22c55e" : snap.budgetUtil > 0.6 ? "var(--text-2)" : "#ef4444",
-                  display: "flex", alignItems: "baseline", gap: 4,
-                }}>
-                  {Math.round(snap.budgetUtil * 100)}%
-                  <span style={{ fontSize: 9, fontWeight: 500, color: "var(--text-dim)", letterSpacing: 0 }}>budget</span>
+              {scaleReady && (
+                <div style={{ fontSize: 10, fontWeight: 700, color: "#22c55e", marginTop: 3, letterSpacing: "0.3px" }}>
+                  ↑ SCALE
                 </div>
               )}
             </div>
+          );
+        })() : (
+          <span style={{ fontSize: 13, color: "var(--text-faint)" }}>—</span>
+        )}
+      </td>
 
-            {bucket && (
-              <span style={{
-                fontSize: 10, fontWeight: 600, letterSpacing: "0.4px", textTransform: "uppercase",
-                color: BUCKET_COLOR[bucket], background: BUCKET_COLOR[bucket] + "18",
-                padding: "3px 8px", borderRadius: 20, flexShrink: 0,
-              }}>
-                {BUCKET_LABELS[bucket]}
-              </span>
-            )}
-          </div>
+      {/* Bottleneck */}
+      <td style={{ padding: "14px 16px" }}>
+        {bucket ? (
+          <BucketPill bucket={bucket} />
+        ) : (
+          <span style={{ fontSize: 13, color: "var(--text-faint)" }}>—</span>
+        )}
+      </td>
 
-          {/* Row 4: Actions (visible on hover) */}
-          <div
-            style={{
-              display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 4,
-              marginTop: 12, opacity: hovered ? 1 : 0, transition: "opacity 0.15s",
-            }}
-            onClick={e => { e.preventDefault(); e.stopPropagation(); }}
+      {/* Constraint summary — single line, ellipsis */}
+      <td style={{ padding: "14px 16px" }}>
+        {snap?.constraintReason ? (
+          <span style={{
+            fontSize: 13, color: "var(--text-muted)", lineHeight: 1.5,
+            display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+            maxWidth: 360,
+          }}
+            title={snap.constraintReason}
           >
-            {confirmDelete ? (
-              <>
-                <span style={{ fontSize: 11, color: "var(--text-dim)", marginRight: 4 }}>Remove?</span>
-                <button
-                  onClick={async e => {
-                    e.preventDefault(); e.stopPropagation();
-                    setRemoving(true);
-                    await fetch(`/api/accounts/${account.id}`, { method: "DELETE" });
-                    onRemove(account.id);
-                  }}
-                  disabled={removing}
-                  style={{ padding: "3px 8px", borderRadius: 5, background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.3)", color: "#ef4444", fontSize: 11, cursor: "pointer", display: "flex", alignItems: "center", gap: 3 }}
-                >
-                  {removing ? <Loader2 size={10} className="animate-spin" /> : <Check size={10} />}
-                </button>
-                <button
-                  onClick={e => { e.preventDefault(); e.stopPropagation(); setConfirmDelete(false); }}
-                  style={{ padding: "3px 6px", borderRadius: 5, background: "none", border: "1px solid var(--border-2)", color: "var(--text-faint)", fontSize: 11, cursor: "pointer", display: "flex", alignItems: "center" }}
-                >
-                  <X size={10} />
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  onClick={e => onRescore(account.id, e)}
-                  disabled={scoring}
-                  style={{ display: "flex", alignItems: "center", gap: 4, background: "transparent", border: "1px solid var(--border-2)", borderRadius: 6, color: "var(--text-dim)", fontSize: 11, padding: "4px 10px", cursor: scoring ? "not-allowed" : "pointer", opacity: scoring ? 0.4 : 1 }}
-                >
-                  {scoring ? <Loader2 size={10} className="animate-spin" /> : <RefreshCw size={10} />}
-                  {scoring ? "…" : "Score"}
-                </button>
-                <button
-                  onClick={e => { e.preventDefault(); e.stopPropagation(); setConfirmDelete(true); }}
-                  title="Remove account"
-                  style={{ padding: "4px 6px", borderRadius: 6, background: "none", border: "1px solid var(--border-2)", color: "var(--text-faint)", cursor: "pointer", display: "flex", alignItems: "center" }}
-                >
-                  <Trash2 size={10} />
-                </button>
+            {snap.constraintReason}
+          </span>
+        ) : (
+          <span style={{ fontSize: 13, color: "var(--text-faint)", fontStyle: "italic" }}>
+            {hasData ? "—" : "Not scored yet"}
+          </span>
+        )}
+      </td>
+
+      {/* Last scored */}
+      <td style={{ padding: "14px 16px", whiteSpace: "nowrap" }}>
+        {snap ? (() => {
+          const ageH = (Date.now() - new Date(snap.createdAt).getTime()) / 3_600_000;
+          const stale = ageH > 24;
+          return (
+            <span style={{ fontSize: 12, color: stale ? "#f97316" : "var(--text-dim)" }} title={stale ? "Data >24h old — rescore for fresh signals" : undefined}>
+              {timeAgo(snap.createdAt)}{stale ? " ⚠" : ""}
+            </span>
+          );
+        })() : <span style={{ fontSize: 12, color: "var(--text-faint)" }}>—</span>}
+      </td>
+
+      {/* Actions */}
+      <td style={{ padding: "12px 16px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          {confirmDelete ? (
+            <>
+              <button
+                onClick={async e => {
+                  e.preventDefault(); e.stopPropagation();
+                  setRemoving(true);
+                  await fetch(`/api/accounts/${account.id}`, { method: "DELETE" });
+                  onRemove(account.id);
+                }}
+                disabled={removing}
+                style={{ padding: "3px 8px", borderRadius: 5, background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.3)", color: "#ef4444", fontSize: 11, cursor: "pointer" }}
+              >
+                {removing ? <Loader2 size={10} className="animate-spin" /> : "Remove"}
+              </button>
+              <button
+                onClick={e => { e.preventDefault(); e.stopPropagation(); setConfirmDelete(false); }}
+                style={{ padding: "3px 6px", borderRadius: 5, background: "none", border: "1px solid var(--border-2)", color: "var(--text-faint)", fontSize: 11, cursor: "pointer" }}
+              >
+                <X size={10} />
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={e => onRescore(account.id, e)}
+                disabled={scoring}
+                style={{ display: "flex", alignItems: "center", gap: 3, background: "transparent", border: "1px solid var(--border-2)", borderRadius: 6, color: "var(--text-dim)", fontSize: 11, padding: "4px 9px", cursor: scoring ? "not-allowed" : "pointer", opacity: scoring ? 0.4 : 1, whiteSpace: "nowrap" }}
+              >
+                {scoring ? <Loader2 size={10} className="animate-spin" /> : <RefreshCw size={10} />}
+                {scoring ? "…" : "Score"}
+              </button>
+              <button
+                onClick={e => { e.preventDefault(); e.stopPropagation(); setConfirmDelete(true); }}
+                title="Remove account"
+                style={{ padding: "4px 6px", borderRadius: 6, background: "none", border: "1px solid var(--border-2)", color: "var(--text-faint)", cursor: "pointer", display: "flex", alignItems: "center" }}
+              >
+                <X size={10} />
+              </button>
             </>
           )}
         </div>
-
-        </div>{/* card body */}
-      </div>{/* outer card */}
-    </Link>
+      </td>
+    </tr>
   );
 }
 
-// ─── Morning brief ────────────────────────────────────────────────────────────
+// ─── Sortable column header ────────────────────────────────────────────────────
 
-function MorningBrief({ accounts }: { accounts: Account[] }) {
-  const scored = accounts.filter(a => a.snapshots[0]);
-  if (scored.length === 0) return null;
-
-  // Accounts that dropped since last score
-  const dropped = accounts
-    .filter(a => a.scoreDelta !== null && a.scoreDelta <= -5)
-    .sort((a, b) => (a.scoreDelta ?? 0) - (b.scoreDelta ?? 0))
-    .slice(0, 3);
-
-  // Accounts that became critical (score < 50) — regardless of delta
-  const newCritical = accounts.filter(a => {
-    const s = a.snapshots[0] ? minScore(a.snapshots[0]) : null;
-    return s !== null && s < 50;
-  });
-
-  // Accounts without industry set (affects CVR accuracy)
-  const noIndustry = accounts.filter(a => !a.industry && a.snapshots[0]).length;
-
-  if (dropped.length === 0 && newCritical.length === 0 && noIndustry === 0) return null;
-
+function ColHeader({
+  label, col, sortBy, sortDir, onSort, align = "left",
+}: {
+  label:   string;
+  col:     string;
+  sortBy:  string;
+  sortDir: "asc" | "desc";
+  onSort:  (col: string) => void;
+  align?:  "left" | "right";
+}) {
+  const active = sortBy === col;
   return (
-    <div style={{
-      background: "var(--surface)", border: "1px solid var(--border)",
-      borderRadius: 10, padding: "14px 20px", marginBottom: 20,
-    }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
-        <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.6px", textTransform: "uppercase", color: "var(--text-dim)" }}>
-          Today
-        </span>
-      </div>
-
-      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        {dropped.length > 0 && (
-          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-            <TrendingDown size={13} style={{ color: "#ef4444", flexShrink: 0 }} />
-            <span style={{ fontSize: 13, color: "var(--text-2)", fontWeight: 500 }}>
-              {dropped.length === 1 ? "1 account dropped" : `${dropped.length} accounts dropped`} since last score:
-            </span>
-            {dropped.map(a => (
-              <Link key={a.id} href={`/accounts/${a.id}`} style={{ textDecoration: "none" }}>
-                <span style={{
-                  fontSize: 12, fontWeight: 600, color: "#ef4444",
-                  background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)",
-                  padding: "2px 8px", borderRadius: 20,
-                }}>
-                  {a.name} {a.scoreDelta}
-                </span>
-              </Link>
-            ))}
-          </div>
-        )}
-
-        {newCritical.length > 0 && (
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <AlertTriangle size={13} style={{ color: "#ef4444", flexShrink: 0 }} />
-            <span style={{ fontSize: 13, color: "var(--text-2)", fontWeight: 500 }}>
-              <span style={{ color: "#ef4444", fontWeight: 700 }}>{newCritical.length}</span> accounts in critical range — need immediate attention
-            </span>
-          </div>
-        )}
-
-        {noIndustry > 0 && (
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontSize: 13, color: "#f97316", fontWeight: 700 }}>{noIndustry}</span>
-            <span style={{ fontSize: 13, color: "var(--text-muted)" }}>
-              accounts have no industry set — CVR benchmarks are generic. Click the industry field below to fix.
-            </span>
-          </div>
-        )}
-      </div>
-    </div>
+    <th
+      onClick={() => onSort(col)}
+      style={{
+        padding: "10px 16px", textAlign: align,
+        fontSize: 11, fontWeight: 700, letterSpacing: "0.4px", textTransform: "uppercase",
+        color: active ? "var(--text)" : "var(--text-faint)",
+        cursor: "pointer", userSelect: "none", whiteSpace: "nowrap",
+        borderBottom: "1px solid var(--border)",
+        background: "var(--surface)",
+      }}
+    >
+      <span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}>
+        {label}
+        {active && (sortDir === "asc" ? <ChevronUp size={11} /> : <ChevronDown size={11} />)}
+      </span>
+    </th>
   );
 }
 
@@ -400,7 +355,7 @@ function HomePageInner() {
   const [importStep, setImportStep]           = useState("");
   const [sessionUser, setSessionUser]         = useState<SessionUser | null>(null);
   const [search, setSearch]                   = useState("");
-  const [sortBy, setSortBy]     = useState<"score" | "name" | "roas" | "budget" | "bucket">("score");
+  const [sortBy, setSortBy]     = useState<string>("name");
   const [sortDir, setSortDir]   = useState<"asc" | "desc">("asc");
   const [filterBucket, setFilterBucket] = useState<ConstraintBucket | null>(null);
   const autoImportAttempted = useRef(false);
@@ -414,7 +369,6 @@ function HomePageInner() {
   }, []);
 
   useEffect(() => {
-    // Load session user and Google Ads status in parallel
     fetch("/api/auth/me")
       .then(r => r.json())
       .then(d => { if (d.user) setSessionUser(d.user); })
@@ -427,11 +381,7 @@ function HomePageInner() {
   }, [loadAccounts]);
 
   useEffect(() => {
-    // Wait for the initial loadAccounts() to finish before deciding to import.
-    // This prevents a race where the import's loadAccounts() result gets
-    // overwritten by the stale initial fetch (which started before DB had data).
     if (!connected || loading || autoImportAttempted.current) return;
-    // If accounts already loaded from DB, nothing to import.
     if (accounts.length > 0) { autoImportAttempted.current = true; return; }
     autoImportAttempted.current = true;
     async function run() {
@@ -472,7 +422,15 @@ function HomePageInner() {
     setScoringAll(true);
     setScoringProgress(null);
     try {
-      const toScore = accounts;
+      // Only rescore accounts that are stale (>24h old or never scored)
+      const now = Date.now();
+      const toScore = accounts.filter(a => {
+        const snap = a.snapshots[0];
+        if (!snap) return true;
+        const ageH = (now - new Date(snap.createdAt).getTime()) / 3_600_000;
+        return ageH > 24;
+      });
+      if (toScore.length === 0) { setScoringAll(false); return; }
       setScoringProgress({ done: 0, total: toScore.length });
       for (let i = 0; i < toScore.length; i++) {
         await fetch(`/api/accounts/${toScore[i].id}/snapshot?source=google-ads`, { method: "POST" });
@@ -486,45 +444,58 @@ function HomePageInner() {
     setAccounts(prev => prev.filter(a => a.id !== id));
   }, []);
 
-  const toggleSort = (col: typeof sortBy) => {
+  const toggleSort = (col: string) => {
     if (sortBy === col) setSortDir(d => d === "asc" ? "desc" : "asc");
-    else { setSortBy(col); setSortDir(col === "score" ? "asc" : "desc"); }
+    else { setSortBy(col); setSortDir("asc"); }
   };
 
-  const scored   = accounts.filter(a => a.snapshots[0]);
-  const critical = scored.filter(a => minScore(a.snapshots[0]) < 45).length;
-  const atRisk   = scored.filter(a => { const s = minScore(a.snapshots[0]); return s >= 45 && s < 70; }).length;
-  const healthy  = scored.filter(a => minScore(a.snapshots[0]) >= 70).length;
-
+  const isSpecialist = sessionUser?.role === "SPECIALIST";
   const q = search.trim().toLowerCase();
+
   const sorted = [...accounts]
     .filter(a => !q || a.name.toLowerCase().includes(q) || (a.industry ?? "").toLowerCase().includes(q))
     .filter(a => !filterBucket || a.snapshots[0]?.governingConstraint === filterBucket)
+    .filter(a => !isSpecialist || a.assignedUserId === sessionUser?.userId)
     .sort((a, b) => {
       const dir = sortDir === "asc" ? 1 : -1;
-      if (sortBy === "score") {
-        const sa = a.snapshots[0] ? minScore(a.snapshots[0]) : 101;
-        const sb = b.snapshots[0] ? minScore(b.snapshots[0]) : 101;
+      if (sortBy === "name")    return a.name.localeCompare(b.name) * dir;
+      if (sortBy === "manager") return (a.assignedUserName ?? "").localeCompare(b.assignedUserName ?? "") * dir;
+      if (sortBy === "spend") {
+        const sa = a.snapshots[0]?.spend30d ?? (a.monthlyBudget ?? 0) * (a.snapshots[0]?.budgetUtil ?? 0);
+        const sb = b.snapshots[0]?.spend30d ?? (b.monthlyBudget ?? 0) * (b.snapshots[0]?.budgetUtil ?? 0);
         return (sa - sb) * dir;
-      }
-      if (sortBy === "name") return a.name.localeCompare(b.name) * dir;
-      if (sortBy === "roas") {
-        const ra = a.snapshots[0]?.roas ?? -1;
-        const rb = b.snapshots[0]?.roas ?? -1;
-        return (ra - rb) * dir;
-      }
-      if (sortBy === "budget") {
-        const ba = a.snapshots[0]?.budgetUtil ?? -1;
-        const bb = b.snapshots[0]?.budgetUtil ?? -1;
-        return (ba - bb) * dir;
       }
       if (sortBy === "bucket") {
         const ba = a.snapshots[0]?.governingConstraint ?? "ZZZ";
         const bb = b.snapshots[0]?.governingConstraint ?? "ZZZ";
         return ba.localeCompare(bb) * dir;
       }
+      if (sortBy === "scored") {
+        const ta = a.snapshots[0] ? new Date(a.snapshots[0].createdAt).getTime() : 0;
+        const tb = b.snapshots[0] ? new Date(b.snapshots[0].createdAt).getTime() : 0;
+        return (ta - tb) * dir;
+      }
+      if (sortBy === "roas") {
+        const ra = a.snapshots[0]?.roas ?? -1;
+        const rb = b.snapshots[0]?.roas ?? -1;
+        return (ra - rb) * dir;
+      }
       return 0;
     });
+
+  // Bucket distribution for filter chips + constraint strip
+  const bucketCounts = new Map<string, number>();
+  for (const a of accounts) {
+    const b = a.snapshots[0]?.governingConstraint;
+    if (b) bucketCounts.set(b, (bucketCounts.get(b) ?? 0) + 1);
+  }
+
+  // Portfolio stats
+  const scoredAccounts  = accounts.filter(a => a.snapshots.length > 0);
+  const totalSpend      = scoredAccounts.reduce((s, a) => s + (a.snapshots[0]?.spend30d ?? 0), 0);
+  const criticalCount   = scoredAccounts.filter(a => a.snapshots[0]?.governingConstraint === "MEASUREMENT").length;
+  const scoredToday     = scoredAccounts.filter(a => Date.now() - new Date(a.snapshots[0].createdAt).getTime() < 86_400_000).length;
+  const bucketTotal     = [...bucketCounts.values()].reduce((s, n) => s + n, 0);
 
   if (connected === null) return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -533,246 +504,398 @@ function HomePageInner() {
   );
   if (connected === false) return <LoginPage />;
 
+  const BUCKET_ORDER: ConstraintBucket[] = ["MEASUREMENT", "TRAFFIC", "CONVERSION", "FUNNEL", "ECONOMICS"];
+
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)" }}>
+    <div style={{ display: "flex", height: "100vh", background: "var(--bg)", color: "var(--text)", overflow: "hidden" }}>
 
-      {/* Header */}
-      <header style={{
-        borderBottom: "1px solid var(--border)", padding: "0 24px", height: 52,
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-        position: "sticky", top: 0, background: "var(--header-bg)",
-        backdropFilter: "blur(12px)", zIndex: 10,
+      {/* ─── Left sidebar ─────────────────────────────────────────────────────── */}
+      <aside style={{
+        width: 220, flexShrink: 0,
+        borderRight: "1px solid var(--border)",
+        background: "var(--surface)",
+        display: "flex", flexDirection: "column",
+        height: "100vh", overflow: "hidden",
       }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <div style={{ width: 24, height: 24, borderRadius: 6, background: "linear-gradient(135deg, #c49a0a, #9a7808)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: "#fff" }}>C</div>
-          <span style={{ fontWeight: 600, fontSize: 14, letterSpacing: "-0.3px", color: "var(--text)" }}>Constraint Optimizer</span>
-        </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          {accounts.length > 0 && (
-            <button onClick={runScoreAll} disabled={scoringAll || !!scoring} style={{
-              display: "flex", alignItems: "center", gap: 6,
-              background: scoringAll ? "var(--surface-2)" : "var(--btn-primary)",
-              border: "none", borderRadius: 7, color: scoringAll ? "var(--text-muted)" : "#fff",
-              fontSize: 12, fontWeight: 600, padding: "6px 14px", cursor: scoringAll ? "not-allowed" : "pointer",
-              opacity: scoringAll || !!scoring ? 0.7 : 1,
-            }}>
-              {scoringAll
-                ? <><Loader2 size={12} className="animate-spin" />{scoringProgress ? `${scoringProgress.done}/${scoringProgress.total}` : "Scoring…"}</>
-                : <><Zap size={12} /> Score all</>}
-            </button>
-          )}
-          <Link href="/actions" style={{ display: "flex", alignItems: "center", gap: 5, background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: 7, color: "var(--text-muted)", fontSize: 12, padding: "6px 12px", textDecoration: "none" }}>
-            <ListChecks size={12} /> Actions
-          </Link>
-          <Link href="/sops" style={{ display: "flex", alignItems: "center", gap: 5, background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: 7, color: "var(--text-muted)", fontSize: 12, padding: "6px 12px", textDecoration: "none" }}>
-            <BookOpen size={12} /> SOPs
-          </Link>
-          <button onClick={() => setShowImporter(!showImporter)} style={{ display: "flex", alignItems: "center", gap: 5, background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: 7, color: "var(--text-muted)", fontSize: 12, padding: "6px 12px", cursor: "pointer" }}>
-            <Plus size={12} /> Add accounts
-          </button>
-          <ThemeToggle />
-          <Link href="/settings" style={{ display: "flex", alignItems: "center", gap: 5, background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: 7, color: "var(--text-muted)", fontSize: 12, padding: "6px 12px", textDecoration: "none" }} title="Settings">
-            <Settings size={12} />
-          </Link>
-          {sessionUser && (
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <div style={{ width: 26, height: 26, borderRadius: "50%", background: "linear-gradient(135deg, #c49a0a, #9a7808)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, color: "#fff" }}>
-                {(sessionUser.name ?? sessionUser.email).charAt(0).toUpperCase()}
-              </div>
-              <button
-                onClick={() => { const f = document.createElement("form"); f.method = "POST"; f.action = "/api/auth/signout"; document.body.appendChild(f); f.submit(); }}
-                title="Sign out"
-                style={{ display: "flex", alignItems: "center", background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", padding: 0 }}
-              >
-                <LogOut size={11} />
-              </button>
-            </div>
-          )}
-        </div>
-      </header>
-
-      <main style={{ maxWidth: 1100, margin: "0 auto", padding: "24px 24px" }}>
-
-        {authError && (
-          <div style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: "#ef4444" }}>
-            {authError === "missing_developer_token" ? "Developer token not set." : `Auth error: ${authError}`}
-          </div>
-        )}
-
-        {(autoImporting || scoringAll) && (
-          <div style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(59,130,246,0.06)", border: "1px solid rgba(59,130,246,0.15)", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: "#60a5fa" }}>
-            <Loader2 size={13} className="animate-spin" />
-            {autoImporting ? (importStep || "Importing accounts from Google Ads…") : scoringProgress ? `Scoring accounts… ${scoringProgress.done} / ${scoringProgress.total}` : "Scoring all accounts…"}
-          </div>
-        )}
-
-        {autoImportError && (
-          <div style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: "#ef4444", display: "flex", alignItems: "center", gap: 8 }}>
-            <AlertTriangle size={13} /> {autoImportError}
-            <button onClick={() => { setAutoImportError(null); autoImportAttempted.current = false; }} style={{ marginLeft: "auto", fontSize: 11, color: "#ef4444", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>Retry</button>
-          </div>
-        )}
-
-        {showImporter && (
-          <div style={{ marginBottom: 20 }}>
-            <AccountImporter onImported={() => { loadAccounts(); setShowImporter(false); }} onClose={() => setShowImporter(false)} onAuthFailed={() => setConnected(false)} />
-          </div>
-        )}
-
-        {/* Morning brief */}
-        <MorningBrief accounts={accounts} />
-
-        {/* Stats bar */}
-        {scored.length > 0 && (
-          <div style={{ display: "flex", gap: 16, marginBottom: 12, padding: "10px 20px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, alignItems: "center", flexWrap: "wrap" }}>
-            <Stat label="Total" value={accounts.length} color="var(--text-muted)" />
-            <div style={{ width: 1, background: "var(--border)", alignSelf: "stretch" }} />
-            <Stat label="Critical" value={critical} color="#ef4444" />
-            <Stat label="At risk" value={atRisk} color="#eab308" />
-            <Stat label="Healthy" value={healthy} color="#22c55e" />
-            <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-              {/* Bucket filter chips */}
-              {(Object.keys(BUCKET_COLOR) as ConstraintBucket[])
-                .filter(b => accounts.some(a => a.snapshots[0]?.governingConstraint === b))
-                .map(b => (
-                  <button
-                    key={b}
-                    onClick={() => setFilterBucket(filterBucket === b ? null : b)}
-                    style={{
-                      fontSize: 10, fontWeight: 600, letterSpacing: "0.4px", textTransform: "uppercase",
-                      color: filterBucket === b ? "#fff" : BUCKET_COLOR[b],
-                      background: filterBucket === b ? BUCKET_COLOR[b] : BUCKET_COLOR[b] + "18",
-                      border: `1px solid ${BUCKET_COLOR[b]}40`,
-                      padding: "3px 9px", borderRadius: 20, cursor: "pointer",
-                      transition: "background 0.15s, color 0.15s",
-                    }}
-                  >
-                    {BUCKET_LABELS[b]}
-                  </button>
-                ))}
-              {filterBucket && (
-                <button onClick={() => setFilterBucket(null)} style={{ fontSize: 10, color: "var(--text-dim)", background: "none", border: "1px solid var(--border-2)", borderRadius: 20, padding: "3px 8px", cursor: "pointer" }}>
-                  Clear
-                </button>
+        {/* Brand */}
+        <div style={{ padding: "20px 18px 20px", borderBottom: "1px solid var(--border)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+            <div>
+              <div style={{ fontSize: 17, fontWeight: 800, color: "var(--text)", letterSpacing: "-0.4px" }}>ecomtrada<span style={{ color: "#F9C31F" }}>.</span></div>
+              {accounts.length > 0 && (
+                <div style={{ fontSize: 10, color: "var(--text-very-dim)", marginTop: 1 }}>{accounts.length} accounts</div>
               )}
             </div>
           </div>
-        )}
+        </div>
 
-        {/* Search */}
-        {accounts.length > 0 && (
-          <div style={{ position: "relative", marginBottom: 12 }}>
-            <Search size={13} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--text-faint)", pointerEvents: "none" }} />
-            <input
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="Search accounts…"
-              style={{
-                width: "100%", boxSizing: "border-box",
-                padding: "8px 12px 8px 34px",
-                background: "var(--surface)", border: "1px solid var(--border-2)",
-                borderRadius: 8, color: "var(--text-2)", fontSize: 13, outline: "none",
-                fontFamily: "inherit",
-              }}
-              onFocus={e => (e.currentTarget.style.borderColor = "var(--border-3)")}
-              onBlur={e => (e.currentTarget.style.borderColor = "var(--border-2)")}
-            />
-            {search && (
+        {/* Nav */}
+        <nav style={{ padding: "10px 10px", flex: 1 }}>
+          {/* Dashboard — always active on this page */}
+          <div style={{
+            display: "flex", alignItems: "center", gap: 9,
+            padding: "8px 10px", borderRadius: 7,
+            background: "var(--accent-dim)",
+            color: "var(--text)", fontSize: 13, fontWeight: 600, marginBottom: 1,
+          }}>
+            <span style={{ color: "var(--accent)", display: "flex" }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /><rect x="14" y="14" width="7" height="7" />
+              </svg>
+            </span>
+            Dashboard
+          </div>
+          <Link href="/settings" style={{
+            display: "flex", alignItems: "center", gap: 9,
+            padding: "8px 10px", borderRadius: 7,
+            color: "var(--text-muted)", fontSize: 13, fontWeight: 400,
+            textDecoration: "none", transition: "background 0.12s",
+            marginBottom: 1,
+          }}
+          onMouseEnter={e => (e.currentTarget as HTMLAnchorElement).style.background = "var(--surface-2)"}
+          onMouseLeave={e => (e.currentTarget as HTMLAnchorElement).style.background = "transparent"}
+          >
+            <Settings size={14} />
+            Settings
+          </Link>
+          <Link href="/sops" style={{
+            display: "flex", alignItems: "center", gap: 9,
+            padding: "8px 10px", borderRadius: 7,
+            color: "var(--text-muted)", fontSize: 13, fontWeight: 400,
+            textDecoration: "none", transition: "background 0.12s",
+            marginBottom: 1,
+          }}
+          onMouseEnter={e => (e.currentTarget as HTMLAnchorElement).style.background = "var(--surface-2)"}
+          onMouseLeave={e => (e.currentTarget as HTMLAnchorElement).style.background = "transparent"}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><polyline points="10 9 9 9 8 9" />
+            </svg>
+            SOPs
+          </Link>
+          <Link href="/scaling" style={{
+            display: "flex", alignItems: "center", gap: 9,
+            padding: "8px 10px", borderRadius: 7,
+            color: "var(--text-muted)", fontSize: 13, fontWeight: 400,
+            textDecoration: "none", transition: "background 0.12s",
+            marginBottom: 1,
+          }}
+          onMouseEnter={e => (e.currentTarget as HTMLAnchorElement).style.background = "var(--surface-2)"}
+          onMouseLeave={e => (e.currentTarget as HTMLAnchorElement).style.background = "transparent"}
+          >
+            <TrendingUp size={14} />
+            Scaling
+          </Link>
+          <Link href="/analyze" style={{
+            display: "flex", alignItems: "center", gap: 9,
+            padding: "8px 10px", borderRadius: 7,
+            color: "var(--text-muted)", fontSize: 13, fontWeight: 400,
+            textDecoration: "none", transition: "background 0.12s",
+          }}
+          onMouseEnter={e => (e.currentTarget as HTMLAnchorElement).style.background = "var(--surface-2)"}
+          onMouseLeave={e => (e.currentTarget as HTMLAnchorElement).style.background = "transparent"}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            Page Analyzer
+          </Link>
+        </nav>
+
+        {/* Actions */}
+        <div style={{ padding: "12px 14px", borderTop: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: 6 }}>
+          {accounts.length > 0 && (() => {
+            const now = Date.now();
+            const staleCount = accounts.filter(a => {
+              const snap = a.snapshots[0];
+              if (!snap) return true;
+              return (now - new Date(snap.createdAt).getTime()) / 3_600_000 > 24;
+            }).length;
+            return (
               <button
-                onClick={() => setSearch("")}
-                style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", display: "flex", padding: 2 }}
+                onClick={runScoreAll}
+                disabled={scoringAll || !!scoring || staleCount === 0}
+                title={staleCount === 0 ? "All accounts scored within 24h" : `${staleCount} account${staleCount !== 1 ? "s" : ""} not scored in >24h`}
+                style={{
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                  background: scoringAll ? "var(--surface-2)" : staleCount === 0 ? "var(--surface-2)" : "var(--btn-primary)",
+                  border: "none", borderRadius: 7,
+                  color: scoringAll || staleCount === 0 ? "var(--text-muted)" : "#fff",
+                  fontSize: 12, fontWeight: 600, padding: "8px 14px",
+                  cursor: scoringAll || !!scoring || staleCount === 0 ? "not-allowed" : "pointer",
+                  opacity: scoringAll || !!scoring ? 0.7 : 1, width: "100%",
+                }}
               >
-                <X size={12} />
+                {scoringAll
+                  ? <><Loader2 size={12} className="animate-spin" />{scoringProgress ? `${scoringProgress.done}/${scoringProgress.total}` : "Scoring…"}</>
+                  : staleCount === 0
+                    ? <><Zap size={12} /> All up to date</>
+                    : <><Zap size={12} /> Rescore {staleCount} stale</>}
               </button>
-            )}
-          </div>
-        )}
+            );
+          })()}
+          <button
+            onClick={() => setShowImporter(!showImporter)}
+            style={{
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
+              background: "transparent", border: "1px solid var(--border-2)",
+              borderRadius: 7, color: "var(--text-dim)", fontSize: 12, padding: "7px 14px",
+              cursor: "pointer", width: "100%",
+            }}
+          >
+            <Plus size={12} /> Add accounts
+          </button>
+        </div>
 
-        {/* Table */}
-        {loading ? (
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, padding: "60px 0", color: "var(--text-dim)", fontSize: 13 }}>
-            <Loader2 size={16} className="animate-spin" /> Loading accounts…
+        {/* User + theme at bottom */}
+        <div style={{
+          padding: "12px 14px", borderTop: "1px solid var(--border)",
+          display: "flex", alignItems: "center", gap: 8,
+        }}>
+          {sessionUser && (
+            <>
+              <div style={{
+                width: 28, height: 28, borderRadius: "50%", flexShrink: 0,
+                background: "linear-gradient(135deg, #F9C31F, #F2A60D)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 11, fontWeight: 700, color: "#0B130F",
+              }}>
+                {(sessionUser.name ?? sessionUser.email).charAt(0).toUpperCase()}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {sessionUser.name ?? sessionUser.email.split("@")[0]}
+                </div>
+                <button
+                  onClick={() => { const f = document.createElement("form"); f.method = "POST"; f.action = "/api/auth/signout"; document.body.appendChild(f); f.submit(); }}
+                  style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: 10, padding: 0, display: "flex", alignItems: "center", gap: 3 }}
+                >
+                  <LogOut size={9} /> Sign out
+                </button>
+              </div>
+              <ThemeToggle />
+            </>
+          )}
+          {!sessionUser && <ThemeToggle />}
+        </div>
+      </aside>
+
+      {/* ─── Main content ─────────────────────────────────────────────────────── */}
+      <main style={{ flex: 1, minWidth: 0, height: "100vh", overflowY: "auto" }}>
+        <div style={{ maxWidth: 1100, margin: "0 auto", padding: "28px 32px" }}>
+
+          {/* Page title */}
+          <div style={{ marginBottom: 24 }}>
+            <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", letterSpacing: "-0.5px", margin: "0 0 4px" }}>
+              Portfolio overview
+            </h1>
+            <p style={{ fontSize: 13, color: "var(--text-dim)", margin: 0 }}>
+              {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
+            </p>
           </div>
-        ) : sorted.length === 0 ? (
-          <div style={{ border: "1px dashed var(--border-3)", borderRadius: 12, padding: "48px 32px", textAlign: "center" }}>
-            {search ? (
-              <>
-                <p style={{ color: "var(--text-dim)", fontSize: 14, marginBottom: 6 }}>No accounts match &ldquo;{search}&rdquo;</p>
-                <button onClick={() => setSearch("")} style={{ fontSize: 12, color: "#3b82f6", background: "none", border: "none", cursor: "pointer" }}>Clear search</button>
-              </>
-            ) : (
-              <>
-                <p style={{ color: "var(--text-dim)", fontSize: 14, marginBottom: 6 }}>No accounts yet.</p>
-                <p style={{ color: "var(--text-faint)", fontSize: 12 }}>Click <strong>Add accounts</strong> to import from your Google Ads MCC.</p>
-              </>
-            )}
-          </div>
-        ) : (
-          <>
-            {/* Sort toolbar */}
-            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 16, flexWrap: "wrap" }}>
-              <span style={{ fontSize: 11, color: "var(--text-faint)", fontWeight: 500, marginRight: 2 }}>Sort:</span>
-              {(
-                [
-                  { col: "score",  label: "Score"      },
-                  { col: "name",   label: "Name"        },
-                  { col: "roas",   label: "ROAS"        },
-                  { col: "budget", label: "Budget"      },
-                  { col: "bucket", label: "Bottleneck"  },
-                ] as { col: typeof sortBy; label: string }[]
-              ).map(({ col, label }) => {
-                const active = sortBy === col;
-                const Icon = active ? (sortDir === "asc" ? ChevronUp : ChevronDown) : null;
-                return (
-                  <button
-                    key={col}
-                    onClick={() => toggleSort(col)}
-                    style={{
-                      display: "flex", alignItems: "center", gap: 3,
-                      fontSize: 11, fontWeight: active ? 700 : 500,
-                      color: active ? "var(--text)" : "var(--text-dim)",
-                      background: active ? "var(--surface-2)" : "transparent",
-                      border: `1px solid ${active ? "var(--border-3)" : "var(--border)"}`,
-                      borderRadius: 6, padding: "4px 10px", cursor: "pointer",
-                      transition: "all 0.1s",
-                    }}
-                  >
-                    {label}
-                    {Icon && <Icon size={10} />}
-                  </button>
-                );
-              })}
+
+          {/* Error / status banners */}
+          {authError && (
+            <div style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: "#ef4444" }}>
+              {authError === "missing_developer_token" ? "Developer token not set." : `Auth error: ${authError}`}
             </div>
+          )}
+          {(autoImporting || scoringAll) && (
+            <div style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(249,195,31,0.06)", border: "1px solid rgba(249,195,31,0.18)", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: "var(--accent)" }}>
+              <Loader2 size={13} className="animate-spin" />
+              {autoImporting ? (importStep || "Importing accounts from Google Ads…") : scoringProgress ? `Scoring accounts… ${scoringProgress.done} / ${scoringProgress.total}` : "Scoring all accounts…"}
+            </div>
+          )}
+          {autoImportError && (
+            <div style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: "#ef4444", display: "flex", alignItems: "center", gap: 8 }}>
+              <AlertTriangle size={13} /> {autoImportError}
+              <button onClick={() => { setAutoImportError(null); autoImportAttempted.current = false; }} style={{ marginLeft: "auto", fontSize: 11, color: "#ef4444", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>Retry</button>
+            </div>
+          )}
+          {showImporter && (
+            <div style={{ marginBottom: 20 }}>
+              <AccountImporter onImported={() => { loadAccounts(); setShowImporter(false); }} onClose={() => setShowImporter(false)} onAuthFailed={() => setConnected(false)} />
+            </div>
+          )}
 
-            {/* Card grid */}
-            <div style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
-              gap: 14,
-            }}>
-              {sorted.map((account) => (
-                <AccountCard
-                  key={account.id}
-                  account={account}
-                  scoring={scoring === account.id}
-                  onRescore={runScore}
-                  onRemove={handleRemove}
+          {/* Portfolio stats — only when there's data */}
+          {accounts.length > 0 && !loading && (
+            <>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 20 }}>
+                {/* Accounts */}
+                <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "16px 18px" }}>
+                  <div style={{ fontSize: 26, fontWeight: 700, color: "var(--text)", letterSpacing: "-1px", lineHeight: 1 }}>{accounts.length}</div>
+                  <div style={{ fontSize: 11, color: "var(--text-dim)", marginTop: 5, fontWeight: 500 }}>Accounts</div>
+                </div>
+                {/* Portfolio spend */}
+                <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "16px 18px" }}>
+                  <div style={{ fontSize: 26, fontWeight: 700, color: "var(--text)", letterSpacing: "-1px", lineHeight: 1 }}>
+                    {totalSpend > 0 ? fmtCurrency(totalSpend, "EUR") : "—"}
+                  </div>
+                  <div style={{ fontSize: 11, color: "var(--text-dim)", marginTop: 5, fontWeight: 500 }}>30d portfolio spend</div>
+                </div>
+                {/* Critical (measurement issues) */}
+                <div style={{
+                  background: criticalCount > 0 ? "rgba(239,68,68,0.05)" : "var(--surface)",
+                  border: `1px solid ${criticalCount > 0 ? "rgba(239,68,68,0.2)" : "var(--border)"}`,
+                  borderRadius: 10, padding: "16px 18px",
+                }}>
+                  <div style={{ fontSize: 26, fontWeight: 700, letterSpacing: "-1px", lineHeight: 1, color: criticalCount > 0 ? "#ef4444" : "var(--text-dim)" }}>
+                    {criticalCount}
+                  </div>
+                  <div style={{ fontSize: 11, color: criticalCount > 0 ? "#ef4444" : "var(--text-dim)", marginTop: 5, fontWeight: 500, opacity: criticalCount > 0 ? 1 : 0.7 }}>
+                    Tracking issues
+                  </div>
+                </div>
+                {/* Scored today */}
+                <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "16px 18px" }}>
+                  <div style={{ fontSize: 26, fontWeight: 700, color: "var(--text)", letterSpacing: "-1px", lineHeight: 1 }}>
+                    {scoredToday}<span style={{ fontSize: 14, fontWeight: 500, color: "var(--text-dim)", marginLeft: 4 }}>/ {accounts.length}</span>
+                  </div>
+                  <div style={{ fontSize: 11, color: "var(--text-dim)", marginTop: 5, fontWeight: 500 }}>Scored today</div>
+                </div>
+              </div>
+
+              {/* Constraint distribution strip */}
+              {bucketTotal > 0 && (
+                <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "16px 18px", marginBottom: 20 }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-dim)", letterSpacing: "0.5px", textTransform: "uppercase", marginBottom: 12 }}>
+                    Constraint distribution
+                  </div>
+                  {/* Stacked bar */}
+                  <div style={{ display: "flex", height: 8, borderRadius: 6, overflow: "hidden", gap: 2, marginBottom: 12 }}>
+                    {BUCKET_ORDER.filter(b => bucketCounts.has(b)).map(b => (
+                      <div
+                        key={b}
+                        title={`${BUCKET_LABELS[b]}: ${bucketCounts.get(b)} accounts`}
+                        style={{
+                          flex: bucketCounts.get(b),
+                          background: BUCKET_COLOR[b],
+                          borderRadius: 3,
+                          transition: "flex 0.3s",
+                        }}
+                      />
+                    ))}
+                  </div>
+                  {/* Legend */}
+                  <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+                    {BUCKET_ORDER.filter(b => bucketCounts.has(b)).map(b => {
+                      const count = bucketCounts.get(b) ?? 0;
+                      const pct   = Math.round((count / bucketTotal) * 100);
+                      return (
+                        <button
+                          key={b}
+                          onClick={() => setFilterBucket(filterBucket === b ? null : b)}
+                          style={{
+                            display: "flex", alignItems: "center", gap: 7,
+                            background: "none", border: "none", cursor: "pointer",
+                            padding: 0, opacity: filterBucket && filterBucket !== b ? 0.4 : 1,
+                            transition: "opacity 0.15s",
+                          }}
+                        >
+                          <div style={{ width: 10, height: 10, borderRadius: 3, background: BUCKET_COLOR[b], flexShrink: 0 }} />
+                          <span style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 500 }}>
+                            {BUCKET_LABELS[b]}
+                          </span>
+                          <span style={{ fontSize: 12, color: "var(--text-dim)", fontWeight: 700 }}>{count}</span>
+                          <span style={{ fontSize: 10, color: "var(--text-very-dim)" }}>{pct}%</span>
+                        </button>
+                      );
+                    })}
+                    {filterBucket && (
+                      <button
+                        onClick={() => setFilterBucket(null)}
+                        style={{ fontSize: 11, color: "var(--text-faint)", background: "none", border: "1px solid var(--border-2)", borderRadius: 20, padding: "2px 8px", cursor: "pointer" }}
+                      >
+                        Clear filter
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Search */}
+          {accounts.length > 0 && (
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
+              <div style={{ position: "relative", flex: "1 1 240px", maxWidth: 340 }}>
+                <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--text-faint)", pointerEvents: "none" }} />
+                <input
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  placeholder="Search accounts…"
+                  style={{
+                    width: "100%", boxSizing: "border-box",
+                    padding: "7px 10px 7px 30px",
+                    background: "var(--surface)", border: "1px solid var(--border-2)",
+                    borderRadius: 7, color: "var(--text-2)", fontSize: 13, outline: "none",
+                    fontFamily: "inherit",
+                  }}
+                  onFocus={e => (e.currentTarget.style.borderColor = "var(--border-3)")}
+                  onBlur={e => (e.currentTarget.style.borderColor = "var(--border-2)")}
                 />
-              ))}
+                {search && (
+                  <button onClick={() => setSearch("")} style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", display: "flex", padding: 2 }}>
+                    <X size={11} />
+                  </button>
+                )}
+              </div>
+              <span style={{ fontSize: 12, color: "var(--text-dim)" }}>{sorted.length} of {accounts.length}</span>
             </div>
-          </>
-        )}
-      </main>
-    </div>
-  );
-}
+          )}
 
-function Stat({ label, value, color }: { label: string; value: number; color: string }) {
-  return (
-    <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-      <span style={{ fontSize: 20, fontWeight: 700, color, letterSpacing: "-0.8px" }}>{value}</span>
-      <span style={{ fontSize: 11, color: "var(--text-dim)" }}>{label}</span>
+          {/* Table */}
+          {loading ? (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, padding: "80px 0", color: "var(--text-dim)", fontSize: 13 }}>
+              <Loader2 size={16} className="animate-spin" /> Loading accounts…
+            </div>
+          ) : sorted.length === 0 ? (
+            <div style={{ border: "1px dashed var(--border-3)", borderRadius: 12, padding: "60px 32px", textAlign: "center" }}>
+              {search ? (
+                <>
+                  <p style={{ color: "var(--text-dim)", fontSize: 14, marginBottom: 6 }}>No accounts match &ldquo;{search}&rdquo;</p>
+                  <button onClick={() => setSearch("")} style={{ fontSize: 12, color: "var(--accent)", background: "none", border: "none", cursor: "pointer" }}>Clear search</button>
+                </>
+              ) : (
+                <>
+                  <p style={{ color: "var(--text-dim)", fontSize: 14, marginBottom: 6 }}>No accounts yet.</p>
+                  <p style={{ color: "var(--text-faint)", fontSize: 12 }}>Click <strong>Add accounts</strong> in the sidebar to import from your Google Ads MCC.</p>
+                </>
+              )}
+            </div>
+          ) : (
+            <div style={{ border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr>
+                    <ColHeader label="Account"    col="name"       sortBy={sortBy} sortDir={sortDir} onSort={toggleSort} />
+                    <ColHeader label="Manager"    col="manager"    sortBy={sortBy} sortDir={sortDir} onSort={toggleSort} />
+                    <ColHeader label="30d Spend"  col="spend"      sortBy={sortBy} sortDir={sortDir} onSort={toggleSort} align="right" />
+                    <ColHeader label="ROAS"       col="roas"       sortBy={sortBy} sortDir={sortDir} onSort={toggleSort} align="right" />
+                    <ColHeader label="Bottleneck" col="bucket"     sortBy={sortBy} sortDir={sortDir} onSort={toggleSort} />
+                    <ColHeader label="Constraint" col="constraint" sortBy={sortBy} sortDir={sortDir} onSort={toggleSort} />
+                    <ColHeader label="Scored"     col="scored"     sortBy={sortBy} sortDir={sortDir} onSort={toggleSort} />
+                    <th style={{ padding: "10px 16px", borderBottom: "1px solid var(--border)", background: "var(--surface)", width: 110 }} />
+                  </tr>
+                </thead>
+                <tbody>
+                  {sorted.map(account => (
+                    <AccountRow
+                      key={account.id}
+                      account={account}
+                      scoring={scoring === account.id}
+                      onRescore={runScore}
+                      onRemove={handleRemove}
+                    />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </main>
     </div>
   );
 }

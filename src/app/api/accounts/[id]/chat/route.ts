@@ -10,11 +10,12 @@ import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { prisma } from "@/lib/db";
 import { BUCKET_LABELS, BUCKET_DESCRIPTIONS, ConstraintSignals } from "@/lib/engine/types";
-import { fetchDemographics, fetchSearchTermReport, fetchProductPerformance, DemographicRow, SearchTermRow } from "@/lib/integrations/google-ads";
+import { fetchDemographics, fetchSearchTermReport, fetchProductPerformance, fetchPriorPeriodProducts, DemographicRow, SearchTermRow } from "@/lib/integrations/google-ads";
 import { fetchSlackMessages, formatSlackForContext } from "@/lib/integrations/slack";
 import { getMerchantCenterIds, fetchPriceCompetitiveness } from "@/lib/integrations/merchant-center";
 import { getAuthContext, unauthorized, forbidden } from "@/lib/auth";
 import { AGENCY_PHILOSOPHY } from "@/lib/agencyPhilosophy";
+import { searchKnowledge } from "@/lib/knowledge-search";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -82,7 +83,12 @@ function buildSignalContext(signals: ConstraintSignals, currency: string): strin
   lines.push(`  CVR (last 14d): ${pct(c.conversionRate, 2)}`);
   if (c.conversionRateBaseline > 0) {
     const trend = ((c.conversionRate / c.conversionRateBaseline) - 1) * 100;
-    lines.push(`  CVR vs 6-month baseline: ${trend >= 0 ? "+" : ""}${trend.toFixed(1)}% (baseline: ${pct(c.conversionRateBaseline, 2)})`);
+    // Baselines above 10% are almost always inflated by broken tracking history.
+    // Flag this explicitly so the AI doesn't treat them as meaningful benchmarks.
+    const baselineWarning = c.conversionRateBaseline > 0.10
+      ? ` ⚠ UNRELIABLE — baseline >10% strongly indicates historical tracking errors (e.g. non-purchase events counted as conversions). Do NOT cite this as a real CVR decline. Use the industry benchmark instead.`
+      : "";
+    lines.push(`  CVR vs 6-month baseline: ${trend >= 0 ? "+" : ""}${trend.toFixed(1)}% (baseline: ${pct(c.conversionRateBaseline, 2)})${baselineWarning}`);
   }
   if (c.industryBenchmarkConversionRate > 0) {
     lines.push(`  Industry CVR benchmark: ${pct(c.industryBenchmarkConversionRate, 2)}`);
@@ -230,6 +236,7 @@ function buildSystemPrompt(params: {
   correctionContext:   string;
   globalPatternContext: string;
   productContext:      string;
+  kbContext:           string;
   isLeadGen:           boolean;
   isShoppingAccount:   boolean;
 }): string {
@@ -239,7 +246,7 @@ function buildSystemPrompt(params: {
     governingConstraint, constraintReason, bucketScores, allActions, signals,
     demographics, searchTerms,
     clientContext, sopContext, notionContext, slackContext, correctionContext, globalPatternContext,
-    productContext, isLeadGen, isShoppingAccount,
+    productContext, kbContext, isLeadGen, isShoppingAccount,
   } = params;
 
   const bucketSummary = Object.entries(bucketScores)
@@ -292,6 +299,7 @@ function buildSystemPrompt(params: {
   const correctionSection     = correctionContext    ? `\n\n${correctionContext}` : "";
   const globalPatternSection  = globalPatternContext ? `\n\n${globalPatternContext}` : "";
   const productSection        = productContext       ? `\n\n${productContext}` : "";
+  const kbSection             = kbContext            ? `\n\n${kbContext}` : "";
 
   return `You are an expert senior Google Ads specialist embedded in an agency performance platform. You have full access to this account's data — it was fetched directly from Google Ads API and Merchant Center moments before this conversation. Never say you lack access to Google Ads data; everything you need is already provided below.
 
@@ -327,7 +335,16 @@ YOUR BEHAVIOUR:
 - BUDGET INCREASE RULE: NEVER recommend increasing budget if actual ROAS is below the target ROAS.
 - If product performance data is provided: NAME specific products in answers about revenue, ROAS, or pricing. Use the actual numbers.
 - If price competitiveness data is provided: use it directly. Do NOT say "see the Products tab" — you already have the data.
-- When Slack messages are provided: actively correlate dates of team actions (budget changes, bid adjustments, campaign pauses) with metric shifts. If a metric deteriorated 2–5 days after a noted change, flag it explicitly as the likely cause and recommend a response.${notionSection}${slackSection}${correctionSection}${globalPatternSection}`;
+- When Slack messages are provided: actively correlate dates of team actions (budget changes, bid adjustments, campaign pauses) with metric shifts. If a metric deteriorated 2–5 days after a noted change, flag it explicitly as the likely cause and recommend a response.
+- When Knowledge Base references are provided: ground your answer in the specific checklist items, SOP steps, or mental model framework cited. Quote the relevant rule or step when it directly answers the question.
+
+RESPONSE FORMAT — THIS IS CRITICAL:
+- Write like a senior colleague in a chat conversation, NOT like a consulting report.
+- NO section headers (never use ## or ###). NO horizontal rules.
+- Avoid bullet point lists unless you are genuinely listing 3 or more separate items that do not flow as prose.
+- Use plain sentences and short paragraphs. Numbers and bold emphasis (**like this**) are fine to highlight key figures.
+- Keep replies focused — one clear point at a time. If the user needs more detail, they will ask.
+- Never start with "Great question" or similar filler. Just answer directly.${notionSection}${slackSection}${correctionSection}${globalPatternSection}${kbSection}`;
 }
 
 // ─── Route handler ─────────────────────────────────────────────────────────────
@@ -356,10 +373,17 @@ export async function POST(req: NextRequest, { params }: Params) {
       where: { isActive: true, OR: [{ orgId: ctx.orgId }, { orgId: null }] },
       orderBy: { seenCount: "desc" },
       take: 20,
-    }),
+    }).catch(() => [] as Awaited<ReturnType<typeof prisma.learnedPattern.findMany>>),
   ]);
 
-  if (!account) return forbidden();
+  if (!account) {
+    // Account either doesn't exist or belongs to a different org.
+    // Return 400 with enough context to diagnose without exposing org internals.
+    return NextResponse.json(
+      { error: `Account not found (id=${id}). Try refreshing the page.` },
+      { status: 400 }
+    );
+  }
 
   const snapshot = await prisma.constraintSnapshot.findFirst({
     where: { accountId: id },
@@ -432,12 +456,13 @@ export async function POST(req: NextRequest, { params }: Params) {
   let productContext = "";
   if (googleAdsId && !isLeadGen) {
     try {
-      const [productData, mcIds] = await Promise.race([
+      const [productData, priorProducts, mcIds] = await Promise.race([
         Promise.all([
           fetchProductPerformance(googleAdsId, ctx.orgId).catch(() => null),
+          fetchPriorPeriodProducts(googleAdsId, ctx.orgId).catch(() => []),
           getMerchantCenterIds(googleAdsId, ctx.orgId).catch(() => [] as string[]),
         ]),
-        new Promise<[null, string[]]>((_, reject) => setTimeout(() => reject(new Error("product+MCC timed out")), 20_000)),
+        new Promise<[null, [], string[]]>((_, reject) => setTimeout(() => reject(new Error("product+MCC timed out")), 20_000)),
       ]);
 
       let priceRows: { itemId: string; priceDiffPercent: number; status: string }[] = [];
@@ -496,6 +521,65 @@ export async function POST(req: NextRequest, { params }: Params) {
           lines.push(`\nPrice competitiveness (${priceRows.length} products with benchmark data): ${wellAbove} well above market, ${above} above market, ${below} competitive/below market`);
         }
 
+        // Prior-period comparison (31–60 days ago) — surfaces seasonality shifts and what was working before
+        if (priorProducts && priorProducts.length > 0) {
+          const priorMap = new Map(priorProducts.map(p => [p.itemId, p]));
+          const curr = account.currency === "EUR" ? "€" : account.currency === "GBP" ? "£" : "$";
+
+          // Products that sold well previously but are now stalling
+          const droppedOff = productData.products
+            .filter(p => {
+              const prev = priorMap.get(p.itemId);
+              return prev && prev.conversions >= 2 && p.conversions < prev.conversions * 0.5;
+            })
+            .sort((a, b) => {
+              const pa = priorMap.get(a.itemId)!.conversions;
+              const pb = priorMap.get(b.itemId)!.conversions;
+              return pb - pa;
+            })
+            .slice(0, 6);
+
+          // Products that were invisible before but are converting now
+          const emerging = productData.products
+            .filter(p => {
+              const prev = priorMap.get(p.itemId);
+              return p.conversions >= 2 && (!prev || prev.conversions === 0);
+            })
+            .sort((a, b) => b.conversions - a.conversions)
+            .slice(0, 4);
+
+          if (droppedOff.length > 0 || emerging.length > 0) {
+            lines.push(`\nPERIOD-OVER-PERIOD SHIFT (last 30d vs 31–60 days ago):`);
+            lines.push(`This comparison reveals seasonality, feed changes, or product pivots.`);
+
+            if (droppedOff.length > 0) {
+              lines.push(`Products that sold 31–60d ago but are NOT converting now:`);
+              droppedOff.forEach(p => {
+                const prev = priorMap.get(p.itemId)!;
+                lines.push(`  - "${p.title}": ${prev.conversions.toFixed(0)} sales prev period → ${p.conversions.toFixed(0)} now (-${Math.round((1 - p.conversions / prev.conversions) * 100)}%)`);
+              });
+            }
+
+            if (emerging.length > 0) {
+              lines.push(`Products newly converting in the last 30 days (not in prior period):`);
+              emerging.forEach(p => {
+                lines.push(`  - "${p.title}": ${p.conversions.toFixed(0)} sales now, 0 in prior period | ${curr}${Math.round(p.revenue)} rev`);
+              });
+            }
+          }
+
+          // Products in prior period that don't appear at all in current period
+          const disappeared = priorProducts
+            .filter(p => p.conversions >= 3 && !productData.products.find(c => c.itemId === p.itemId))
+            .slice(0, 4);
+          if (disappeared.length > 0) {
+            lines.push(`Products with sales 31–60d ago that are no longer getting traffic/spend now:`);
+            disappeared.forEach(p => {
+              lines.push(`  - "${p.title}": ${p.conversions.toFixed(0)} sales prev period, 0 impressions/spend now`);
+            });
+          }
+        }
+
         productContext = lines.join("\n");
       }
     } catch { /* non-fatal — chat still works without product data */ }
@@ -539,6 +623,9 @@ export async function POST(req: NextRequest, { params }: Params) {
       learnedPatterns.map(p => `- [${p.questionType}] ${p.pattern}`).join("\n")
     : "";
 
+  // Search the PPC Mastery KB for chunks relevant to this message + governing constraint
+  const kbContext = searchKnowledge(message, snapshot.governingConstraint);
+
   const systemPrompt = buildSystemPrompt({
     accountName:         account.name,
     currency:            account.currency,
@@ -569,9 +656,12 @@ export async function POST(req: NextRequest, { params }: Params) {
     correctionContext,
     globalPatternContext,
     productContext,
+    kbContext,
     isLeadGen,
     isShoppingAccount,
-  });
+  }) + (intelligenceBrief
+    ? `\n\n---\nINTELLIGENCE BRIEF (freshly generated — these numbers are MORE ACCURATE than the rawSignals above which may be from a stale snapshot):\n${intelligenceBrief}\n\nCRITICAL: When the brief above and the rawSignals conflict on any metric (CVR, ROAS, CTR, baseline, etc.), ALWAYS use the brief's figures — they were pulled from Google Ads moments ago. Do not blend or average them. Never cite the rawSignal figure if it contradicts the brief.`
+    : "");
 
   const history = (session.messages ?? []).map(m => ({
     role:    m.role as "user" | "assistant",
@@ -594,7 +684,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       try {
         const anthropicStream = await client.messages.stream({
           model:      "claude-sonnet-4-6",
-          max_tokens: 2048,
+          max_tokens: 8192,
           system:     systemPrompt,
           messages: [
             ...history,

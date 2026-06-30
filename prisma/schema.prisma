@@ -71,6 +71,7 @@ model Account {
   monthlyBudget  Float?
   industry       String?
   clientContext  String?  // free-text: what they sell, landing page, target CPA, USPs etc.
+  contextPack    String?  // JSON: Client Context Pack (goal/ambition, USPs, audience, make-or-break, constraints, stock inputs) — the human input for the 90-day plan
 
   // ─── Per-account scoring targets ───────────────────────────────────────────
   // Set these to get accurate FUNNEL + ECONOMICS scores.
@@ -102,6 +103,15 @@ model Account {
   // Falls back to auto-detection by industry + country if not set.
   peerGroupId String?
 
+  // ─── Client intake (replaces Typeform) ───────────────────────────────────────
+  reportEmail         String?   // email address for weekly reports
+  tosAcceptedAt       DateTime? // when client accepted Ecomtrada ToS
+  intakeToken         String?   @unique // shareable token for the public intake form
+  intakeCompletedAt   DateTime? // when client submitted the intake form
+
+  // ─── Team assignment ──────────────────────────────────────────────────────────
+  assignedUserId String? // User.id of the specialist managing this account
+
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id])
   createdAt      DateTime @default(now())
@@ -109,9 +119,24 @@ model Account {
 
   snapshots    ConstraintSnapshot[]
   actions      ActionRecommendation[]
-  chatSessions ChatSession[]
-  notes        AccountNote[]
-  sopProgress  AccountSopProgress[]
+  chatSessions  ChatSession[]
+  notes         AccountNote[]
+  sopProgress   AccountSopProgress[]
+  actionPlans   ClientActionPlan[]
+  shopify       ShopifyConnection?
+}
+
+// ─── Shopify (custom-app Admin API token, per account) ────────────────────────
+
+model ShopifyConnection {
+  id          String   @id @default(cuid())
+  accountId   String   @unique
+  account     Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  shopDomain  String   // e.g. "brillers.myshopify.com"
+  accessToken String   // Admin API access token from the client's custom app
+  scopes      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 // ─── Constraint Snapshot ─────────────────────────────────────────────────────
@@ -287,6 +312,18 @@ model AccountNote {
   content   String
   author    String   @default("")
   createdAt DateTime @default(now())
+}
+
+// ─── Client Action Plans ─────────────────────────────────────────────────────
+
+model ClientActionPlan {
+  id        String   @id @default(cuid())
+  accountId String
+  account   Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  content    String  // Full markdown from Claude
+  snapshotId String? // Snapshot this plan was generated from
 }
 
 // ─── SOP Progress Tracking ───────────────────────────────────────────────────

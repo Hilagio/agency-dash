@@ -15,6 +15,7 @@ interface Props {
   constraintBucket: string;
   constraintReason: string;
   intelligenceBrief?: string;
+  initialQuestion?: string;
 }
 
 // ─── Markdown renderer ────────────────────────────────────────────────────────
@@ -40,7 +41,7 @@ function renderMarkdown(content: string, streaming?: boolean): React.ReactNode {
     // H2
     if (line.startsWith("## ") && !line.startsWith("### ")) {
       nodes.push(
-        <p key={i} style={{ fontWeight: 700, color: "var(--text-2)", fontSize: 14, marginTop: 16, marginBottom: 4, lineHeight: 1.4 }}>
+        <p key={i} style={{ fontWeight: 700, color: "var(--text)", fontSize: 16, marginTop: 20, marginBottom: 6, lineHeight: 1.3 }}>
           {inlineMarkdown(line.slice(3))}
         </p>
       );
@@ -50,7 +51,7 @@ function renderMarkdown(content: string, streaming?: boolean): React.ReactNode {
     // H3
     if (line.startsWith("### ")) {
       nodes.push(
-        <p key={i} style={{ fontWeight: 600, color: "var(--text-3)", fontSize: 12, marginTop: 12, marginBottom: 3, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+        <p key={i} style={{ fontWeight: 600, color: "var(--text-2)", fontSize: 13, marginTop: 14, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.5px" }}>
           {inlineMarkdown(line.slice(4))}
         </p>
       );
@@ -86,9 +87,9 @@ function renderMarkdown(content: string, streaming?: boolean): React.ReactNode {
         i++;
       }
       nodes.push(
-        <ul key={i} style={{ paddingLeft: 18, margin: "6px 0", display: "flex", flexDirection: "column", gap: 4 }}>
+        <ul key={i} style={{ paddingLeft: 20, margin: "8px 0", display: "flex", flexDirection: "column", gap: 6 }}>
           {items.map((item, j) => (
-            <li key={j} style={{ fontSize: 13, color: "var(--text-2)", lineHeight: 1.65, listStyleType: "disc" }}>
+            <li key={j} style={{ fontSize: 15, color: "var(--text-2)", lineHeight: 1.7, listStyleType: "disc" }}>
               {inlineMarkdown(item)}
             </li>
           ))}
@@ -105,9 +106,9 @@ function renderMarkdown(content: string, streaming?: boolean): React.ReactNode {
         i++;
       }
       nodes.push(
-        <ol key={i} style={{ paddingLeft: 20, margin: "6px 0", display: "flex", flexDirection: "column", gap: 4 }}>
+        <ol key={i} style={{ paddingLeft: 20, margin: "8px 0", display: "flex", flexDirection: "column", gap: 8 }}>
           {items.map((item, j) => (
-            <li key={j} style={{ fontSize: 13, color: "var(--text-2)", lineHeight: 1.65, listStyleType: "decimal" }}>
+            <li key={j} style={{ fontSize: 15, color: "var(--text-2)", lineHeight: 1.7, listStyleType: "decimal" }}>
               {inlineMarkdown(item)}
             </li>
           ))}
@@ -130,7 +131,7 @@ function renderMarkdown(content: string, streaming?: boolean): React.ReactNode {
 
     // Regular paragraph
     nodes.push(
-      <p key={i} style={{ fontSize: 13, color: "var(--text-2)", lineHeight: 1.75, margin: 0 }}>
+      <p key={i} style={{ fontSize: 15, color: "var(--text-2)", lineHeight: 1.75, margin: 0 }}>
         {inlineMarkdown(line)}
       </p>
     );
@@ -184,15 +185,16 @@ const QUICK_PROMPTS = [
   "What metrics show we're improving?",
 ];
 
-export function ChatAssistant({ accountId, constraintBucket, constraintReason, intelligenceBrief }: Props) {
+export function ChatAssistant({ accountId, constraintBucket, constraintReason, intelligenceBrief, initialQuestion }: Props) {
   const initialMessages: Message[] = intelligenceBrief
     ? [{ role: "assistant", content: intelligenceBrief }]
-    : [{ role: "assistant", content: `Analyzing this account through its governing constraint: **${constraintBucket}**\n\n_${constraintReason}_\n\nWhat would you like to work through?` }];
+    : [{ role: "assistant", content: `Analysing this account through its governing constraint: **${constraintBucket}**\n\n_${constraintReason}_\n\nWhat would you like to work through?` }];
 
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [input, setInput]       = useState("");
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [streaming, setStreaming] = useState(false);
+  const didAutoSend = useRef(false);
 
   // Feedback state: keyed by messageId
   const [feedbackGiven, setFeedbackGiven] = useState<Record<string, "up" | "down">>({});
@@ -209,6 +211,17 @@ export function ChatAssistant({ accountId, constraintBucket, constraintReason, i
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Auto-send the initial question (from a chip click) once on mount
+  useEffect(() => {
+    if (initialQuestion && !didAutoSend.current) {
+      didAutoSend.current = true;
+      // Small delay so the brief message renders first
+      const t = setTimeout(() => send(initialQuestion), 300);
+      return () => clearTimeout(t);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const submitFeedback = async (messageId: string, rating: "up" | "down", correction?: string) => {
     const questionText = lastUserMessageRef.current;
@@ -248,7 +261,13 @@ export function ChatAssistant({ accountId, constraintBucket, constraintReason, i
         }),
       });
 
-      if (!res.ok) throw new Error(await res.text());
+      if (!res.ok) {
+        const text = await res.text();
+        try {
+          const json = JSON.parse(text) as { error?: string };
+          throw new Error(json.error ?? text);
+        } catch { throw new Error(text); }
+      }
 
       const reader = res.body!.getReader();
       const decoder = new TextDecoder();
@@ -321,39 +340,41 @@ export function ChatAssistant({ accountId, constraintBucket, constraintReason, i
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "var(--bg-deep)" }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "var(--bg)" }}>
 
       {/* Messages */}
-      <div style={{ flex: 1, overflowY: "auto", padding: "20px 20px 0" }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      <div style={{ flex: 1, overflowY: "auto", padding: "24px 24px 0" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
           {messages.map((msg, i) => (
-            <div key={i} style={{ display: "flex", flexDirection: msg.role === "user" ? "row-reverse" : "row", alignItems: "flex-start", gap: 10 }}>
+            <div key={i} style={{ display: "flex", flexDirection: msg.role === "user" ? "row-reverse" : "row", alignItems: "flex-start", gap: 12 }}>
               {/* Avatar */}
-              <div style={{
-                width: 26, height: 26, borderRadius: "50%", flexShrink: 0,
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 10, fontWeight: 700,
-                background: msg.role === "assistant" ? "var(--btn-primary)" : "var(--surface-3)",
-                color: msg.role === "assistant" ? "#fff" : "var(--text-muted)",
-                marginTop: 2,
-              }}>
-                {msg.role === "assistant" ? "AI" : "U"}
-              </div>
+              {msg.role === "assistant" && (
+                <div style={{
+                  width: 28, height: 28, borderRadius: 8, flexShrink: 0,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 10, fontWeight: 700,
+                  background: "linear-gradient(135deg, #F9C31F, #F2A60D)",
+                  color: "#0B130F", marginTop: 1,
+                }}>
+                  AI
+                </div>
+              )}
 
               {/* Bubble + feedback */}
-              <div style={{ maxWidth: msg.role === "assistant" ? "92%" : "78%", minWidth: 0, flex: msg.role === "assistant" ? 1 : undefined, display: "flex", flexDirection: "column", gap: 4 }}>
+              <div style={{ maxWidth: msg.role === "assistant" ? "88%" : "72%", minWidth: 0, flex: msg.role === "assistant" ? 1 : undefined, display: "flex", flexDirection: "column", gap: 6 }}>
                 <div style={{
                   background: msg.role === "user" ? "var(--btn-primary)" : "var(--surface)",
-                  border: msg.role === "user" ? "none" : "1px solid var(--surface-3)",
-                  borderRadius: msg.role === "user" ? "14px 14px 4px 14px" : "14px 14px 14px 4px",
-                  padding: msg.role === "assistant" ? "12px 16px" : "10px 14px",
+                  border: msg.role === "user" ? "none" : "1px solid var(--border)",
+                  borderRadius: msg.role === "user" ? "12px 12px 4px 12px" : "4px 12px 12px 12px",
+                  padding: msg.role === "assistant" ? "14px 18px" : "10px 14px",
+                  boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
                 }}>
                   {msg.content
                     ? (msg.role === "assistant"
                         ? renderMarkdown(msg.content, msg.streaming)
-                        : <p style={{ fontSize: 13, color: "#fff", lineHeight: 1.6, margin: 0 }}>{msg.content}</p>)
-                    : <span style={{ fontSize: 13, color: "var(--text-dim)" }}>
-                        <Loader2 size={12} className="animate-spin" style={{ display: "inline", marginRight: 6 }} />
+                        : <p style={{ fontSize: 15, color: "#fff", lineHeight: 1.65, margin: 0 }}>{msg.content}</p>)
+                    : <span style={{ fontSize: 13, color: "var(--text-dim)", display: "flex", alignItems: "center", gap: 6 }}>
+                        <Loader2 size={12} className="animate-spin" />
                         Thinking…
                       </span>}
                 </div>

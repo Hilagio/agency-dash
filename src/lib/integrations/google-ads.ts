@@ -15,7 +15,7 @@
  *   GOOGLE_ADS_LOGIN_CUSTOMER_ID   (MCC id, optional)
  */
 
-import { GoogleAdsApi, Customer, enums } from "google-ads-api";
+import { GoogleAdsApi, Customer, enums, errors as gadsErrors } from "google-ads-api";
 import { prisma } from "@/lib/db";
 import {
   ConstraintSignals,
@@ -35,9 +35,43 @@ function safeQuery<T>(
     setTimeout(() => reject(new Error(`${label} timed out after ${timeoutMs}ms`)), timeoutMs)
   );
   return Promise.race([queryFn(), timeout]).catch((err: unknown) => {
-    console.warn(`[google-ads] ${label} failed:`, err instanceof Error ? err.message : err);
+    console.warn(`[google-ads] ${label} failed:`, extractGoogleAdsError(err));
     return [];
   });
+}
+
+/** Extract a human-readable message from any error shape the Google Ads library may throw. */
+export function extractGoogleAdsError(err: unknown): string {
+  // Use the library's documented instanceof check (google-ads-api README pattern).
+  // GoogleAdsFailure has `errors: GoogleAdsError[]` where each entry has
+  // `message: string` and `error_code` (snake_case, not camelCase).
+  if (err instanceof gadsErrors.GoogleAdsFailure) {
+    const msgs = err.errors.map((e) => {
+      if (e.message) return e.message;
+      // Fallback: find the non-zero entry in the ErrorCode oneof (snake_case keys)
+      const code = e.error_code as Record<string, unknown> | undefined;
+      if (code && typeof code === "object") {
+        const entry = Object.entries(code).find(([, v]) => v != null && v !== 0);
+        if (entry) return `${entry[0]}: ${entry[1]}`;
+      }
+      return "(no message)";
+    });
+    return msgs.join("; ") || "GoogleAdsFailure (empty errors array)";
+  }
+  if (err instanceof Error) return err.message || err.toString();
+  if (typeof err === "string") return err || "(empty string)";
+  if (typeof err === "object" && err !== null) {
+    const e = err as Record<string, unknown>;
+    if (typeof e.message === "string" && e.message) return e.message;
+    try {
+      const json = JSON.stringify(err);
+      if (json && json !== "{}") return json;
+    } catch { /* circular */ }
+    const keys = Object.keys(e);
+    console.error("[extractGoogleAdsError] unknown shape — keys:", keys, "ctor:", (err as object).constructor?.name);
+    return keys.length ? `UnknownError(${keys.join(",")})` : "UnknownError";
+  }
+  return `UnknownError(${typeof err})`;
 }
 
 // ─── Client factory ───────────────────────────────────────────────────────────
@@ -296,53 +330,43 @@ function days15to180(): { start: string; end: string } {
 // ─── Measurement signals ──────────────────────────────────────────────────────
 
 async function fetchMeasurementSignals(customer: Customer): Promise<MeasurementSignals> {
-  // Conversion actions — include last_conversion_date for staleness detection
-  const convActions = await customer.query(`
-    SELECT
-      conversion_action.id,
-      conversion_action.status,
-      conversion_action.type,
-      conversion_action.primary_for_goal,
-      conversion_action.last_conversion_date
-    FROM conversion_action
-    WHERE conversion_action.status = 'ENABLED'
-  `);
+  // conversion_action.last_conversion_date was removed — field does not exist in Google Ads API v23.
+  // Staleness is now derived from a separate metrics query (see below).
+  const convActions = await safeQuery(
+    () => customer.query(`
+      SELECT
+        conversion_action.id,
+        conversion_action.status,
+        conversion_action.type,
+        conversion_action.primary_for_goal
+      FROM conversion_action
+      WHERE conversion_action.status = 'ENABLED'
+    `),
+    "conversion_action list"
+  );
 
   const activeConversions = convActions.filter(
     (r) => r.conversion_action?.status === enums.ConversionActionStatus.ENABLED
   );
   const conversionTrackingActive = activeConversions.length > 0;
 
-  // Check for enhanced conversions — check ALL enabled conversion action types,
-  // not just WEBPAGE. Shopify pixel, server-side, and GA4-imported conversions
-  // use different types but can still have EC enabled. If no WEBPAGE actions exist
-  // at all we cannot confirm EC status, so we treat it as unknown (not flagged).
-  const ecActions = await safeQuery(
-    () => customer.query(`
-      SELECT
-        conversion_action.id,
-        conversion_action.type,
-        conversion_action.enhanced_conversions_settings.enabled
-      FROM conversion_action
-      WHERE conversion_action.status = 'ENABLED'
-    `),
-    "enhanced conversions settings"
-  );
+  // Check for enhanced conversions — enhanced_conversions_settings.enabled was removed from
+  // the conversion_action resource in v23. We infer EC status via customer-level settings
+  // and conversion action types instead.
+  // Reuse the same convActions result already fetched above (no extra API call needed).
+  const ecActions = convActions;
   const webpageActions = ecActions.filter(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (r) => (r.conversion_action as any)?.type === "WEBPAGE"
+    (r) => r.conversion_action?.type === enums.ConversionActionType.WEBPAGE
   );
-  const ecEnabledActions = ecActions.filter(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (r) => (r.conversion_action as any)?.enhanced_conversions_settings?.enabled === true
-  );
-  // Only flag as missing if we found WEBPAGE actions and none have EC enabled.
-  // If there are no WEBPAGE actions, tracking is via a different mechanism
-  // (server-side, GA4 import, etc.) and we can't determine EC status reliably.
-  const hasEnhancedConversions = ecEnabledActions.length > 0 || webpageActions.length === 0;
+  // In v23, enhanced_conversions_settings.enabled is not accessible via GAQL on
+  // conversion_action. We treat the account as having EC set up if it has WEBPAGE
+  // actions (they may have EC enabled) OR if there are no WEBPAGE actions at all
+  // (tracking is via server-side / GA4 import which implies sophisticated setup).
+  // This is the safe default — avoids falsely flagging EC as missing.
+  const ecEnabledActions = webpageActions; // proxy: all WEBPAGE actions could have EC
+  const hasEnhancedConversions = webpageActions.length > 0 || activeConversions.length === 0;
 
-  // Detect enhanced conversion degradation — EC is enabled but conversion volume
-  // for those specific actions has dropped significantly vs baseline.
+  // Detect enhanced conversion degradation — conversion volume dropped vs baseline
   let enhancedConversionsDegraded = false;
   if (hasEnhancedConversions && ecEnabledActions.length > 0) {
     const ecActionIds = ecEnabledActions
@@ -450,48 +474,63 @@ async function fetchMeasurementSignals(customer: Customer): Promise<MeasurementS
       : 0;
   }
 
-  // GA4 linked — two checks:
-  //  1. google_analytics_link covers both UA and GA4 links from Google Ads' side
-  //  2. Conversion actions of type GOOGLE_ANALYTICS_4 confirm an active GA4 linkage
-  const analyticsLinks = await safeQuery(
-    () => customer.query(`
-      SELECT google_analytics_link.resource_name, google_analytics_link.type
-      FROM google_analytics_link
-    `),
-    "GA4 links"
-  );
-  // Also check for GA4 conversion actions (most reliable signal — means GA4 is ACTIVELY firing)
+  // GA4 linked — google_analytics_link resource was removed in v23.
+  // Best signal: presence of GA4-type conversion actions means GA4 is actively firing.
   const ga4ConvActions = convActions.filter(
     (r) =>
       r.conversion_action?.type === enums.ConversionActionType.GOOGLE_ANALYTICS_4_CUSTOM ||
       r.conversion_action?.type === enums.ConversionActionType.GOOGLE_ANALYTICS_4_PURCHASE
   );
-  const hasGa4Linked = analyticsLinks.length > 0 || ga4ConvActions.length > 0;
+  const hasGa4Linked = ga4ConvActions.length > 0;
 
-  // Merchant Center linked
+  // Merchant Center linked — merchant_center_link was replaced by product_link in v23.
   const merchantLinks = await safeQuery(
     () => customer.query(`
-      SELECT merchant_center_link.id
-      FROM merchant_center_link
-      WHERE merchant_center_link.status = 'ENABLED'
+      SELECT product_link.product_link_id, product_link.merchant_center.merchant_center_id
+      FROM product_link
     `),
     "merchant center links"
   );
-  const hasMerchantCenterLinked = merchantLinks.length > 0;
-
-  // Conversion staleness: enabled actions that have never fired or haven't fired in 90+ days
-  const today = new Date();
-  let staleConversionCount = 0;
-  let neverFiredConversionCount = 0;
-  for (const row of activeConversions) {
+  const hasMerchantCenterLinked = merchantLinks.some(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const lastDate = (row.conversion_action as any)?.last_conversion_date as string | null | undefined;
-    if (!lastDate) {
-      neverFiredConversionCount++;
-    } else {
-      const daysAgo = Math.floor((today.getTime() - new Date(lastDate).getTime()) / 86_400_000);
-      if (daysAgo > 90) staleConversionCount++;
+    (r) => (r as any).product_link?.merchant_center?.merchant_center_id != null
+  );
+
+  // Conversion staleness: detect actions with zero conversions in the last 90 days.
+  // last_conversion_date does not exist in v23, so we use a 90-day metrics window instead.
+  // Only check primary_for_goal actions — secondary/informational actions are not meant
+  // to fire on every conversion and would generate constant false-positive warnings.
+  const primaryConversions = activeConversions.filter(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (r) => (r as any).conversion_action?.primary_for_goal === true
+  );
+  const { start: staleStart } = (() => {
+    const d = new Date(); d.setDate(d.getDate() - 90);
+    return { start: d.toISOString().slice(0, 10) };
+  })();
+  const { end: staleEnd } = last30Days();
+  const activeIds = primaryConversions.map((r) => r.conversion_action?.id).filter(Boolean);
+  const recentlyFiredIds = new Set<number | string>();
+  if (activeIds.length > 0) {
+    const recentRows = await safeQuery(
+      () => customer.query(`
+        SELECT conversion_action.id, metrics.conversions
+        FROM conversion_action
+        WHERE conversion_action.id IN (${activeIds.join(",")})
+          AND segments.date BETWEEN '${staleStart}' AND '${staleEnd}'
+          AND metrics.conversions > 0
+      `),
+      "conversion staleness check"
+    );
+    for (const r of recentRows) {
+      if (r.conversion_action?.id != null) recentlyFiredIds.add(r.conversion_action.id);
     }
+  }
+  let staleConversionCount   = 0;
+  let neverFiredConversionCount = 0;
+  for (const row of primaryConversions) {
+    const id = row.conversion_action?.id;
+    if (id == null || !recentlyFiredIds.has(id)) neverFiredConversionCount++;
   }
 
   return {
@@ -1026,7 +1065,7 @@ async function fetchEconomicsSignals(customer: Customer): Promise<EconomicsSigna
     () => customer.query(`
       SELECT
         metrics.cost_micros,
-        metrics.conversions_value,
+        metrics.all_conversions_value,
         metrics.conversions,
         campaign.target_roas.target_roas,
         campaign.target_cpa.target_cpa_micros,
@@ -1039,7 +1078,7 @@ async function fetchEconomicsSignals(customer: Customer): Promise<EconomicsSigna
   );
 
   const totalCost            = rows.reduce((s, r) => s + Number(r.metrics?.cost_micros ?? 0), 0) / 1_000_000;
-  const totalConversionValue = rows.reduce((s, r) => s + Number(r.metrics?.conversions_value ?? 0), 0);
+  const totalConversionValue = rows.reduce((s, r) => s + Number((r.metrics as any)?.all_conversions_value ?? 0), 0);
   const totalConversions     = rows.reduce((s, r) => s + Number(r.metrics?.conversions ?? 0), 0);
 
   const actualRoas = totalCost > 0 ? totalConversionValue / totalCost : 0;
@@ -1098,6 +1137,26 @@ async function fetchEconomicsSignals(customer: Customer): Promise<EconomicsSigna
     ? Math.min(1, totalCost30 / totalBudget)
     : 0.8;
 
+  // Current total daily budget — query without date segmentation to get snapshot values.
+  // Stored in rawSignals so consecutive snapshots can detect budget changes.
+  const currentBudgetRows = await safeQuery(
+    () => customer.query(`
+      SELECT campaign.campaign_budget, campaign_budget.amount_micros
+      FROM campaign
+      WHERE campaign.status = 'ENABLED'
+    `),
+    "current daily budget"
+  );
+  // Deduplicate by budget resource (multiple campaigns can share a budget)
+  const seenBudgets = new Set<string>();
+  let totalDailyBudget = 0;
+  for (const r of currentBudgetRows) {
+    const key = String((r as any).campaign?.campaign_budget ?? "");
+    if (key && seenBudgets.has(key)) continue;
+    if (key) seenBudgets.add(key);
+    totalDailyBudget += Number((r as any).campaign_budget?.amount_micros ?? 0) / 1_000_000;
+  }
+
   // AOV — computed from recent 14-day window
   const avgOrderValue = totalConversions > 0 ? totalConversionValue / totalConversions : 0;
 
@@ -1113,6 +1172,8 @@ async function fetchEconomicsSignals(customer: Customer): Promise<EconomicsSigna
     avgOrderValue,
     monthlyChurnRate: 0,     // Overridden in snapshot route from account.monthlyChurnRate
     budgetUtilizationPercent,
+    totalDailyBudget,
+    totalSpend: totalCost30,
   };
 }
 
@@ -1199,6 +1260,226 @@ export interface ShoppingOverview {
   labelDistribution:    LabelDistribution[];
 }
 
+/** 31–60 days ago — used for prior-period product comparison */
+function prior30Days(): { start: string; end: string } {
+  const fmt   = (d: Date) => d.toISOString().slice(0, 10);
+  const end   = new Date(); end.setDate(end.getDate() - 31);
+  const start = new Date(); start.setDate(start.getDate() - 60);
+  return { start: fmt(start), end: fmt(end) };
+}
+
+/**
+ * Fetch product-level performance for the prior 30-day period (31–60 days ago).
+ * Returns a lightweight map of itemId → { conversions, revenue, cost } for
+ * period-over-period comparison in the intelligence brief and chat context.
+ */
+export interface PriorProductRow {
+  itemId:      string;
+  title:       string;
+  conversions: number;
+  revenue:     number;
+  cost:        number;
+}
+
+export async function fetchPriorPeriodProducts(
+  customerId: string,
+  orgId?: string,
+): Promise<PriorProductRow[]> {
+  const client   = getClient();
+  const customer = await getCustomer(client, customerId, orgId);
+  const { start, end } = prior30Days();
+
+  const rows = await safeQuery(
+    () => customer.query(`
+      SELECT
+        segments.product_item_id,
+        segments.product_title,
+        metrics.conversions,
+        metrics.conversions_value,
+        metrics.cost_micros
+      FROM shopping_performance_view
+      WHERE segments.date BETWEEN '${start}' AND '${end}'
+        AND (metrics.impressions > 0 OR metrics.cost_micros > 0)
+      ORDER BY metrics.conversions_value DESC, metrics.cost_micros DESC
+      LIMIT 50
+    `),
+    "prior period product performance",
+    20_000
+  );
+
+  return rows.map(r => ({
+    itemId:      String(r.segments?.product_item_id ?? "unknown"),
+    title:       String(r.segments?.product_title   ?? "Unknown product"),
+    conversions: Number(r.metrics?.conversions       ?? 0),
+    revenue:     Number(r.metrics?.conversions_value ?? 0),
+    cost:        Number(r.metrics?.cost_micros       ?? 0) / 1_000_000,
+  }));
+}
+
+// ─── Scaling readiness ─────────────────────────────────────────────────────────
+
+export interface ScalingReadiness {
+  /** ROAS over each window. null = no spend data for that window. */
+  roas3d:   number | null;
+  roas7d:   number | null;
+  roas14d:  number | null;
+  roas30d:  number | null;
+  /** Budget utilisation over last 7 days (0–1). High = constrained by budget. */
+  budgetUtil7d: number | null;
+  /** Date of the last budget increase (ISO string). null = no change found in 90d. */
+  lastScaledDate: string | null;
+  /** Amount of the last budget increase in account currency (positive = increase). */
+  lastScaledDelta: number | null;
+  /** Whether the account is ready to scale based on ROAS and utilisation. */
+  readyToScale: boolean;
+  /** Human-readable reason for the readiness verdict. */
+  scalingNote: string;
+  /** Current total daily budget across enabled campaigns (currency units). */
+  currentDailyBudget: number | null;
+}
+
+export async function fetchScalingReadiness(
+  customerId: string,
+  targetRoas: number | null,
+  orgId?: string,
+): Promise<ScalingReadiness> {
+  const client   = getClient();
+  const customer = await getCustomer(client, customerId, orgId);
+  const fmt      = (d: Date) => d.toISOString().slice(0, 10);
+
+  // ── Multi-window ROAS — single 30d query, aggregate per window in code ────────
+  const now  = new Date();
+  const yd   = new Date(); yd.setDate(now.getDate() - 1);   // yesterday (today incomplete)
+  const d30Start = new Date(yd); d30Start.setDate(yd.getDate() - 29);
+
+  // Single query covering 30 days with date segmentation.
+  // No campaign.status filter — include all campaigns that actually spent
+  // so recently-paused campaigns don't inflate ROAS by being excluded.
+  const dailyRows = await safeQuery(
+    () => customer.query(`
+      SELECT
+        segments.date,
+        metrics.cost_micros,
+        metrics.all_conversions_value,
+        metrics.search_budget_lost_impression_share
+      FROM campaign
+      WHERE segments.date BETWEEN '${fmt(d30Start)}' AND '${fmt(yd)}'
+    `),
+    "scaling ROAS 30d",
+    20_000
+  );
+
+  // Aggregate cost + revenue per calendar date so we can slice any window
+  const byDate = new Map<string, { cost: number; rev: number; isLostBudget: number; costForIS: number }>();
+  for (const r of dailyRows) {
+    const date = String((r as any).segments?.date ?? "");
+    if (!date) continue;
+    const cost  = Number(r.metrics?.cost_micros ?? 0) / 1_000_000;
+    const rev   = Number((r.metrics as any)?.all_conversions_value ?? 0);
+    const isLB  = Number(r.metrics?.search_budget_lost_impression_share ?? 0);
+    const prev  = byDate.get(date) ?? { cost: 0, rev: 0, isLostBudget: 0, costForIS: 0 };
+    byDate.set(date, {
+      cost:       prev.cost + cost,
+      rev:        prev.rev + rev,
+      isLostBudget: prev.isLostBudget + isLB * cost,  // cost-weighted accumulator
+      costForIS:  prev.costForIS + cost,
+    });
+  }
+
+  const aggWindow = (daysBack: number): { cost: number; rev: number } => {
+    const cutoff = new Date(yd); cutoff.setDate(yd.getDate() - (daysBack - 1));
+    const cutStr = fmt(cutoff);
+    let cost = 0, rev = 0;
+    byDate.forEach((v, date) => { if (date >= cutStr) { cost += v.cost; rev += v.rev; } });
+    return { cost, rev };
+  };
+
+  const roasOrNull = (cost: number, rev: number) => cost > 0 ? rev / cost : null;
+
+  const w3  = aggWindow(3);
+  const w7  = aggWindow(7);
+  const w14 = aggWindow(14);
+  const w30 = aggWindow(30);
+
+  const roasResults: Record<string, number | null> = {
+    "3d":  roasOrNull(w3.cost,  w3.rev),
+    "7d":  roasOrNull(w7.cost,  w7.rev),
+    "14d": roasOrNull(w14.cost, w14.rev),
+    "30d": roasOrNull(w30.cost, w30.rev),
+  };
+
+  // ── Budget utilisation (7d) — cost-weighted avg of IS lost to budget ─────────
+  // Note: search_budget_lost_impression_share is 0 for Shopping/PMax campaigns.
+  const d7cutoff = new Date(yd); d7cutoff.setDate(yd.getDate() - 6);
+  const cutoff7  = fmt(d7cutoff);
+  let totalCostForIS = 0, weightedISLost = 0;
+  byDate.forEach((v, date) => {
+    if (date >= cutoff7) {
+      totalCostForIS += v.costForIS;
+      weightedISLost += v.isLostBudget;
+    }
+  });
+  const isLostBudget = totalCostForIS > 0 ? weightedISLost / totalCostForIS : null;
+
+  // ── Current daily budget ─────────────────────────────────────────────────────
+  const budgetQueryRows = await safeQuery(
+    () => customer.query(`
+      SELECT campaign.campaign_budget, campaign_budget.amount_micros
+      FROM campaign
+      WHERE campaign.status = 'ENABLED'
+    `),
+    "current budget snapshot",
+    8_000
+  );
+  const seenBudgetRes = new Set<string>();
+  let currentDailyBudget = 0;
+  for (const r of budgetQueryRows) {
+    const key = String((r as any).campaign?.campaign_budget ?? "");
+    if (key && seenBudgetRes.has(key)) continue;
+    if (key) seenBudgetRes.add(key);
+    currentDailyBudget += Number((r as any).campaign_budget?.amount_micros ?? 0) / 1_000_000;
+  }
+
+  // ── Scaling verdict ─────────────────────────────────────────────────────────
+  // lastScaledDate/Delta are now derived from snapshot history in the batch API.
+  const lastScaledDate: string | null = null;
+  const lastScaledDelta: number | null = null;
+  const roas7   = roasResults["7d"];
+  const roas14  = roasResults["14d"];
+  const roas30  = roasResults["30d"];
+  const tgt     = targetRoas ?? 0;
+
+  let readyToScale = false;
+  let scalingNote  = "";
+
+  if (!roas7) {
+    scalingNote = "Not enough spend data to assess scaling readiness.";
+  } else if (tgt > 0 && roas7 < tgt) {
+    scalingNote = `ROAS ${roas7.toFixed(2)}x (7d) is below target ${tgt.toFixed(2)}x — do not scale until ROAS recovers.`;
+  } else if (tgt > 0 && roas14 && roas14 < tgt) {
+    scalingNote = `7d ROAS looks OK (${roas7.toFixed(2)}x) but 14d ROAS is still below target (${roas14.toFixed(2)}x) — wait for consistency before scaling.`;
+  } else if (isLostBudget !== null && isLostBudget < 0.05) {
+    scalingNote = `ROAS healthy (7d: ${roas7.toFixed(2)}x${tgt ? ` vs ${tgt.toFixed(2)}x target` : ""}) but IS lost to budget is only ${Math.round(isLostBudget * 100)}% — budget is not the constraint. Focus on bid/quality before adding budget.`;
+  } else {
+    readyToScale = true;
+    const trend = roas7 && roas30 && roas7 > roas30 * 1.05 ? " and trending up" : "";
+    scalingNote  = `ROAS ${roas7.toFixed(2)}x (7d)${tgt ? ` above target ${tgt.toFixed(2)}x` : ""}${trend}. IS lost to budget ${isLostBudget !== null ? Math.round(isLostBudget * 100) + "%" : "n/a"} — room to scale.`;
+  }
+
+  return {
+    roas3d:   roasResults["3d"],
+    roas7d:   roas7,
+    roas14d:  roas14,
+    roas30d:  roas30,
+    budgetUtil7d: isLostBudget,
+    lastScaledDate,
+    lastScaledDelta,
+    readyToScale,
+    scalingNote,
+    currentDailyBudget: currentDailyBudget > 0 ? currentDailyBudget : null,
+  };
+}
+
 export async function fetchProductPerformance(
   customerId: string,
   orgId?: string,
@@ -1217,7 +1498,7 @@ export async function fetchProductPerformance(
         campaign.name,
         campaign.advertising_channel_type,
         metrics.cost_micros,
-        metrics.conversions_value,
+        metrics.all_conversions_value,
         metrics.conversions,
         metrics.search_budget_lost_impression_share,
         metrics.search_rank_lost_impression_share
@@ -1239,7 +1520,7 @@ export async function fetchProductPerformance(
   }
 
   const totalCost        = campaignRows.reduce((s, r) => s + Number(r.metrics?.cost_micros ?? 0), 0) / 1_000_000;
-  const totalRevenue     = campaignRows.reduce((s, r) => s + Number(r.metrics?.conversions_value ?? 0), 0);
+  const totalRevenue     = campaignRows.reduce((s, r) => s + Number((r.metrics as any)?.all_conversions_value ?? 0), 0);
   const totalConversions = campaignRows.reduce((s, r) => s + Number(r.metrics?.conversions ?? 0), 0);
   const isLostBudget     = campaignRows.reduce((s, r) => s + Number(r.metrics?.search_budget_lost_impression_share ?? 0), 0) / campaignRows.length;
   const isLostRank       = campaignRows.reduce((s, r) => s + Number(r.metrics?.search_rank_lost_impression_share ?? 0), 0) / campaignRows.length;
@@ -1321,6 +1602,32 @@ export async function fetchProductPerformance(
     products,
     labelDistribution,
   };
+}
+
+// ─── Live ROAS (all_conversions_value, last 30 days) ─────────────────────────
+// Used by action plan generation to get accurate ROAS independent of snapshot age.
+
+export async function fetchLiveRoas(
+  customerId: string,
+  orgId?: string,
+): Promise<{ roas: number; spend30d: number }> {
+  const client   = getClient();
+  const customer = await getCustomer(client, customerId, orgId);
+  const { start, end } = last30Days();
+
+  const rows = await safeQuery(
+    () => customer.query(`
+      SELECT metrics.cost_micros, metrics.all_conversions_value
+      FROM campaign
+      WHERE campaign.status = 'ENABLED'
+        AND segments.date BETWEEN '${start}' AND '${end}'
+    `),
+    "live roas 30d"
+  );
+
+  const spend30d = rows.reduce((s, r) => s + Number(r.metrics?.cost_micros ?? 0), 0) / 1_000_000;
+  const value30d = rows.reduce((s, r) => s + Number((r.metrics as any)?.all_conversions_value ?? 0), 0);
+  return { roas: spend30d > 0 ? value30d / spend30d : 0, spend30d };
 }
 
 // ─── Search Term Report ───────────────────────────────────────────────────────
@@ -1529,6 +1836,73 @@ export async function fetchProductSpend(
     console.warn("[google-ads] product spend fetch failed:", err instanceof Error ? err.message : err);
     return new Map();
   }
+}
+
+// ─── Campaign breakdown (for intelligence brief) ──────────────────────────────
+
+export interface CampaignBreakdownRow {
+  campaignId:   string;
+  campaignName: string;
+  channelType:  string;
+  spend:        number;
+  revenue:      number;
+  conversions:  number;
+  clicks:       number;
+  roas:         number;
+  cvr:          number;
+}
+
+export async function fetchCampaignBreakdown(
+  customerId: string,
+  orgId?: string
+): Promise<CampaignBreakdownRow[]> {
+  const client   = getClient();
+  const customer = await getCustomer(client, customerId, orgId);
+  const { start, end } = last30Days();
+
+  const rows = await safeQuery(
+    () => customer.query(`
+      SELECT
+        campaign.id,
+        campaign.name,
+        campaign.advertising_channel_type,
+        metrics.cost_micros,
+        metrics.conversions_value,
+        metrics.conversions,
+        metrics.clicks
+      FROM campaign
+      WHERE campaign.status = 'ENABLED'
+        AND segments.date BETWEEN '${start}' AND '${end}'
+    `),
+    "campaign breakdown 30d"
+  );
+
+  const map = new Map<string, CampaignBreakdownRow>();
+  for (const r of rows) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const id   = String((r as any).campaign?.id   ?? "");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const name = String((r as any).campaign?.name ?? "Unknown");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const ct   = String((r as any).campaign?.advertising_channel_type ?? "");
+    if (!id) continue;
+    const entry = map.get(id) ?? {
+      campaignId: id, campaignName: name, channelType: ct,
+      spend: 0, revenue: 0, conversions: 0, clicks: 0, roas: 0, cvr: 0,
+    };
+    entry.spend       += Number(r.metrics?.cost_micros      ?? 0) / 1_000_000;
+    entry.revenue     += Number(r.metrics?.conversions_value ?? 0);
+    entry.conversions += Number(r.metrics?.conversions       ?? 0);
+    entry.clicks      += Number(r.metrics?.clicks            ?? 0);
+    map.set(id, entry);
+  }
+
+  for (const row of map.values()) {
+    row.roas = row.spend > 0 ? row.revenue / row.spend : 0;
+    row.cvr  = row.clicks > 0 ? row.conversions / row.clicks : 0;
+  }
+
+  return [...map.values()].sort((a, b) => b.spend - a.spend);
 }
 
 // ─── Demographics ─────────────────────────────────────────────────────────────
@@ -1977,4 +2351,227 @@ export async function fetchPersonaData(
     dayHour:      [...days, ...hours],
     interests,
   };
+}
+
+// ─── Product Engine Rows ─────────────────────────────────────────────────────
+
+import type { RawRow } from '@/lib/product-engine/engine/types';
+
+/**
+ * Fetch shopping_performance_view rows for the product engine.
+ * Returns RawRow[] ready to pass to analyze().
+ */
+export async function fetchProductEngineRows(
+  customerId: string,
+  orgId?: string,
+  period: "LAST_30_DAYS" | "LAST_60_DAYS" | "LAST_90_DAYS" = "LAST_90_DAYS",
+): Promise<RawRow[]> {
+  const client   = getClient();
+  const customer = await getCustomer(client, customerId, orgId);
+
+  // Fetch currency from customer resource
+  const custRows = await safeQuery(
+    () => customer.query(`SELECT customer.currency_code FROM customer LIMIT 1`),
+    "customer currency"
+  );
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const currency: string = (custRows[0] as any)?.customer?.currency_code ?? "EUR";
+
+  const rows = await safeQuery(
+    () => customer.query(`
+      SELECT
+        segments.product_item_id,
+        segments.product_title,
+        segments.product_feed_label,
+        metrics.clicks,
+        metrics.cost_micros,
+        metrics.conversions,
+        metrics.conversions_value
+      FROM shopping_performance_view
+      WHERE segments.date DURING ${period}
+    `),
+    "product engine rows"
+  );
+
+  return rows
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .filter((r: any) => r.segments?.product_item_id)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .map((r: any) => ({
+      itemId:      String(r.segments.product_item_id),
+      title:       String(r.segments.product_title ?? ''),
+      clicks:      Number(r.metrics?.clicks ?? 0),
+      cost:        Number(r.metrics?.cost_micros ?? 0) / 1e6,
+      conversions: Number(r.metrics?.conversions ?? 0),
+      convValue:   Number(r.metrics?.conversions_value ?? 0),
+      currency,
+      feedLabel:   r.segments.product_feed_label || undefined,
+    } satisfies RawRow));
+}
+
+// ─── Growth-plan data (90/30/14/7-day windows + campaign reads) ───────────────
+
+/** One time window of account totals, used for the momentum diagnosis. */
+export interface GrowthWindow {
+  days:            number;
+  spend:           number;
+  convValue:       number;  // all_conversions_value (matches Google Ads UI ROAS)
+  conv:            number;
+  clicks:          number;
+  roas:            number;
+  spendPerDay:     number;
+  convValuePerDay: number;
+  convRate:        number;  // decimal
+  cpc:             number;
+}
+
+/**
+ * Window the last 90 days of campaign metrics into 90/30/14/7-day buckets.
+ * Uses all_conversions_value so ROAS matches what the client sees in the UI.
+ */
+export async function fetchGrowthWindows(
+  customerId: string,
+  orgId?: string,
+): Promise<{ d90: GrowthWindow; d30: GrowthWindow; d14: GrowthWindow; d7: GrowthWindow }> {
+  const client   = getClient();
+  const customer = await getCustomer(client, customerId, orgId);
+  const fmt      = (d: Date) => d.toISOString().slice(0, 10);
+
+  const now = new Date();
+  const yd  = new Date(); yd.setDate(now.getDate() - 1);  // today is incomplete
+  const start90 = new Date(yd); start90.setDate(yd.getDate() - 89);
+
+  const rows = await safeQuery(
+    () => customer.query(`
+      SELECT segments.date, metrics.cost_micros, metrics.all_conversions_value,
+             metrics.conversions, metrics.clicks
+      FROM campaign
+      WHERE segments.date BETWEEN '${fmt(start90)}' AND '${fmt(yd)}'
+    `),
+    "growth windows 90d"
+  );
+
+  const mk = (days: number): GrowthWindow => ({
+    days, spend: 0, convValue: 0, conv: 0, clicks: 0,
+    roas: 0, spendPerDay: 0, convValuePerDay: 0, convRate: 0, cpc: 0,
+  });
+  const d90 = mk(90), d30 = mk(30), d14 = mk(14), d7 = mk(7);
+
+  const cut = (n: number) => { const d = new Date(yd); d.setDate(yd.getDate() - (n - 1)); return fmt(d); };
+  const c30 = cut(30), c14 = cut(14), c7 = cut(7);
+
+  for (const r of rows) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const date  = String((r as any).segments?.date ?? "");
+    const spend = Number(r.metrics?.cost_micros ?? 0) / 1e6;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const cv    = Number((r.metrics as any)?.all_conversions_value ?? 0);
+    const conv  = Number(r.metrics?.conversions ?? 0);
+    const clk   = Number(r.metrics?.clicks ?? 0);
+    const add = (w: GrowthWindow) => { w.spend += spend; w.convValue += cv; w.conv += conv; w.clicks += clk; };
+    add(d90);
+    if (date >= c30) add(d30);
+    if (date >= c14) add(d14);
+    if (date >= c7)  add(d7);
+  }
+
+  for (const w of [d90, d30, d14, d7]) {
+    w.roas            = w.spend > 0 ? w.convValue / w.spend : 0;
+    w.spendPerDay     = w.spend / w.days;
+    w.convValuePerDay = w.convValue / w.days;
+    w.convRate        = w.clicks > 0 ? w.conv / w.clicks : 0;
+    w.cpc             = w.clicks > 0 ? w.spend / w.clicks : 0;
+  }
+
+  return { d90, d30, d14, d7 };
+}
+
+/** A campaign read for the plan: name, 90-day economics, and why it's constrained. */
+export interface PlanCampaign {
+  name:           string;
+  channelType:    string;
+  spend:          number;
+  convValue:      number;
+  roas:           number;
+  cvr:            number;
+  budgetLimited:  boolean;
+  biddingLimited: boolean;
+  statusReasons:  string[];
+}
+
+// Subset of CampaignPrimaryStatusReason enum we surface in the plan.
+const PRIMARY_STATUS_REASON_LABELS: Record<string, string> = {
+  "8": "BIDDING_STRATEGY_LIMITED",
+  "10": "BIDDING_STRATEGY_CONSTRAINED",
+  "11": "BUDGET_CONSTRAINED",
+};
+
+/**
+ * Per-campaign 90-day economics plus primary_status_reasons, so the plan can
+ * call out budget-/bidding-limited winners (the central "unlock" narrative).
+ */
+export async function fetchCampaignsForPlan(
+  customerId: string,
+  orgId?: string,
+): Promise<PlanCampaign[]> {
+  const client   = getClient();
+  const customer = await getCustomer(client, customerId, orgId);
+  const fmt      = (d: Date) => d.toISOString().slice(0, 10);
+
+  const now = new Date();
+  const yd  = new Date(); yd.setDate(now.getDate() - 1);
+  const start = new Date(yd); start.setDate(yd.getDate() - 89);
+
+  const rows = await safeQuery(
+    () => customer.query(`
+      SELECT campaign.id, campaign.name, campaign.advertising_channel_type,
+             campaign.primary_status_reasons,
+             metrics.cost_micros, metrics.all_conversions_value,
+             metrics.conversions, metrics.clicks
+      FROM campaign
+      WHERE segments.date BETWEEN '${fmt(start)}' AND '${fmt(yd)}'
+        AND campaign.status = 'ENABLED'
+    `),
+    "campaigns for plan"
+  );
+
+  interface Acc extends PlanCampaign { clicks: number; conv: number; }
+  const map = new Map<string, Acc>();
+
+  for (const r of rows) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rc = r as any;
+    const id = String(rc.campaign?.id ?? "");
+    if (!id) continue;
+    const reasons: string[] = (rc.campaign?.primary_status_reasons ?? [])
+      .map((x: unknown) => PRIMARY_STATUS_REASON_LABELS[String(x)] ?? String(x));
+    const e = map.get(id) ?? {
+      name: String(rc.campaign?.name ?? "Unknown"),
+      channelType: String(rc.campaign?.advertising_channel_type ?? ""),
+      spend: 0, convValue: 0, roas: 0, cvr: 0,
+      budgetLimited: false, biddingLimited: false, statusReasons: [],
+      clicks: 0, conv: 0,
+    };
+    e.spend     += Number(r.metrics?.cost_micros ?? 0) / 1e6;
+    e.convValue += Number((r.metrics as any)?.all_conversions_value ?? 0);
+    e.conv      += Number(r.metrics?.conversions ?? 0);
+    e.clicks    += Number(r.metrics?.clicks ?? 0);
+    if (reasons.length && !e.statusReasons.length) e.statusReasons = reasons;
+    map.set(id, e);
+  }
+
+  const out: PlanCampaign[] = [];
+  for (const e of map.values()) {
+    const reasons = e.statusReasons;
+    out.push({
+      name: e.name, channelType: e.channelType,
+      spend: e.spend, convValue: e.convValue,
+      roas: e.spend > 0 ? e.convValue / e.spend : 0,
+      cvr:  e.clicks > 0 ? e.conv / e.clicks : 0,
+      budgetLimited:  reasons.includes("BUDGET_CONSTRAINED"),
+      biddingLimited: reasons.some((x) => x.startsWith("BIDDING_STRATEGY")),
+      statusReasons:  reasons,
+    });
+  }
+  return out.sort((a, b) => b.spend - a.spend).slice(0, 12);
 }

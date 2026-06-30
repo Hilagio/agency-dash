@@ -5,7 +5,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { fetchSearchTermReport, isGoogleAdsConfigured } from "@/lib/integrations/google-ads";
+import { fetchSearchTermReport, isGoogleAdsConfigured, extractGoogleAdsError } from "@/lib/integrations/google-ads";
 import { getAuthContext, unauthorized, forbidden } from "@/lib/auth";
 
 type Params = { params: Promise<{ id: string }> };
@@ -27,7 +27,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
     const rows = await fetchSearchTermReport(account.googleAdsId, ctx.orgId);
     return NextResponse.json(rows);
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
+    const msg = extractGoogleAdsError(err);
     return NextResponse.json({ error: `Google Ads API error: ${msg}` }, { status: 502 });
   }
 }

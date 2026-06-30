@@ -1,0 +1,421 @@
+/**
+ * POST /api/analyze-page
+ *
+ * Fetches a prospect's landing/product page, extracts content, and streams
+ * a structured CRO + Google Ads analysis for use on sales calls.
+ */
+import { NextRequest, NextResponse } from "next/server";
+import Anthropic from "@anthropic-ai/sdk";
+import { getAuthContext, unauthorized } from "@/lib/auth";
+
+const client = new Anthropic();
+
+function stripTags(html: string): string {
+  return html
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&#\d+;/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function extractContent(html: string, gtmJs: string = "") {
+  // scanSource combines page HTML + GTM container JS (if available) for tool detection
+  const scanSource = html + "\n" + gtmJs;
+
+  const clean = html
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/<style[\s\S]*?<\/style>/gi, "")
+    .replace(/<svg[\s\S]*?<\/svg>/gi, "")
+    .replace(/<!--[\s\S]*?-->/g, "");
+
+  const title = clean.match(/<title[^>]*>([^<]+)<\/title>/i)?.[1]?.trim() ?? "";
+
+  const metaDesc =
+    clean.match(/<meta[^>]+name=["']description["'][^>]+content=["']([^"']+)["']/i)?.[1] ??
+    clean.match(/<meta[^>]+content=["']([^"']+)["'][^>]+name=["']description["']/i)?.[1] ??
+    "";
+
+  const h1s = [...clean.matchAll(/<h1[^>]*>([\s\S]*?)<\/h1>/gi)]
+    .map(m => stripTags(m[1])).filter(Boolean).slice(0, 3);
+  const h2s = [...clean.matchAll(/<h2[^>]*>([\s\S]*?)<\/h2>/gi)]
+    .map(m => stripTags(m[1])).filter(t => t.length > 2 && t.length < 120).slice(0, 12);
+  const h3s = [...clean.matchAll(/<h3[^>]*>([\s\S]*?)<\/h3>/gi)]
+    .map(m => stripTags(m[1])).filter(t => t.length > 2 && t.length < 120).slice(0, 8);
+
+  const buttons = [...clean.matchAll(/<button[^>]*>([\s\S]*?)<\/button>/gi)]
+    .map(m => stripTags(m[1])).filter(t => t.length > 1 && t.length < 60).slice(0, 10);
+  const ctaLinks = [...clean.matchAll(/<a[^>]*>([\s\S]*?)<\/a>/gi)]
+    .map(m => stripTags(m[1])).filter(t => t.length > 2 && t.length < 60).slice(0, 20);
+
+  const bodyText = stripTags(
+    clean
+      .replace(/<nav[\s\S]*?<\/nav>/gi, "")
+      .replace(/<header[\s\S]*?<\/header>/gi, "")
+      .replace(/<footer[\s\S]*?<\/footer>/gi, "")
+      .replace(/<aside[\s\S]*?<\/aside>/gi, "")
+  ).slice(0, 6000);
+
+  // iDEAL: require exact brand capitalisation OR payment-context pattern to avoid matching "ideal" in body copy
+  const hasIdeal =
+    /\biDEAL\b/.test(html) ||
+    /ideal[-_](logo|icon|payment|method|button)|payment[-_]ideal|betaalmethode.*ideal/i.test(html);
+
+  // Cookie consent: expanded to cover CookieYes, Pandectes, IAB TCF 2.0, Consent Mode v2, and many more
+  const hasCookieBanner =
+    /cookiebot\.com|cookieyes|cdn\.cookieyes\.com|pandectes\.io|cookiehub\.com|axeptio|onetrust|cookieinformation\.com|termly\.io|iubenda\.com|usercentrics|consentmanager\.net|complianz|borlabs.?cookie|wp.?gdpr|cookieconsent|cookie[._-]?notice|cookie[._-]?banner|cookie[._-]?wall|__cmp\s*\(|__tcfapi\s*\(|gtag\s*\(\s*['"]consent['"]/i.test(scanSource);
+
+  // Consent Mode v2 specifically (useful to call out as a positive signal)
+  const hasConsentModeV2 =
+    /gtag\s*\(\s*['"]consent['"]\s*,\s*['"]default['"]/i.test(scanSource);
+
+  const trustSignals = {
+    hasReviews:       /review|rating|stars|trustpilot|kiyoh|feedback|beoordelingen/i.test(html),
+    hasGuarantee:     /guarantee|garanti|money.back|retour|teruggave|not satisfied/i.test(html),
+    hasShipping:      /shipping|bezorg|gratis.*levering|free.*deliver|verzend/i.test(html),
+    hasPhone:         /\+\d{2}[\s-]?\d{7,}|\(\d{2,}\)[\s-]?\d+|tel:/i.test(html),
+    hasLiveChat:      /livechat|live.?chat|intercom|drift|zendesk|tidio|crisp/i.test(html),
+    hasVideo:         /<video|youtube\.com\/embed|vimeo\.com\/video|player\.vimeo/i.test(html),
+    hasFaq:           /faq|frequently asked|veelgestelde|common question/i.test(html),
+    hasUrgency:       /countdown|limited.*stock|beperkt.*voorraad|only \d+ left|ends in/i.test(html),
+    hasSocialProof:   /\d[\d,]+\s*(customers|clients|orders|bestellingen|reviews)|joined by/i.test(html),
+    hasPrice:         /<.*price|prijs|€[\d,.]+|\$[\d,.]+|£[\d,.]+/i.test(html),
+    hasBadges:        /badge|award|certified|keurmerk|winner|iso\s*\d+/i.test(html),
+    // Payment methods — absence is a friction point for Dutch/EU ecommerce
+    hasIdeal,
+    hasKlarna:        /klarna/i.test(html),
+    hasPaypal:        /paypal/i.test(html),
+    hasAfterPay:      /afterpay|clearpay/i.test(html),
+    hasCreditCard:    /visa|mastercard|maestro|american express|amex/i.test(html),
+    hasMollie:        /mollie/i.test(html),
+    hasCookieBanner,
+    hasConsentModeV2,
+  };
+
+  // Attribution & tracking tool detection — scan both page source and GTM container
+  const TRACKING_TOOLS = [
+    { name: "Google Analytics 4",  pattern: /gtag\(|G-[A-Z0-9]{8,}|google-analytics\.com\/g\/collect/i },
+    { name: "Google Tag Manager",  pattern: /googletagmanager\.com\/gtm/i },
+    { name: "Meta Pixel",          pattern: /fbq\(|facebook\.com\/tr\b|connect\.facebook\.net/i },
+    { name: "Trackbee",            pattern: /trackbee/i },
+    { name: "Wetracked",           pattern: /wetracked/i },
+    { name: "Triple Whale",        pattern: /triplewhale|pixel\.triplewhale/i },
+    { name: "Northbeam",           pattern: /northbeam/i },
+    { name: "Elevar",              pattern: /elevar/i },
+    { name: "Littledata",          pattern: /littledata/i },
+    { name: "Rockerbox",           pattern: /rockerbox/i },
+    { name: "Hyros",               pattern: /hyros/i },
+    { name: "TrueROAS",            pattern: /trueroas/i },
+    { name: "Klaviyo",             pattern: /klaviyo/i },
+    { name: "Hotjar",              pattern: /hotjar/i },
+    { name: "Microsoft Clarity",   pattern: /clarity\.ms|microsoft.*clarity/i },
+    { name: "Snapchat Pixel",      pattern: /sc-static\.net|snapchat.*pixel/i },
+    { name: "TikTok Pixel",        pattern: /analytics\.tiktok\.com|tiktok.*pixel/i },
+    { name: "Pinterest Tag",       pattern: /pintrk\(|ct\.pinterest\.com/i },
+  ];
+  // Attribution tools specifically (those that claim to do cross-channel attribution)
+  const ATTRIBUTION_TOOLS = ["Trackbee", "Wetracked", "Triple Whale", "Northbeam", "Elevar", "Littledata", "Rockerbox", "Hyros", "TrueROAS"];
+  const detectedTools     = TRACKING_TOOLS.filter(t => t.pattern.test(scanSource)).map(t => t.name);
+  const detectedAttrib    = detectedTools.filter(n => ATTRIBUTION_TOOLS.includes(n));
+
+  // CSS partner detection — scan both page source and GTM container
+  const CSS_PARTNERS = [
+    { name: "ProductHero",   pattern: /producthero/i },
+    { name: "Bigshopper",    pattern: /bigshopper/i },
+    { name: "ShopForward",   pattern: /shopforward/i },
+    { name: "Channable",     pattern: /channable/i },
+    { name: "Echelonn",      pattern: /echelonn/i },
+    { name: "Shoptimised",   pattern: /shoptimised/i },
+    { name: "Kliken",        pattern: /kliken/i },
+    { name: "Feedonomics",   pattern: /feedonomics/i },
+    { name: "DataFeedWatch", pattern: /datafeedwatch/i },
+  ];
+  const detectedCss = CSS_PARTNERS.filter(p => p.pattern.test(scanSource)).map(p => p.name);
+
+  return { title, metaDesc, h1s, h2s, h3s, buttons, ctaLinks, bodyText, trustSignals, detectedTools, detectedAttrib, detectedCss };
+}
+
+// Fetch GTM container JS to detect tools loaded dynamically via GTM
+async function fetchGtmContainer(html: string): Promise<string> {
+  const gtmId = html.match(/GTM-[A-Z0-9]+/)?.[0];
+  if (!gtmId) return "";
+  try {
+    const res = await Promise.race([
+      fetch(`https://www.googletagmanager.com/gtm.js?id=${gtmId}`, {
+        headers: { "User-Agent": "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)" },
+      }),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error("GTM timeout")), 6_000)),
+    ]);
+    if (!res.ok) return "";
+    return await res.text();
+  } catch {
+    return "";
+  }
+}
+
+// Try to detect CSS partner from Google Shopping SERP by searching for the domain
+async function detectCssFromShopping(domain: string, productKeyword: string): Promise<string | null> {
+  try {
+    const query = encodeURIComponent(`${productKeyword} site:${domain}`);
+    const serpUrl = `https://www.google.nl/search?q=${query}&tbm=shop&hl=nl&gl=nl&num=10`;
+    const res = await Promise.race([
+      fetch(serpUrl, {
+        headers: {
+          "User-Agent":      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+          "Accept":          "text/html,application/xhtml+xml;q=0.9,*/*;q=0.8",
+          "Accept-Language": "nl-NL,nl;q=0.9,en;q=0.8",
+          "Cache-Control":   "no-cache",
+        },
+      }),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error("SERP timeout")), 8_000)),
+    ]);
+    if (!res.ok) return null;
+    const html = await res.text();
+
+    // Google Shopping shows CSS as "Van [partner]" (NL) or "By [partner]" (EN)
+    // Pattern: the attribution appears near the merchant name in Shopping results
+    // Look for the domain in context, then find nearby "Van" attribution
+    const domainBase = domain.replace(/^www\./, "");
+    const domainEscaped = domainBase.replace(/\./g, "\\.");
+
+    // Find the block containing this domain and extract CSS attribution
+    // Google encodes merchant info in data attributes and JSON blobs
+    const lowerHtml = html.toLowerCase();
+    const domainIdx = lowerHtml.indexOf(domainBase.toLowerCase());
+    if (domainIdx === -1) return null;
+
+    // Search in a ~3000 char window around the domain mention
+    const window = html.slice(Math.max(0, domainIdx - 500), domainIdx + 2500);
+
+    // "Van [Partner]" is the Dutch CSS label in Shopping results
+    const vanMatch = window.match(/[Vv]an\s+([A-Za-z][A-Za-z0-9\s]{2,30}?)(?:<|"|'|&|\\n)/);
+    if (vanMatch?.[1]) {
+      const candidate = vanMatch[1].trim();
+      // Filter out generic words like "Google", domain names, or garbage
+      if (candidate.length > 2 && candidate.length < 40 && !/^(google|bing|shopping|web|ads)$/i.test(candidate)) {
+        return candidate === "Google" ? "Google (no CSS partner — paying full CPC premium)" : candidate;
+      }
+    }
+
+    // English fallback: "By [Partner]"
+    const byMatch = window.match(/[Bb]y\s+([A-Z][A-Za-z0-9\s]{2,30}?)(?:<|"|'|&|\n)/);
+    if (byMatch?.[1]) {
+      const candidate = byMatch[1].trim();
+      if (candidate.length > 2 && candidate.length < 40) {
+        return candidate === "Google" ? "Google (no CSS partner)" : candidate;
+      }
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+export async function POST(req: NextRequest) {
+  const ctx = await getAuthContext();
+  if (!ctx) return unauthorized();
+
+  const { url } = await req.json() as { url: string };
+
+  let normalized = url?.trim();
+  if (!normalized) return NextResponse.json({ error: "URL required" }, { status: 400 });
+  if (!normalized.startsWith("http")) normalized = `https://${normalized}`;
+
+  let parsedUrl: URL;
+  try {
+    parsedUrl = new URL(normalized);
+  } catch {
+    return NextResponse.json({ error: "Invalid URL" }, { status: 400 });
+  }
+
+  // Fetch the page server-side (bypasses CORS)
+  let html: string;
+  try {
+    const res = await Promise.race([
+      fetch(normalized, {
+        headers: {
+          "User-Agent":      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+          "Accept":          "text/html,application/xhtml+xml;q=0.9,*/*;q=0.8",
+          "Accept-Language": "en-US,en;q=0.9,nl;q=0.8",
+        },
+      }),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Page fetch timed out (10s)")), 10_000)),
+    ]);
+    if (!res.ok) throw new Error(`Page returned HTTP ${res.status}`);
+    html = await res.text();
+  } catch (err) {
+    return NextResponse.json({ error: err instanceof Error ? err.message : "Failed to fetch page" }, { status: 422 });
+  }
+
+  const domain = parsedUrl.hostname;
+
+  // Extract basic content first (needed for product keyword)
+  const cPrelim = extractContent(html);
+  const productKeyword = cPrelim.h1s[0] ?? cPrelim.title.split("|")[0].trim() ?? domain;
+
+  // Fetch GTM container + SERP in parallel (both non-blocking)
+  const [gtmJs, cssFromSerp] = await Promise.all([
+    fetchGtmContainer(html).catch(() => ""),
+    detectCssFromShopping(domain, productKeyword).catch(() => null),
+  ]);
+  const gtmFetched = gtmJs.length > 0;
+
+  // Re-extract with GTM container included for more accurate tool detection
+  const c = extractContent(html, gtmJs);
+
+  const ts = c.trustSignals;
+
+  // Payment methods present
+  const paymentMethods = [
+    ts.hasIdeal      && "iDEAL",
+    ts.hasKlarna     && "Klarna",
+    ts.hasPaypal     && "PayPal",
+    ts.hasAfterPay   && "Afterpay/Clearpay",
+    ts.hasCreditCard && "Visa/Mastercard/Maestro",
+    ts.hasMollie     && "Mollie",
+  ].filter(Boolean) as string[];
+
+  const trustLines = [
+    ts.hasReviews      ? "Reviews/ratings: YES" : "Reviews/ratings: MISSING",
+    ts.hasGuarantee    ? "Money-back/returns: YES" : "Money-back/returns: MISSING",
+    ts.hasShipping     ? "Shipping info: YES" : "Shipping info: MISSING",
+    ts.hasPhone        ? "Phone number: YES" : "Phone number: MISSING",
+    ts.hasLiveChat     ? "Live chat: YES" : "Live chat: MISSING",
+    ts.hasVideo        ? "Video: YES" : "Video: MISSING",
+    ts.hasFaq          ? "FAQ: YES" : "FAQ: MISSING",
+    ts.hasUrgency      ? "Urgency/scarcity: YES" : "Urgency/scarcity: MISSING",
+    ts.hasSocialProof  ? "Social proof numbers: YES" : "Social proof numbers: MISSING",
+    ts.hasPrice        ? "Pricing visible: YES" : "Pricing visible: MISSING",
+    ts.hasBadges       ? "Trust badges/awards: YES" : "Trust badges/awards: MISSING",
+    ts.hasCookieBanner
+      ? `Cookie consent tool: YES${ts.hasConsentModeV2 ? " (Consent Mode v2 active — good for GA4/Google Ads)" : ""}`
+      : gtmFetched
+        ? "Cookie consent tool: NOT DETECTED (page HTML + GTM container checked)"
+        : "Cookie consent tool: NOT FOUND IN STATIC HTML — may load via GTM. Verify manually.",
+    `Payment icons visible: ${paymentMethods.length > 0 ? paymentMethods.join(", ") : "NONE DETECTED — major trust gap for checkout"}`,
+  ].join("\n");
+
+  // CSS partner summary
+  const cssPartner = cssFromSerp ?? (c.detectedCss.length > 0 ? c.detectedCss[0] : null);
+  const cssLine = cssPartner
+    ? `CSS PARTNER (Google Shopping): ${cssPartner}`
+    : c.detectedCss.length > 0
+    ? `CSS PARTNER (detected on page): ${c.detectedCss.join(", ")}`
+    : `CSS PARTNER: NOT DETECTED — if running Shopping ads they may be paying Google's standard CPC (no CSS discount). Switching to ProductHero, Bigshopper, or ShopForward saves ~20% on every Shopping click.`;
+
+  // Tracking / attribution tech stack
+  const trackingSection = [
+    cssLine,
+    "",
+    c.detectedTools.length > 0
+      ? `TRACKING & ANALYTICS DETECTED:\n${c.detectedTools.map(t => `  - ${t}`).join("\n")}${
+          c.detectedAttrib.length >= 2
+            ? `\n\n⚠ DOUBLE ATTRIBUTION WARNING: ${c.detectedAttrib.join(" + ")} are both active. These tools measure conversions independently — they will double-count orders and inflate ROAS in both dashboards. One must be the source of truth.`
+            : c.detectedAttrib.length === 1
+            ? `\n  Attribution tool: ${c.detectedAttrib[0]}`
+            : ""
+        }`
+      : "TRACKING: No major tracking scripts detected in page source (may be loaded async or via GTM)",
+  ].join("\n");
+
+  const ctaSet = [...new Set([...c.buttons, ...c.ctaLinks])].filter(Boolean).slice(0, 15);
+
+  const userPrompt = `DOMAIN: ${domain}
+URL: ${normalized}
+PAGE TITLE: ${c.title || "MISSING"}
+META DESCRIPTION: ${c.metaDesc || "MISSING — bad for Quality Score"}
+H1: ${c.h1s.join(" | ") || "MISSING"}
+H2s: ${c.h2s.join(" | ") || "none found"}
+H3s: ${c.h3s.join(" | ") || "none found"}
+CTAs / BUTTONS: ${ctaSet.join(" | ") || "none detected"}
+
+TRUST SIGNAL SCAN:
+${trustLines}
+
+${trackingSection}
+
+PAGE TEXT SAMPLE:
+${c.bodyText}`;
+
+  const systemPrompt = `You are the senior CRO and Google Ads specialist at Ecomtrada, a high-performance Dutch performance marketing agency. You are analyzing a prospect's page before a sales call.
+
+Your job: give this prospect 5–6 specific "aha moments" that prove you understood their business in 60 seconds — and show what you'd fix on Day 1.
+
+Write EXACTLY these five sections with these exact headers:
+
+## Quick Assessment
+2 sentences. What they sell, what type of page this is, and the single biggest conversion problem visible at a glance. Be blunt.
+
+## Quick Wins
+5 specific things fixable in under a day that would immediately lift conversion. Each item must:
+- Name the exact element (quote what you see or note what's absent)
+- Say why it's hurting conversions
+- Give the specific fix — include suggested copy or structure where useful
+
+## What's Missing
+4–5 conversion elements that are absent but that serious competitors have. Each item: what's missing, why it matters, and what it's costing them in conversion rate.
+
+## Tracking & Tech Stack
+Flag any issues with the detected tracking setup:
+- CSS PARTNER: if detected, name the partner and note what it means. If "Google (no CSS partner)" or not detected: explain that using ProductHero, Bigshopper, or ShopForward as a CSS saves ~20% on every Shopping click — this is an immediate cost saving we can implement.
+- If DOUBLE ATTRIBUTION WARNING is present: explain the risk in plain terms and the fix (pick one attribution source of truth)
+- If cookie consent tool is missing or undetected: flag as a GDPR/tracking risk
+- Note anything unusual or missing from the tech stack that would affect data quality for Google Ads
+
+## Google Ads Alignment
+4 specific observations for someone running Google Ads to this page:
+- Above-the-fold: would someone clicking a Google Ad immediately know they landed in the right place?
+- Search intent match: does the copy match commercial intent keywords?
+- CTA for cold paid traffic: is it appropriate for someone who doesn't know the brand yet?
+- Quality Score signals: title tag, meta description, page relevance, load signals
+
+## Priority Actions
+The 3 highest-impact changes, ranked:
+**1. [action name]** — [expected impact on CVR] | Effort: Low/Medium/High
+**2. [action name]** — [expected impact on CVR] | Effort: Low/Medium/High
+**3. [action name]** — [expected impact on CVR] | Effort: Low/Medium/High
+
+RULES:
+- Every point must reference something you actually see or confirm is missing on THIS page. Zero generic advice.
+- 450 words max total.
+- Tone: senior peer talking to another specialist. Confident, direct, zero fluff.
+- If something looks good, say so briefly — don't only criticize.`;
+
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream({
+    async start(controller) {
+      try {
+        const aiStream = client.messages.stream({
+          model:      "claude-sonnet-4-6",
+          max_tokens: 1200,
+          system:     systemPrompt,
+          messages:   [{ role: "user", content: userPrompt }],
+        });
+
+        for await (const chunk of aiStream) {
+          if (chunk.type === "content_block_delta" && chunk.delta.type === "text_delta") {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: chunk.delta.text })}\n\n`));
+          }
+        }
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true })}\n\n`));
+        controller.close();
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Analysis failed";
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: msg })}\n\n`));
+        controller.close();
+      }
+    },
+  });
+
+  return new NextResponse(stream, {
+    headers: {
+      "Content-Type":  "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection:      "keep-alive",
+    },
+  });
+}

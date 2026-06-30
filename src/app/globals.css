@@ -2,56 +2,60 @@
 
 /* ─── Dark theme (default) ─────────────────────────────────────────────────── */
 :root {
-  --bg:            #0f0f0b;
-  --bg-deep:       #090905;
-  --surface:       #1d1d13;
-  --surface-hover: #242419;
-  --surface-2:     #292920;
-  --surface-3:     #333328;
-  --border:        rgba(196, 154, 10, 0.16);
-  --border-2:      rgba(196, 154, 10, 0.28);
-  --border-3:      rgba(196, 154, 10, 0.44);
-  --text:          #f2f0e6;
-  --text-2:        #ddd9c8;
-  --text-3:        #b0ac94;
-  --text-muted:    #8a8670;
-  --text-dim:      #635f4c;
-  --text-very-dim: #4a4638;
-  --text-faint:    #363328;
-  --header-bg:     rgba(15, 15, 11, 0.94);
-  --input-bg:      #131309;
-  --accent:        #c49a0a;
-  --accent-blue:   #c49a0a;
-  --accent-dim:    rgba(196, 154, 10, 0.10);
-  --btn-primary:   #a88500;
-  --btn-primary-hover: #c49a0a;
+  /* Ecomtrada huisstijl — green-black surfaces, gold accent, green primary */
+  --bg:            #0B130F;
+  --bg-deep:       #050806;
+  --surface:       #141F1A;
+  --surface-hover: #1A271F;
+  --surface-2:     #1A271F;
+  --surface-3:     #26342B;
+  --border:        rgba(255,255,255,0.06);
+  --border-2:      rgba(255,255,255,0.10);
+  --border-3:      rgba(255,255,255,0.18);
+  --text:          #F5F4F0;
+  --text-2:        #E2E7E2;
+  --text-3:        #C0C9C2;
+  --text-muted:    #9FB3A8;
+  --text-dim:      #7E9189;
+  --text-very-dim: #5E6F66;
+  --text-faint:    #44514A;
+  --header-bg:     rgba(11,19,15,0.94);
+  --input-bg:      #0C1611;
+  --accent:        #F9C31F;
+  --accent-blue:   #33CC80;
+  --accent-dim:    rgba(249,195,31,0.12);
+  --btn-primary:   #168A4D;
+  --btn-primary-hover: #22A968;
+  /* Ecomtrada signature gradient (gold → gold-dark → green) */
+  --grad:          linear-gradient(135deg,#F9C31F,#F2A60D 45%,#33CC80);
 }
 
 /* ─── Light theme ───────────────────────────────────────────────────────────── */
 :root.light {
-  --bg:            #f5f4ef;
-  --bg-deep:       #eceae2;
+  --bg:            #ffffff;
+  --bg-deep:       #f4f4f5;
   --surface:       #ffffff;
-  --surface-hover: #fafaf7;
-  --surface-2:     #f2f1ea;
-  --surface-3:     #e8e7de;
-  --border:        rgba(100, 78, 4, 0.12);
-  --border-2:      rgba(100, 78, 4, 0.18);
-  --border-3:      rgba(100, 78, 4, 0.28);
-  --text:          #18180e;
-  --text-2:        #2e2c1c;
-  --text-3:        #524e38;
-  --text-muted:    #6e6a52;
-  --text-dim:      #908c74;
-  --text-very-dim: #a8a490;
-  --text-faint:    #bab6a4;
-  --header-bg:     rgba(245, 244, 239, 0.92);
-  --input-bg:      #fafaf7;
-  --accent:        #9a7808;
-  --accent-blue:   #9a7808;
-  --accent-dim:    rgba(154, 120, 8, 0.08);
-  --btn-primary:   #9a7808;
-  --btn-primary-hover: #b08808;
+  --surface-hover: #f4f4f5;
+  --surface-2:     #f4f4f5;
+  --surface-3:     #e4e4e7;
+  --border:        rgba(0,0,0,0.07);
+  --border-2:      rgba(0,0,0,0.11);
+  --border-3:      rgba(0,0,0,0.18);
+  --text:          #09090b;
+  --text-2:        #18181b;
+  --text-3:        #3f3f46;
+  --text-muted:    #52525b;
+  --text-dim:      #71717a;
+  --text-very-dim: #a1a1aa;
+  --text-faint:    #d4d4d8;
+  --header-bg:     rgba(255,255,255,0.95);
+  --input-bg:      #f4f4f5;
+  --accent:        #15794A;
+  --accent-blue:   #168A4D;
+  --accent-dim:    rgba(249,195,31,0.14);
+  --btn-primary:   #15794A;
+  --btn-primary-hover: #22A968;
+  --grad:          linear-gradient(135deg,#F9C31F,#F2A60D 45%,#33CC80);
 }
 
 body {
@@ -62,11 +66,6 @@ body {
   -moz-osx-font-smoothing: grayscale;
   letter-spacing: 0em;
   font-size: 15px;
-  /* Subtle warm ambient glow */
-  background-image:
-    radial-gradient(ellipse 80% 50% at 10% 0%, rgba(196, 154, 10, 0.05) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 40% at 90% 100%, rgba(160, 120, 8, 0.04) 0%, transparent 55%);
-  background-attachment: fixed;
 }
 
 /* ─── Global interactive states ──────────────────────────────────────────────── */
@@ -80,13 +79,66 @@ button, [role="button"] {
 
 /* ─── Selection ────────────────────────────────────────────────────────────── */
 ::selection {
-  background: rgba(196, 154, 10, 0.28);
+  background: rgba(249,195,31,0.25);
   color: var(--text);
 }
 
 
+/* ─── Print / PDF ───────────────────────────────────────────────────────── */
+@media print {
+  @page { margin: 12mm 14mm; size: A4; }
+
+  /* Light theme on paper */
+  :root {
+    --bg:            #ffffff !important;
+    --bg-deep:       #f9f9fb !important;
+    --surface:       #ffffff !important;
+    --surface-2:     #f4f4f5 !important;
+    --surface-3:     #e4e4e7 !important;
+    --border:        rgba(0,0,0,0.12) !important;
+    --border-2:      rgba(0,0,0,0.16) !important;
+    --border-3:      rgba(0,0,0,0.22) !important;
+    --text:          #09090b !important;
+    --text-2:        #18181b !important;
+    --text-3:        #3f3f46 !important;
+    --text-muted:    #52525b !important;
+    --text-dim:      #71717a !important;
+    --text-very-dim: #a1a1aa !important;
+    --text-faint:    #d4d4d8 !important;
+    --accent:        #15794A !important;
+  }
+
+  body { background: #fff !important; color: #09090b !important; overflow: auto !important; height: auto !important; font-size: 13px !important; }
+
+  /* Hide nav and UI chrome */
+  aside, .plan-toolbar, nav { display: none !important; }
+
+  /* Full-width main area */
+  main { height: auto !important; overflow: visible !important; flex: none !important; width: 100% !important; }
+
+  /* Plan board fills page */
+  .plan-board { max-width: 100% !important; }
+
+  /* 3-column → single column for print (action cards, roadmap phases) */
+  .plan-3col-grid { grid-template-columns: 1fr !important; gap: 10px !important; }
+
+  /* KPI strip → 2×2 */
+  .plan-kpi-grid { grid-template-columns: 1fr 1fr !important; }
+
+  /* No page breaks mid-card */
+  .plan-board > div { page-break-inside: avoid; break-inside: avoid; }
+
+  /* SVG charts don't clip */
+  svg { overflow: visible !important; max-width: 100% !important; }
+}
+
 /* ─── Chat streaming cursor ──────────────────────────────────────────────── */
 @keyframes chat-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+@keyframes blink {
   0%, 100% { opacity: 1; }
   50%       { opacity: 0; }
 }
