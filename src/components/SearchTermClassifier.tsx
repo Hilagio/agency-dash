@@ -131,7 +131,7 @@ export function SearchTermClassifier({
               <button
                 onClick={runClassifier}
                 style={{
-                  background: "var(--accent)", color: "#fff", border: "none",
+                  background: "var(--accent)", color: "#0B130F", border: "none",
                   borderRadius: 8, padding: "9px 20px", fontSize: 13, fontWeight: 600,
                   cursor: "pointer",
                 }}
@@ -211,7 +211,7 @@ export function SearchTermClassifier({
                       display: "grid", gridTemplateColumns: "24px 1fr 110px 70px 60px 55px",
                       gap: 8, padding: "8px 12px", cursor: "pointer",
                       borderBottom: i < visible.length - 1 ? "1px solid var(--border)" : "none",
-                      background: selected.has(t.term) ? "rgba(99,102,241,0.05)" : "var(--bg)",
+                      background: selected.has(t.term) ? "rgba(249,195,31,0.05)" : "var(--bg)",
                     }}
                   >
                     <div style={{ display: "flex", alignItems: "center" }}>

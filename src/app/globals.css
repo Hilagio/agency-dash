@@ -2,29 +2,32 @@
 
 /* ─── Dark theme (default) ─────────────────────────────────────────────────── */
 :root {
-  --bg:            #09090b;
-  --bg-deep:       #050507;
-  --surface:       #111113;
-  --surface-hover: #18181b;
-  --surface-2:     #1c1c1f;
-  --surface-3:     #27272a;
+  /* Ecomtrada huisstijl — green-black surfaces, gold accent, green primary */
+  --bg:            #0B130F;
+  --bg-deep:       #050806;
+  --surface:       #141F1A;
+  --surface-hover: #1A271F;
+  --surface-2:     #1A271F;
+  --surface-3:     #26342B;
   --border:        rgba(255,255,255,0.06);
   --border-2:      rgba(255,255,255,0.10);
   --border-3:      rgba(255,255,255,0.18);
-  --text:          #fafafa;
-  --text-2:        #e4e4e7;
-  --text-3:        #b4b4bc;
-  --text-muted:    #909098;
-  --text-dim:      #71717a;
-  --text-very-dim: #52525b;
-  --text-faint:    #3f3f46;
-  --header-bg:     rgba(9,9,11,0.94);
-  --input-bg:      #0d0d10;
-  --accent:        #6366f1;
-  --accent-blue:   #3b82f6;
-  --accent-dim:    rgba(99,102,241,0.12);
-  --btn-primary:   #4f46e5;
-  --btn-primary-hover: #6366f1;
+  --text:          #F5F4F0;
+  --text-2:        #E2E7E2;
+  --text-3:        #C0C9C2;
+  --text-muted:    #9FB3A8;
+  --text-dim:      #7E9189;
+  --text-very-dim: #5E6F66;
+  --text-faint:    #44514A;
+  --header-bg:     rgba(11,19,15,0.94);
+  --input-bg:      #0C1611;
+  --accent:        #F9C31F;
+  --accent-blue:   #33CC80;
+  --accent-dim:    rgba(249,195,31,0.12);
+  --btn-primary:   #168A4D;
+  --btn-primary-hover: #22A968;
+  /* Ecomtrada signature gradient (gold → gold-dark → green) */
+  --grad:          linear-gradient(135deg,#F9C31F,#F2A60D 45%,#33CC80);
 }
 
 /* ─── Light theme ───────────────────────────────────────────────────────────── */
@@ -47,11 +50,12 @@
   --text-faint:    #d4d4d8;
   --header-bg:     rgba(255,255,255,0.95);
   --input-bg:      #f4f4f5;
-  --accent:        #4f46e5;
-  --accent-blue:   #2563eb;
-  --accent-dim:    rgba(79,70,229,0.09);
-  --btn-primary:   #4f46e5;
-  --btn-primary-hover: #6366f1;
+  --accent:        #15794A;
+  --accent-blue:   #168A4D;
+  --accent-dim:    rgba(249,195,31,0.14);
+  --btn-primary:   #15794A;
+  --btn-primary-hover: #22A968;
+  --grad:          linear-gradient(135deg,#F9C31F,#F2A60D 45%,#33CC80);
 }
 
 body {
@@ -75,7 +79,7 @@ button, [role="button"] {
 
 /* ─── Selection ────────────────────────────────────────────────────────────── */
 ::selection {
-  background: rgba(99,102,241,0.25);
+  background: rgba(249,195,31,0.25);
   color: var(--text);
 }
 
@@ -101,7 +105,7 @@ button, [role="button"] {
     --text-dim:      #71717a !important;
     --text-very-dim: #a1a1aa !important;
     --text-faint:    #d4d4d8 !important;
-    --accent:        #4f46e5 !important;
+    --accent:        #15794A !important;
   }
 
   body { background: #fff !important; color: #09090b !important; overflow: auto !important; height: auto !important; font-size: 13px !important; }

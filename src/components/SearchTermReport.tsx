@@ -174,7 +174,7 @@ function PushModal({ selectedRows, accountId, onClose, onSuccess }: PushModalPro
                   }}>
                     <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)" }}>{camp.name}</span>
                     {camp.source === "pmax" && (
-                      <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.4px", textTransform: "uppercase", background: "rgba(99,102,241,0.12)", color: "#6366f1", border: "1px solid rgba(99,102,241,0.25)", padding: "1px 6px", borderRadius: 10 }}>PMax</span>
+                      <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.4px", textTransform: "uppercase", background: "rgba(249,195,31,0.12)", color: "#F9C31F", border: "1px solid rgba(249,195,31,0.25)", padding: "1px 6px", borderRadius: 10 }}>PMax</span>
                     )}
                     <span style={{ fontSize: 11, color: "var(--text-faint)", marginLeft: "auto" }}>{camp.terms.length} term{camp.terms.length !== 1 ? "s" : ""}</span>
                   </div>
@@ -507,7 +507,7 @@ export function SearchTermReport({ accountId }: { accountId: string }) {
               )}
               <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-2)" }}>{campaign.name}</span>
               {campaign.source === "pmax" && (
-                <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.4px", textTransform: "uppercase", background: "rgba(99,102,241,0.12)", color: "#6366f1", border: "1px solid rgba(99,102,241,0.25)", padding: "1px 6px", borderRadius: 10 }}>PMax</span>
+                <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.4px", textTransform: "uppercase", background: "rgba(249,195,31,0.12)", color: "#F9C31F", border: "1px solid rgba(249,195,31,0.25)", padding: "1px 6px", borderRadius: 10 }}>PMax</span>
               )}
               {campaign.wastedCost > 0 && (
                 <span style={{ fontSize: 11, color: "#ef4444" }}>€{campaign.wastedCost.toFixed(2)} wasted</span>

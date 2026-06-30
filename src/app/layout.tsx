@@ -9,8 +9,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Constraint Optimizer",
-  description: "Identify and resolve the governing constraint in your Google Ads accounts",
+  title: "ecomtrada.",
+  description: "Google Ads for webshops — find and fix the governing constraint in your accounts",
 };
 
 // Inline script applied before React hydration to prevent theme flash

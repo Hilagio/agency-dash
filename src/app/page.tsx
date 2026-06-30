@@ -86,8 +86,8 @@ function LoginPage() {
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center" }}>
       <div style={{ textAlign: "center", maxWidth: 360, padding: "0 24px" }}>
-        <div style={{ width: 56, height: 56, borderRadius: 16, background: "linear-gradient(135deg, #6366f1, #4f46e5)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, fontWeight: 700, color: "#fff", margin: "0 auto 24px" }}>C</div>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", marginBottom: 8, letterSpacing: "-0.4px" }}>Agency Dashboard</h1>
+        <div style={{ fontSize: 34, fontWeight: 800, color: "var(--text)", letterSpacing: "-1px", margin: "0 auto 18px" }}>ecomtrada<span style={{ color: "#F9C31F" }}>.</span></div>
+        <h1 style={{ fontSize: 19, fontWeight: 700, color: "var(--text)", marginBottom: 8, letterSpacing: "-0.4px" }}>Google Ads for webshops</h1>
         <p style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 32, lineHeight: 1.6 }}>Find and fix the single bottleneck limiting your Google Ads performance.</p>
         <a href="/api/auth/google-ads" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, background: "var(--surface)", border: "1px solid var(--border-3)", borderRadius: 10, color: "var(--text-2)", fontSize: 13, fontWeight: 600, padding: "12px 24px", textDecoration: "none", width: "100%", boxSizing: "border-box" }}>
           {GOOGLE_LOGO} Continue with Google
@@ -521,11 +521,8 @@ function HomePageInner() {
         {/* Brand */}
         <div style={{ padding: "20px 18px 20px", borderBottom: "1px solid var(--border)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-            <div style={{ width: 28, height: 28, borderRadius: 8, background: "linear-gradient(135deg, #6366f1, #4f46e5)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "#fff", flexShrink: 0 }}>
-              C
-            </div>
             <div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", letterSpacing: "-0.3px" }}>Agency Dash</div>
+              <div style={{ fontSize: 17, fontWeight: 800, color: "var(--text)", letterSpacing: "-0.4px" }}>ecomtrada<span style={{ color: "#F9C31F" }}>.</span></div>
               {accounts.length > 0 && (
                 <div style={{ fontSize: 10, color: "var(--text-very-dim)", marginTop: 1 }}>{accounts.length} accounts</div>
               )}
@@ -660,9 +657,9 @@ function HomePageInner() {
             <>
               <div style={{
                 width: 28, height: 28, borderRadius: "50%", flexShrink: 0,
-                background: "linear-gradient(135deg, #6366f1, #4f46e5)",
+                background: "linear-gradient(135deg, #F9C31F, #F2A60D)",
                 display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 11, fontWeight: 700, color: "#fff",
+                fontSize: 11, fontWeight: 700, color: "#0B130F",
               }}>
                 {(sessionUser.name ?? sessionUser.email).charAt(0).toUpperCase()}
               </div>
@@ -705,7 +702,7 @@ function HomePageInner() {
             </div>
           )}
           {(autoImporting || scoringAll) && (
-            <div style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(99,102,241,0.06)", border: "1px solid rgba(99,102,241,0.18)", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: "var(--accent)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(249,195,31,0.06)", border: "1px solid rgba(249,195,31,0.18)", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: "var(--accent)" }}>
               <Loader2 size={13} className="animate-spin" />
               {autoImporting ? (importStep || "Importing accounts from Google Ads…") : scoringProgress ? `Scoring accounts… ${scoringProgress.done} / ${scoringProgress.total}` : "Scoring all accounts…"}
             </div>

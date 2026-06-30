@@ -2919,7 +2919,7 @@ export default function AccountPage() {
               <span style={{ flex: 1 }}>{t.label}</span>
               {t.badge !== undefined && t.badge > 0 && (
                 <span style={{
-                  background: "rgba(99,102,241,0.15)", color: "var(--accent)",
+                  background: "rgba(249,195,31,0.15)", color: "var(--accent)",
                   borderRadius: 20, padding: "0 6px", fontSize: 10, fontWeight: 700,
                   minWidth: 18, textAlign: "center",
                 }}>

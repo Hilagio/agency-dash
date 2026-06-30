@@ -29,7 +29,7 @@ const SEASONALITY = [0.72, 0.68, 0.83, 0.90, 1.00, 0.88, 0.78, 0.76, 0.90, 0.98,
 const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const MONTH_FULL  = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
-const ACTION_COLORS = ["#6366f1", "#f59e0b", "#10b981"] as const;
+const ACTION_COLORS = ["#F9C31F", "#f59e0b", "#10b981"] as const;
 
 // ─── Revenue projection chart ─────────────────────────────────────────────────
 

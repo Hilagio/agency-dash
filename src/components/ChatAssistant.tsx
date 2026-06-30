@@ -353,8 +353,8 @@ export function ChatAssistant({ accountId, constraintBucket, constraintReason, i
                   width: 28, height: 28, borderRadius: 8, flexShrink: 0,
                   display: "flex", alignItems: "center", justifyContent: "center",
                   fontSize: 10, fontWeight: 700,
-                  background: "linear-gradient(135deg, #6366f1, #4f46e5)",
-                  color: "#fff", marginTop: 1,
+                  background: "linear-gradient(135deg, #F9C31F, #F2A60D)",
+                  color: "#0B130F", marginTop: 1,
                 }}>
                   AI
                 </div>

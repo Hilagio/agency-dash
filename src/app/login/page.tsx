@@ -30,18 +30,11 @@ function LoginContent() {
       }}>
         {/* Logo / brand */}
         <div style={{ marginBottom: 40 }}>
-          <div style={{
-            width: 48, height: 48, borderRadius: 14,
-            background: "linear-gradient(135deg, var(--btn-primary), #8a6504)",
-            margin: "0 auto 16px",
-            display: "flex", alignItems: "center", justifyContent: "center",
-          }}>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
+          <div style={{ fontSize: 30, fontWeight: 800, color: "var(--text)", letterSpacing: "-0.8px", marginBottom: 10 }}>
+            ecomtrada<span style={{ color: "#F9C31F" }}>.</span>
           </div>
-          <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", letterSpacing: "-0.5px", marginBottom: 6 }}>
-            Agency Dashboard
+          <h1 style={{ fontSize: 18, fontWeight: 700, color: "var(--text)", letterSpacing: "-0.5px", marginBottom: 6 }}>
+            Google Ads for webshops
           </h1>
           <p style={{ fontSize: 13, color: "var(--text-dim)" }}>
             Constraint-based Google Ads optimization

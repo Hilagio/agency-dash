@@ -84,9 +84,8 @@ export default function ScalingPage() {
       }}>
         <div style={{ padding: "18px 16px 14px", borderBottom: "1px solid var(--border)" }}>
           <Link href="/" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none", color: "inherit" }}>
-            <span style={{ fontSize: 18 }}>⚡</span>
             <div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>Agency Dash</div>
+              <div style={{ fontSize: 16, fontWeight: 800, color: "var(--text)", letterSpacing: "-0.3px" }}>ecomtrada<span style={{ color: "#F9C31F" }}>.</span></div>
             </div>
           </Link>
         </div>

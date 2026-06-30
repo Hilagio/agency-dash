@@ -128,9 +128,9 @@ function ScatterPlot({ rows, xKey, yKey, sizeKey, currency }: {
     <div>
       {/* Correlation badge */}
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-        <TrendingUp size={13} style={{ color: "#6366f1" }} />
+        <TrendingUp size={13} style={{ color: "#F9C31F" }} />
         <span style={{ fontSize: 12, color: "var(--text-dim)" }}>
-          Pearson r = <strong style={{ color: Math.abs(r) > 0.4 ? "#6366f1" : "var(--text-2)" }}>{r.toFixed(3)}</strong>
+          Pearson r = <strong style={{ color: Math.abs(r) > 0.4 ? "#F9C31F" : "var(--text-2)" }}>{r.toFixed(3)}</strong>
           {" "}— {corLabel} {corDir} correlation ({n} rows)
         </span>
       </div>
@@ -171,7 +171,7 @@ function ScatterPlot({ rows, xKey, yKey, sizeKey, currency }: {
               <g key={i}>
                 <circle
                   cx={cx} cy={cy} r={rr}
-                  fill={isHov ? "#6366f1" : "rgba(99,102,241,0.55)"}
+                  fill={isHov ? "#F9C31F" : "rgba(249,195,31,0.55)"}
                   stroke={isHov ? "#a5b4fc" : "rgba(196,154,10,0.3)"}
                   strokeWidth={1}
                   style={{ cursor: "pointer", transition: "r 0.1s" }}
@@ -324,7 +324,7 @@ export function MetricExplorer({ accountId }: { accountId: string }) {
               style={{
                 padding: "7px 14px", fontSize: 12, fontWeight: 500,
                 background: dr === o.key ? "rgba(196,154,10,0.15)" : "transparent",
-                color: dr === o.key ? "#6366f1" : "var(--text-dim)",
+                color: dr === o.key ? "#F9C31F" : "var(--text-dim)",
                 border: "none", cursor: "pointer",
               }}
             >
@@ -361,7 +361,7 @@ export function MetricExplorer({ accountId }: { accountId: string }) {
               style={{
                 padding: "6px 14px", fontSize: 12, fontWeight: 500, borderRadius: 8,
                 background: customStart && customEnd ? "rgba(196,154,10,0.15)" : "var(--surface)",
-                color: customStart && customEnd ? "#6366f1" : "var(--text-faint)",
+                color: customStart && customEnd ? "#F9C31F" : "var(--text-faint)",
                 border: "1px solid var(--border-2)", cursor: customStart && customEnd ? "pointer" : "default",
               }}
             >
@@ -379,7 +379,7 @@ export function MetricExplorer({ accountId }: { accountId: string }) {
               style={{
                 padding: "7px 14px", fontSize: 12, fontWeight: 500,
                 background: mode === m ? "rgba(196,154,10,0.15)" : "transparent",
-                color: mode === m ? "#6366f1" : "var(--text-dim)",
+                color: mode === m ? "#F9C31F" : "var(--text-dim)",
                 border: "none", cursor: "pointer",
               }}
             >
@@ -478,7 +478,7 @@ export function MetricExplorer({ accountId }: { accountId: string }) {
                     onClick={() => handleSort(m.key)}
                     style={{
                       textAlign: "right", padding: "10px 12px",
-                      color: sortKey === m.key ? "#6366f1" : "var(--text-dim)",
+                      color: sortKey === m.key ? "#F9C31F" : "var(--text-dim)",
                       fontWeight: 600, fontSize: 11, cursor: "pointer",
                       whiteSpace: "nowrap", letterSpacing: "0.5px", textTransform: "uppercase",
                       userSelect: "none",
