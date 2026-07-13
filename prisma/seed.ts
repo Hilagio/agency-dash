@@ -157,6 +157,26 @@ async function main() {
     create: { id: BOOTSTRAP_ORG_ID, name: "Demo Agency", slug: "demo-agency" },
   });
 
+  // ─── Owners (Account Ownership System) ─────────────────────────────────────
+  // Seed once, then edit slackUserId with each owner's real Slack member ID
+  // (Slack profile -> "Copy member ID", looks like U0123456789) so the bot can
+  // DM / @mention them. isTeamLead receives red-account escalations.
+  const OWNERS: Array<{ name: string; slackUserId: string | null; isTeamLead: boolean }> = [
+    { name: "Sam",     slackUserId: null, isTeamLead: false },
+    { name: "Arnie",   slackUserId: null, isTeamLead: false },
+    { name: "Sarthak", slackUserId: null, isTeamLead: false },
+    { name: "Priya",   slackUserId: null, isTeamLead: false },
+    { name: "Lennard", slackUserId: null, isTeamLead: true  },
+  ];
+  for (const o of OWNERS) {
+    await prisma.owner.upsert({
+      where:  { organizationId_name: { organizationId: BOOTSTRAP_ORG_ID, name: o.name } },
+      update: {},  // never clobber slackUserId once set by hand
+      create: { organizationId: BOOTSTRAP_ORG_ID, ...o },
+    });
+  }
+  console.log(`✓ Seeded ${OWNERS.length} owners (set slackUserId by hand)`);
+
   // Account 1: Acme Co — Traffic constraint
   const acme = await prisma.account.upsert({
     where: { googleAdsId: "123-456-7890" },

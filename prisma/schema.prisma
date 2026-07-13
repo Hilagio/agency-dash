@@ -15,13 +15,14 @@ model Organization {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  members    OrganizationMember[]
-  invites    OrganizationInvite[]
-  accounts   Account[]
-  sops       AgencySop[]
-  oauthCred  OAuthCredential?
-  notion     NotionConnection?
-  slack      SlackConnection?
+  members   OrganizationMember[]
+  invites   OrganizationInvite[]
+  accounts  Account[]
+  sops      AgencySop[]
+  oauthCred OAuthCredential?
+  notion    NotionConnection?
+  slack     SlackConnection?
+  owners    Owner[]
 }
 
 // ─── Users ────────────────────────────────────────────────────────────────────
@@ -64,32 +65,59 @@ model OrganizationInvite {
 // ─── Accounts ────────────────────────────────────────────────────────────────
 
 model Account {
-  id             String   @id @default(cuid())
-  name           String
-  googleAdsId    String   @unique
-  currency       String   @default("USD")
-  monthlyBudget  Float?
-  industry       String?
-  clientContext  String?  // free-text: what they sell, landing page, target CPA, USPs etc.
+  id            String  @id @default(cuid())
+  name          String
+  googleAdsId   String  @unique
+  currency      String  @default("USD")
+  monthlyBudget Float?
+  industry      String?
+  clientContext String? // free-text: what they sell, landing page, target CPA, USPs etc.
 
   // ─── Per-account scoring targets ───────────────────────────────────────────
   // Set these to get accurate FUNNEL + ECONOMICS scores.
   // They override whatever Google Ads campaign targets return.
-  targetRoas          Float?  // e.g. 4.0 → 4x ROAS target (ecommerce)
-  targetCpa           Float?  // e.g. 25.00 → €25 CPA target (lead-gen; also used as target CPL)
-  grossMarginPercent  Float?  // e.g. 0.38 → 38% gross margin (for break-even ROAS check)
-  leadToSaleRate      Float?  // e.g. 0.15 → 15% of leads close (from CRM)
-  landingPageUrl      String? // primary landing page — scraped for CRO briefs
+  targetRoas         Float? // e.g. 4.0 → 4x ROAS target (ecommerce)
+  targetCpa          Float? // e.g. 25.00 → €25 CPA target (lead-gen; also used as target CPL)
+  grossMarginPercent Float? // e.g. 0.38 → 38% gross margin (for break-even ROAS check)
+  leadToSaleRate     Float? // e.g. 0.15 → 15% of leads close (from CRM)
+  landingPageUrl     String? // primary landing page — scraped for CRO briefs
 
   // ─── Market & business context (affects benchmarks) ──────────────────────
   // country auto-detected from customer.time_zone; this field overrides that detection
-  country           String? // ISO 3166-1 alpha-2 (PL, DE, GB, US…) — adjusts CVR benchmarks
-  businessModel     String? // dropship | subscription | dtc | service | lead_gen | marketplace
-  monthlyChurnRate  Float?  // 0–1, subscription only (e.g. 0.05 = 5%/mo) — used for LTV calc
+  country          String? // ISO 3166-1 alpha-2 (PL, DE, GB, US…) — adjusts CVR benchmarks
+  businessModel    String? // dropship | subscription | dtc | service | lead_gen | marketplace
+  monthlyChurnRate Float? // 0–1, subscription only (e.g. 0.05 = 5%/mo) — used for LTV calc
   // AOV is computed live from conversions_value / conversions — no manual field needed
 
   slackChannelId   String? // Slack channel ID (e.g. C0123456789)
   slackChannelName String? // Human-readable name (e.g. #cherie-boutique)
+
+  // ─── Account Ownership System ────────────────────────────────────────────
+  // Sync key + read-only mirror of the Notion "Stores" database.
+  notionPageId String? @unique // Notion Stores page id — sync key
+  clientName   String? // resolved from the Notion "Client" relation
+  active       Boolean @default(true) // false when the store leaves "Active" in Notion
+
+  ownerId String? // -> Owner.id — seeded by hand (the AM who owns this account)
+  owner   Owner?  @relation(fields: [ownerId], references: [id])
+
+  // Ownership KPI + tolerances (drive the red/yellow/green rules engine).
+  // Distinct from targetRoas/targetCpa above, which feed the constraint scorer.
+  primaryKpi   String? // 'ROAS' | 'CPA'
+  targetValue  Float? // target for primaryKpi (e.g. 2.8 ROAS, or €25 CPA)
+  tolYellowPct Int     @default(10) // deficit % -> yellow
+  tolRedPct    Int     @default(25) // deficit % -> red
+
+  pacingGreenMin  Int @default(90)
+  pacingGreenMax  Int @default(110)
+  pacingYellowMin Int @default(80)
+  pacingYellowMax Int @default(120)
+
+  reviewFrequencyDays   Int   @default(7)
+  minSpendForEval       Float @default(0)
+  minConversionsForEval Float @default(0)
+
+  ownershipEnabled Boolean @default(false) // pilot flag: on for 5-10 accounts first
 
   // ─── Merchant Center (for price competitiveness) ─────────────────────────
   // Auto-discovered via product_link on first load; set manually as fallback
@@ -104,14 +132,124 @@ model Account {
 
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id])
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 
   snapshots    ConstraintSnapshot[]
   actions      ActionRecommendation[]
   chatSessions ChatSession[]
   notes        AccountNote[]
   sopProgress  AccountSopProgress[]
+
+  // Ownership system
+  statusHistory    AccountStatus[]
+  slackState       AccountSlackState?
+  reviews          Review[]
+  ownershipActions OwnershipAction[]
+  exceptions       Exception[]
+  escalations      Escalation[]
+}
+
+// ─── Account Ownership System ─────────────────────────────────────────────────
+// The engine and Slack ownership flow are the system of record; Notion is a
+// read-only source that only answers "which stores exist".
+
+model Owner {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  name           String
+  slackUserId    String? // Slack user id (e.g. U0123456789) — for @mention / DM
+  isTeamLead     Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  accounts         Account[]
+  ownershipActions OwnershipAction[]
+
+  @@unique([organizationId, name])
+}
+
+model AccountStatus {
+  id         String   @id @default(cuid())
+  accountId  String
+  account    Account  @relation(fields: [accountId], references: [id])
+  computedAt DateTime @default(now())
+  status     String // 'green' | 'yellow' | 'red'
+  reasons    String   @default("[]") // JSON: [{ rule, severity, message }]
+  metrics    String   @default("{}") // JSON: the metrics behind the decision
+
+  @@index([accountId, computedAt])
+}
+
+model AccountSlackState {
+  accountId         String    @id
+  account           Account   @relation(fields: [accountId], references: [id])
+  cardMessageTs     String? // ts of the pinned status card (for chat.update)
+  lastAlertedStatus String? // last status we alerted on ('green'|'yellow'|'red')
+  lastAlertAt       DateTime?
+  updatedAt         DateTime  @updatedAt
+}
+
+model Review {
+  id         String   @id @default(cuid())
+  accountId  String
+  account    Account  @relation(fields: [accountId], references: [id])
+  reviewedBy String // Owner name or Slack user id
+  reviewedAt DateTime @default(now())
+  note       String
+
+  @@index([accountId, reviewedAt])
+}
+
+model OwnershipAction {
+  id           String    @id @default(cuid())
+  accountId    String
+  account      Account   @relation(fields: [accountId], references: [id])
+  openedAt     DateTime  @default(now())
+  statusAtOpen String // 'yellow' | 'red'
+  ownerId      String?
+  owner        Owner?    @relation(fields: [ownerId], references: [id])
+  deadlineAt   DateTime?
+
+  investigated   String? // "What did you check?"
+  conclusion     String? // "What is your conclusion?"
+  actionTaken    String? // "What action did you take?"
+  noChangeReason String? // "…or why is no change the right call?"
+  reassessAt     DateTime? // "When will you re-assess?"
+
+  closedAt DateTime?
+  closedBy String?
+
+  escalations Escalation[]
+
+  @@index([accountId, openedAt])
+}
+
+model Exception {
+  id            String   @id @default(cuid())
+  accountId     String
+  account       Account  @relation(fields: [accountId], references: [id])
+  reason        String
+  suppressRules String   @default("[]") // JSON: rule ids this exception suppresses
+  startsAt      DateTime @default(now())
+  endsAt        DateTime // MANDATORY end date — no permanent green-washing
+  createdBy     String
+
+  @@index([accountId, endsAt])
+}
+
+model Escalation {
+  id           String           @id @default(cuid())
+  accountId    String
+  account      Account          @relation(fields: [accountId], references: [id])
+  actionId     String?
+  action       OwnershipAction? @relation(fields: [actionId], references: [id])
+  type         String // e.g. 'red_no_followup' | 'deadline_passed'
+  escalatedAt  DateTime         @default(now())
+  notifiedUser String? // Slack user id of the team lead notified
+
+  @@index([accountId, escalatedAt])
 }
 
 // ─── Constraint Snapshot ─────────────────────────────────────────────────────
@@ -173,19 +311,19 @@ model OAuthCredential {
   organizationId  String       @unique
   organization    Organization @relation(fields: [organizationId], references: [id])
   refreshToken    String
-  customerIds     String   @default("[]")
+  customerIds     String       @default("[]")
   loginCustomerId String?
-  updatedAt       DateTime @updatedAt
+  updatedAt       DateTime     @updatedAt
 }
 
 // ─── Chat ─────────────────────────────────────────────────────────────────────
 
 model ChatSession {
-  id        String      @id @default(cuid())
+  id        String        @id @default(cuid())
   accountId String
-  account   Account     @relation(fields: [accountId], references: [id])
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
+  account   Account       @relation(fields: [accountId], references: [id])
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
   messages  ChatMessage[]
 }
 
@@ -206,10 +344,10 @@ model AgencySop {
   organization   Organization @relation(fields: [organizationId], references: [id])
   title          String
   content        String
-  tags           String   @default("[]")
-  isActive       Boolean  @default(true)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  tags           String       @default("[]")
+  isActive       Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 
   progress AccountSopProgress[]
 }
@@ -217,15 +355,15 @@ model AgencySop {
 // ─── Notion Integration ───────────────────────────────────────────────────────
 
 model NotionConnection {
-  id             String       @id @default(cuid())
-  organizationId String       @unique
-  organization   Organization @relation(fields: [organizationId], references: [id])
-  accessToken    String       // Notion internal integration token
-  workspaceName  String?
-  selectedPageIds String      @default("[]") // JSON: page IDs to pull into AI context
-  lastSyncedAt   DateTime?
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  id              String       @id @default(cuid())
+  organizationId  String       @unique
+  organization    Organization @relation(fields: [organizationId], references: [id])
+  accessToken     String // Notion internal integration token
+  workspaceName   String?
+  selectedPageIds String       @default("[]") // JSON: page IDs to pull into AI context
+  lastSyncedAt    DateTime?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
 
   pageCache NotionPageCache[]
 }
@@ -236,7 +374,7 @@ model NotionPageCache {
   connection   NotionConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
   pageId       String
   title        String
-  content      String           // plain text extracted from Notion blocks
+  content      String // plain text extracted from Notion blocks
   fetchedAt    DateTime         @default(now())
 
   @@unique([connectionId, pageId])
@@ -246,19 +384,19 @@ model NotionPageCache {
 
 model ChatFeedback {
   id           String   @id @default(cuid())
-  messageId    String   // ChatMessage.id this feedback is about
+  messageId    String // ChatMessage.id this feedback is about
   orgId        String
-  rating       String   // "up" | "down"
-  correction   String?  // what the correct answer should have been
-  questionText String?  // the user question that preceded this answer
+  rating       String // "up" | "down"
+  correction   String? // what the correct answer should have been
+  questionText String? // the user question that preceded this answer
   createdAt    DateTime @default(now())
 }
 
 model LearnedPattern {
   id           String   @id @default(cuid())
-  orgId        String?  // null = global (all orgs); set = org-specific
-  questionType String   // short label, e.g. "ROAS drop diagnosis"
-  pattern      String   // the correct approach / answer pattern
+  orgId        String? // null = global (all orgs); set = org-specific
+  questionType String // short label, e.g. "ROAS drop diagnosis"
+  pattern      String // the correct approach / answer pattern
   seenCount    Int      @default(1)
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
@@ -271,7 +409,7 @@ model SlackConnection {
   id             String       @id @default(cuid())
   organizationId String       @unique
   organization   Organization @relation(fields: [organizationId], references: [id])
-  botToken       String       // xoxb- bot token
+  botToken       String // xoxb- bot token
   teamId         String?
   teamName       String?
   createdAt      DateTime     @default(now())
