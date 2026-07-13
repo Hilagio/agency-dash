@@ -25,6 +25,7 @@ import {
   FunnelSignals,
   EconomicsSignals,
 } from "@/lib/engine/types";
+import type { OwnershipMetrics, WindowMetrics } from "@/lib/ownership/types";
 
 function safeQuery<T>(
   queryFn: () => Promise<T[]>,
@@ -1976,5 +1977,186 @@ export async function fetchPersonaData(
     geo,
     dayHour:      [...days, ...hours],
     interests,
+  };
+}
+
+// ─── Account Ownership System — metrics fetch ─────────────────────────────────
+// Assembles the OwnershipMetrics consumed by the pure rules engine
+// (src/lib/ownership/rules.ts): 7d / prev-7d / 14d / prev-14d / MTD windows plus
+// the conversion-anomaly baseline, campaign blockers, and ad disapprovals.
+// Review recency + open-action deadlines are added by the caller from the DB.
+
+const fmtDate = (d: Date) => d.toISOString().slice(0, 10);
+/** A date `n` days before today (UTC), as YYYY-MM-DD. */
+function daysAgo(n: number): string {
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() - n);
+  return fmtDate(d);
+}
+
+function emptyWindow(): WindowMetrics {
+  return { spend: 0, conversions: 0, conversionsValue: 0, impressions: 0 };
+}
+
+/** Sum customer-level metrics for a date range (inclusive). */
+async function customerWindow(customer: Customer, start: string, end: string): Promise<WindowMetrics> {
+  const rows = await safeQuery(
+    () => customer.query(`
+      SELECT metrics.cost_micros, metrics.conversions, metrics.conversions_value, metrics.impressions
+      FROM customer
+      WHERE segments.date BETWEEN '${start}' AND '${end}'
+    `),
+    `customer window ${start}..${end}`
+  );
+  const w = emptyWindow();
+  for (const r of rows) {
+    w.spend            += Number(r.metrics?.cost_micros ?? 0) / 1_000_000;
+    w.conversions      += Number(r.metrics?.conversions ?? 0);
+    w.conversionsValue += Number(r.metrics?.conversions_value ?? 0);
+    w.impressions      += Number(r.metrics?.impressions ?? 0);
+  }
+  return w;
+}
+
+function median(nums: number[]): number {
+  if (nums.length === 0) return 0;
+  const s = [...nums].sort((a, b) => a - b);
+  const mid = Math.floor(s.length / 2);
+  return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
+}
+
+/** Conversion-anomaly inputs from trailing-28d daily rows. */
+async function anomalyInputs(customer: Customer): Promise<OwnershipMetrics["anomaly"]> {
+  const rows = await safeQuery(
+    () => customer.query(`
+      SELECT segments.date, metrics.cost_micros, metrics.conversions
+      FROM customer
+      WHERE segments.date BETWEEN '${daysAgo(28)}' AND '${daysAgo(1)}'
+      ORDER BY segments.date
+    `),
+    "anomaly daily rows"
+  );
+  if (rows.length === 0) return undefined;
+
+  const daily = rows.map(r => ({
+    date: String(r.segments?.date ?? ""),
+    cost: Number(r.metrics?.cost_micros ?? 0) / 1_000_000,
+    conv: Number(r.metrics?.conversions ?? 0),
+  }));
+
+  // Baseline: median daily conversions over days with spend (excl zero-spend days).
+  const baselineDailyConv = median(daily.filter(d => d.cost > 0).map(d => d.conv));
+
+  // Recent: last 7 days avg daily conversions + avg daily spend, vs the 28d baseline avg spend.
+  const recent = daily.slice(-7);
+  const recentDailyConv = recent.length ? recent.reduce((s, d) => s + d.conv, 0) / recent.length : 0;
+  const recentDailySpend = recent.length ? recent.reduce((s, d) => s + d.cost, 0) / recent.length : 0;
+  const baselineDailySpend = daily.length ? daily.reduce((s, d) => s + d.cost, 0) / daily.length : 0;
+  const spendDropPct = baselineDailySpend > 0
+    ? Math.max(0, (baselineDailySpend - recentDailySpend) / baselineDailySpend)
+    : 0;
+
+  return { baselineDailyConv, recentDailyConv, spendDropPct };
+}
+
+/** Campaign-level operational blockers. */
+async function blockerInputs(customer: Customer): Promise<OwnershipMetrics["blockers"]> {
+  // Campaign status + 14d cost/impressions — for paused-with-recent-spend + main-spend detection.
+  const campRows = await safeQuery(
+    () => customer.query(`
+      SELECT campaign.name, campaign.status,
+             metrics.cost_micros, metrics.impressions
+      FROM campaign
+      WHERE segments.date BETWEEN '${daysAgo(14)}' AND '${daysAgo(1)}'
+    `),
+    "campaign blockers"
+  );
+  const byName = new Map<string, { name: string; status: string; cost: number; impr: number }>();
+  for (const r of campRows) {
+    const name = String(r.campaign?.name ?? "");
+    const status = String(r.campaign?.status ?? "");
+    const cur = byName.get(name) ?? { name, status, cost: 0, impr: 0 };
+    cur.status = status;
+    cur.cost  += Number(r.metrics?.cost_micros ?? 0) / 1_000_000;
+    cur.impr  += Number(r.metrics?.impressions ?? 0);
+    byName.set(name, cur);
+  }
+  const camps = [...byName.values()];
+  const maxCost = camps.reduce((m, c) => Math.max(m, c.cost), 0);
+
+  // Unexpectedly paused/removed = not ENABLED but had spend in the last 14d.
+  const pausedCampaigns = camps
+    .filter(c => c.status !== "ENABLED" && c.cost > 0)
+    .map(c => ({ name: c.name, isMainSpend: maxCost > 0 && c.cost === maxCost }));
+
+  // Active campaigns with 0 impressions for 3+ days.
+  const zeroImprRows = await safeQuery(
+    () => customer.query(`
+      SELECT campaign.name, metrics.impressions
+      FROM campaign
+      WHERE campaign.status = 'ENABLED'
+        AND segments.date BETWEEN '${daysAgo(3)}' AND '${daysAgo(1)}'
+    `),
+    "zero-impression campaigns"
+  );
+  const imprByName = new Map<string, number>();
+  for (const r of zeroImprRows) {
+    const name = String(r.campaign?.name ?? "");
+    imprByName.set(name, (imprByName.get(name) ?? 0) + Number(r.metrics?.impressions ?? 0));
+  }
+  const zeroImpressionActiveCampaigns = [...imprByName.entries()].filter(([, i]) => i === 0).map(([n]) => n);
+
+  // Disapproved ads on active campaigns.
+  const adRows = await safeQuery(
+    () => customer.query(`
+      SELECT ad_group_ad.policy_summary.approval_status
+      FROM ad_group_ad
+      WHERE ad_group_ad.status = 'ENABLED'
+        AND campaign.status = 'ENABLED'
+        AND ad_group_ad.policy_summary.approval_status = 'DISAPPROVED'
+    `),
+    "disapproved ads"
+  );
+  const disapprovedActiveAds = adRows.length;
+
+  return { pausedCampaigns, disapprovedActiveAds, zeroImpressionActiveCampaigns };
+}
+
+/**
+ * Fetch the Google-Ads-derived portion of OwnershipMetrics for one account.
+ * The caller merges in review recency, open-action deadline, and active
+ * exceptions from the agency-dash DB before calling evaluateAccount().
+ */
+export async function fetchOwnershipMetrics(customerId: string, orgId?: string): Promise<OwnershipMetrics> {
+  const client   = getClient();
+  const customer = await getCustomer(client, customerId, orgId);
+
+  // Windows end yesterday (today is incomplete). Ranges are inclusive.
+  const [last7, prev7, last14, prev14] = await Promise.all([
+    customerWindow(customer, daysAgo(7),  daysAgo(1)),
+    customerWindow(customer, daysAgo(14), daysAgo(8)),
+    customerWindow(customer, daysAgo(14), daysAgo(1)),
+    customerWindow(customer, daysAgo(28), daysAgo(15)),
+  ]);
+
+  // Pacing (MTD) — spend from the 1st through yesterday; days elapsed = complete days.
+  const now = new Date();
+  const monthStart = fmtDate(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)));
+  const yesterday  = daysAgo(1);
+  const daysInMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0)).getUTCDate();
+  const daysElapsed = now.getUTCDate() - 1; // complete days so far this month
+  const mtd = daysElapsed > 0
+    ? await customerWindow(customer, monthStart, yesterday)
+    : emptyWindow();
+
+  const [anomaly, blockers] = await Promise.all([
+    anomalyInputs(customer),
+    blockerInputs(customer),
+  ]);
+
+  return {
+    last7, prev7, last14, prev14,
+    mtdSpend: mtd.spend, daysElapsed, daysInMonth,
+    anomaly, blockers,
   };
 }
