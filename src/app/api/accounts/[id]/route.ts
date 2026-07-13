@@ -34,7 +34,27 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     slackChannelName:   string | null;
     peerGroupId:        string | null;
     merchantCenterId:   string | null;
+    // ─── Account Ownership System ───────────────────────────────────────────
+    ownerId:               string | null;
+    ownershipEnabled:      boolean;
+    primaryKpi:            "ROAS" | "CPA" | null;
+    targetValue:           number | null;
+    tolYellowPct:          number;
+    tolRedPct:             number;
+    pacingGreenMin:        number;
+    pacingGreenMax:        number;
+    pacingYellowMin:       number;
+    pacingYellowMax:       number;
+    reviewFrequencyDays:   number;
+    minSpendForEval:       number;
+    minConversionsForEval: number;
   }>;
+
+  // Validate a supplied ownerId belongs to this org (avoid cross-org linkage).
+  if (body.ownerId) {
+    const owner = await prisma.owner.findFirst({ where: { id: body.ownerId, organizationId: ctx.orgId } });
+    if (!owner) return NextResponse.json({ error: "owner not found in this organization" }, { status: 422 });
+  }
 
   const account = await prisma.account.update({
     where: { id },
@@ -55,6 +75,20 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       ...(body.slackChannelName   !== undefined && { slackChannelName:   body.slackChannelName }),
       ...(body.peerGroupId        !== undefined && { peerGroupId:        body.peerGroupId }),
       ...(body.merchantCenterId   !== undefined && { merchantCenterId:   body.merchantCenterId }),
+      // Ownership config
+      ...(body.ownerId               !== undefined && { ownerId:               body.ownerId }),
+      ...(body.ownershipEnabled      !== undefined && { ownershipEnabled:      body.ownershipEnabled }),
+      ...(body.primaryKpi            !== undefined && { primaryKpi:            body.primaryKpi }),
+      ...(body.targetValue           !== undefined && { targetValue:           body.targetValue }),
+      ...(body.tolYellowPct          !== undefined && { tolYellowPct:          body.tolYellowPct }),
+      ...(body.tolRedPct             !== undefined && { tolRedPct:             body.tolRedPct }),
+      ...(body.pacingGreenMin        !== undefined && { pacingGreenMin:        body.pacingGreenMin }),
+      ...(body.pacingGreenMax        !== undefined && { pacingGreenMax:        body.pacingGreenMax }),
+      ...(body.pacingYellowMin       !== undefined && { pacingYellowMin:       body.pacingYellowMin }),
+      ...(body.pacingYellowMax       !== undefined && { pacingYellowMax:       body.pacingYellowMax }),
+      ...(body.reviewFrequencyDays   !== undefined && { reviewFrequencyDays:   body.reviewFrequencyDays }),
+      ...(body.minSpendForEval       !== undefined && { minSpendForEval:       body.minSpendForEval }),
+      ...(body.minConversionsForEval !== undefined && { minConversionsForEval: body.minConversionsForEval }),
     },
   });
 
