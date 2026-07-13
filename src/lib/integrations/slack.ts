@@ -38,6 +38,41 @@ async function slackGet(token: string, method: string, params: Record<string, st
   return data;
 }
 
+async function slackPost(token: string, method: string, body: Record<string, unknown>): Promise<Record<string, unknown>> {
+  const res = await fetch(`${SLACK_API}/${method}`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json; charset=utf-8" },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json() as Record<string, unknown>;
+  if (!data.ok) throw new Error(`Slack API error (${method}): ${data.error}`);
+  return data;
+}
+
+/** Post a message to a channel. Returns the message ts (used later for chat.update). */
+export async function postSlackMessage(
+  token: string,
+  channel: string,
+  text: string,
+  blocks?: unknown[],
+): Promise<{ ts: string }> {
+  const data = await slackPost(token, "chat.postMessage", {
+    channel, text, ...(blocks ? { blocks } : {}), unfurl_links: false, unfurl_media: false,
+  });
+  return { ts: data.ts as string };
+}
+
+/** Update a previously-posted message in place (the pinned status card pattern). */
+export async function updateSlackMessage(
+  token: string,
+  channel: string,
+  ts: string,
+  text: string,
+  blocks?: unknown[],
+): Promise<void> {
+  await slackPost(token, "chat.update", { channel, ts, text, ...(blocks ? { blocks } : {}) });
+}
+
 /** Verify token and return team info */
 export async function testSlackConnection(token: string): Promise<{ teamId: string; teamName: string }> {
   const data = await slackGet(token, "auth.test");

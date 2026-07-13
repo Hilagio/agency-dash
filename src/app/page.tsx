@@ -7,7 +7,7 @@ import { BUCKET_LABELS } from "@/lib/engine/types";
 import {
   Zap, RefreshCw, Loader2, Plus, AlertTriangle, TrendingUp,
   BookOpen, ListChecks, TrendingDown, Check, X, Settings, LogOut,
-  Trash2, Search, ChevronUp, ChevronDown,
+  Trash2, Search, ChevronUp, ChevronDown, ShieldCheck,
 } from "lucide-react";
 import { AccountImporter } from "@/components/AccountImporter";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -567,6 +567,9 @@ function HomePageInner() {
           </Link>
           <Link href="/sops" style={{ display: "flex", alignItems: "center", gap: 5, background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: 7, color: "var(--text-muted)", fontSize: 12, padding: "6px 12px", textDecoration: "none" }}>
             <BookOpen size={12} /> SOPs
+          </Link>
+          <Link href="/ownership" style={{ display: "flex", alignItems: "center", gap: 5, background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: 7, color: "var(--text-muted)", fontSize: 12, padding: "6px 12px", textDecoration: "none" }}>
+            <ShieldCheck size={12} /> Ownership
           </Link>
           <button onClick={() => setShowImporter(!showImporter)} style={{ display: "flex", alignItems: "center", gap: 5, background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: 7, color: "var(--text-muted)", fontSize: 12, padding: "6px 12px", cursor: "pointer" }}>
             <Plus size={12} /> Add accounts
