@@ -13,8 +13,16 @@ import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft, ArrowUpRight, Loader2, CheckCircle2, AlertTriangle, HelpCircle,
-  ShieldCheck, Sprout, XCircle, MinusCircle, TrendingUp, ShoppingBag, RefreshCw, ChevronRight,
+  ShieldCheck, Sprout, XCircle, MinusCircle, TrendingUp, ShoppingBag, RefreshCw, ChevronRight, Sparkles,
 } from "lucide-react";
+
+/** Minimal inline markdown: render **bold** segments safely as React nodes. */
+function renderInline(text: string): React.ReactNode {
+  return text.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
+    part.startsWith("**") && part.endsWith("**")
+      ? <strong key={i} style={{ color: "var(--text)" }}>{part.slice(2, -2)}</strong>
+      : <span key={i}>{part}</span>);
+}
 
 type Status = "green" | "yellow" | "red";
 interface Fact { label: string; value: string; context?: string; tone: "bad" | "warn" | "good" | "neutral"; }
@@ -79,6 +87,9 @@ export default function DiagnosePage() {
   const [products, setProducts] = useState<ProductDiagnostic | null>(null);
   const [productPages, setProductPages] = useState<ProductPage[]>([]);
   const [wins, setWins] = useState<string[]>([]);
+  const [insight, setInsight] = useState<string | null>(null);
+  const [insightLoading, setInsightLoading] = useState(false);
+  const [insightErr, setInsightErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [shopDomain, setShopDomain] = useState("");
@@ -149,6 +160,17 @@ export default function DiagnosePage() {
     } catch (e) {
       setRefreshMsg(e instanceof Error ? e.message : "Network error");
     } finally { setRefreshing(false); }
+  }
+
+  async function getInsight() {
+    setInsightLoading(true); setInsightErr(null);
+    try {
+      const r = await fetch(`/api/diagnostics/account/${id}/insight`, { method: "POST", credentials: "include" });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || j.error) setInsightErr(j.error ?? `HTTP ${r.status}`);
+      else setInsight(j.insight ?? "");
+    } catch (e) { setInsightErr(e instanceof Error ? e.message : "Failed"); }
+    finally { setInsightLoading(false); }
   }
 
   const shopifyMsg = search.get("shopify");
@@ -269,6 +291,36 @@ export default function DiagnosePage() {
               ...((diag.observations.length || diag.checksRun.length || diag.questions.length) ? [{ id: "diagnosis", label: "Diagnosis" }] : []),
               ...(shopify ? [{ id: "data", label: "Data & connections" }] : []),
             ]} />
+
+            {/* Expert read (PPC OS) — the "don't figure it out yourself" layer */}
+            <div style={{ ...card, border: "1px solid color-mix(in srgb, var(--accent) 30%, var(--border))", padding: "15px 17px", marginTop: 14, background: "linear-gradient(160deg, var(--accent-dim), transparent), var(--surface)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+                <Sparkles size={16} style={{ color: "var(--accent)" }} />
+                <span style={{ fontSize: 13.5, fontWeight: 700 }}>Expert read</span>
+                <span style={{ fontSize: 11, color: "var(--text-muted)" }}>PPC OS</span>
+                {!insight && (
+                  <button onClick={getInsight} disabled={insightLoading} style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: "#fff", background: "var(--btn-primary, var(--accent))", border: "none", borderRadius: 8, padding: "7px 14px", cursor: insightLoading ? "default" : "pointer" }}>
+                    {insightLoading ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />} {insightLoading ? "Thinking…" : "Get the read"}
+                  </button>
+                )}
+                {insight && (
+                  <button onClick={getInsight} disabled={insightLoading} title="Regenerate" style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 600, color: "var(--text-3)", background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 7, padding: "5px 10px", cursor: insightLoading ? "default" : "pointer" }}>
+                    {insightLoading ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />} Regenerate
+                  </button>
+                )}
+              </div>
+              {insightErr && <div style={{ fontSize: 12.5, color: "var(--danger)", marginTop: 10 }}>{insightErr}</div>}
+              {insight && (
+                <div style={{ fontSize: 14, lineHeight: 1.6, color: "var(--text-2)", marginTop: 12 }}>
+                  {insight.split("\n").filter(l => l.trim()).map((line, i) => (
+                    <p key={i} style={{ margin: "0 0 8px" }}>{renderInline(line.replace(/^[-*]\s*/, "• "))}</p>
+                  ))}
+                </div>
+              )}
+              {!insight && !insightErr && !insightLoading && (
+                <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 8 }}>A short, direct read — what&rsquo;s happening, the likely why, and the next move — grounded in your PPC OS methodology.</div>
+              )}
+            </div>
 
             {/* Facts */}
             {diag.facts.length > 0 && (
