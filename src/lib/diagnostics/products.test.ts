@@ -75,5 +75,23 @@ ok("the converting product is NOT flagged", !winter.excludeCandidate);
 ok("healthy product keeps its POAS", winter.poas != null && winter.poas > 1);
 ok("id-based match keeps Winterjas variant sales joined to ads product", winter.units === 8 && winter.revenue === 900);
 
-console.log(fail ? `\n${fail} ROLLUP FAILURE(S)` : "\nROLLUP: PASS — thin variants roll up to a product-level exclude call");
+// ─── Underperformers: ranked worst-first by wasted spend ──────────────────────
+const uAds: AdsVariantRow[] = [
+  { itemId: "shopify_NL_100_1", title: "Dead SKU",        spend: 200, clicks: 90, conversions: 0, conversionValue: 0 },   // 0 conv → all €200 wasted
+  { itemId: "shopify_NL_200_1", title: "Thin-margin SKU", spend: 100, clicks: 50, conversions: 5, conversionValue: 120 }, // converts but unprofitable
+  { itemId: "shopify_NL_300_1", title: "Winner",          spend: 100, clicks: 80, conversions: 10, conversionValue: 900 },// healthy
+];
+const uSales: SalesVariantRow[] = [
+  { productId: "gid://shopify/Product/200", variantId: "gid://shopify/ProductVariant/2001", title: "Thin-margin SKU", variantTitle: "M", units: 5, revenue: 120 },
+  { productId: "gid://shopify/Product/300", variantId: "gid://shopify/ProductVariant/3001", title: "Winner", variantTitle: "L", units: 10, revenue: 900 },
+];
+const ug = buildProductGroups(uAds, uSales, { marginPct: 0.5, minProductSpend: 25 });
+ok("winner is NOT an underperformer", !ug.underperformers.some(p => /winner/i.test(p.title)));
+ok("both problem products flagged underperforming", ug.underperformers.length === 2);
+ok("ranked worst-first by wasted spend (dead SKU first)", /dead/i.test(ug.underperformers[0].title));
+ok("dead SKU wastes all its spend (€200)", ug.underperformers[0].wastedSpend === 200);
+ok("thin-margin SKU: below-break-even reason with POAS", /POAS|break-even/i.test(ug.underperformers[1].underperformReason ?? ""));
+ok("winner keeps a healthy ROAS", (ug.groups.find(p => /winner/i.test(p.title))?.roas ?? 0) > 1);
+
+console.log(fail ? `\n${fail} ROLLUP FAILURE(S)` : "\nROLLUP: PASS — thin variants roll up + underperformers ranked");
 process.exit(fail ? 1 : 0);
