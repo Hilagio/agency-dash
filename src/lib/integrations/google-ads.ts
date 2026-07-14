@@ -2160,3 +2160,129 @@ export async function fetchOwnershipMetrics(customerId: string, orgId?: string):
     anomaly, blockers,
   };
 }
+
+// ─── Diagnostic spine — daily time-series + change events (BUILD-SPEC §6) ─────
+// Reuses the client plumbing above. Amounts are converted from micros to the
+// account currency here so the spine stores clean numbers. Windows are re-fetched
+// each run (last N days) so historical rows back-fill as conversions land (§4.2).
+
+export interface MetricDailyRow { date: string; campaignId: string; campaignName: string; spend: number; impressions: number; clicks: number; conversions: number; conversionValue: number; }
+export interface ProductDailyRow { date: string; landingPageUrl: string; clicks: number; spend: number; conversions: number; conversionValue: number; }
+export interface SearchTermDailyRow { date: string; campaignId: string; searchTerm: string; matchType: string; clicks: number; cost: number; conversions: number; conversionValue: number; }
+export interface ChangeEventRow { changedAt: Date; userEmail: string | null; campaignName: string | null; resourceType: string; changeType: string; oldValue: string | null; newValue: string | null; raw: string; dedupeKey: string; }
+
+export interface SpineData {
+  metrics: MetricDailyRow[];
+  products: ProductDailyRow[];
+  searchTerms: SearchTermDailyRow[];
+  changeEvents: ChangeEventRow[];
+}
+
+/** Classify a change_event by its changed field mask (§8 needs BUDGET/NEGATIVE). */
+function classifyChange(changedFields: string, resourceType: string): string {
+  const f = changedFields.toLowerCase();
+  if (f.includes("budget") || f.includes("amount")) return "BUDGET";
+  if (f.includes("cpc") || f.includes("bid") || f.includes("target_")) return "BIDDING";
+  if (resourceType.includes("NEGATIVE") || f.includes("negative")) return "NEGATIVE";
+  if (resourceType.includes("KEYWORD") || f.includes("keyword")) return "KEYWORD";
+  if (f.includes("status")) return "STATUS";
+  if (resourceType.includes("ASSET") || f.includes("asset")) return "ASSET";
+  return "OTHER";
+}
+
+/** Fetch the diagnostic spine for one account over [start, end] (YYYY-MM-DD). */
+export async function fetchSpineData(
+  customerId: string, orgId: string | undefined, start: string, end: string,
+): Promise<SpineData> {
+  const client   = getClient();
+  const customer = await getCustomer(client, customerId, orgId);
+
+  // Campaign × day.
+  const metricRows = await safeQuery(() => customer.query(`
+    SELECT segments.date, campaign.id, campaign.name,
+           metrics.cost_micros, metrics.impressions, metrics.clicks,
+           metrics.conversions, metrics.conversions_value
+    FROM campaign
+    WHERE segments.date BETWEEN '${start}' AND '${end}'
+  `), "spine metrics_daily", 60_000);
+  const metrics: MetricDailyRow[] = metricRows.map(r => ({
+    date: String(r.segments?.date ?? ""),
+    campaignId: String(r.campaign?.id ?? ""),
+    campaignName: String(r.campaign?.name ?? ""),
+    spend: Number(r.metrics?.cost_micros ?? 0) / 1_000_000,
+    impressions: Number(r.metrics?.impressions ?? 0),
+    clicks: Number(r.metrics?.clicks ?? 0),
+    conversions: Number(r.metrics?.conversions ?? 0),
+    conversionValue: Number(r.metrics?.conversions_value ?? 0),
+  })).filter(m => m.date && m.campaignId);
+
+  // Landing page × day — page-level is where concentration shows up (§4.7).
+  const pageRows = await safeQuery(() => customer.query(`
+    SELECT segments.date, landing_page_view.unexpanded_final_url,
+           metrics.clicks, metrics.cost_micros, metrics.conversions, metrics.conversions_value
+    FROM landing_page_view
+    WHERE segments.date BETWEEN '${start}' AND '${end}'
+      AND metrics.impressions > 0
+  `), "spine landing_page_daily", 60_000);
+  const products: ProductDailyRow[] = pageRows.map(r => ({
+    date: String(r.segments?.date ?? ""),
+    landingPageUrl: String(r.landing_page_view?.unexpanded_final_url ?? ""),
+    clicks: Number(r.metrics?.clicks ?? 0),
+    spend: Number(r.metrics?.cost_micros ?? 0) / 1_000_000,
+    conversions: Number(r.metrics?.conversions ?? 0),
+    conversionValue: Number(r.metrics?.conversions_value ?? 0),
+  })).filter(p => p.date && p.landingPageUrl);
+
+  // Search term × day.
+  const stRows = await safeQuery(() => customer.query(`
+    SELECT segments.date, campaign.id, search_term_view.search_term,
+           segments.search_term_match_type,
+           metrics.clicks, metrics.cost_micros, metrics.conversions, metrics.conversions_value
+    FROM search_term_view
+    WHERE segments.date BETWEEN '${start}' AND '${end}'
+  `), "spine search_terms_daily", 60_000);
+  const searchTerms: SearchTermDailyRow[] = stRows.map(r => ({
+    date: String(r.segments?.date ?? ""),
+    campaignId: String(r.campaign?.id ?? ""),
+    searchTerm: String(r.search_term_view?.search_term ?? ""),
+    matchType: String(r.segments?.search_term_match_type ?? ""),
+    clicks: Number(r.metrics?.clicks ?? 0),
+    cost: Number(r.metrics?.cost_micros ?? 0) / 1_000_000,
+    conversions: Number(r.metrics?.conversions ?? 0),
+    conversionValue: Number(r.metrics?.conversions_value ?? 0),
+  })).filter(s => s.date && s.searchTerm);
+
+  // change_event — 30-day lookback, requires a date filter + LIMIT.
+  const ceRows = await safeQuery(() => customer.query(`
+    SELECT change_event.change_date_time, change_event.user_email,
+           change_event.change_resource_type, change_event.changed_fields,
+           change_event.campaign, change_event.resource_change_operation
+    FROM change_event
+    WHERE change_event.change_date_time DURING LAST_14_DAYS
+    ORDER BY change_event.change_date_time DESC
+    LIMIT 5000
+  `), "spine change_events", 60_000);
+  const changeEvents: ChangeEventRow[] = ceRows.map(r => {
+    const ce = (r.change_event ?? {}) as Record<string, unknown>;
+    const when = String(ce.change_date_time ?? "");
+    const resourceType = String(ce.change_resource_type ?? "");
+    const cf = ce.changed_fields;
+    const changedFields = typeof cf === "string" ? cf
+      : (cf && typeof cf === "object" && Array.isArray((cf as { paths?: string[] }).paths))
+        ? (cf as { paths: string[] }).paths.join(",") : "";
+    const campaign = ce.campaign ? String(ce.campaign) : null;
+    return {
+      changedAt: when ? new Date(when.replace(" ", "T")) : new Date(0),
+      userEmail: ce.user_email ? String(ce.user_email) : null,
+      campaignName: campaign ? campaign.split("/").pop() ?? campaign : null,
+      resourceType,
+      changeType: classifyChange(changedFields, resourceType),
+      oldValue: null,
+      newValue: changedFields || null,
+      raw: JSON.stringify(ce),
+      dedupeKey: `${when}|${resourceType}|${changedFields}|${campaign ?? ""}`.slice(0, 500),
+    };
+  }).filter(c => c.changedAt.getTime() > 0);
+
+  return { metrics, products, searchTerms, changeEvents };
+}
