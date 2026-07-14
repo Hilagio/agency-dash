@@ -164,6 +164,26 @@ async function handle(id: string, orgId: string) {
     .sort((a, b) => b.spend - a.spend)
     .slice(0, 20);
 
+  // What's working — earned, specific praise (§5A). A platform worth opening
+  // recognises wins, not just problems.
+  const cur = symbol(account.currency);
+  const money = (n: number) => `${cur}${Math.round(n).toLocaleString("en-GB")}`;
+  const wins: string[] = [];
+  const winners = productPages
+    .filter(p => p.roas != null && p.roas >= 2 && p.spend >= 20)
+    .sort((a, b) => (b.roas ?? 0) - (a.roas ?? 0));
+  if (winners[0]) wins.push(`${winners[0].name} is a top performer — ROAS ${winners[0].roas!.toFixed(1)} on ${money(winners[0].spend)}. Worth leaning into.`);
+  if (winners[1]) wins.push(`${winners[1].name} is also converting well — ROAS ${winners[1].roas!.toFixed(1)}.`);
+  const w7 = windows.find(w => w.days === 7), w30 = windows.find(w => w.days === 30);
+  if (w7?.roas != null && w30?.roas != null && w30.roas > 0 && w7.roas >= w30.roas * 1.1) {
+    wins.push(`Returns are trending up — 7-day ROAS ${w7.roas.toFixed(2)} vs the 30-day ${w30.roas.toFixed(2)}.`);
+  }
+  const zeroConvWin = !diag?.signals?.some(s => s.key === "zero_conversion_spend") && (diag?.window?.conversions ?? 0) > 0;
+  if (winners.length === 0 && zeroConvWin && (diag?.window?.spend ?? 0) > 0) {
+    const r = (diag!.window!.conversionValue) / (diag!.window!.spend || 1);
+    if (r >= 2) wins.push(`Account-wide ROAS is healthy at ${r.toFixed(2)}.`);
+  }
+
   // Shopify connection status — drives the connect card on the workspace.
   const conn = await prisma.shopifyConnection.findUnique({
     where: { accountId: id }, select: { shopDomain: true, lastSyncAt: true },
@@ -190,5 +210,5 @@ async function handle(id: string, orgId: string) {
     grossMarginPct: diag?.grossMarginPct ?? account.grossMarginPercent ?? null,
   });
 
-  return NextResponse.json({ diagnosis, windows, trend, shopify, products, productPages, hasData: !!diag });
+  return NextResponse.json({ diagnosis, windows, trend, shopify, products, productPages, wins, hasData: !!diag });
 }
