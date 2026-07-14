@@ -1701,6 +1701,48 @@ export async function isGoogleAdsConfigured(orgId?: string): Promise<boolean> {
   return false;
 }
 
+// ─── Live health check ────────────────────────────────────────────────────────
+// isGoogleAdsConfigured only checks that credentials EXIST. pingGoogleAds proves
+// the whole chain actually works: listAccessibleCustomers is the cheapest real
+// call and validates client_id/secret + developer_token + refresh_token in one
+// round trip, without touching any account data.
+
+export interface GoogleAdsPing {
+  ok: boolean;
+  accountCount?: number;
+  sample?: string[];
+  error?: string;
+  hint?: string;
+}
+
+/** Map a raw Google Ads error to a plain-language cause the user can act on. */
+function pingHint(msg: string): string | undefined {
+  const m = msg.toLowerCase();
+  if (m.includes("invalid_grant")) return "The OAuth refresh token is expired or revoked — reconnect at /api/auth/google-ads.";
+  if (m.includes("developer") && m.includes("token")) return "Developer token problem — check it's approved (basic/standard access) and correct.";
+  if (m.includes("permission") || m.includes("unauthenticated") || m.includes("login-customer-id") || m.includes("login_customer_id"))
+    return "Auth/permission issue — verify the login-customer-id (MCP) and that the token has access to the accounts.";
+  if (m.includes("not found") || m.includes("version")) return "API version issue — the pinned Google Ads API version may need a bump.";
+  if (m.includes("quota") || m.includes("rate")) return "Rate/quota limit — retry shortly.";
+  return undefined;
+}
+
+export async function pingGoogleAds(orgId?: string): Promise<GoogleAdsPing> {
+  try {
+    if (!(process.env.GOOGLE_ADS_DEVELOPER_TOKEN && process.env.GOOGLE_ADS_CLIENT_ID && process.env.GOOGLE_ADS_CLIENT_SECRET)) {
+      return { ok: false, error: "Google Ads app credentials not set", hint: "Set GOOGLE_ADS_DEVELOPER_TOKEN / CLIENT_ID / CLIENT_SECRET." };
+    }
+    const client = getClient();
+    const refreshToken = await getRefreshToken(orgId);
+    const res = await client.listAccessibleCustomers(refreshToken) as { resource_names?: string[] };
+    const names = res?.resource_names ?? [];
+    return { ok: true, accountCount: names.length, sample: names.slice(0, 3) };
+  } catch (err) {
+    const error = err instanceof Error ? err.message : String(err);
+    return { ok: false, error, hint: pingHint(error) };
+  }
+}
+
 // ─── Persona Data ─────────────────────────────────────────────────────────────
 
 export interface GeoRow {
