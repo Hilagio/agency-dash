@@ -15,6 +15,7 @@ import { fetchSlackMessages, formatSlackForContext } from "@/lib/integrations/sl
 import { getMerchantCenterIds, fetchPriceCompetitiveness } from "@/lib/integrations/merchant-center";
 import { getAuthContext, unauthorized, forbidden } from "@/lib/auth";
 import { AGENCY_PHILOSOPHY } from "@/lib/agencyPhilosophy";
+import { ppcOsMcp, PPC_OS_SYSTEM_NOTE } from "@/lib/integrations/ppc-os";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -589,18 +590,29 @@ export async function POST(req: NextRequest, { params }: Params) {
   const encoder = new TextEncoder();
   let fullResponse = "";
 
+  // Attach the PPC OS knowledge base via the MCP connector when configured.
+  const ppc = ppcOsMcp();
+
   const stream = new ReadableStream({
     async start(controller) {
       try {
-        const anthropicStream = await client.messages.stream({
-          model:      "claude-sonnet-4-6",
+        const baseParams = {
+          model:      "claude-sonnet-4-6" as const,
           max_tokens: 2048,
-          system:     systemPrompt,
+          system:     ppc ? systemPrompt + PPC_OS_SYSTEM_NOTE : systemPrompt,
           messages: [
             ...history,
-            { role: "user", content: message },
+            { role: "user" as const, content: message },
           ],
-        });
+        };
+        const anthropicStream = ppc
+          ? client.beta.messages.stream({
+              ...baseParams,
+              betas:       ppc.betas,
+              mcp_servers: ppc.mcp_servers,
+              tools:       ppc.tools,
+            })
+          : client.messages.stream(baseParams);
 
         for await (const chunk of anthropicStream) {
           if (chunk.type === "content_block_delta" && chunk.delta.type === "text_delta") {
