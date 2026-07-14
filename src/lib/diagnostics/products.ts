@@ -117,15 +117,22 @@ export interface ProductGroup {
   title: string;
   spend: number; clicks: number; adConversions: number;
   units: number; revenue: number; poas: number | null;
+  roas: number | null;
   variantCount: number;
   thinVariantCount: number;
   variants: VariantLine[];
   excludeCandidate: boolean;
   excludeReason: string | null;
+  /** Spend that isn't returning: full spend if nothing converts, else spend above break-even POAS. */
+  wastedSpend: number;
+  /** Why it's underperforming (null if it isn't). */
+  underperformReason: string | null;
 }
 export interface ProductGroupResult {
   groups: ProductGroup[];
   excludeCandidates: ProductGroup[];
+  /** Products with real spend and poor return, ranked by wasted spend (worst first). */
+  underperformers: ProductGroup[];
   concentration: ProductConcentration;
 }
 export interface ProductGroupConfig {
@@ -210,6 +217,7 @@ export function buildProductGroups(
     const spend = sum(variants, "spend"), clicks = sum(variants, "clicks");
     const adConversions = sum(variants, "adConversions"), units = sum(variants, "units"), revenue = sum(variants, "revenue");
     const poas = revenue > 0 && margin != null && margin > 0 && spend > 0 ? (revenue * margin) / spend : null;
+    const roas = revenue > 0 && spend > 0 ? revenue / spend : null;
     const thinVariantCount = variants.filter(v => v.thin).length;
 
     // The user's call: judge at the product level (rollup), not the thin variant.
@@ -219,11 +227,23 @@ export function buildProductGroups(
         + (thinVariantCount ? ` (${thinVariantCount} too thin to judge alone)` : "")
       : null;
 
+    // Underperforming = real spend, poor return. Wasted spend = the part not
+    // paying its way (all of it if nothing converts, else spend above break-even).
+    const belowBreakEven = poas != null && poas < 1;
+    const noConversions = spend >= minProductSpend && adConversions < 1;
+    const underperforming = spend >= minProductSpend && (noConversions || belowBreakEven);
+    const wastedSpend = !underperforming ? 0
+      : belowBreakEven ? spend * (1 - poas!)   // fraction of spend not covered by profit
+      : spend;                                  // nothing converting → all of it
+    const underperformReason = !underperforming ? null
+      : noConversions ? `${money(spend)} spent, ${clicks} clicks, 0 conversions`
+      : `POAS ${poas!.toFixed(2)} on ${money(spend)} — below break-even (${money(wastedSpend)} not returning)`;
+
     return {
       productKey: g.productKey, title: g.title || "Untitled product",
-      spend, clicks, adConversions, units, revenue, poas,
+      spend, clicks, adConversions, units, revenue, poas, roas,
       variantCount: variants.length, thinVariantCount, variants,
-      excludeCandidate, excludeReason,
+      excludeCandidate, excludeReason, wastedSpend, underperformReason,
     };
   }).sort((a, b) => (b.revenue - a.revenue) || (b.spend - a.spend));
 
@@ -237,6 +257,7 @@ export function buildProductGroups(
   return {
     groups: out,
     excludeCandidates: out.filter(p => p.excludeCandidate).sort((a, b) => b.spend - a.spend),
+    underperformers: out.filter(p => p.underperformReason !== null).sort((a, b) => b.wastedSpend - a.wastedSpend),
     concentration: { topShare, top3Share, productCount: out.filter(p => p.revenue > 0).length, breadth },
   };
 }

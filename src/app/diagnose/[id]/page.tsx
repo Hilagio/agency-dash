@@ -43,13 +43,15 @@ interface VariantLine {
 interface ProductGroup {
   productKey: string; title: string;
   spend: number; clicks: number; adConversions: number;
-  units: number; revenue: number; poas: number | null;
+  units: number; revenue: number; poas: number | null; roas: number | null;
   variantCount: number; thinVariantCount: number; variants: VariantLine[];
   excludeCandidate: boolean; excludeReason: string | null;
+  wastedSpend: number; underperformReason: string | null;
 }
 interface ProductDiagnostic {
   groups: ProductGroup[];
   excludeCandidates: ProductGroup[];
+  underperformers: ProductGroup[];
   concentration: { topShare: number; top3Share: number; productCount: number; breadth: "concentrated" | "balanced" | "broad" | "unknown" };
 }
 
@@ -244,6 +246,61 @@ export default function DiagnosePage() {
               </>
             )}
 
+            {/* Issues — what's wrong, instantly (right under the numbers) */}
+            {diag.observations.length > 0 && (
+              <>
+                <SectionTitle>Issues</SectionTitle>
+                <div style={{ ...card, padding: "6px 4px" }}>
+                  {diag.observations.map((o, i) => (
+                    <div key={i} style={{ display: "flex", gap: 11, padding: "11px 16px", borderBottom: i < diag.observations.length - 1 ? "1px solid var(--border)" : "none" }}>
+                      <AlertTriangle size={15} style={{ color: diag.status === "red" ? "var(--danger)" : "var(--accent-2)", flexShrink: 0, marginTop: 2 }} />
+                      <span style={{ fontSize: 14, lineHeight: 1.5, color: "var(--text-2)" }}>{o.text}</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {/* Underperforming products — ranked by wasted spend */}
+            {products && products.underperformers.length > 0 && (
+              <>
+                <SectionTitle>Underperforming products — most wasted spend first</SectionTitle>
+                <div style={{ ...card, overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5, minWidth: 560 }}>
+                    <thead>
+                      <tr style={{ color: "var(--text-muted)", textAlign: "right" }}>
+                        <th style={{ textAlign: "left", padding: "10px 14px", fontWeight: 600 }}>Product</th>
+                        <th style={{ padding: "10px 8px", fontWeight: 600 }}>Spend</th>
+                        <th style={{ padding: "10px 8px", fontWeight: 600 }}>Wasted</th>
+                        <th style={{ padding: "10px 8px", fontWeight: 600 }}>ROAS</th>
+                        <th style={{ padding: "10px 8px", fontWeight: 600 }}>POAS</th>
+                        <th style={{ padding: "10px 8px", fontWeight: 600 }}>Conv.</th>
+                        <th style={{ padding: "10px 8px", fontWeight: 600 }}>Units</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {products.underperformers.slice(0, 10).map(p => (
+                        <tr key={p.productKey} style={{ borderTop: "1px solid var(--border)", textAlign: "right", color: "var(--text-2)" }}>
+                          <td style={{ textAlign: "left", padding: "9px 14px", fontWeight: 600, color: "var(--text)", maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            <span style={{ color: "var(--danger)", marginRight: 6 }}>●</span>{p.title}
+                          </td>
+                          <td style={{ padding: "9px 8px", fontVariantNumeric: "tabular-nums" }}>{fmtMoney(p.spend)}</td>
+                          <td style={{ padding: "9px 8px", fontVariantNumeric: "tabular-nums", color: "var(--danger)", fontWeight: 600 }}>{fmtMoney(p.wastedSpend)}</td>
+                          <td style={{ padding: "9px 8px", fontVariantNumeric: "tabular-nums" }}>{p.roas != null ? p.roas.toFixed(2) : "—"}</td>
+                          <td style={{ padding: "9px 8px", fontVariantNumeric: "tabular-nums", color: p.poas != null && p.poas < 1 ? "var(--danger)" : "var(--text-2)" }}>{p.poas != null ? p.poas.toFixed(2) : "—"}</td>
+                          <td style={{ padding: "9px 8px", fontVariantNumeric: "tabular-nums" }}>{Math.round(p.adConversions)}</td>
+                          <td style={{ padding: "9px 8px", fontVariantNumeric: "tabular-nums" }}>{p.units || "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div style={{ fontSize: 11.5, color: "var(--text-muted)", margin: "8px 4px 0" }}>
+                  &ldquo;Wasted&rdquo; = spend not returning (all of it when nothing converts, or the share above break-even POAS). Full product breakdown below.
+                </div>
+              </>
+            )}
+
             {/* Multi-window trend (§4) */}
             {windows.some(w => w.spend > 0) && (
               <>
@@ -385,21 +442,8 @@ export default function DiagnosePage() {
               </>
             )}
 
-            {/* Diagnosis (observations → checks → questions) */}
+            {/* Diagnosis (checks → questions) — issues are surfaced up top now */}
             <div id="diagnosis" style={{ scrollMarginTop: 116 }} />
-            {diag.observations.length > 0 && (
-              <>
-                <SectionTitle>What I&rsquo;m seeing</SectionTitle>
-                <div style={{ ...card, padding: "6px 4px" }}>
-                  {diag.observations.map((o, i) => (
-                    <div key={i} style={{ display: "flex", gap: 11, padding: "11px 16px", borderBottom: i < diag.observations.length - 1 ? "1px solid var(--border)" : "none" }}>
-                      <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--text-dim)", flexShrink: 0, marginTop: 7 }} />
-                      <span style={{ fontSize: 14, lineHeight: 1.5, color: "var(--text-2)" }}>{o.text}</span>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
 
             {/* Checks already run — §5, show the work */}
             {diag.checksRun.length > 0 && (
