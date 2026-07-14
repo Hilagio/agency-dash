@@ -38,6 +38,20 @@ async function notionFetch(token: string, path: string, options: RequestInit = {
   return res.json();
 }
 
+// ─── Health probe ──────────────────────────────────────────────────────────────
+
+export interface NotionPing { ok: boolean; workspace?: string; error?: string; }
+
+/** Light live check that a Notion integration token still works. */
+export async function pingNotion(token: string): Promise<NotionPing> {
+  try {
+    const me = await notionFetch(token, "/users/me") as { name?: string; bot?: { workspace_name?: string } };
+    return { ok: true, workspace: me?.bot?.workspace_name ?? me?.name ?? "connected" };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message.slice(0, 200) : String(err) };
+  }
+}
+
 // ─── Page listing ─────────────────────────────────────────────────────────────
 
 /**
