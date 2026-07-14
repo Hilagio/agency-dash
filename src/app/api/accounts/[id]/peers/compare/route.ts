@@ -293,7 +293,7 @@ RULES:
     async start(controller) {
       try {
         const aiStream = await client.messages.stream({
-          model:      "claude-sonnet-4-6",
+          model:      "claude-sonnet-5",
           max_tokens: 2000,
           system: `You are a senior performance analyst at a Google Ads agency. You diagnose why similar stores achieve different results and tell specialists exactly what to fix. You are blunt, short, and number-driven. You never explain methodology, never comment on data quality, never use filler. Every sentence contains a number or an action. Maximum 400 words total.`,
           messages: [{ role: "user", content: prompt }],

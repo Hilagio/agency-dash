@@ -597,7 +597,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     async start(controller) {
       try {
         const baseParams = {
-          model:      "claude-sonnet-4-6" as const,
+          model:      "claude-opus-4-8" as const,
           max_tokens: 2048,
           system:     ppc ? systemPrompt + PPC_OS_SYSTEM_NOTE : systemPrompt,
           messages: [

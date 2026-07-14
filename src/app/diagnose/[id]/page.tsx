@@ -24,6 +24,53 @@ function renderInline(text: string): React.ReactNode {
       : <span key={i}>{part}</span>);
 }
 
+/**
+ * Block-level markdown for the Expert read. Handles the shapes the model
+ * actually emits — `**The read**` / `**1. Likely why**` section headers, `---`
+ * rules, `#` headings, `-`/`*`/`1.` bullets — instead of dumping raw asterisks.
+ */
+function renderMarkdown(md: string): React.ReactNode {
+  const blocks: React.ReactNode[] = [];
+  let k = 0;
+  for (const raw of md.split("\n")) {
+    const line = raw.trim();
+    if (!line) continue;
+    // Horizontal rule (---, ***, ___, or a stray --).
+    if (/^([-*_])\1+$/.test(line) || line === "--") {
+      blocks.push(<hr key={k++} style={{ border: "none", borderTop: "1px solid var(--border-2)", margin: "13px 0" }} />);
+      continue;
+    }
+    // Markdown heading (# … ######).
+    let m = line.match(/^#{1,6}\s+(.*)$/);
+    if (m) {
+      blocks.push(<div key={k++} style={{ fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.3, color: "var(--accent)", margin: "16px 0 6px" }}>{renderInline(m[1])}</div>);
+      continue;
+    }
+    // A line that is entirely bold → treat as a section header, dropping any
+    // leading ordinal ("**1. The read**" → "THE READ").
+    m = line.match(/^\*\*(.+?)\*\*[:.]?$/);
+    if (m) {
+      const label = m[1].replace(/^\d+[.)]\s*/, "");
+      blocks.push(<div key={k++} style={{ fontSize: 12.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.4, color: "var(--accent)", margin: "16px 0 7px" }}>{renderInline(label)}</div>);
+      continue;
+    }
+    // List item (-, *, or 1.).
+    m = line.match(/^(?:[-*•]|\d+[.)])\s+(.*)$/);
+    if (m) {
+      blocks.push(
+        <div key={k++} style={{ display: "flex", gap: 9, margin: "0 0 6px", alignItems: "flex-start" }}>
+          <span style={{ color: "var(--accent)", lineHeight: 1.6, flexShrink: 0 }}>•</span>
+          <span style={{ flex: 1 }}>{renderInline(m[1])}</span>
+        </div>
+      );
+      continue;
+    }
+    // Paragraph.
+    blocks.push(<p key={k++} style={{ margin: "0 0 10px" }}>{renderInline(line)}</p>);
+  }
+  return blocks;
+}
+
 type Status = "green" | "yellow" | "red";
 interface Fact { label: string; value: string; context?: string; tone: "bad" | "warn" | "good" | "neutral"; }
 interface Observation { key: string; text: string; }
@@ -312,9 +359,7 @@ export default function DiagnosePage() {
               {insightErr && <div style={{ fontSize: 12.5, color: "var(--danger)", marginTop: 10 }}>{insightErr}</div>}
               {insight && (
                 <div style={{ fontSize: 14, lineHeight: 1.6, color: "var(--text-2)", marginTop: 12 }}>
-                  {insight.split("\n").filter(l => l.trim()).map((line, i) => (
-                    <p key={i} style={{ margin: "0 0 8px" }}>{renderInline(line.replace(/^[-*]\s*/, "• "))}</p>
-                  ))}
+                  {renderMarkdown(insight)}
                 </div>
               )}
               {!insight && !insightErr && !insightLoading && (
