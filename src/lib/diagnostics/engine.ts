@@ -69,6 +69,27 @@ export interface DiagnosisInput {
 export const BOUNDARY_LINE =
   "This points at facts and questions. It does not name the cause — that's the specialist's call.";
 
+/**
+ * Turn a raw landing-page URL into a readable product name.
+ * e.g. "https://shop.nl/products/premium-kamado-bbq-13-inch?variant=123&utm_…"
+ *   →  "Premium Kamado Bbq 13 Inch".  Homepage "/" → "Homepage".
+ */
+export function cleanProductLabel(rawUrl: string | undefined | null): string {
+  if (!rawUrl) return "A page";
+  try {
+    const noProto = rawUrl.replace(/^https?:\/\//, "").replace(/[?#].*$/, "");
+    const slash = noProto.indexOf("/");
+    const path = slash >= 0 ? noProto.slice(slash) : "/";
+    const seg = path.split("/").filter(Boolean).pop();
+    if (!seg) return "Homepage";
+    const words = decodeURIComponent(seg).replace(/[-_]+/g, " ").trim();
+    if (!words) return "Homepage";
+    return words.replace(/\b\w/g, c => c.toUpperCase());
+  } catch {
+    return rawUrl.slice(0, 48);
+  }
+}
+
 const CURRENCY_SYMBOL: Record<string, string> = { EUR: "€", USD: "$", GBP: "£" };
 const symbolOf = (code: string) => CURRENCY_SYMBOL[code] ?? `${code} `;
 const num = (n: number) => n.toLocaleString("en-GB", { maximumFractionDigits: n < 10 ? 2 : 0 });
@@ -192,7 +213,7 @@ function buildObservations(signals: Signal[]): Observation[] {
   for (const p of all(signals, "page_traffic_no_conversions")) {
     const url = ev<string>(p, "url"), clicks = ev(p, "clicks"), days = ev(p, "daysZeroConv");
     push("page_traffic_no_conversions",
-      `${url ?? "A landing page"} took ${clicks ?? "significant"} clicks and converted nothing for ${days ?? "several"} days running.`);
+      `${cleanProductLabel(url)} took ${clicks ?? "significant"} clicks and converted nothing for ${days ?? "several"} days running.`);
   }
 
   const brand = find(signals, "brand_cr_drop");

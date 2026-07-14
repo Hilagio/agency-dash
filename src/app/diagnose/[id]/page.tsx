@@ -35,6 +35,7 @@ interface WindowRow {
 }
 interface Trend { acuteDrop: boolean; spendSpike: boolean; note: string | null; }
 interface ShopifyStatus { appConfigured: boolean; connected: boolean; shopDomain: string | null; lastSyncAt: string | null; }
+interface ProductPage { url: string; name: string; spend: number; clicks: number; conversions: number; conversionValue: number; roas: number | null; }
 interface VariantLine {
   variantKey: string; label: string;
   spend: number; clicks: number; adConversions: number;
@@ -76,6 +77,7 @@ export default function DiagnosePage() {
   const [trend, setTrend] = useState<Trend | null>(null);
   const [shopify, setShopify] = useState<ShopifyStatus | null>(null);
   const [products, setProducts] = useState<ProductDiagnostic | null>(null);
+  const [productPages, setProductPages] = useState<ProductPage[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [shopDomain, setShopDomain] = useState("");
@@ -99,6 +101,7 @@ export default function DiagnosePage() {
       setTrend(j.trend ?? null);
       setShopify(j.shopify ?? null);
       setProducts(j.products ?? null);
+      setProductPages(j.productPages ?? []);
     } catch (e) { setError(e instanceof Error ? e.message : "Network error"); }
     setLoading(false);
   }
@@ -332,6 +335,47 @@ export default function DiagnosePage() {
                 </div>
                 <div style={{ fontSize: 11.5, color: "var(--text-muted)", margin: "8px 4px 0" }}>
                   &ldquo;Wasted&rdquo; = spend not returning (all of it when nothing converts, or the share above break-even POAS). Full product breakdown below.
+                </div>
+              </>
+            )}
+
+            {/* Product performance — winners & losers, by spend (Google Ads) */}
+            {productPages.length > 0 && (
+              <>
+                <SectionTitle>Product performance — where the spend goes (last 7 days)</SectionTitle>
+                <div style={{ ...card, overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5, minWidth: 520 }}>
+                    <thead>
+                      <tr style={{ color: "var(--text-muted)", textAlign: "right" }}>
+                        <th style={{ textAlign: "left", padding: "10px 14px", fontWeight: 600 }}>Product</th>
+                        <th style={{ padding: "10px 8px", fontWeight: 600 }}>Spend</th>
+                        <th style={{ padding: "10px 8px", fontWeight: 600 }}>Clicks</th>
+                        <th style={{ padding: "10px 8px", fontWeight: 600 }}>Conv.</th>
+                        <th style={{ padding: "10px 14px", fontWeight: 600 }}>ROAS</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {productPages.slice(0, 12).map(p => {
+                        const bad = p.roas == null || p.roas < 1;
+                        const good = p.roas != null && p.roas >= 2;
+                        return (
+                          <tr key={p.url} style={{ borderTop: "1px solid var(--border)", textAlign: "right", color: "var(--text-2)" }}>
+                            <td style={{ textAlign: "left", padding: "9px 14px", fontWeight: 600, color: "var(--text)", maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              <span title={p.roas == null || p.roas < 1 ? "spend, no return" : "converting"} style={{ color: bad ? "var(--danger)" : good ? "var(--accent)" : "var(--text-dim)", marginRight: 7 }}>●</span>
+                              {p.name}
+                            </td>
+                            <td style={{ padding: "9px 8px", fontVariantNumeric: "tabular-nums" }}>{fmtMoney(p.spend)}</td>
+                            <td style={{ padding: "9px 8px", fontVariantNumeric: "tabular-nums" }}>{p.clicks || "—"}</td>
+                            <td style={{ padding: "9px 8px", fontVariantNumeric: "tabular-nums", color: p.conversions < 1 ? "var(--danger)" : "var(--text-2)" }}>{Math.round(p.conversions)}</td>
+                            <td style={{ padding: "9px 14px", fontVariantNumeric: "tabular-nums", fontWeight: 600, color: bad ? "var(--danger)" : good ? "var(--accent)" : "var(--text-2)" }}>{p.roas != null ? p.roas.toFixed(2) : "—"}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                <div style={{ fontSize: 11.5, color: "var(--text-muted)", margin: "8px 4px 0" }}>
+                  Green = converting (ROAS ≥ 2), red = spend with little/no return. From Google Ads landing pages; connect Shopify to add real units &amp; revenue.
                 </div>
               </>
             )}
