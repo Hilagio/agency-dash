@@ -168,9 +168,9 @@ export default function DiagnosePage() {
             </h1>
 
             {/* Headline */}
-            <div style={{
+            <div id="overview" style={{
               ...card, border: `1px solid ${diag.status === "green" ? "var(--border)" : "var(--border-2)"}`,
-              padding: "20px 22px", marginTop: 16,
+              padding: "20px 22px", marginTop: 16, scrollMarginTop: 116,
               background: diag.status === "green"
                 ? "linear-gradient(160deg, var(--accent-dim), transparent), var(--surface)"
                 : `linear-gradient(160deg, color-mix(in srgb, ${STATUS_COLOR[diag.status]} 10%, transparent), transparent), var(--surface)`,
@@ -206,47 +206,14 @@ export default function DiagnosePage() {
               </div>
             )}
 
-            {/* Commerce (Shopify order feed) */}
-            {shopify && (
-              <div style={{ ...card, padding: "15px 17px", marginTop: 12 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: shopify.connected ? 4 : 10 }}>
-                  <ShoppingBag size={16} style={{ color: shopify.connected ? "var(--accent)" : "var(--text-dim)" }} />
-                  <span style={{ fontSize: 13.5, fontWeight: 700 }}>Order feed (Shopify)</span>
-                  {shopify.connected && (
-                    <span style={{ marginLeft: "auto", fontSize: 12, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 8 }}>
-                      {shopify.shopDomain} · synced {shopify.lastSyncAt ? new Date(shopify.lastSyncAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "never"}
-                      <button onClick={syncNow} disabled={syncing} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 600, color: "var(--text-2)", background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 7, padding: "5px 10px", cursor: syncing ? "default" : "pointer" }}>
-                        {syncing ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />} Sync orders
-                      </button>
-                    </span>
-                  )}
-                </div>
-                {!shopify.connected && (
-                  shopify.appConfigured ? (
-                    <>
-                      <div style={{ fontSize: 12.5, color: "var(--text-3)", marginBottom: 10 }}>
-                        Connect this client&rsquo;s store to reconcile real orders against Google Ads and unlock POAS. Enter their <code>.myshopify.com</code> domain.
-                      </div>
-                      <div style={{ display: "flex", gap: 8 }}>
-                        <input
-                          value={shopDomain} onChange={e => setShopDomain(e.target.value)}
-                          onKeyDown={e => e.key === "Enter" && connectShopify()}
-                          placeholder="acme.myshopify.com"
-                          style={{ flex: 1, fontSize: 13, padding: "9px 12px", borderRadius: 8, border: "1px solid var(--border-2)", background: "var(--surface-2)", color: "var(--text)" }}
-                        />
-                        <button onClick={connectShopify} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600, color: "#fff", background: "var(--btn-primary, var(--accent))", border: "none", borderRadius: 8, padding: "9px 16px", cursor: "pointer" }}>
-                          Connect <ArrowUpRight size={14} />
-                        </button>
-                      </div>
-                    </>
-                  ) : (
-                    <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>
-                      The Shopify app isn&rsquo;t set up yet. Add <code>SHOPIFY_API_KEY</code> and <code>SHOPIFY_API_SECRET</code> on Railway, then the connect button appears here.
-                    </div>
-                  )
-                )}
-              </div>
-            )}
+            {/* Section nav — jump within the cockpit, no scrolling hunt */}
+            <SectionNav items={[
+              { id: "overview", label: "Overview" },
+              ...(windows.some(w => w.spend > 0) ? [{ id: "trends", label: "Trends" }] : []),
+              ...(products && products.groups.length ? [{ id: "products", label: "Products" }] : []),
+              ...((diag.observations.length || diag.checksRun.length || diag.questions.length) ? [{ id: "diagnosis", label: "Diagnosis" }] : []),
+              ...(shopify ? [{ id: "data", label: "Data & connections" }] : []),
+            ]} />
 
             {/* Facts */}
             {diag.facts.length > 0 && (
@@ -267,6 +234,7 @@ export default function DiagnosePage() {
             {/* Multi-window trend (§4) */}
             {windows.some(w => w.spend > 0) && (
               <>
+                <div id="trends" style={{ scrollMarginTop: 116 }} />
                 <SectionTitle>Across windows — spotting drift vs the baseline</SectionTitle>
                 {trend?.note && (
                   <div style={{
@@ -315,6 +283,7 @@ export default function DiagnosePage() {
             {/* Product breakdown — ad spend vs real sales, variant→product (§4/§8) */}
             {products && products.groups.length > 0 && (
               <>
+                <div id="products" style={{ scrollMarginTop: 116 }} />
                 {products.excludeCandidates.length > 0 && (
                   <>
                     <SectionTitle>Feed candidates — spend, no conversions (judged at product level)</SectionTitle>
@@ -403,7 +372,8 @@ export default function DiagnosePage() {
               </>
             )}
 
-            {/* Observations */}
+            {/* Diagnosis (observations → checks → questions) */}
+            <div id="diagnosis" style={{ scrollMarginTop: 116 }} />
             {diag.observations.length > 0 && (
               <>
                 <SectionTitle>What I&rsquo;m seeing</SectionTitle>
@@ -469,6 +439,52 @@ export default function DiagnosePage() {
               </>
             )}
 
+            {/* Data & connections */}
+            {shopify && (
+              <>
+                <div id="data" style={{ scrollMarginTop: 116 }} />
+                <SectionTitle>Data &amp; connections</SectionTitle>
+                <div style={{ ...card, padding: "15px 17px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: shopify.connected ? 4 : 10 }}>
+                    <ShoppingBag size={16} style={{ color: shopify.connected ? "var(--accent)" : "var(--text-dim)" }} />
+                    <span style={{ fontSize: 13.5, fontWeight: 700 }}>Order feed (Shopify)</span>
+                    {shopify.connected && (
+                      <span style={{ marginLeft: "auto", fontSize: 12, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 8 }}>
+                        {shopify.shopDomain} · synced {shopify.lastSyncAt ? new Date(shopify.lastSyncAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "never"}
+                        <button onClick={syncNow} disabled={syncing} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 600, color: "var(--text-2)", background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 7, padding: "5px 10px", cursor: syncing ? "default" : "pointer" }}>
+                          {syncing ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />} Sync orders
+                        </button>
+                      </span>
+                    )}
+                  </div>
+                  {!shopify.connected && (
+                    shopify.appConfigured ? (
+                      <>
+                        <div style={{ fontSize: 12.5, color: "var(--text-3)", marginBottom: 10 }}>
+                          Connect this client&rsquo;s store to reconcile real orders against Google Ads and unlock POAS. Enter their <code>.myshopify.com</code> domain.
+                        </div>
+                        <div style={{ display: "flex", gap: 8 }}>
+                          <input
+                            value={shopDomain} onChange={e => setShopDomain(e.target.value)}
+                            onKeyDown={e => e.key === "Enter" && connectShopify()}
+                            placeholder="acme.myshopify.com"
+                            style={{ flex: 1, fontSize: 13, padding: "9px 12px", borderRadius: 8, border: "1px solid var(--border-2)", background: "var(--surface-2)", color: "var(--text)" }}
+                          />
+                          <button onClick={connectShopify} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600, color: "#fff", background: "var(--btn-primary, var(--accent))", border: "none", borderRadius: 8, padding: "9px 16px", cursor: "pointer" }}>
+                            Connect <ArrowUpRight size={14} />
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>
+                        The Shopify app isn&rsquo;t set up yet. Add <code>SHOPIFY_API_KEY</code> and <code>SHOPIFY_API_SECRET</code> on Railway, then the connect button appears here.
+                      </div>
+                    )
+                  )}
+                </div>
+              </>
+            )}
+
             {/* §9 boundary — always visible */}
             <div style={{
               marginTop: 28, padding: "14px 18px", borderRadius: 12, textAlign: "center",
@@ -496,6 +512,24 @@ function cmpColor(v: number | null, rows: WindowRow[], i: number, key: "roas" | 
   if (v >= base * 1.1) return "var(--accent)";
   if (v <= base * 0.75) return "var(--danger)";
   return "var(--text-2)";
+}
+
+function SectionNav({ items }: { items: { id: string; label: string }[] }) {
+  const go = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  return (
+    <div style={{
+      position: "sticky", top: 58, zIndex: 8, marginTop: 14,
+      background: "var(--bg)", padding: "8px 0", borderBottom: "1px solid var(--border)",
+      display: "flex", gap: 6, flexWrap: "wrap",
+    }}>
+      {items.map(it => (
+        <button key={it.id} onClick={() => go(it.id)} style={{
+          fontSize: 12.5, fontWeight: 600, color: "var(--text-3)", background: "var(--surface)",
+          border: "1px solid var(--border-2)", borderRadius: 999, padding: "6px 14px", cursor: "pointer",
+        }}>{it.label}</button>
+      ))}
+    </div>
+  );
 }
 
 function SectionTitle({ children }: { children: React.ReactNode }) {

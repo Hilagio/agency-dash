@@ -1,62 +1,41 @@
 "use client";
 
 /**
- * "Today" dashboard — the home page.
- * A greeting-led overview: engine status, ownership stat tiles, and a focused
- * "needs attention today" list that deep-links into each account. The full
- * account grid lives on /stores.
+ * Portfolio home — the one screen the team lives in.
+ * All accounts, worst-first, with their core numbers (spend, POAS/ROAS, orders,
+ * flags). Each row drills into the per-account cockpit at /diagnose/[id].
  */
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   ShieldCheck, Settings as SettingsIcon, Store, ListChecks, BookOpen,
-  Loader2, ArrowRight, Sprout,
+  Loader2, ArrowRight, Sprout, Activity, ShoppingBag, AlertTriangle, CheckCircle2, XCircle,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
-type Colour = "green" | "yellow" | "red" | "unknown";
-
-interface Overview {
-  counts: Record<Colour, number>;
-  totalActive: number;
-  enabled: number;
-  attention: Array<{
-    id: string; name: string; clientName: string | null; ownerName: string | null;
-    status: Colour; reason: string; reviewDue: boolean;
-  }>;
-  lastRunAt: string | null;
-  lastNotionSyncAt: string | null;
-  connections: { ads: boolean; notion: boolean; slack: boolean };
+type Colour = "red" | "yellow" | "green" | "unknown";
+interface Row {
+  id: string; name: string; clientName: string | null; ownerName: string | null;
+  status: Colour; hasData: boolean;
+  spend: number; roas: number | null; poas: number | null; orders: number | null;
+  revenue: number | null; dataVerified: boolean; shopifyConnected: boolean;
+  reconciliationMismatch: boolean;
+  worstSignal: { title: string; severity: string } | null;
+  problemCount: number; opportunityCount: number;
 }
-
-// Agency / PPC quotes — one per day, deterministic (no Math.random / SSR mismatch).
-const QUOTES = [
-  ["Half the money I spend on advertising is wasted; the trouble is I don't know which half.", "John Wanamaker"],
-  ["A good ad is one that sells without drawing attention to itself.", "David Ogilvy"],
-  ["The best marketing doesn't feel like marketing.", "Tom Fishburne"],
-  ["Don't find customers for your products, find products for your customers.", "Seth Godin"],
-  ["What gets measured gets managed.", "Peter Drucker"],
-  ["Test everything. Assume nothing.", "PPC OS"],
-  ["The aim of marketing is to know the customer so well the product sells itself.", "Peter Drucker"],
-];
+interface Portfolio {
+  accounts: Row[];
+  counts: Record<Colour, number>;
+  total: number; unverified: number; withData: number;
+}
+interface Health { ok: boolean; accountCount?: number; error?: string; hint?: string }
 
 const STATUS_COLOR: Record<Colour, string> = {
-  green: "var(--accent)", yellow: "var(--accent-2)", red: "var(--danger)", unknown: "var(--text-dim)",
+  red: "var(--danger)", yellow: "var(--accent-2)", green: "var(--accent)", unknown: "var(--text-dim)",
 };
 const STATUS_LABEL: Record<Colour, string> = {
-  green: "Under control", yellow: "Action needed", red: "Immediate action", unknown: "Couldn't evaluate",
+  red: "Immediate", yellow: "Action needed", green: "Under control", unknown: "No data",
 };
-
-function relativeTime(iso: string | null, nowMs: number | null): string {
-  if (!iso) return "never";
-  if (nowMs == null) return "…";
-  const mins = Math.round((nowMs - new Date(iso).getTime()) / 60000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.round(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  return `${Math.round(hrs / 24)}d ago`;
-}
 
 const card: React.CSSProperties = { background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16 };
 const eyebrow: React.CSSProperties = { fontSize: 11, letterSpacing: 0.6, textTransform: "uppercase", color: "var(--text-muted)", fontWeight: 700 };
@@ -64,51 +43,38 @@ const navLink = (active: boolean): React.CSSProperties => ({
   display: "flex", alignItems: "center", gap: 6, fontSize: 13, padding: "7px 12px", borderRadius: 8, textDecoration: "none",
   color: active ? "var(--text)" : "var(--text-3)", background: active ? "var(--accent-dim)" : "transparent", fontWeight: active ? 600 : 500,
 });
+const money = (n: number) => `€${Math.round(n).toLocaleString("en-GB")}`;
 
-export default function TodayPage() {
+export default function PortfolioHome() {
   const [name, setName] = useState<string | null>(null);
-  const [data, setData] = useState<Overview | null>(null);
+  const [data, setData] = useState<Portfolio | null>(null);
+  const [health, setHealth] = useState<Health | null>(null);
   const [loading, setLoading] = useState(true);
-  // Set on mount (not in a useState initializer) so SSR and first client render
-  // match — avoids a hydration mismatch on the date/greeting.
   const [nowMs, setNowMs] = useState<number | null>(null);
 
   useEffect(() => {
-    // Stamp "now" on mount (client-only, avoids SSR hydration mismatch).
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setNowMs(Date.now());
     (async () => {
-      const [me, ov] = await Promise.all([
+      const [me, pf] = await Promise.all([
         fetch("/api/auth/me", { credentials: "include" }).then(r => r.ok ? r.json() : { user: null }).catch(() => ({ user: null })),
-        fetch("/api/ownership/overview", { credentials: "include" }).then(r => r.ok ? r.json() : null).catch(() => null),
+        fetch("/api/diagnostics/portfolio", { credentials: "include" }).then(r => r.ok ? r.json() : null).catch(() => null),
       ]);
       setName(me?.user?.name ?? (me?.user?.email ? String(me.user.email).split("@")[0] : null));
-      setData(ov);
+      setData(pf);
       setLoading(false);
+      // Health probe is independent (can be slow / fail) — load it after.
+      fetch("/api/google-ads/health", { credentials: "include" }).then(r => r.json()).then(setHealth).catch(() => setHealth({ ok: false, error: "unreachable" }));
     })();
   }, []);
 
-  const nowDate = nowMs != null ? new Date(nowMs) : null;
-  const hour = nowDate?.getHours() ?? 9;
+  const hour = nowMs != null ? new Date(nowMs).getHours() : 9;
   const partOfDay = hour < 12 ? "morning" : hour < 18 ? "afternoon" : "evening";
   const first = (name ?? "there").split(" ")[0];
-  const quote = QUOTES[(nowMs != null ? Math.floor(nowMs / 86_400_000) : 0) % QUOTES.length];
-
-  const c = data?.counts ?? { green: 0, yellow: 0, red: 0, unknown: 0 };
-  const reviewsDue = data?.attention.filter(a => a.reviewDue).length ?? 0;
-
-  const tiles = [
-    { k: "Active stores", v: data?.totalActive ?? 0, color: "var(--text)" },
-    { k: "Under control", v: c.green, color: "var(--accent)" },
-    { k: "Action needed", v: c.yellow, color: "var(--accent-2)" },
-    { k: "Immediate", v: c.red, color: "var(--danger)" },
-    { k: "Reviews due", v: reviewsDue, color: "var(--text)" },
-    { k: "Couldn't eval", v: c.unknown, color: "var(--text-dim)" },
-  ];
+  const c = data?.counts ?? { red: 0, yellow: 0, green: 0, unknown: 0 };
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)" }}>
-      {/* Nav */}
       <nav style={{
         display: "flex", alignItems: "center", gap: 16, height: 58, padding: "0 26px",
         position: "sticky", top: 0, zIndex: 9, background: "var(--header-bg)", backdropFilter: "blur(12px)", borderBottom: "1px solid var(--border)",
@@ -118,7 +84,7 @@ export default function TodayPage() {
           agency-dash
         </div>
         <div style={{ display: "flex", gap: 2, marginLeft: 8 }}>
-          <Link href="/" style={navLink(true)}>Today</Link>
+          <Link href="/" style={navLink(true)}>Portfolio</Link>
           <Link href="/stores" style={navLink(false)}><Store size={13} /> Stores</Link>
           <Link href="/ownership" style={navLink(false)}><ShieldCheck size={13} /> Ownership</Link>
           <Link href="/actions" style={navLink(false)}><ListChecks size={13} /> Actions</Link>
@@ -132,101 +98,132 @@ export default function TodayPage() {
         </div>
       </nav>
 
-      <main style={{ maxWidth: 1160, margin: "0 auto", padding: "24px 26px 80px" }}>
-        {/* Greeting + status */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 320px", gap: 18, alignItems: "stretch" }}>
-          <div style={{ ...card, border: "1px solid var(--border-2)", padding: "26px 28px", background: "linear-gradient(160deg, var(--accent-dim), transparent), var(--surface)" }}>
-            <div style={eyebrow}>
-              {nowDate ? nowDate.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" }) : " "} · Amsterdam
-            </div>
-            <h1 style={{ fontSize: 30, fontWeight: 800, letterSpacing: "-1px", margin: "8px 0 14px" }}>
-              Good {partOfDay}, <span style={{ color: "var(--accent)" }}>{first}</span> <Sprout size={24} style={{ verticalAlign: "-3px", color: "var(--accent)" }} />
+      <main style={{ maxWidth: 1180, margin: "0 auto", padding: "22px 26px 80px" }}>
+        {/* Header: greeting + summary chips + health */}
+        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: 14, marginBottom: 16 }}>
+          <div>
+            <div style={eyebrow}>Portfolio · {nowMs ? new Date(nowMs).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" }) : " "}</div>
+            <h1 style={{ fontSize: 25, fontWeight: 800, letterSpacing: "-0.8px", margin: "6px 0 0" }}>
+              Good {partOfDay}, <span style={{ color: "var(--accent)" }}>{first}</span> <Sprout size={20} style={{ verticalAlign: -2, color: "var(--accent)" }} />
             </h1>
-            <div style={{ borderLeft: "3px solid var(--accent)", paddingLeft: 12, color: "var(--text-3)", fontStyle: "italic", fontSize: 13.5, maxWidth: 620 }}>
-              &ldquo;{quote[0]}&rdquo; — {quote[1]}
-            </div>
           </div>
-
-          <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-            <div style={{ ...card, padding: "16px 18px" }}>
-              <div style={{ ...eyebrow, marginBottom: 8 }}>Engine status</div>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 600, fontSize: 13 }}>
-                <span style={{ width: 8, height: 8, borderRadius: "50%", background: data?.connections.ads ? "var(--accent)" : "var(--accent-2)" }} />
-                {data?.connections.ads ? "All systems operational" : "Google Ads not connected"}
-              </div>
-              <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 8, display: "flex", justifyContent: "space-between" }}>
-                <span>Last scored</span><b style={{ color: "var(--text-2)" }}>{relativeTime(data?.lastRunAt ?? null, nowMs)}</b>
-              </div>
-              <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4, display: "flex", justifyContent: "space-between" }}>
-                <span>Notion sync</span><b style={{ color: "var(--text-2)" }}>{relativeTime(data?.lastNotionSyncAt ?? null, nowMs)}</b>
-              </div>
-            </div>
-            <div style={{ ...card, padding: "16px 18px" }}>
-              <div style={{ ...eyebrow, marginBottom: 8 }}>Pilot coverage</div>
-              <div style={{ display: "flex", alignItems: "flex-end", gap: 6 }}>
-                <span style={{ fontSize: 26, fontWeight: 800, letterSpacing: "-1px" }}>{data?.enabled ?? 0}</span>
-                <span style={{ fontSize: 12, color: "var(--text-muted)", paddingBottom: 5 }}>of {data?.totalActive ?? 0} stores in shadow mode</span>
-              </div>
-              <div style={{ height: 7, borderRadius: 6, background: "var(--surface-3)", marginTop: 10, overflow: "hidden" }}>
-                <div style={{ width: `${data && data.totalActive ? Math.round((data.enabled / data.totalActive) * 100) : 0}%`, height: "100%", background: "var(--accent)" }} />
-              </div>
-            </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            <SummaryChip color={STATUS_COLOR.red} label="Immediate" value={c.red} />
+            <SummaryChip color={STATUS_COLOR.yellow} label="Action" value={c.yellow} />
+            <SummaryChip color={STATUS_COLOR.green} label="Under control" value={c.green} />
+            <HealthChip health={health} />
           </div>
         </div>
 
-        {/* Stat tiles */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 12, marginTop: 18 }}>
-          {tiles.map(t => (
-            <div key={t.k} style={{ ...card, padding: "14px 15px" }}>
-              <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: "-1px", color: t.color }}>{loading ? "—" : t.v}</div>
-              <div style={{ ...eyebrow, marginTop: 6 }}>{t.k}</div>
+        {/* Portfolio table */}
+        {loading ? (
+          <div style={{ display: "flex", justifyContent: "center", padding: 64 }}><Loader2 size={22} className="animate-spin" style={{ color: "var(--text-dim)" }} /></div>
+        ) : !data || data.total === 0 ? (
+          <div style={{ ...card, padding: "44px 20px", textAlign: "center", color: "var(--text-muted)" }}>
+            <Sprout size={26} style={{ color: "var(--accent)", marginBottom: 8 }} />
+            <div style={{ fontWeight: 600, color: "var(--text-2)" }}>No accounts yet</div>
+            <div style={{ fontSize: 13, marginTop: 4 }}>Add stores on the Stores screen to start.</div>
+          </div>
+        ) : (
+          <>
+            {data.withData === 0 && (
+              <div style={{ marginBottom: 12, padding: "11px 15px", borderRadius: 12, fontSize: 12.5, color: "var(--text-3)", background: "var(--surface-2)", border: "1px dashed var(--border-2)", display: "flex", alignItems: "center", gap: 9 }}>
+                <Activity size={15} style={{ color: "var(--text-dim)", flexShrink: 0 }} />
+                No diagnostic data yet — run the back-fill (POST /api/diagnostics/ingest &#123;&quot;days&quot;:90&#125;) and the nightly signals, then the numbers fill in here.
+              </div>
+            )}
+            <div style={{ ...card, overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 760 }}>
+                <thead>
+                  <tr style={{ color: "var(--text-muted)", textAlign: "right" }}>
+                    <th style={{ textAlign: "left", padding: "11px 16px", fontWeight: 600 }}>Account</th>
+                    <th style={{ padding: "11px 10px", fontWeight: 600 }}>Spend 7d</th>
+                    <th style={{ padding: "11px 10px", fontWeight: 600 }}>POAS</th>
+                    <th style={{ padding: "11px 10px", fontWeight: 600 }}>ROAS</th>
+                    <th style={{ padding: "11px 10px", fontWeight: 600 }}>Orders</th>
+                    <th style={{ textAlign: "left", padding: "11px 14px", fontWeight: 600 }}>Flag</th>
+                    <th style={{ textAlign: "left", padding: "11px 14px", fontWeight: 600 }}>Owner</th>
+                    <th style={{ padding: "11px 14px", fontWeight: 600 }}></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.accounts.map(a => (
+                    <tr key={a.id} style={{ borderTop: "1px solid var(--border)" }}
+                      onMouseEnter={e => (e.currentTarget.style.background = "var(--surface-2)")}
+                      onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
+                      <td style={{ padding: "11px 16px" }}>
+                        <Link href={`/diagnose/${a.id}`} style={{ textDecoration: "none", color: "inherit", display: "flex", alignItems: "center", gap: 10 }}>
+                          <span title={STATUS_LABEL[a.status]} style={{ width: 9, height: 9, borderRadius: "50%", background: STATUS_COLOR[a.status], flexShrink: 0, boxShadow: a.status === "red" ? "0 0 0 3px color-mix(in srgb, var(--danger) 20%, transparent)" : "none" }} />
+                          <span style={{ minWidth: 0 }}>
+                            <span style={{ fontWeight: 700, display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 220 }}>{a.name}</span>
+                            {a.clientName && <span style={{ fontSize: 11.5, color: "var(--text-muted)" }}>{a.clientName}</span>}
+                          </span>
+                          {!a.dataVerified && a.hasData && <span title="not reconciled against real orders yet" style={{ fontSize: 10, color: "var(--text-dim)", border: "1px solid var(--border-2)", borderRadius: 5, padding: "1px 5px" }}>unverified</span>}
+                        </Link>
+                      </td>
+                      <td style={{ padding: "11px 10px", textAlign: "right", fontVariantNumeric: "tabular-nums", color: "var(--text-2)" }}>{a.hasData ? money(a.spend) : "—"}</td>
+                      <td style={{ padding: "11px 10px", textAlign: "right", fontVariantNumeric: "tabular-nums", fontWeight: 600, color: a.poas != null ? (a.poas < 1 ? "var(--danger)" : "var(--accent)") : "var(--text-dim)" }}>{a.poas != null ? a.poas.toFixed(2) : "—"}</td>
+                      <td style={{ padding: "11px 10px", textAlign: "right", fontVariantNumeric: "tabular-nums", color: "var(--text-3)" }}>{a.roas != null ? a.roas.toFixed(2) : "—"}</td>
+                      <td style={{ padding: "11px 10px", textAlign: "right", fontVariantNumeric: "tabular-nums", color: "var(--text-3)" }}>{a.orders != null ? a.orders : "—"}</td>
+                      <td style={{ padding: "11px 14px", maxWidth: 240 }}>
+                        {a.reconciliationMismatch ? (
+                          <span style={{ fontSize: 12, color: "var(--danger)", display: "inline-flex", alignItems: "center", gap: 5 }}><AlertTriangle size={12} /> Tracking mismatch</span>
+                        ) : a.worstSignal ? (
+                          <span style={{ fontSize: 12.5, color: a.worstSignal.severity === "red" ? "var(--danger)" : "var(--text-3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block" }}>
+                            {a.worstSignal.title}{a.problemCount > 1 ? ` +${a.problemCount - 1}` : ""}
+                          </span>
+                        ) : a.opportunityCount > 0 ? (
+                          <span style={{ fontSize: 12, color: "var(--accent)" }}>{a.opportunityCount} opportunity{a.opportunityCount === 1 ? "" : "s"}</span>
+                        ) : a.hasData ? (
+                          <span style={{ fontSize: 12, color: "var(--text-muted)" }}>—</span>
+                        ) : (
+                          <span style={{ fontSize: 12, color: "var(--text-dim)" }}>awaiting data</span>
+                        )}
+                      </td>
+                      <td style={{ padding: "11px 14px", fontSize: 12.5, color: "var(--text-3)" }}>{a.ownerName ?? <span style={{ color: "var(--text-dim)" }}>—</span>}</td>
+                      <td style={{ padding: "11px 14px", textAlign: "right" }}>
+                        <Link href={`/diagnose/${a.id}`} style={{ color: "var(--text-dim)", display: "inline-flex" }}><ArrowRight size={15} /></Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-          ))}
-        </div>
-
-        {/* Needs attention today */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "26px 4px 12px" }}>
-          <h2 style={{ fontSize: 15, fontWeight: 700 }}>Needs attention today</h2>
-          <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{data ? `${data.attention.length} account${data.attention.length === 1 ? "" : "s"}` : ""}</span>
-        </div>
-
-        <section style={{ ...card, padding: 6 }}>
-          {loading ? (
-            <div style={{ display: "flex", justifyContent: "center", padding: 48 }}><Loader2 size={20} className="animate-spin" style={{ color: "var(--text-dim)" }} /></div>
-          ) : !data || data.attention.length === 0 ? (
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: "44px 20px", color: "var(--text-muted)" }}>
-              <Sprout size={26} style={{ color: "var(--accent)" }} />
-              <div style={{ fontWeight: 600, color: "var(--text-2)" }}>All clear</div>
-              <div style={{ fontSize: 13 }}>Nothing needs a human right now.{data && data.enabled === 0 ? " Enable accounts on the Ownership screen to start." : ""}</div>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11.5, color: "var(--text-muted)", margin: "10px 4px 0", flexWrap: "wrap", gap: 8 }}>
+              <span>{data.total} accounts · {data.withData} with data{data.unverified ? ` · ${data.unverified} unverified` : ""}</span>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><ShoppingBag size={12} /> {data.accounts.filter(a => a.shopifyConnected).length} Shopify connected</span>
             </div>
-          ) : (
-            data.attention.map(a => (
-              <Link key={a.id} href={`/diagnose/${a.id}`} style={{ textDecoration: "none", color: "inherit", display: "block" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "13px 16px", borderRadius: 12 }}
-                  onMouseEnter={e => (e.currentTarget.style.background = "var(--surface-2)")}
-                  onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
-                  <span style={{
-                    fontSize: 12, fontWeight: 600, padding: "3px 10px", borderRadius: 20, whiteSpace: "nowrap",
-                    color: STATUS_COLOR[a.status], background: "color-mix(in srgb, currentColor 14%, transparent)",
-                    display: "inline-flex", alignItems: "center", gap: 6,
-                  }}>
-                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: STATUS_COLOR[a.status] }} />
-                    {STATUS_LABEL[a.status]}
-                  </span>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontWeight: 700 }}>{a.name}{a.clientName ? <span style={{ color: "var(--text-muted)", fontWeight: 400 }}> · {a.clientName}</span> : null}</div>
-                    <div style={{ fontSize: 13, color: "var(--text-3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.reason}</div>
-                  </div>
-                  <div style={{ marginLeft: "auto", textAlign: "right", fontSize: 12, color: "var(--text-muted)", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 12 }}>
-                    <span>{a.ownerName ? `Owner · ${a.ownerName}` : "No owner"}</span>
-                    <ArrowRight size={15} style={{ color: "var(--text-dim)" }} />
-                  </div>
-                </div>
-              </Link>
-            ))
-          )}
-        </section>
+          </>
+        )}
       </main>
+    </div>
+  );
+}
+
+function SummaryChip({ color, label, value }: { color: string; label: string; value: number }) {
+  return (
+    <div style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "6px 12px", borderRadius: 10, background: "var(--surface)", border: "1px solid var(--border)" }}>
+      <span style={{ width: 8, height: 8, borderRadius: "50%", background: color }} />
+      <span style={{ fontSize: 15, fontWeight: 800, letterSpacing: "-0.4px" }}>{value}</span>
+      <span style={{ fontSize: 11.5, color: "var(--text-muted)" }}>{label}</span>
+    </div>
+  );
+}
+
+function HealthChip({ health }: { health: Health | null }) {
+  if (!health) return (
+    <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 10, background: "var(--surface)", border: "1px solid var(--border)", fontSize: 12, color: "var(--text-muted)" }}>
+      <Loader2 size={12} className="animate-spin" /> Google Ads
+    </div>
+  );
+  const ok = health.ok;
+  return (
+    <div title={ok ? `Live API OK · ${health.accountCount} accessible accounts` : (health.hint ?? health.error)}
+      style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 10, fontSize: 12, fontWeight: 600,
+        color: ok ? "var(--accent)" : "var(--danger)",
+        background: ok ? "var(--accent-dim)" : "color-mix(in srgb, var(--danger) 10%, transparent)",
+        border: `1px solid ${ok ? "color-mix(in srgb, var(--accent) 30%, transparent)" : "color-mix(in srgb, var(--danger) 30%, transparent)"}` }}>
+      {ok ? <CheckCircle2 size={12} /> : <XCircle size={12} />} Google Ads{ok && health.accountCount != null ? ` · ${health.accountCount}` : ""}
     </div>
   );
 }
