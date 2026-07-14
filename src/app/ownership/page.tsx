@@ -142,6 +142,31 @@ export default function OwnershipConfigPage() {
     else flash("Delete failed");
   }
 
+  // The Pilot toggle saves immediately — no separate Save click needed for it.
+  async function toggleEnabled(a: Account, enabled: boolean) {
+    patchAccountLocal(a.id, { ownershipEnabled: enabled }); // optimistic
+    const res = await fetch(`/api/accounts/${a.id}`, {
+      method: "PATCH", credentials: "include", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ownershipEnabled: enabled }),
+    });
+    if (!res.ok) { patchAccountLocal(a.id, { ownershipEnabled: !enabled }); flash("Couldn't update pilot flag"); }
+  }
+
+  async function enableAllShown(enabled: boolean) {
+    const targets = liveShown.filter(a => a.ownershipEnabled !== enabled);
+    if (targets.length === 0) return;
+    setBusy("bulk-enable");
+    for (const a of targets) {
+      patchAccountLocal(a.id, { ownershipEnabled: enabled });
+      await fetch(`/api/accounts/${a.id}`, {
+        method: "PATCH", credentials: "include", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ownershipEnabled: enabled }),
+      }).catch(() => {});
+    }
+    setBusy(null);
+    flash(`${enabled ? "Enabled" : "Disabled"} ${targets.length} store${targets.length === 1 ? "" : "s"} for the pilot`);
+  }
+
   // ── Global run actions ─────────────────────────────────────────────────────
   async function runSync() {
     setBusy("sync");
@@ -179,7 +204,7 @@ export default function OwnershipConfigPage() {
     <tr key={a.id} style={{ borderBottom: "1px solid var(--border)", opacity: isArchived ? 0.6 : 1 }}>
       <td style={{ padding: "8px 12px" }}>
         <input type="checkbox" checked={a.ownershipEnabled} disabled={isArchived}
-          onChange={e => patchAccountLocal(a.id, { ownershipEnabled: e.target.checked })} />
+          onChange={e => toggleEnabled(a, e.target.checked)} title="Saves instantly" />
       </td>
       <td style={{ padding: "8px 12px" }}>
         <div style={{ fontWeight: 600, color: "var(--text)" }}>{a.name}</div>
@@ -323,7 +348,7 @@ export default function OwnershipConfigPage() {
               <div style={{ padding: "14px 18px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
                 <div style={{ fontWeight: 600, fontSize: 14 }}>Stores</div>
                 <span style={{ fontWeight: 400, color: "var(--text-muted)", fontSize: 12 }}>
-                  enable 5–10 for the pilot; each needs an owner + KPI + target
+                  tick Pilot to enable (saves instantly); each needs an owner + KPI + target
                 </span>
                 <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 12 }}>
                   <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
@@ -341,7 +366,19 @@ export default function OwnershipConfigPage() {
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                   <thead>
                     <tr style={{ textAlign: "left", color: "var(--text-muted)", fontSize: 11 }}>
-                      {["Pilot", "Store", "Owner", "KPI", "Target", "Review (days)", ""].map(h => (
+                      <th style={{ padding: "8px 12px", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.4, borderBottom: "1px solid var(--border)", whiteSpace: "nowrap" }}>
+                        <label style={{ display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer" }} title="Select all shown for the pilot">
+                          <input
+                            type="checkbox"
+                            disabled={busy === "bulk-enable" || liveShown.length === 0}
+                            ref={el => { if (el) el.indeterminate = liveShown.some(a => a.ownershipEnabled) && !liveShown.every(a => a.ownershipEnabled); }}
+                            checked={liveShown.length > 0 && liveShown.every(a => a.ownershipEnabled)}
+                            onChange={e => enableAllShown(e.target.checked)}
+                          />
+                          Pilot
+                        </label>
+                      </th>
+                      {["Store", "Owner", "KPI", "Target", "Review (days)", ""].map(h => (
                         <th key={h} style={{ padding: "8px 12px", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.4, borderBottom: "1px solid var(--border)" }}>{h}</th>
                       ))}
                     </tr>
