@@ -8,7 +8,7 @@
  */
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { getAuthContext, unauthorized, forbidden } from "@/lib/auth";
+import { getAuthContext } from "@/lib/auth";
 import { buildDiagnosis } from "@/lib/diagnostics/engine";
 import { computeAccountSignals } from "@/lib/diagnostics/run-signals";
 import { computeWindows, detectTrend } from "@/lib/diagnostics/windows";
@@ -44,17 +44,27 @@ function parseDiagnostics(metricsJson: string): DiagnosticsMetrics | null {
 
 export async function GET(_req: Request, { params }: Params) {
   const ctx = await getAuthContext();
-  if (!ctx) return unauthorized();
+  if (!ctx) return NextResponse.json({ error: "Not signed in." }, { status: 401 });
   const { id } = await params;
+  try {
+    return await handle(id, ctx.orgId);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`[diagnostics/account/${id}] failed:`, message, err);
+    // Surface the real reason instead of a generic "couldn't load".
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
 
+async function handle(id: string, orgId: string) {
   const account = await prisma.account.findFirst({
-    where: { id, organizationId: ctx.orgId },
+    where: { id, organizationId: orgId },
     select: {
       id: true, name: true, clientName: true, currency: true, dataVerified: true,
       roasFloor: true, grossMarginPercent: true, minSpendForEval: true, minConversionsForEval: true,
     },
   });
-  if (!account) return forbidden();
+  if (!account) return NextResponse.json({ error: "This account isn't in your organization, or doesn't exist." }, { status: 404 });
 
   // Latest diagnostics status; if the newest status isn't a diagnostics one,
   // scan back a little before falling back to an on-the-fly compute.
