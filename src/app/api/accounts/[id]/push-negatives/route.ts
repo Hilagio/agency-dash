@@ -17,6 +17,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleAdsApi, enums } from "google-ads-api";
+import { describeGoogleAdsError } from "@/lib/integrations/google-ads";
 import { prisma } from "@/lib/db";
 import { getAuthContext, unauthorized, forbidden } from "@/lib/auth";
 
@@ -135,7 +136,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       log.push(`${skipped} term(s) skipped — likely already exist as negatives`);
     }
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
+    const msg = describeGoogleAdsError(err);
     return NextResponse.json({ error: `Google Ads API error: ${msg}` }, { status: 502 });
   }
 

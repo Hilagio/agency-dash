@@ -1707,6 +1707,30 @@ export async function isGoogleAdsConfigured(orgId?: string): Promise<boolean> {
 // call and validates client_id/secret + developer_token + refresh_token in one
 // round trip, without touching any account data.
 
+/**
+ * Turn a Google Ads error into a readable string. The google-ads-api library
+ * throws GoogleAdsFailure-shaped objects (not Error instances), so a naive
+ * String(err) yields "[object Object]" and hides the real cause. This digs the
+ * actual message(s) out.
+ */
+export function describeGoogleAdsError(err: unknown): string {
+  if (err instanceof Error && err.message) return err.message;
+  if (err && typeof err === "object") {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const e = err as any;
+    const arr = e.errors ?? e.failure?.errors;
+    if (Array.isArray(arr) && arr.length) {
+      const msgs = arr
+        .map((x: { message?: string; error_code?: unknown }) => x?.message ?? (x?.error_code ? JSON.stringify(x.error_code) : ""))
+        .filter(Boolean);
+      if (msgs.length) return msgs.join("; ");
+    }
+    if (typeof e.message === "string" && e.message) return e.message;
+    try { const s = JSON.stringify(e); if (s && s !== "{}") return s.slice(0, 500); } catch { /* ignore */ }
+  }
+  return String(err);
+}
+
 export interface GoogleAdsPing {
   ok: boolean;
   accountCount?: number;
@@ -1738,7 +1762,7 @@ export async function pingGoogleAds(orgId?: string): Promise<GoogleAdsPing> {
     const names = res?.resource_names ?? [];
     return { ok: true, accountCount: names.length, sample: names.slice(0, 3) };
   } catch (err) {
-    const error = err instanceof Error ? err.message : String(err);
+    const error = describeGoogleAdsError(err);
     return { ok: false, error, hint: pingHint(error) };
   }
 }

@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { scoreConstraints } from "@/lib/engine";
 import { ConstraintSignals } from "@/lib/engine/types";
-import { fetchGoogleAdsSignals, isGoogleAdsConfigured } from "@/lib/integrations/google-ads";
+import { fetchGoogleAdsSignals, isGoogleAdsConfigured, describeGoogleAdsError } from "@/lib/integrations/google-ads";
 import { getAuthContext, unauthorized, forbidden } from "@/lib/auth";
 
 type Params = { params: Promise<{ id: string }> };
@@ -84,7 +84,7 @@ export async function POST(req: NextRequest, { params }: Params) {
         acct.businessModel ?? null,
       );
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
+      const msg = describeGoogleAdsError(err);
       console.error(`[snapshot] fetchGoogleAdsSignals failed for account ${id} (googleAdsId=${account.googleAdsId})`, msg, err);
       return NextResponse.json(
         { error: `Google Ads API error: ${msg}` },

@@ -8,7 +8,8 @@
  */
 import { prisma } from "@/lib/db";
 import {
-  fetchSpineData, type MetricDailyRow, type ProductDailyRow, type ProductAdsDailyRow, type SearchTermDailyRow,
+  fetchSpineData, describeGoogleAdsError,
+  type MetricDailyRow, type ProductDailyRow, type ProductAdsDailyRow, type SearchTermDailyRow,
 } from "@/lib/integrations/google-ads";
 
 /** YYYY-MM-DD, `n` days before today (UTC). */
@@ -95,7 +96,7 @@ export async function ingestAccountSpine(
   } catch (err) {
     return {
       accountId: account.id, metrics: 0, products: 0, productAds: 0, searchTerms: 0, changeEvents: 0,
-      error: err instanceof Error ? err.message : String(err),
+      error: describeGoogleAdsError(err),
     };
   }
 }
