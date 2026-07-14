@@ -297,14 +297,15 @@ function days15to180(): { start: string; end: string } {
 // ─── Measurement signals ──────────────────────────────────────────────────────
 
 async function fetchMeasurementSignals(customer: Customer): Promise<MeasurementSignals> {
-  // Conversion actions — include last_conversion_date for staleness detection
+  // Conversion actions. (last_conversion_date is NOT a valid GAQL field on
+  // conversion_action in the current API — querying it fails the whole request,
+  // so it's omitted; staleness is left unknown rather than guessed.)
   const convActions = await customer.query(`
     SELECT
       conversion_action.id,
       conversion_action.status,
       conversion_action.type,
-      conversion_action.primary_for_goal,
-      conversion_action.last_conversion_date
+      conversion_action.primary_for_goal
     FROM conversion_action
     WHERE conversion_action.status = 'ENABLED'
   `);
@@ -480,20 +481,10 @@ async function fetchMeasurementSignals(customer: Customer): Promise<MeasurementS
   );
   const hasMerchantCenterLinked = merchantLinks.length > 0;
 
-  // Conversion staleness: enabled actions that have never fired or haven't fired in 90+ days
-  const today = new Date();
-  let staleConversionCount = 0;
-  let neverFiredConversionCount = 0;
-  for (const row of activeConversions) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const lastDate = (row.conversion_action as any)?.last_conversion_date as string | null | undefined;
-    if (!lastDate) {
-      neverFiredConversionCount++;
-    } else {
-      const daysAgo = Math.floor((today.getTime() - new Date(lastDate).getTime()) / 86_400_000);
-      if (daysAgo > 90) staleConversionCount++;
-    }
-  }
+  // Conversion staleness would need last_conversion_date, which isn't a valid
+  // GAQL field — left as unknown (0) rather than guessed, to avoid false flags.
+  const staleConversionCount = 0;
+  const neverFiredConversionCount = 0;
 
   return {
     conversionTrackingActive,
