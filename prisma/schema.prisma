@@ -120,6 +120,12 @@ model Account {
 
   ownershipEnabled Boolean @default(false) // pilot flag: on for 5-10 accounts first
 
+  // ─── Diagnostic spine (BUILD-SPEC §4/§6) ───────────────────────────────────
+  roasFloor         Float?               // hard guardrail: below this, budget may not rise
+  conversionLagDays Int     @default(4)  // measured click→conversion lag; drives provisional windows (§4.2)
+  timezone          String?              // account timezone — Google Ads reports in it (§4.4)
+  dataVerified      Boolean @default(false) // §4.9: DATA_UNVERIFIED until reconciled → produces no signals
+
   // ─── Merchant Center (for price competitiveness) ─────────────────────────
   // Auto-discovered via product_link on first load; set manually as fallback
   // if auto-discovery fails (e.g. the MC is owned by a different Google account).
@@ -149,6 +155,87 @@ model Account {
   ownershipActions OwnershipAction[]
   exceptions       Exception[]
   escalations      Escalation[]
+
+  // Diagnostic spine
+  metricsDaily     MetricDaily[]
+  productDaily     MetricProductDaily[]
+  searchTermsDaily SearchTermDaily[]
+  changeEvents     ChangeEvent[]
+}
+
+// ─── Diagnostic spine — one timeline per client (BUILD-SPEC §6) ────────────────
+// Every source is a daily series or timestamped event keyed by account. `date`
+// is a YYYY-MM-DD string in the account's timezone (matches Google's
+// segments.date; avoids tz drift). Amounts are already converted from micros to
+// the account currency at ingest time.
+
+model MetricDaily {
+  id              String  @id @default(cuid())
+  accountId       String
+  account         Account @relation(fields: [accountId], references: [id])
+  date            String  // YYYY-MM-DD (account tz)
+  campaignId      String
+  campaignName    String
+  spend           Float
+  impressions     Int
+  clicks          Int
+  conversions     Float
+  conversionValue Float
+
+  @@unique([accountId, date, campaignId])
+  @@index([accountId, date])
+}
+
+model MetricProductDaily {
+  id              String  @id @default(cuid())
+  accountId       String
+  account         Account @relation(fields: [accountId], references: [id])
+  date            String
+  landingPageUrl  String  // page-level is where concentration shows up (§4.7)
+  productId       String?
+  productTitle    String?
+  clicks          Int
+  spend           Float
+  conversions     Float
+  conversionValue Float
+
+  @@unique([accountId, date, landingPageUrl])
+  @@index([accountId, date])
+}
+
+model SearchTermDaily {
+  id              String  @id @default(cuid())
+  accountId       String
+  account         Account @relation(fields: [accountId], references: [id])
+  date            String
+  campaignId      String
+  searchTerm      String
+  matchType       String
+  clicks          Int
+  cost            Float
+  conversions     Float
+  conversionValue Float
+
+  @@unique([accountId, date, campaignId, searchTerm])
+  @@index([accountId, date])
+}
+
+// Google Ads change_event log — "cheapest, highest-value data source" (§2/§12).
+model ChangeEvent {
+  id           String   @id @default(cuid())
+  accountId    String
+  account      Account  @relation(fields: [accountId], references: [id])
+  changedAt    DateTime
+  userEmail    String?
+  campaignName String?
+  resourceType String
+  changeType   String   // BUDGET | BIDDING | KEYWORD | NEGATIVE | STATUS | ASSET | OTHER
+  oldValue     String?
+  newValue     String?
+  raw          String
+  dedupeKey    String   @unique // stable hash so re-runs upsert instead of duplicating
+
+  @@index([accountId, changedAt])
 }
 
 // ─── Account Ownership System ─────────────────────────────────────────────────
