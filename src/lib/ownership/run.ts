@@ -106,7 +106,7 @@ export interface ShadowRunSummary {
  */
 export async function runShadowDigest(organizationId: string, now: Date = new Date()): Promise<ShadowRunSummary> {
   const accounts = await prisma.account.findMany({
-    where: { organizationId, active: true, ownershipEnabled: true },
+    where: { organizationId, active: true, archived: false, ownershipEnabled: true },
     include: { owner: { select: { name: true } } },
   });
 

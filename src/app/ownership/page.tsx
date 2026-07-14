@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft, Loader2, ShieldCheck, Plus, Check, RefreshCw, Send, Star,
+  Search, Archive, RotateCcw, Trash2,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
@@ -26,6 +27,7 @@ interface Account {
   name: string;
   clientName: string | null;
   active: boolean;
+  archived: boolean;
   ownershipEnabled: boolean;
   ownerId: string | null;
   primaryKpi: "ROAS" | "CPA" | null;
@@ -53,6 +55,8 @@ export default function OwnershipConfigPage() {
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null); // action id currently running
+  const [query, setQuery] = useState("");
+  const [showArchived, setShowArchived] = useState(false);
 
   const flash = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 3500); };
 
@@ -117,6 +121,27 @@ export default function OwnershipConfigPage() {
     else flash((await res.json().catch(() => ({})))?.error ?? "Save failed");
   }
 
+  async function setArchived(a: Account, archived: boolean) {
+    setBusy("acct-" + a.id);
+    const res = await fetch(`/api/accounts/${a.id}`, {
+      method: "PATCH", credentials: "include", headers: { "Content-Type": "application/json" },
+      // Archiving also drops it out of the pilot so it can never be scored.
+      body: JSON.stringify(archived ? { archived: true, ownershipEnabled: false } : { archived: false }),
+    });
+    setBusy(null);
+    if (res.ok) { patchAccountLocal(a.id, { archived, ...(archived ? { ownershipEnabled: false } : {}) }); flash(archived ? `Archived ${a.name}` : `Restored ${a.name}`); }
+    else flash("Failed");
+  }
+
+  async function deleteAccount(a: Account) {
+    if (!confirm(`Permanently delete "${a.name}" and all its history? This cannot be undone.\n\nTip: "Archive" just hides it and is reversible.`)) return;
+    setBusy("acct-" + a.id);
+    const res = await fetch(`/api/accounts/${a.id}`, { method: "DELETE", credentials: "include" });
+    setBusy(null);
+    if (res.ok) { setAccounts(prev => prev.filter(x => x.id !== a.id)); flash(`Deleted ${a.name}`); }
+    else flash("Delete failed");
+  }
+
   // ── Global run actions ─────────────────────────────────────────────────────
   async function runSync() {
     setBusy("sync");
@@ -134,8 +159,74 @@ export default function OwnershipConfigPage() {
     flash(res.ok ? `Shadow run: ${data.evaluated ?? 0} evaluated, digest ${data.posted ? "posted" : "not posted (Slack not connected)"}` : (data.error ?? "Run failed"));
   }
 
-  const enabledCount = accounts.filter(a => a.ownershipEnabled).length;
-  const configuredCount = accounts.filter(a => a.ownershipEnabled && a.ownerId && a.primaryKpi && a.targetValue).length;
+  const live = accounts.filter(a => !a.archived);
+  const archived = accounts.filter(a => a.archived);
+  const enabledCount = live.filter(a => a.ownershipEnabled).length;
+  const configuredCount = live.filter(a => a.ownershipEnabled && a.ownerId && a.primaryKpi && a.targetValue).length;
+
+  const q = query.trim().toLowerCase();
+  const matches = (a: Account) => !q || a.name.toLowerCase().includes(q) || (a.clientName ?? "").toLowerCase().includes(q);
+  const liveShown = live.filter(matches);
+  const archivedShown = archived.filter(matches);
+
+  const iconBtn = (extra: React.CSSProperties = {}): React.CSSProperties => ({
+    display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 4,
+    background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 7,
+    color: "var(--text-3)", fontSize: 12, padding: "6px 9px", cursor: "pointer", ...extra,
+  });
+
+  const renderRow = (a: Account, isArchived: boolean) => (
+    <tr key={a.id} style={{ borderBottom: "1px solid var(--border)", opacity: isArchived ? 0.6 : 1 }}>
+      <td style={{ padding: "8px 12px" }}>
+        <input type="checkbox" checked={a.ownershipEnabled} disabled={isArchived}
+          onChange={e => patchAccountLocal(a.id, { ownershipEnabled: e.target.checked })} />
+      </td>
+      <td style={{ padding: "8px 12px" }}>
+        <div style={{ fontWeight: 600, color: "var(--text)" }}>{a.name}</div>
+        <div style={{ fontSize: 11, color: "var(--text-muted)" }}>
+          {a.clientName ? a.clientName + " · " : ""}{a.monthlyBudget ? `€${Math.round(a.monthlyBudget).toLocaleString()}/mo` : "no budget"}{!a.active && " · not active in Notion"}
+        </div>
+      </td>
+      <td style={{ padding: "8px 12px" }}>
+        <select value={a.ownerId ?? ""} disabled={isArchived} onChange={e => patchAccountLocal(a.id, { ownerId: e.target.value || null })} style={{ ...inputStyle, minWidth: 120 }}>
+          <option value="">— none —</option>
+          {owners.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+        </select>
+      </td>
+      <td style={{ padding: "8px 12px" }}>
+        <select value={a.primaryKpi ?? ""} disabled={isArchived} onChange={e => patchAccountLocal(a.id, { primaryKpi: (e.target.value || null) as Account["primaryKpi"] })} style={{ ...inputStyle, width: 90 }}>
+          <option value="">—</option>
+          <option value="ROAS">ROAS</option>
+          <option value="CPA">CPA</option>
+        </select>
+      </td>
+      <td style={{ padding: "8px 12px" }}>
+        <input type="number" step="0.1" value={a.targetValue ?? ""} disabled={isArchived}
+          placeholder={a.primaryKpi === "CPA" ? "€" : "×"}
+          onChange={e => patchAccountLocal(a.id, { targetValue: e.target.value === "" ? null : Number(e.target.value) })}
+          style={{ ...inputStyle, width: 80 }} />
+      </td>
+      <td style={{ padding: "8px 12px" }}>
+        <input type="number" value={a.reviewFrequencyDays} disabled={isArchived}
+          onChange={e => patchAccountLocal(a.id, { reviewFrequencyDays: Number(e.target.value) })}
+          style={{ ...inputStyle, width: 60 }} />
+      </td>
+      <td style={{ padding: "8px 12px" }}>
+        <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+          {busy === "acct-" + a.id && <Loader2 size={13} className="animate-spin" style={{ color: "var(--text-dim)", alignSelf: "center" }} />}
+          {isArchived ? (
+            <button onClick={() => setArchived(a, false)} disabled={!!busy} style={iconBtn()} title="Restore"><RotateCcw size={13} /> Restore</button>
+          ) : (
+            <>
+              <button onClick={() => saveAccount(a)} disabled={!!busy} style={iconBtn({ background: "var(--btn-primary)", color: "#fff", border: "none" })} title="Save"><Check size={13} /> Save</button>
+              <button onClick={() => setArchived(a, true)} disabled={!!busy} style={iconBtn()} title="Archive (hide — reversible)"><Archive size={13} /></button>
+            </>
+          )}
+          <button onClick={() => deleteAccount(a)} disabled={!!busy} style={iconBtn({ color: "#e5484d" })} title="Delete permanently"><Trash2 size={13} /></button>
+        </div>
+      </td>
+    </tr>
+  );
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)" }}>
@@ -165,9 +256,10 @@ export default function OwnershipConfigPage() {
         {/* Summary */}
         <div style={{ display: "flex", gap: 16, marginBottom: 20, flexWrap: "wrap" }}>
           {[
-            { k: "Accounts", v: accounts.length },
+            { k: "Active stores", v: live.length },
             { k: "Pilot enabled", v: enabledCount },
             { k: "Fully configured", v: configuredCount },
+            { k: "Archived", v: archived.length },
             { k: "Owners", v: owners.length },
           ].map(s => (
             <div key={s.k} style={{ ...card, padding: "12px 18px", minWidth: 130 }}>
@@ -226,78 +318,62 @@ export default function OwnershipConfigPage() {
               </div>
             </section>
 
-            {/* Accounts */}
+            {/* Stores */}
             <section style={card}>
-              <div style={{ padding: "14px 18px", borderBottom: "1px solid var(--border)", fontWeight: 600, fontSize: 14 }}>
-                Accounts
-                <span style={{ fontWeight: 400, color: "var(--text-muted)", fontSize: 12, marginLeft: 8 }}>
+              <div style={{ padding: "14px 18px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                <div style={{ fontWeight: 600, fontSize: 14 }}>Stores</div>
+                <span style={{ fontWeight: 400, color: "var(--text-muted)", fontSize: 12 }}>
                   enable 5–10 for the pilot; each needs an owner + KPI + target
                 </span>
+                <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 12 }}>
+                  <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+                    <Search size={13} style={{ position: "absolute", left: 8, color: "var(--text-dim)", pointerEvents: "none" }} />
+                    <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search stores…" style={{ ...inputStyle, paddingLeft: 26, width: 180 }} />
+                  </div>
+                  <label style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--text-3)", whiteSpace: "nowrap" }}>
+                    <input type="checkbox" checked={showArchived} onChange={e => setShowArchived(e.target.checked)} />
+                    Show archived ({archived.length})
+                  </label>
+                </div>
               </div>
+
               <div style={{ overflowX: "auto" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                   <thead>
                     <tr style={{ textAlign: "left", color: "var(--text-muted)", fontSize: 11 }}>
-                      {["Pilot", "Account", "Owner", "KPI", "Target", "Review (days)", ""].map(h => (
+                      {["Pilot", "Store", "Owner", "KPI", "Target", "Review (days)", ""].map(h => (
                         <th key={h} style={{ padding: "8px 12px", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.4, borderBottom: "1px solid var(--border)" }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
-                    {accounts.map(a => (
-                      <tr key={a.id} style={{ borderBottom: "1px solid var(--border)", opacity: a.active ? 1 : 0.5 }}>
-                        <td style={{ padding: "8px 12px" }}>
-                          <input type="checkbox" checked={a.ownershipEnabled} onChange={e => patchAccountLocal(a.id, { ownershipEnabled: e.target.checked })} />
-                        </td>
-                        <td style={{ padding: "8px 12px" }}>
-                          <div style={{ fontWeight: 600, color: "var(--text)" }}>{a.name}</div>
-                          <div style={{ fontSize: 11, color: "var(--text-muted)" }}>
-                            {a.clientName ? a.clientName + " · " : ""}{a.monthlyBudget ? `€${Math.round(a.monthlyBudget).toLocaleString()}/mo` : "no budget"}{!a.active && " · inactive"}
-                          </div>
-                        </td>
-                        <td style={{ padding: "8px 12px" }}>
-                          <select value={a.ownerId ?? ""} onChange={e => patchAccountLocal(a.id, { ownerId: e.target.value || null })} style={{ ...inputStyle, minWidth: 120 }}>
-                            <option value="">— none —</option>
-                            {owners.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
-                          </select>
-                        </td>
-                        <td style={{ padding: "8px 12px" }}>
-                          <select value={a.primaryKpi ?? ""} onChange={e => patchAccountLocal(a.id, { primaryKpi: (e.target.value || null) as Account["primaryKpi"] })} style={{ ...inputStyle, width: 90 }}>
-                            <option value="">—</option>
-                            <option value="ROAS">ROAS</option>
-                            <option value="CPA">CPA</option>
-                          </select>
-                        </td>
-                        <td style={{ padding: "8px 12px" }}>
-                          <input
-                            type="number" step="0.1" value={a.targetValue ?? ""}
-                            placeholder={a.primaryKpi === "CPA" ? "€" : "×"}
-                            onChange={e => patchAccountLocal(a.id, { targetValue: e.target.value === "" ? null : Number(e.target.value) })}
-                            style={{ ...inputStyle, width: 80 }}
-                          />
-                        </td>
-                        <td style={{ padding: "8px 12px" }}>
-                          <input
-                            type="number" value={a.reviewFrequencyDays}
-                            onChange={e => patchAccountLocal(a.id, { reviewFrequencyDays: Number(e.target.value) })}
-                            style={{ ...inputStyle, width: 60 }}
-                          />
-                        </td>
-                        <td style={{ padding: "8px 12px", textAlign: "right" }}>
-                          <button onClick={() => saveAccount(a)} disabled={busy === "acct-" + a.id} style={btnGhost}>
-                            {busy === "acct-" + a.id ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />} Save
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                    {accounts.length === 0 && (
+                    {liveShown.map(a => renderRow(a, false))}
+                    {liveShown.length === 0 && (
                       <tr><td colSpan={7} style={{ padding: 24, textAlign: "center", color: "var(--text-muted)" }}>
-                        No accounts yet — run “Sync Notion stores” above.
+                        {live.length === 0 ? "No stores yet — run “Sync Notion stores” above." : "No stores match your search."}
                       </td></tr>
                     )}
                   </tbody>
                 </table>
               </div>
+
+              {showArchived && (
+                <div style={{ borderTop: "1px solid var(--border)" }}>
+                  <div style={{ padding: "10px 18px", fontSize: 11, color: "var(--text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.4 }}>
+                    Archived ({archivedShown.length})
+                  </div>
+                  <div style={{ overflowX: "auto" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                      <tbody>
+                        {archivedShown.map(a => renderRow(a, true))}
+                        {archivedShown.length === 0 && (
+                          <tr><td colSpan={7} style={{ padding: 16, textAlign: "center", color: "var(--text-muted)" }}>Nothing archived.</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
             </section>
           </>
         )}
