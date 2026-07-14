@@ -90,6 +90,7 @@ interface WindowRow {
 }
 interface Trend { acuteDrop: boolean; spendSpike: boolean; note: string | null; }
 interface ShopifyStatus { appConfigured: boolean; connected: boolean; shopDomain: string | null; lastSyncAt: string | null; }
+interface TrackingStatus { status: "verified" | "broken" | null; note: string | null; setAt: string | null; setBy: string | null; }
 interface ProductPage { url: string; name: string; spend: number; clicks: number; conversions: number; conversionValue: number; roas: number | null; }
 interface VariantLine {
   variantKey: string; label: string;
@@ -137,6 +138,8 @@ export default function DiagnosePage() {
   const [insight, setInsight] = useState<string | null>(null);
   const [insightLoading, setInsightLoading] = useState(false);
   const [insightErr, setInsightErr] = useState<string | null>(null);
+  const [tracking, setTracking] = useState<TrackingStatus | null>(null);
+  const [trackingSaving, setTrackingSaving] = useState<"verified" | "broken" | "clear" | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [shopDomain, setShopDomain] = useState("");
@@ -162,6 +165,7 @@ export default function DiagnosePage() {
       setProducts(j.products ?? null);
       setProductPages(j.productPages ?? []);
       setWins(j.wins ?? []);
+      setTracking(j.tracking ?? null);
     } catch (e) { setError(e instanceof Error ? e.message : "Network error"); }
     setLoading(false);
   }
@@ -218,6 +222,25 @@ export default function DiagnosePage() {
       else setInsight(j.insight ?? "");
     } catch (e) { setInsightErr(e instanceof Error ? e.message : "Failed"); }
     finally { setInsightLoading(false); }
+  }
+
+  // Record the team's tracking verdict, then re-run the read so it reasons from
+  // certainty. Clearing (null) drops back to "unknown".
+  async function setTrackingStatus(status: "verified" | "broken" | null) {
+    setTrackingSaving(status ?? "clear");
+    try {
+      const r = await fetch(`/api/diagnostics/account/${id}/tracking`, {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (r.ok && j.tracking) {
+        setTracking({ status: j.tracking.trackingStatus, note: j.tracking.trackingNote, setAt: j.tracking.trackingSetAt, setBy: j.tracking.trackingSetBy });
+        // Re-reason if a read is already on screen (or was requested).
+        if (insight || insightErr) await getInsight();
+      }
+    } finally { setTrackingSaving(null); }
   }
 
   const shopifyMsg = search.get("shopify");
@@ -365,6 +388,48 @@ export default function DiagnosePage() {
               {!insight && !insightErr && !insightLoading && (
                 <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 8 }}>A short, direct read — what&rsquo;s happening, the likely why, and the next move — grounded in your PPC OS methodology.</div>
               )}
+
+              {/* Resolve-and-re-reason: confirm the read's #1 assumption (tracking)
+                  so it reasons from certainty instead of hedging every ROAS figure. */}
+              <div style={{ marginTop: 14, paddingTop: 13, borderTop: "1px solid var(--border-2)" }}>
+                {tracking?.status === "verified" ? (
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 700, color: "var(--accent)" }}>
+                      <ShieldCheck size={15} /> Conversion tracking verified working
+                    </span>
+                    <span style={{ fontSize: 11.5, color: "var(--text-muted)" }}>
+                      {tracking.setBy ? `by ${tracking.setBy}` : ""}{tracking.setAt ? ` · ${new Date(tracking.setAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}` : ""} — ROAS figures treated as real
+                    </span>
+                    <button onClick={() => setTrackingStatus(null)} disabled={!!trackingSaving} style={{ marginLeft: "auto", fontSize: 11.5, fontWeight: 600, color: "var(--text-3)", background: "none", border: "none", cursor: trackingSaving ? "default" : "pointer", textDecoration: "underline" }}>
+                      {trackingSaving === "clear" ? "…" : "Change"}
+                    </button>
+                  </div>
+                ) : tracking?.status === "broken" ? (
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 700, color: "var(--danger)" }}>
+                      <AlertTriangle size={15} /> Conversion tracking confirmed broken
+                    </span>
+                    <span style={{ fontSize: 11.5, color: "var(--text-muted)" }}>
+                      {tracking.setBy ? `by ${tracking.setBy}` : ""}{tracking.setAt ? ` · ${new Date(tracking.setAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}` : ""} — fix tracking before trusting any ROAS
+                    </span>
+                    <button onClick={() => setTrackingStatus(null)} disabled={!!trackingSaving} style={{ marginLeft: "auto", fontSize: 11.5, fontWeight: 600, color: "var(--text-3)", background: "none", border: "none", cursor: trackingSaving ? "default" : "pointer", textDecoration: "underline" }}>
+                      {trackingSaving === "clear" ? "…" : "Change"}
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                    <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Checked conversion tracking? Confirm it and the read re-reasons:</span>
+                    <div style={{ display: "flex", gap: 8, marginLeft: "auto" }}>
+                      <button onClick={() => setTrackingStatus("verified")} disabled={!!trackingSaving} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 600, color: "var(--accent)", background: "var(--accent-dim)", border: "1px solid color-mix(in srgb, var(--accent) 35%, var(--border))", borderRadius: 7, padding: "5px 11px", cursor: trackingSaving ? "default" : "pointer" }}>
+                        {trackingSaving === "verified" ? <Loader2 size={12} className="animate-spin" /> : <ShieldCheck size={13} />} Verified working
+                      </button>
+                      <button onClick={() => setTrackingStatus("broken")} disabled={!!trackingSaving} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 600, color: "var(--danger)", background: "color-mix(in srgb, var(--danger) 10%, transparent)", border: "1px solid color-mix(in srgb, var(--danger) 30%, var(--border))", borderRadius: 7, padding: "5px 11px", cursor: trackingSaving ? "default" : "pointer" }}>
+                        {trackingSaving === "broken" ? <Loader2 size={12} className="animate-spin" /> : <AlertTriangle size={13} />} Confirmed broken
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Facts */}

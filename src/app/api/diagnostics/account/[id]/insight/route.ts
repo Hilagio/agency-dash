@@ -89,10 +89,26 @@ export async function POST(_req: NextRequest, { params }: Params) {
 
   const account = await prisma.account.findFirst({
     where: { id, organizationId: ctx.orgId },
-    select: { id: true, name: true, currency: true, grossMarginPercent: true },
+    select: {
+      id: true, name: true, currency: true, grossMarginPercent: true,
+      trackingStatus: true, trackingNote: true, trackingSetAt: true, trackingSetBy: true,
+    },
   });
   if (!account) return forbidden();
   const cur = CUR[account.currency] ?? `${account.currency} `;
+
+  // Team-confirmed tracking verdict → the read reasons from certainty instead of
+  // re-hypothesising a tag break every time.
+  let trackingDirective = "";
+  if (account.trackingStatus === "verified") {
+    const who = account.trackingSetBy ? ` by ${account.trackingSetBy}` : "";
+    const when = account.trackingSetAt ? ` on ${account.trackingSetAt.toISOString().slice(0, 10)}` : "";
+    trackingDirective = `\n\nTEAM-CONFIRMED FACT${who}${when}: Conversion tracking has been verified working end-to-end${account.trackingNote ? ` (${account.trackingNote})` : ""}. Treat every conversion and ROAS figure below as ACCURATE. Do NOT hypothesise a tracking or tag break. If brand or overall CVR is low or 0%, reason about it as a REAL performance / demand / landing-page / competition issue — not a measurement artefact.`;
+  } else if (account.trackingStatus === "broken") {
+    const who = account.trackingSetBy ? ` by ${account.trackingSetBy}` : "";
+    const when = account.trackingSetAt ? ` on ${account.trackingSetAt.toISOString().slice(0, 10)}` : "";
+    trackingDirective = `\n\nTEAM-CONFIRMED FACT${who}${when}: Conversion tracking is BROKEN${account.trackingNote ? ` (${account.trackingNote})` : ""}. Every conversion and ROAS figure below is UNRELIABLE and almost certainly understated. The single highest priority is restoring tracking; do NOT draw ROAS/profitability conclusions or recommend bidding/budget changes until it is fixed and clean data re-accrues.`;
+  }
 
   const ppc = ppcOsMcp();
   if (!ppc) return NextResponse.json({ error: "PPC OS is not connected (set PPC_OS_MCP_TOKEN)." }, { status: 400 });
@@ -143,7 +159,7 @@ export async function POST(_req: NextRequest, { params }: Params) {
       betas: ppc.betas,
       mcp_servers: ppc.mcp_servers,
       tools: ppc.tools,
-      system: SYSTEM + PPC_OS_SYSTEM_NOTE,
+      system: SYSTEM + PPC_OS_SYSTEM_NOTE + trackingDirective,
       messages: [{ role: "user", content: `${context}\n\nGive the expert read.` }],
     });
     const insight = msg.content.filter(b => b.type === "text").map(b => (b as { text: string }).text).join("\n").trim();
