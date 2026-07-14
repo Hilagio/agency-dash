@@ -78,6 +78,7 @@ export default function DiagnosePage() {
   const [shopify, setShopify] = useState<ShopifyStatus | null>(null);
   const [products, setProducts] = useState<ProductDiagnostic | null>(null);
   const [productPages, setProductPages] = useState<ProductPage[]>([]);
+  const [wins, setWins] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [shopDomain, setShopDomain] = useState("");
@@ -102,6 +103,7 @@ export default function DiagnosePage() {
       setShopify(j.shopify ?? null);
       setProducts(j.products ?? null);
       setProductPages(j.productPages ?? []);
+      setWins(j.wins ?? []);
     } catch (e) { setError(e instanceof Error ? e.message : "Network error"); }
     setLoading(false);
   }
@@ -293,6 +295,21 @@ export default function DiagnosePage() {
                     <div key={i} style={{ display: "flex", gap: 11, padding: "11px 16px", borderBottom: i < diag.observations.length - 1 ? "1px solid var(--border)" : "none" }}>
                       <AlertTriangle size={15} style={{ color: diag.status === "red" ? "var(--danger)" : "var(--accent-2)", flexShrink: 0, marginTop: 2 }} />
                       <span style={{ fontSize: 14, lineHeight: 1.5, color: "var(--text-2)" }}>{o.text}</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {/* What's working — earned praise (§5A), balances the warnings */}
+            {wins.length > 0 && (
+              <>
+                <SectionTitle>What&rsquo;s working</SectionTitle>
+                <div style={{ ...card, padding: "6px 4px", border: "1px solid color-mix(in srgb, var(--accent) 25%, var(--border))" }}>
+                  {wins.map((w, i) => (
+                    <div key={i} style={{ display: "flex", gap: 11, padding: "11px 16px", borderBottom: i < wins.length - 1 ? "1px solid var(--border)" : "none" }}>
+                      <CheckCircle2 size={15} style={{ color: "var(--accent)", flexShrink: 0, marginTop: 2 }} />
+                      <span style={{ fontSize: 14, lineHeight: 1.5, color: "var(--text-2)" }}>{w}</span>
                     </div>
                   ))}
                 </div>
