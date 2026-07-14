@@ -75,7 +75,7 @@ export default function DiagnosePage() {
   const [shopify, setShopify] = useState<ShopifyStatus | null>(null);
   const [products, setProducts] = useState<ProductDiagnostic | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [shopDomain, setShopDomain] = useState("");
   const [syncing, setSyncing] = useState(false);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -84,14 +84,20 @@ export default function DiagnosePage() {
   async function load() {
     try {
       const r = await fetch(`/api/diagnostics/account/${id}`, { credentials: "include" });
-      if (!r.ok) { setError(true); setLoading(false); return; }
+      if (!r.ok) {
+        const j = await r.json().catch(() => ({}));
+        setError(j.error ? `${j.error} (HTTP ${r.status})` : `Request failed (HTTP ${r.status})`);
+        setLoading(false);
+        return;
+      }
       const j = await r.json();
+      setError(null);
       setDiag(j.diagnosis);
       setWindows(j.windows ?? []);
       setTrend(j.trend ?? null);
       setShopify(j.shopify ?? null);
       setProducts(j.products ?? null);
-    } catch { setError(true); }
+    } catch (e) { setError(e instanceof Error ? e.message : "Network error"); }
     setLoading(false);
   }
 
@@ -142,10 +148,17 @@ export default function DiagnosePage() {
             <Loader2 size={22} className="animate-spin" style={{ color: "var(--text-dim)" }} />
           </div>
         ) : error || !diag ? (
-          <div style={{ ...card, padding: "48px 28px", textAlign: "center", color: "var(--text-muted)" }}>
+          <div style={{ ...card, padding: "40px 28px", textAlign: "center", color: "var(--text-muted)" }}>
             <AlertTriangle size={26} style={{ color: "var(--accent-2)", marginBottom: 10 }} />
             <div style={{ fontWeight: 600, color: "var(--text-2)" }}>Couldn&rsquo;t load this diagnosis</div>
-            <div style={{ fontSize: 13, marginTop: 6 }}>The account may not be in the pilot yet, or has no data ingested.</div>
+            {error ? (
+              <div style={{ fontSize: 13, marginTop: 8, color: "var(--danger)", fontFamily: "ui-monospace, monospace", wordBreak: "break-word", maxWidth: 560, margin: "8px auto 0" }}>{error}</div>
+            ) : (
+              <div style={{ fontSize: 13, marginTop: 6 }}>The account may not be in the pilot yet, or has no data ingested.</div>
+            )}
+            <button onClick={() => { setLoading(true); setError(null); load(); }} style={{ marginTop: 16, display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: "var(--text-2)", background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 8, padding: "7px 14px", cursor: "pointer" }}>
+              <RefreshCw size={13} /> Retry
+            </button>
           </div>
         ) : (
           <>
