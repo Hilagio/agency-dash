@@ -9,7 +9,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getAuthContext } from "@/lib/auth";
-import { buildDiagnosis } from "@/lib/diagnostics/engine";
+import { buildDiagnosis, cleanProductLabel } from "@/lib/diagnostics/engine";
 import { computeAccountSignals } from "@/lib/diagnostics/run-signals";
 import { computeWindows, detectTrend } from "@/lib/diagnostics/windows";
 import { buildProductGroups, type AdsVariantRow, type SalesVariantRow } from "@/lib/diagnostics/products";
@@ -147,6 +147,23 @@ async function handle(id: string, orgId: string) {
     ? buildProductGroups([...adsAgg.values()], [...salesAgg.values()], { marginPct })
     : null;
 
+  // Product performance from landing pages (§4.7) — the product data every
+  // ecommerce account has from Google Ads, even without a feed or Shopify.
+  const pageRows = await prisma.metricProductDaily.findMany({
+    where: { accountId: id, date: { gte: prodStartYmd, lte: prodEndYmd } },
+    select: { landingPageUrl: true, clicks: true, spend: true, conversions: true, conversionValue: true },
+  });
+  const pageAgg = new Map<string, { url: string; name: string; spend: number; clicks: number; conversions: number; conversionValue: number }>();
+  for (const r of pageRows) {
+    const e = pageAgg.get(r.landingPageUrl) ?? { url: r.landingPageUrl, name: cleanProductLabel(r.landingPageUrl), spend: 0, clicks: 0, conversions: 0, conversionValue: 0 };
+    e.spend += r.spend; e.clicks += r.clicks; e.conversions += r.conversions; e.conversionValue += r.conversionValue;
+    pageAgg.set(r.landingPageUrl, e);
+  }
+  const productPages = [...pageAgg.values()]
+    .map(p => ({ ...p, roas: p.spend > 0 ? p.conversionValue / p.spend : null }))
+    .sort((a, b) => b.spend - a.spend)
+    .slice(0, 20);
+
   // Shopify connection status — drives the connect card on the workspace.
   const conn = await prisma.shopifyConnection.findUnique({
     where: { accountId: id }, select: { shopDomain: true, lastSyncAt: true },
@@ -173,5 +190,5 @@ async function handle(id: string, orgId: string) {
     grossMarginPct: diag?.grossMarginPct ?? account.grossMarginPercent ?? null,
   });
 
-  return NextResponse.json({ diagnosis, windows, trend, shopify, products, hasData: !!diag });
+  return NextResponse.json({ diagnosis, windows, trend, shopify, products, productPages, hasData: !!diag });
 }
