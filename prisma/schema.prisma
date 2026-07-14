@@ -126,6 +126,15 @@ model Account {
   timezone          String?              // account timezone — Google Ads reports in it (§4.4)
   dataVerified      Boolean @default(false) // §4.9: DATA_UNVERIFIED until reconciled → produces no signals
 
+  // ─── Team-confirmed tracking status (resolve-and-re-reason) ───────────────
+  // When the Expert read hypothesizes a conversion-tracking break, the team can
+  // verify it end-to-end and record the answer here, so the read reasons from
+  // certainty instead of hedging every ROAS figure forever.
+  trackingStatus String?   // "verified" (working) | "broken" | null (unknown)
+  trackingNote   String?   // optional detail ("test purchase fired on 2026-07-14")
+  trackingSetAt  DateTime?
+  trackingSetBy  String?   // email of the person who confirmed
+
   // ─── Merchant Center (for price competitiveness) ─────────────────────────
   // Auto-discovered via product_link on first load; set manually as fallback
   // if auto-discovery fails (e.g. the MC is owned by a different Google account).

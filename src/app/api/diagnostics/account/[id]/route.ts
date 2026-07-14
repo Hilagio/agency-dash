@@ -62,6 +62,7 @@ async function handle(id: string, orgId: string) {
     select: {
       id: true, name: true, clientName: true, currency: true, dataVerified: true,
       roasFloor: true, grossMarginPercent: true, minSpendForEval: true, minConversionsForEval: true,
+      trackingStatus: true, trackingNote: true, trackingSetAt: true, trackingSetBy: true,
     },
   });
   if (!account) return NextResponse.json({ error: "This account isn't in your organization, or doesn't exist." }, { status: 404 });
@@ -210,5 +211,12 @@ async function handle(id: string, orgId: string) {
     grossMarginPct: diag?.grossMarginPct ?? account.grossMarginPercent ?? null,
   });
 
-  return NextResponse.json({ diagnosis, windows, trend, shopify, products, productPages, wins, hasData: !!diag });
+  const tracking = {
+    status: account.trackingStatus ?? null,
+    note: account.trackingNote ?? null,
+    setAt: account.trackingSetAt ?? null,
+    setBy: account.trackingSetBy ?? null,
+  };
+
+  return NextResponse.json({ diagnosis, windows, trend, shopify, products, productPages, wins, tracking, hasData: !!diag });
 }
