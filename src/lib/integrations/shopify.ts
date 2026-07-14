@@ -182,12 +182,13 @@ export interface SalesOrderNode {
   lineItems?: { nodes: Array<{
     quantity?: number;
     product?: { id?: string; title?: string } | null;
+    variant?: { id?: string; title?: string } | null;
     discountedTotalSet?: { shopMoney?: { amount?: string; currencyCode?: string } };
   }> };
 }
-export interface ProductSaleDayAgg { date: string; productId: string; title: string; units: number; revenue: number; currency: string; }
+export interface ProductSaleDayAgg { date: string; productId: string; variantId: string; title: string; variantTitle: string; units: number; revenue: number; currency: string; }
 
-/** Aggregate order line items into a per-day, per-product sales series (pure). */
+/** Aggregate order line items into a per-day, per-product-per-variant series (pure). */
 export function aggregateProductSales(nodes: SalesOrderNode[]): ProductSaleDayAgg[] {
   const map = new Map<string, ProductSaleDayAgg>();
   for (const n of nodes) {
@@ -195,12 +196,14 @@ export function aggregateProductSales(nodes: SalesOrderNode[]): ProductSaleDayAg
     const date = n.createdAt.slice(0, 10);
     for (const li of n.lineItems?.nodes ?? []) {
       const productId = li.product?.id ?? "unknown";
+      const variantId = li.variant?.id ?? "";
       const title = li.product?.title ?? "Unknown / deleted product";
+      const variantTitle = li.variant?.title ?? "";
       const units = Number(li.quantity ?? 0);
       const amount = Number(li.discountedTotalSet?.shopMoney?.amount ?? 0);
       const currency = li.discountedTotalSet?.shopMoney?.currencyCode ?? "EUR";
-      const key = `${date}|${productId}`;
-      const e = map.get(key) ?? { date, productId, title, units: 0, revenue: 0, currency };
+      const key = `${date}|${productId}|${variantId}`;
+      const e = map.get(key) ?? { date, productId, variantId, title, variantTitle, units: 0, revenue: 0, currency };
       e.units += Number.isFinite(units) ? units : 0;
       e.revenue += Number.isFinite(amount) ? amount : 0;
       map.set(key, e);
@@ -220,6 +223,7 @@ query($cursor: String, $q: String!) {
         nodes {
           quantity
           product { id title }
+          variant { id title }
           discountedTotalSet { shopMoney { amount currencyCode } }
         }
       }

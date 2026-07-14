@@ -298,17 +298,19 @@ model ProductAdsDaily {
 }
 
 model ProductSalesDaily {
-  id        String  @id @default(cuid())
-  accountId String
-  account   Account @relation(fields: [accountId], references: [id])
-  date      String  // YYYY-MM-DD
-  productId String  // Shopify product id
-  title     String  @default("")
-  units     Int
-  revenue   Float
-  currency  String  @default("EUR")
+  id           String  @id @default(cuid())
+  accountId    String
+  account      Account @relation(fields: [accountId], references: [id])
+  date         String  // YYYY-MM-DD
+  productId    String  // Shopify product id
+  variantId    String  @default("") // Shopify variant id ("" = product-level / unknown)
+  title        String  @default("")
+  variantTitle String  @default("")
+  units        Int
+  revenue      Float
+  currency     String  @default("EUR")
 
-  @@unique([accountId, date, productId])
+  @@unique([accountId, date, productId, variantId])
   @@index([accountId, date])
 }
 

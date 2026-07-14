@@ -2,7 +2,10 @@
  * Product-diagnostic spec: the ads-vs-sales join, spend-no-sales, concentration.
  *   npx tsx src/lib/diagnostics/products.test.ts
  */
-import { joinProducts, type AdsProductAgg, type SalesProductAgg } from "./products";
+import {
+  joinProducts, buildProductGroups,
+  type AdsProductAgg, type SalesProductAgg, type AdsVariantRow, type SalesVariantRow,
+} from "./products";
 
 let fail = 0;
 const ok = (n: string, c: boolean) => { console.log(c ? "✓" : "✗ FAIL:", n); if (!c) fail++; };
@@ -44,5 +47,33 @@ ok("without margin, POAS is null but join still works", noMargin.products.every(
 const empty = joinProducts([], [], 0.5);
 ok("empty input → safe zeros", empty.products.length === 0 && empty.concentration.breadth === "unknown");
 
-console.log(fail ? `\n${fail} FAILURE(S)` : "\nPRODUCTS: PASS — ads×sales join, spend-no-sales, concentration");
+// ─── Two-level rollup: variants too thin alone, clear at product level ─────────
+// One product, 4 variants. Each variant has modest spend + ZERO conversions —
+// individually too thin to act on, but rolled up it's €120 / 0 conv.
+const vAds: AdsVariantRow[] = [
+  { itemId: "shopify_NL_555_1", title: "Zomerjas", spend: 34, clicks: 20, conversions: 0, conversionValue: 0 },
+  { itemId: "shopify_NL_555_2", title: "Zomerjas", spend: 30, clicks: 14, conversions: 0, conversionValue: 0 },
+  { itemId: "shopify_NL_555_3", title: "Zomerjas", spend: 28, clicks: 11, conversions: 0, conversionValue: 0 },
+  { itemId: "shopify_NL_555_4", title: "Zomerjas", spend: 28, clicks: 9,  conversions: 0, conversionValue: 0 },
+  // A healthy product for contrast.
+  { itemId: "shopify_NL_777_1", title: "Winterjas", spend: 50, clicks: 40, conversions: 8, conversionValue: 900 },
+];
+const vSales: SalesVariantRow[] = [
+  { productId: "gid://shopify/Product/777", variantId: "gid://shopify/ProductVariant/7771", title: "Winterjas", variantTitle: "M", units: 8, revenue: 900 },
+];
+const g = buildProductGroups(vAds, vSales, { marginPct: 0.5, minProductSpend: 25, variantMinClicks: 15 });
+const zomer = g.groups.find(p => /zomerjas/i.test(p.title))!;
+const winter = g.groups.find(p => /winterjas/i.test(p.title))!;
+
+ok("rolls 4 variants under one product", zomer.variants.length === 4);
+ok("product-level spend is the sum of variants (€120)", zomer.spend === 120);
+ok("product-level shows 0 conversions across variants", zomer.adConversions === 0);
+ok("most variants are individually thin", zomer.thinVariantCount >= 3);
+ok("product is flagged an exclude-from-feed candidate", zomer.excludeCandidate && g.excludeCandidates.some(p => p.productKey === zomer.productKey));
+ok("exclude reason cites spend + zero conversions + thin variants", /120/.test(zomer.excludeReason!) && /thin/.test(zomer.excludeReason!));
+ok("the converting product is NOT flagged", !winter.excludeCandidate);
+ok("healthy product keeps its POAS", winter.poas != null && winter.poas > 1);
+ok("id-based match keeps Winterjas variant sales joined to ads product", winter.units === 8 && winter.revenue === 900);
+
+console.log(fail ? `\n${fail} ROLLUP FAILURE(S)` : "\nROLLUP: PASS — thin variants roll up to a product-level exclude call");
 process.exit(fail ? 1 : 0);

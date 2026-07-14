@@ -8,12 +8,12 @@
  * questions to ask. It never names a cause (§9) — that boundary is printed on
  * the page. From here you can jump to the full analysis if you want to dig.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useState, Fragment } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft, ArrowUpRight, Loader2, CheckCircle2, AlertTriangle, HelpCircle,
-  ShieldCheck, Sprout, XCircle, MinusCircle, TrendingUp, ShoppingBag, RefreshCw,
+  ShieldCheck, Sprout, XCircle, MinusCircle, TrendingUp, ShoppingBag, RefreshCw, ChevronRight,
 } from "lucide-react";
 
 type Status = "green" | "yellow" | "red";
@@ -35,15 +35,22 @@ interface WindowRow {
 }
 interface Trend { acuteDrop: boolean; spendSpike: boolean; note: string | null; }
 interface ShopifyStatus { appConfigured: boolean; connected: boolean; shopDomain: string | null; lastSyncAt: string | null; }
-interface JoinedProduct {
-  key: string; title: string; matched: boolean;
+interface VariantLine {
+  variantKey: string; label: string;
   spend: number; clicks: number; adConversions: number;
-  units: number; revenue: number; poas: number | null; spendNoSales: boolean;
+  units: number; revenue: number; poas: number | null; thin: boolean; spendNoSales: boolean;
+}
+interface ProductGroup {
+  productKey: string; title: string;
+  spend: number; clicks: number; adConversions: number;
+  units: number; revenue: number; poas: number | null;
+  variantCount: number; thinVariantCount: number; variants: VariantLine[];
+  excludeCandidate: boolean; excludeReason: string | null;
 }
 interface ProductDiagnostic {
-  products: JoinedProduct[];
+  groups: ProductGroup[];
+  excludeCandidates: ProductGroup[];
   concentration: { topShare: number; top3Share: number; productCount: number; breadth: "concentrated" | "balanced" | "broad" | "unknown" };
-  spendNoSalesCount: number; spendNoSalesTotal: number;
 }
 
 const STATUS_COLOR: Record<Status, string> = { green: "var(--accent)", yellow: "var(--accent-2)", red: "var(--danger)" };
@@ -71,6 +78,8 @@ export default function DiagnosePage() {
   const [error, setError] = useState(false);
   const [shopDomain, setShopDomain] = useState("");
   const [syncing, setSyncing] = useState(false);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const toggle = (k: string) => setExpanded(prev => { const n = new Set(prev); if (n.has(k)) n.delete(k); else n.add(k); return n; });
 
   async function load() {
     try {
@@ -303,47 +312,85 @@ export default function DiagnosePage() {
               </>
             )}
 
-            {/* Product breakdown — ad spend vs real sales (§4/§8) */}
-            {products && products.products.length > 0 && (
+            {/* Product breakdown — ad spend vs real sales, variant→product (§4/§8) */}
+            {products && products.groups.length > 0 && (
               <>
-                <SectionTitle>By product — what the ads did vs what actually sold</SectionTitle>
-                {products.spendNoSalesCount > 0 && (
-                  <div style={{
-                    marginBottom: 10, padding: "10px 14px", borderRadius: 10, fontSize: 12.5, fontWeight: 500,
-                    color: "var(--danger)", background: "color-mix(in srgb, var(--danger) 10%, transparent)",
-                    border: "1px solid color-mix(in srgb, var(--danger) 30%, transparent)",
-                    display: "flex", alignItems: "center", gap: 8,
-                  }}>
-                    <AlertTriangle size={14} style={{ flexShrink: 0 }} />
-                    {fmtMoney(products.spendNoSalesTotal)} of ad spend went to {products.spendNoSalesCount} product{products.spendNoSalesCount === 1 ? "" : "s"} that sold nothing — check availability before touching budgets.
-                  </div>
+                {products.excludeCandidates.length > 0 && (
+                  <>
+                    <SectionTitle>Feed candidates — spend, no conversions (judged at product level)</SectionTitle>
+                    <div style={{ ...card, border: "1px solid color-mix(in srgb, var(--danger) 30%, transparent)", padding: "6px 4px", marginBottom: 4 }}>
+                      {products.excludeCandidates.map(p => (
+                        <div key={p.productKey} style={{ display: "flex", gap: 11, padding: "11px 16px", borderBottom: "1px solid var(--border)" }}>
+                          <AlertTriangle size={16} style={{ color: "var(--danger)", flexShrink: 0, marginTop: 2 }} />
+                          <div>
+                            <div style={{ fontSize: 13.5, fontWeight: 700 }}>{p.title}</div>
+                            <div style={{ fontSize: 12.5, color: "var(--text-3)", marginTop: 2 }}>{p.excludeReason} — a candidate to exclude from the feed.</div>
+                          </div>
+                        </div>
+                      ))}
+                      <div style={{ fontSize: 11.5, color: "var(--text-muted)", padding: "8px 16px" }}>
+                        Individual variants are often too thin to judge — this call is made on the rolled-up product. The system flags the candidate; the specialist makes the exclusion.
+                      </div>
+                    </div>
+                  </>
                 )}
+
+                <SectionTitle>By product — what the ads did vs what actually sold</SectionTitle>
                 <div style={{ ...card, overflowX: "auto" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5, minWidth: 560 }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5, minWidth: 580 }}>
                     <thead>
                       <tr style={{ color: "var(--text-muted)", textAlign: "right" }}>
                         <th style={{ textAlign: "left", padding: "10px 14px", fontWeight: 600 }}>Product</th>
                         <th style={{ padding: "10px 8px", fontWeight: 600 }}>Spend</th>
                         <th style={{ padding: "10px 8px", fontWeight: 600 }}>Clicks</th>
-                        <th style={{ padding: "10px 8px", fontWeight: 600 }}>Units sold</th>
+                        <th style={{ padding: "10px 8px", fontWeight: 600 }}>Conv.</th>
+                        <th style={{ padding: "10px 8px", fontWeight: 600 }}>Units</th>
                         <th style={{ padding: "10px 8px", fontWeight: 600 }}>Revenue</th>
                         <th style={{ padding: "10px 14px", fontWeight: 600 }}>POAS</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {products.products.slice(0, 12).map(p => (
-                        <tr key={p.key} style={{ borderTop: "1px solid var(--border)", textAlign: "right", color: "var(--text-2)" }}>
-                          <td style={{ textAlign: "left", padding: "9px 14px", fontWeight: 600, color: "var(--text)", maxWidth: 240, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                            {p.spendNoSales && <span title="ad spend, zero sales" style={{ color: "var(--danger)", marginRight: 6 }}>●</span>}
-                            {p.title}
-                          </td>
-                          <td style={{ padding: "9px 8px", fontVariantNumeric: "tabular-nums" }}>{p.spend > 0 ? fmtMoney(p.spend) : "—"}</td>
-                          <td style={{ padding: "9px 8px", fontVariantNumeric: "tabular-nums" }}>{p.clicks || "—"}</td>
-                          <td style={{ padding: "9px 8px", fontVariantNumeric: "tabular-nums", color: p.spendNoSales ? "var(--danger)" : "var(--text-2)" }}>{p.units}</td>
-                          <td style={{ padding: "9px 8px", fontVariantNumeric: "tabular-nums" }}>{p.revenue > 0 ? fmtMoney(p.revenue) : "—"}</td>
-                          <td style={{ padding: "9px 14px", fontVariantNumeric: "tabular-nums", color: p.poas != null ? (p.poas < 1 ? "var(--danger)" : "var(--accent)") : "var(--text-dim)" }}>{p.poas != null ? p.poas.toFixed(2) : "—"}</td>
-                        </tr>
-                      ))}
+                      {products.groups.slice(0, 15).map(p => {
+                        const open = expanded.has(p.productKey);
+                        const canExpand = p.variants.length > 1;
+                        return (
+                          <Fragment key={p.productKey}>
+                            <tr
+                              onClick={() => canExpand && toggle(p.productKey)}
+                              style={{ borderTop: "1px solid var(--border)", textAlign: "right", color: "var(--text-2)", cursor: canExpand ? "pointer" : "default" }}>
+                              <td style={{ textAlign: "left", padding: "9px 14px", fontWeight: 600, color: "var(--text)", maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                {canExpand
+                                  ? <ChevronRight size={13} style={{ verticalAlign: -2, marginRight: 5, color: "var(--text-dim)", transform: open ? "rotate(90deg)" : "none", transition: "transform .12s" }} />
+                                  : <span style={{ display: "inline-block", width: 18 }} />}
+                                {p.excludeCandidate && <span title="spend, no conversions" style={{ color: "var(--danger)", marginRight: 6 }}>●</span>}
+                                {p.title}
+                                {p.variantCount > 1 && <span style={{ fontSize: 11, color: "var(--text-dim)", marginLeft: 7 }}>{p.variantCount} variants{p.thinVariantCount ? `, ${p.thinVariantCount} thin` : ""}</span>}
+                              </td>
+                              <td style={{ padding: "9px 8px", fontVariantNumeric: "tabular-nums" }}>{p.spend > 0 ? fmtMoney(p.spend) : "—"}</td>
+                              <td style={{ padding: "9px 8px", fontVariantNumeric: "tabular-nums" }}>{p.clicks || "—"}</td>
+                              <td style={{ padding: "9px 8px", fontVariantNumeric: "tabular-nums", color: p.excludeCandidate ? "var(--danger)" : "var(--text-2)" }}>{Math.round(p.adConversions)}</td>
+                              <td style={{ padding: "9px 8px", fontVariantNumeric: "tabular-nums" }}>{p.units || "—"}</td>
+                              <td style={{ padding: "9px 8px", fontVariantNumeric: "tabular-nums" }}>{p.revenue > 0 ? fmtMoney(p.revenue) : "—"}</td>
+                              <td style={{ padding: "9px 14px", fontVariantNumeric: "tabular-nums", color: p.poas != null ? (p.poas < 1 ? "var(--danger)" : "var(--accent)") : "var(--text-dim)" }}>{p.poas != null ? p.poas.toFixed(2) : "—"}</td>
+                            </tr>
+                            {open && p.variants.map(v => (
+                              <tr key={v.variantKey} style={{ textAlign: "right", color: "var(--text-3)", background: "var(--surface-2)", fontSize: 12 }}>
+                                <td style={{ textAlign: "left", padding: "7px 14px 7px 37px", maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                  {v.spendNoSales && <span style={{ color: "var(--danger)", marginRight: 5 }}>●</span>}
+                                  {v.label}
+                                  {v.thin && <span title="too little data to judge alone" style={{ fontSize: 10, color: "var(--text-dim)", marginLeft: 6 }}>thin</span>}
+                                </td>
+                                <td style={{ padding: "7px 8px", fontVariantNumeric: "tabular-nums" }}>{v.spend > 0 ? fmtMoney(v.spend) : "—"}</td>
+                                <td style={{ padding: "7px 8px", fontVariantNumeric: "tabular-nums" }}>{v.clicks || "—"}</td>
+                                <td style={{ padding: "7px 8px", fontVariantNumeric: "tabular-nums" }}>{Math.round(v.adConversions)}</td>
+                                <td style={{ padding: "7px 8px", fontVariantNumeric: "tabular-nums" }}>{v.units || "—"}</td>
+                                <td style={{ padding: "7px 8px", fontVariantNumeric: "tabular-nums" }}>{v.revenue > 0 ? fmtMoney(v.revenue) : "—"}</td>
+                                <td style={{ padding: "7px 14px", fontVariantNumeric: "tabular-nums" }}>{v.poas != null ? v.poas.toFixed(2) : "—"}</td>
+                              </tr>
+                            ))}
+                          </Fragment>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -351,7 +398,7 @@ export default function DiagnosePage() {
                   {products.concentration.breadth !== "unknown" && (
                     <>Revenue is <b>{products.concentration.breadth}</b> — top product is {Math.round(products.concentration.topShare * 100)}% of sales, top 3 are {Math.round(products.concentration.top3Share * 100)}%. </>
                   )}
-                  Ads matched to sales by product name; units &amp; revenue need Shopify connected. Last 7 days.
+                  Click a product to see its variants. Ads roll up from item/variant level; units &amp; revenue need Shopify connected. Last 7 days.
                 </div>
               </>
             )}

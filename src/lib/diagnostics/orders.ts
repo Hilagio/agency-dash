@@ -53,7 +53,7 @@ export async function ingestAccountOrders(accountId: string, days = 14): Promise
       prisma.productSalesDaily.deleteMany({ where: inWindow }),
       ...(productSales.length
         ? [prisma.productSalesDaily.createMany({
-            data: productSales.map(s => ({ accountId, date: s.date, productId: s.productId, title: s.title, units: s.units, revenue: s.revenue, currency: s.currency })),
+            data: productSales.map(s => ({ accountId, date: s.date, productId: s.productId, variantId: s.variantId, title: s.title, variantTitle: s.variantTitle, units: s.units, revenue: s.revenue, currency: s.currency })),
           })]
         : []),
       prisma.shopifyConnection.update({ where: { accountId }, data: { lastSyncAt: new Date() } }),

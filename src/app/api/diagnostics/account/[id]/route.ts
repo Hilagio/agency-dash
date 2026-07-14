@@ -12,7 +12,7 @@ import { getAuthContext, unauthorized, forbidden } from "@/lib/auth";
 import { buildDiagnosis } from "@/lib/diagnostics/engine";
 import { computeAccountSignals } from "@/lib/diagnostics/run-signals";
 import { computeWindows, detectTrend } from "@/lib/diagnostics/windows";
-import { joinProducts, type AdsProductAgg, type SalesProductAgg } from "@/lib/diagnostics/products";
+import { buildProductGroups, type AdsVariantRow, type SalesVariantRow } from "@/lib/diagnostics/products";
 import { shopifyAppConfig } from "@/lib/integrations/shopify";
 import type { Signal } from "@/lib/diagnostics/signals";
 
@@ -115,22 +115,26 @@ export async function GET(_req: Request, { params }: Params) {
     prisma.productAdsDaily.findMany({ where: { accountId: id, date: { gte: prodStartYmd, lte: prodEndYmd } } }),
     prisma.productSalesDaily.findMany({ where: { accountId: id, date: { gte: prodStartYmd, lte: prodEndYmd } } }),
   ]);
-  const adsAgg = new Map<string, AdsProductAgg>();
+  // Aggregate to variant grain across the window (ads: per item_id; sales: per
+  // product+variant), then roll up to product inside buildProductGroups.
+  const adsAgg = new Map<string, AdsVariantRow>();
   for (const r of adRows) {
     const e = adsAgg.get(r.itemId) ?? { itemId: r.itemId, title: r.title, spend: 0, clicks: 0, conversions: 0, conversionValue: 0 };
     e.spend += r.spend; e.clicks += r.clicks; e.conversions += r.conversions; e.conversionValue += r.conversionValue;
     if (!e.title && r.title) e.title = r.title;
     adsAgg.set(r.itemId, e);
   }
-  const salesAgg = new Map<string, SalesProductAgg>();
+  const salesAgg = new Map<string, SalesVariantRow>();
   for (const r of saleRows) {
-    const e = salesAgg.get(r.productId) ?? { productId: r.productId, title: r.title, units: 0, revenue: 0 };
+    const k = `${r.productId}|${r.variantId}`;
+    const e = salesAgg.get(k) ?? { productId: r.productId, variantId: r.variantId, title: r.title, variantTitle: r.variantTitle, units: 0, revenue: 0 };
     e.units += r.units; e.revenue += r.revenue;
     if (!e.title && r.title) e.title = r.title;
-    salesAgg.set(r.productId, e);
+    if (!e.variantTitle && r.variantTitle) e.variantTitle = r.variantTitle;
+    salesAgg.set(k, e);
   }
   const products = (adsAgg.size || salesAgg.size)
-    ? joinProducts([...adsAgg.values()], [...salesAgg.values()], marginPct)
+    ? buildProductGroups([...adsAgg.values()], [...salesAgg.values()], { marginPct })
     : null;
 
   // Shopify connection status — drives the connect card on the workspace.
