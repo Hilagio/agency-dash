@@ -23,7 +23,11 @@
  */
 import { prisma } from "@/lib/db";
 
-const NOTION_VERSION = "2022-06-28";
+// The Stores id in the spec is a *data source* id, which the modern data-sources
+// API (2025-09-03) queries directly. We fall back to the legacy databases
+// endpoint (2022-06-28) in case an env override points at a classic database id.
+const NOTION_VERSION_DS = "2025-09-03";
+const NOTION_VERSION_LEGACY = "2022-06-28";
 const BASE = "https://api.notion.com/v1";
 
 // Data source / database ids (overridable via env for other workspaces).
@@ -73,21 +77,44 @@ function normalizeCustomerId(raw: string): string {
 
 // ─── API helper ───────────────────────────────────────────────────────────────
 
-async function notionFetch(token: string, path: string, options: RequestInit = {}) {
+async function notionFetch(token: string, path: string, version: string, options: RequestInit = {}) {
   const res = await fetch(`${BASE}${path}`, {
     ...options,
     headers: {
       Authorization: `Bearer ${token}`,
-      "Notion-Version": NOTION_VERSION,
+      "Notion-Version": version,
       "Content-Type": "application/json",
       ...(options.headers ?? {}),
     },
   });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
-    throw new Error(`Notion API ${res.status}: ${body}`);
+    const err = new Error(`Notion API ${res.status}: ${body}`) as Error & { status?: number };
+    err.status = res.status;
+    throw err;
   }
   return res.json();
+}
+
+/**
+ * Query a page of stores. Tries the data-sources endpoint (2025-09-03) first —
+ * the spec's Stores id is a data-source id — and falls back to the legacy
+ * databases endpoint if the id turns out to be a classic database id.
+ */
+async function queryStoresPage(token: string, body: Record<string, unknown>) {
+  try {
+    return await notionFetch(token, `/data_sources/${STORES_DB_ID}/query`, NOTION_VERSION_DS, {
+      method: "POST", body: JSON.stringify(body),
+    });
+  } catch (err) {
+    const status = (err as { status?: number }).status;
+    if (status === 404 || status === 400) {
+      return await notionFetch(token, `/databases/${STORES_DB_ID}/query`, NOTION_VERSION_LEGACY, {
+        method: "POST", body: JSON.stringify(body),
+      });
+    }
+    throw err;
+  }
 }
 
 /** Query every store page (all statuses — we handle Active/non-Active in-code). */
@@ -97,10 +124,7 @@ async function queryAllStores(token: string): Promise<Array<Record<string, unkno
   do {
     const body: Record<string, unknown> = { page_size: 100 };
     if (cursor) body.start_cursor = cursor;
-    const data = await notionFetch(token, `/databases/${STORES_DB_ID}/query`, {
-      method: "POST",
-      body: JSON.stringify(body),
-    });
+    const data = await queryStoresPage(token, body);
     pages.push(...(data.results ?? []));
     cursor = data.has_more ? data.next_cursor : undefined;
   } while (cursor);
@@ -115,7 +139,7 @@ async function resolveClientName(
 ): Promise<string | null> {
   if (cache.has(clientId)) return cache.get(clientId)!;
   try {
-    const page = await notionFetch(token, `/pages/${clientId}`);
+    const page = await notionFetch(token, `/pages/${clientId}`, NOTION_VERSION_DS);
     const props = (page.properties ?? {}) as Record<string, Prop>;
     let name = "";
     for (const val of Object.values(props)) {

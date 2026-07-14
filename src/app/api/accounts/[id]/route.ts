@@ -35,6 +35,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     peerGroupId:        string | null;
     merchantCenterId:   string | null;
     // ─── Account Ownership System ───────────────────────────────────────────
+    archived:              boolean;
     ownerId:               string | null;
     ownershipEnabled:      boolean;
     primaryKpi:            "ROAS" | "CPA" | null;
@@ -76,6 +77,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       ...(body.peerGroupId        !== undefined && { peerGroupId:        body.peerGroupId }),
       ...(body.merchantCenterId   !== undefined && { merchantCenterId:   body.merchantCenterId }),
       // Ownership config
+      ...(body.archived              !== undefined && { archived:              body.archived }),
       ...(body.ownerId               !== undefined && { ownerId:               body.ownerId }),
       ...(body.ownershipEnabled      !== undefined && { ownershipEnabled:      body.ownershipEnabled }),
       ...(body.primaryKpi            !== undefined && { primaryKpi:            body.primaryKpi }),
@@ -114,6 +116,13 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
     prisma.accountSopProgress.deleteMany({ where: { accountId: id } }),
     prisma.actionRecommendation.deleteMany({ where: { accountId: id } }),
     prisma.constraintSnapshot.deleteMany({ where: { accountId: id } }),
+    // Ownership system children (escalations reference actions, so go first)
+    prisma.escalation.deleteMany({ where: { accountId: id } }),
+    prisma.ownershipAction.deleteMany({ where: { accountId: id } }),
+    prisma.review.deleteMany({ where: { accountId: id } }),
+    prisma.exception.deleteMany({ where: { accountId: id } }),
+    prisma.accountStatus.deleteMany({ where: { accountId: id } }),
+    prisma.accountSlackState.deleteMany({ where: { accountId: id } }),
     prisma.account.delete({ where: { id } }),
   ]);
 

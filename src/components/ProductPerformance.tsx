@@ -208,7 +208,7 @@ export function ProductPerformance({ accountId, currency }: { accountId: string;
       {/* Feed-only banner: MC catalog fallback — no Shopping data available */}
       {data.fromMerchantFeed && (
         <div style={{
-          background: "rgba(196,154,10,0.06)", border: "1px solid rgba(196,154,10,0.15)",
+          background: "rgba(51, 204, 128,0.06)", border: "1px solid rgba(51, 204, 128,0.15)",
           borderRadius: 8, padding: "10px 16px", marginBottom: 16,
           fontSize: 12, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 8,
         }}>
@@ -271,7 +271,7 @@ export function ProductPerformance({ accountId, currency }: { accountId: string;
       {/* Price data unavailable notice */}
       {priceDataUnavailable && (
         <div style={{
-          background: "rgba(196,154,10,0.05)", border: "1px solid rgba(196,154,10,0.12)",
+          background: "rgba(51, 204, 128,0.05)", border: "1px solid rgba(51, 204, 128,0.12)",
           borderRadius: 8, padding: "8px 14px", marginBottom: 14,
           fontSize: 11, color: "var(--text-faint)", display: "flex", alignItems: "center", gap: 8,
         }}>

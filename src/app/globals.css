@@ -1,57 +1,67 @@
 @import "tailwindcss";
 
+/* ─── Ecomtrada brand palette ──────────────────────────────────────────────────
+   Forest green base · emerald accent (#33CC80) · amber secondary (#F9C31F)
+   warm off-white light mode · sage muted tones. Recovered from the brand guide. */
+
 /* ─── Dark theme (default) ─────────────────────────────────────────────────── */
 :root {
-  --bg:            #0f0f0b;
-  --bg-deep:       #090905;
-  --surface:       #1d1d13;
-  --surface-hover: #242419;
-  --surface-2:     #292920;
-  --surface-3:     #333328;
-  --border:        rgba(196, 154, 10, 0.16);
-  --border-2:      rgba(196, 154, 10, 0.28);
-  --border-3:      rgba(196, 154, 10, 0.44);
-  --text:          #f2f0e6;
-  --text-2:        #ddd9c8;
-  --text-3:        #b0ac94;
-  --text-muted:    #8a8670;
-  --text-dim:      #635f4c;
-  --text-very-dim: #4a4638;
-  --text-faint:    #363328;
-  --header-bg:     rgba(15, 15, 11, 0.94);
-  --input-bg:      #131309;
-  --accent:        #c49a0a;
-  --accent-blue:   #c49a0a;
-  --accent-dim:    rgba(196, 154, 10, 0.10);
-  --btn-primary:   #a88500;
-  --btn-primary-hover: #c49a0a;
+  --bg:            #141f1a;
+  --bg-deep:       #0b130f;
+  --surface:       #1a2822;
+  --surface-hover: #21332a;
+  --surface-2:     #263a30;
+  --surface-3:     #31493c;
+  --border:        rgba(51, 204, 128, 0.15);
+  --border-2:      rgba(51, 204, 128, 0.26);
+  --border-3:      rgba(51, 204, 128, 0.42);
+  --text:          #f3f5f2;
+  --text-2:        #d4ddd7;
+  --text-3:        #a7b8ac;
+  --text-muted:    #82938a;
+  --text-dim:      #5f6f66;
+  --text-very-dim: #47554d;
+  --text-faint:    #35413a;
+  --header-bg:     rgba(15, 24, 20, 0.92);
+  --input-bg:      #0f1813;
+  --accent:        #33cc80;
+  --accent-blue:   #33cc80;
+  --accent-dim:    rgba(51, 204, 128, 0.12);
+  --accent-2:      #f9c31f;   /* amber secondary */
+  --accent-2-dim:  rgba(249, 195, 31, 0.14);
+  --danger:        #e5484d;
+  --btn-primary:   #29b36f;
+  --btn-primary-hover: #33cc80;
 }
 
 /* ─── Light theme ───────────────────────────────────────────────────────────── */
 :root.light {
-  --bg:            #f5f4ef;
-  --bg-deep:       #eceae2;
+  --bg:            #f5f4f0;
+  --bg-deep:       #e9ece8;
   --surface:       #ffffff;
-  --surface-hover: #fafaf7;
-  --surface-2:     #f2f1ea;
-  --surface-3:     #e8e7de;
-  --border:        rgba(100, 78, 4, 0.12);
-  --border-2:      rgba(100, 78, 4, 0.18);
-  --border-3:      rgba(100, 78, 4, 0.28);
-  --text:          #18180e;
-  --text-2:        #2e2c1c;
-  --text-3:        #524e38;
-  --text-muted:    #6e6a52;
-  --text-dim:      #908c74;
-  --text-very-dim: #a8a490;
-  --text-faint:    #bab6a4;
-  --header-bg:     rgba(245, 244, 239, 0.92);
-  --input-bg:      #fafaf7;
-  --accent:        #9a7808;
-  --accent-blue:   #9a7808;
-  --accent-dim:    rgba(154, 120, 8, 0.08);
-  --btn-primary:   #9a7808;
-  --btn-primary-hover: #b08808;
+  --surface-hover: #f6f9f6;
+  --surface-2:     #eef2ee;
+  --surface-3:     #e1e8e2;
+  --border:        rgba(38, 52, 43, 0.12);
+  --border-2:      rgba(38, 52, 43, 0.18);
+  --border-3:      rgba(38, 52, 43, 0.30);
+  --text:          #12211a;
+  --text-2:        #26342b;
+  --text-3:        #47564d;
+  --text-muted:    #687a70;
+  --text-dim:      #8a9990;
+  --text-very-dim: #a8b4ab;
+  --text-faint:    #c1cbc4;
+  --header-bg:     rgba(245, 244, 240, 0.92);
+  --input-bg:      #f6f9f6;
+  --accent:        #159a57;
+  --accent-blue:   #159a57;
+  --accent-dim:    rgba(21, 154, 87, 0.10);
+  --accent-2:      #d69a00;   /* amber secondary (deepened for contrast on light) */
+  --accent-2-dim:  rgba(214, 154, 0, 0.12);
+  --danger:        #cf3339;
+  --btn-primary:   #159a57;
+  --btn-primary-hover: #1eb968;
 }
 
 body {
@@ -62,10 +72,10 @@ body {
   -moz-osx-font-smoothing: grayscale;
   letter-spacing: 0em;
   font-size: 15px;
-  /* Subtle warm ambient glow */
+  /* Subtle emerald ambient glow */
   background-image:
-    radial-gradient(ellipse 80% 50% at 10% 0%, rgba(196, 154, 10, 0.05) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 40% at 90% 100%, rgba(160, 120, 8, 0.04) 0%, transparent 55%);
+    radial-gradient(ellipse 80% 50% at 10% 0%, rgba(51, 204, 128, 0.06) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 90% 100%, rgba(249, 195, 31, 0.04) 0%, transparent 55%);
   background-attachment: fixed;
 }
 
@@ -80,7 +90,7 @@ button, [role="button"] {
 
 /* ─── Selection ────────────────────────────────────────────────────────────── */
 ::selection {
-  background: rgba(196, 154, 10, 0.28);
+  background: rgba(51, 204, 128, 0.30);
   color: var(--text);
 }
 

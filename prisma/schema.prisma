@@ -97,6 +97,7 @@ model Account {
   notionPageId String? @unique // Notion Stores page id — sync key
   clientName   String? // resolved from the Notion "Client" relation
   active       Boolean @default(true) // false when the store leaves "Active" in Notion
+  archived     Boolean @default(false) // manual hide — wins over Notion sync; never re-activated by sync
 
   ownerId String? // -> Owner.id — seeded by hand (the AM who owns this account)
   owner   Owner?  @relation(fields: [ownerId], references: [id])
