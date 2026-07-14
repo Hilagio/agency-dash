@@ -2168,12 +2168,14 @@ export async function fetchOwnershipMetrics(customerId: string, orgId?: string):
 
 export interface MetricDailyRow { date: string; campaignId: string; campaignName: string; spend: number; impressions: number; clicks: number; conversions: number; conversionValue: number; }
 export interface ProductDailyRow { date: string; landingPageUrl: string; clicks: number; spend: number; conversions: number; conversionValue: number; }
+export interface ProductAdsDailyRow { date: string; itemId: string; title: string; spend: number; clicks: number; impressions: number; conversions: number; conversionValue: number; }
 export interface SearchTermDailyRow { date: string; campaignId: string; searchTerm: string; matchType: string; clicks: number; cost: number; conversions: number; conversionValue: number; }
 export interface ChangeEventRow { changedAt: Date; userEmail: string | null; campaignName: string | null; resourceType: string; changeType: string; oldValue: string | null; newValue: string | null; raw: string; dedupeKey: string; }
 
 export interface SpineData {
   metrics: MetricDailyRow[];
   products: ProductDailyRow[];
+  productAds: ProductAdsDailyRow[];
   searchTerms: SearchTermDailyRow[];
   changeEvents: ChangeEventRow[];
 }
@@ -2233,6 +2235,27 @@ export async function fetchSpineData(
     conversionValue: Number(r.metrics?.conversions_value ?? 0),
   })).filter(p => p.date && p.landingPageUrl);
 
+  // Product (shopping item) × day — what the ads DID per product (§4/§8).
+  // Omitting campaign fields lets GAQL auto-aggregate across Shopping + PMax.
+  const productAdsRows = await safeQuery(() => customer.query(`
+    SELECT segments.date, segments.product_item_id, segments.product_title,
+           metrics.cost_micros, metrics.clicks, metrics.impressions,
+           metrics.conversions, metrics.conversions_value
+    FROM shopping_performance_view
+    WHERE segments.date BETWEEN '${start}' AND '${end}'
+      AND (metrics.impressions > 0 OR metrics.cost_micros > 0)
+  `), "spine product_ads_daily", 60_000).catch(() => []);
+  const productAds: ProductAdsDailyRow[] = productAdsRows.map(r => ({
+    date: String(r.segments?.date ?? ""),
+    itemId: String(r.segments?.product_item_id ?? ""),
+    title: String(r.segments?.product_title ?? ""),
+    spend: Number(r.metrics?.cost_micros ?? 0) / 1_000_000,
+    clicks: Number(r.metrics?.clicks ?? 0),
+    impressions: Number(r.metrics?.impressions ?? 0),
+    conversions: Number(r.metrics?.conversions ?? 0),
+    conversionValue: Number(r.metrics?.conversions_value ?? 0),
+  })).filter(p => p.date && p.itemId);
+
   // Search term × day.
   const stRows = await safeQuery(() => customer.query(`
     SELECT segments.date, campaign.id, search_term_view.search_term,
@@ -2284,5 +2307,5 @@ export async function fetchSpineData(
     };
   }).filter(c => c.changedAt.getTime() > 0);
 
-  return { metrics, products, searchTerms, changeEvents };
+  return { metrics, products, productAds, searchTerms, changeEvents };
 }

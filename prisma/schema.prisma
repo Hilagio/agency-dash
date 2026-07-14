@@ -165,6 +165,11 @@ model Account {
   // Commerce (Shopify order feed — §4.3 reconciliation, POAS)
   shopify          ShopifyConnection?
   ordersDaily      OrderDaily[]
+
+  // Product-level (ad performance vs real sales, + catalog)
+  productAdsDaily   ProductAdsDaily[]
+  productSalesDaily ProductSalesDaily[]
+  products          Product[]
 }
 
 // ─── Diagnostic spine — one timeline per client (BUILD-SPEC §6) ────────────────
@@ -269,6 +274,57 @@ model OrderDaily {
 
   @@unique([accountId, date])
   @@index([accountId, date])
+}
+
+// ─── Product-level (BUILD-SPEC §4 concentration, §8 buyability) ────────────────
+// Two per-day series joined per product: what the ads did (Google Ads shopping)
+// vs what actually sold (Shopify line items). Plus the current Shopify catalog.
+
+model ProductAdsDaily {
+  id              String  @id @default(cuid())
+  accountId       String
+  account         Account @relation(fields: [accountId], references: [id])
+  date            String  // YYYY-MM-DD
+  itemId          String  // Google Ads product_item_id (Merchant offer id)
+  title           String  @default("")
+  spend           Float
+  clicks          Int
+  impressions     Int
+  conversions     Float
+  conversionValue Float
+
+  @@unique([accountId, date, itemId])
+  @@index([accountId, date])
+}
+
+model ProductSalesDaily {
+  id        String  @id @default(cuid())
+  accountId String
+  account   Account @relation(fields: [accountId], references: [id])
+  date      String  // YYYY-MM-DD
+  productId String  // Shopify product id
+  title     String  @default("")
+  units     Int
+  revenue   Float
+  currency  String  @default("EUR")
+
+  @@unique([accountId, date, productId])
+  @@index([accountId, date])
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  accountId   String
+  account     Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  externalId  String   // Shopify product gid
+  title       String   @default("")
+  productType String?
+  status      String?  // ACTIVE | ARCHIVED | DRAFT
+  price       Float?
+  sku         String?
+  updatedAt   DateTime @updatedAt
+
+  @@unique([accountId, externalId])
 }
 
 // ─── Account Ownership System ─────────────────────────────────────────────────

@@ -41,14 +41,16 @@ function summarize(
     failed: results.filter(r => r.error).map(r => ({ accountId: r.accountId, error: r.error })),
     totals: results.reduce(
       (t, r) => ({
-        metrics: t.metrics + r.metrics, products: t.products + r.products,
+        metrics: t.metrics + r.metrics, products: t.products + r.products, productAds: t.productAds + r.productAds,
         searchTerms: t.searchTerms + r.searchTerms, changeEvents: t.changeEvents + r.changeEvents,
       }),
-      { metrics: 0, products: 0, searchTerms: 0, changeEvents: 0 },
+      { metrics: 0, products: 0, productAds: 0, searchTerms: 0, changeEvents: 0 },
     ),
     orders: {
       connected: orders.filter(o => o.skipped !== "no-connection").length,
       orderDays: orders.reduce((s, o) => s + o.orderDays, 0),
+      productSaleRows: orders.reduce((s, o) => s + o.productSaleRows, 0),
+      catalogProducts: orders.reduce((s, o) => s + o.catalogProducts, 0),
       failed: orders.filter(o => o.error).map(o => ({ accountId: o.accountId, error: o.error })),
     },
   };

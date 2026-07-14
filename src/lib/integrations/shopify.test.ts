@@ -5,7 +5,8 @@
  */
 import crypto from "crypto";
 import {
-  verifyShopifyHmac, normalizeShopDomain, isValidShopDomain, aggregateOrdersByDay, type OrderNode,
+  verifyShopifyHmac, normalizeShopDomain, isValidShopDomain, aggregateOrdersByDay, aggregateProductSales,
+  type OrderNode, type SalesOrderNode,
 } from "./shopify";
 
 let fail = 0;
@@ -49,6 +50,25 @@ ok("test order excluded from revenue", Math.abs(agg[1].revenue - 50) < 1e-9);
 ok("currency carried through", agg[0].currency === "EUR");
 ok("days sorted ascending", agg[0].date < agg[1].date);
 ok("empty input → empty series", aggregateOrdersByDay([]).length === 0);
+
+// ─── Per-product sales aggregation ────────────────────────────────────────────
+const salesNodes: SalesOrderNode[] = [
+  { createdAt: "2026-07-10T08:00:00Z", lineItems: { nodes: [
+    { quantity: 2, product: { id: "gid://p/1", title: "Cursus Breda" }, discountedTotalSet: { shopMoney: { amount: "100.00", currencyCode: "EUR" } } },
+    { quantity: 1, product: { id: "gid://p/2", title: "Cursus Rotterdam" }, discountedTotalSet: { shopMoney: { amount: "60.00", currencyCode: "EUR" } } },
+  ] } },
+  { createdAt: "2026-07-10T18:00:00Z", lineItems: { nodes: [
+    { quantity: 3, product: { id: "gid://p/1", title: "Cursus Breda" }, discountedTotalSet: { shopMoney: { amount: "150.00", currencyCode: "EUR" } } },
+  ] } },
+  { createdAt: "2026-07-11T10:00:00Z", test: true, lineItems: { nodes: [
+    { quantity: 9, product: { id: "gid://p/1", title: "Cursus Breda" }, discountedTotalSet: { shopMoney: { amount: "999.00", currencyCode: "EUR" } } },
+  ] } }, // test order excluded
+];
+const sales = aggregateProductSales(salesNodes);
+const breda = sales.find(s => s.productId === "gid://p/1" && s.date === "2026-07-10");
+ok("aggregates per product per day", breda!.units === 5 && Math.abs(breda!.revenue - 250) < 1e-9);
+ok("keeps separate products distinct", sales.some(s => s.productId === "gid://p/2" && s.units === 1));
+ok("excludes test orders from product sales", !sales.some(s => s.date === "2026-07-11"));
 
 console.log(fail ? `\n${fail} FAILURE(S)` : "\nSHOPIFY: PASS — HMAC + allowlist + aggregation");
 process.exit(fail ? 1 : 0);

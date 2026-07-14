@@ -12,6 +12,7 @@ import { getAuthContext, unauthorized, forbidden } from "@/lib/auth";
 import { buildDiagnosis } from "@/lib/diagnostics/engine";
 import { computeAccountSignals } from "@/lib/diagnostics/run-signals";
 import { computeWindows, detectTrend } from "@/lib/diagnostics/windows";
+import { joinProducts, type AdsProductAgg, type SalesProductAgg } from "@/lib/diagnostics/products";
 import { shopifyAppConfig } from "@/lib/integrations/shopify";
 import type { Signal } from "@/lib/diagnostics/signals";
 
@@ -105,6 +106,33 @@ export async function GET(_req: Request, { params }: Params) {
   const windows = computeWindows([...perDay.values()], oRows, todayYmd, marginPct);
   const trend = detectTrend(windows);
 
+  // Product-level join (§4/§8): what the ads did per product vs what sold.
+  // Current window = last 7 days (ends yesterday), matching the signal window.
+  const prodStart = new Date(); prodStart.setUTCDate(prodStart.getUTCDate() - 7);
+  const prodStartYmd = prodStart.toISOString().slice(0, 10);
+  const prodEndYmd = new Date(Date.now() - 864e5).toISOString().slice(0, 10);
+  const [adRows, saleRows] = await Promise.all([
+    prisma.productAdsDaily.findMany({ where: { accountId: id, date: { gte: prodStartYmd, lte: prodEndYmd } } }),
+    prisma.productSalesDaily.findMany({ where: { accountId: id, date: { gte: prodStartYmd, lte: prodEndYmd } } }),
+  ]);
+  const adsAgg = new Map<string, AdsProductAgg>();
+  for (const r of adRows) {
+    const e = adsAgg.get(r.itemId) ?? { itemId: r.itemId, title: r.title, spend: 0, clicks: 0, conversions: 0, conversionValue: 0 };
+    e.spend += r.spend; e.clicks += r.clicks; e.conversions += r.conversions; e.conversionValue += r.conversionValue;
+    if (!e.title && r.title) e.title = r.title;
+    adsAgg.set(r.itemId, e);
+  }
+  const salesAgg = new Map<string, SalesProductAgg>();
+  for (const r of saleRows) {
+    const e = salesAgg.get(r.productId) ?? { productId: r.productId, title: r.title, units: 0, revenue: 0 };
+    e.units += r.units; e.revenue += r.revenue;
+    if (!e.title && r.title) e.title = r.title;
+    salesAgg.set(r.productId, e);
+  }
+  const products = (adsAgg.size || salesAgg.size)
+    ? joinProducts([...adsAgg.values()], [...salesAgg.values()], marginPct)
+    : null;
+
   // Shopify connection status — drives the connect card on the workspace.
   const conn = await prisma.shopifyConnection.findUnique({
     where: { accountId: id }, select: { shopDomain: true, lastSyncAt: true },
@@ -131,5 +159,5 @@ export async function GET(_req: Request, { params }: Params) {
     grossMarginPct: diag?.grossMarginPct ?? account.grossMarginPercent ?? null,
   });
 
-  return NextResponse.json({ diagnosis, windows, trend, shopify, hasData: !!diag });
+  return NextResponse.json({ diagnosis, windows, trend, shopify, products, hasData: !!diag });
 }

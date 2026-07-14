@@ -28,7 +28,8 @@ export function shopifyAppConfig(): ShopifyAppConfig | null {
     apiSecret,
     // read_orders (last 60 days) is enough to start; read_all_orders needs
     // Shopify's protected-customer-data grant and unlocks full history.
-    scopes: process.env.SHOPIFY_SCOPES ?? "read_orders",
+    // read_products powers the catalog + per-product sales join.
+    scopes: process.env.SHOPIFY_SCOPES ?? "read_orders,read_products",
     apiVersion: process.env.SHOPIFY_API_VERSION ?? "2025-07",
   };
 }
@@ -171,4 +172,142 @@ export async function fetchOrdersByDay(
     cursor = orders.pageInfo.endCursor;
   }
   return aggregateOrdersByDay(nodes);
+}
+
+// ─── Per-product sales (order line items) ──────────────────────────────────────
+
+export interface SalesOrderNode {
+  createdAt: string;
+  test?: boolean;
+  lineItems?: { nodes: Array<{
+    quantity?: number;
+    product?: { id?: string; title?: string } | null;
+    discountedTotalSet?: { shopMoney?: { amount?: string; currencyCode?: string } };
+  }> };
+}
+export interface ProductSaleDayAgg { date: string; productId: string; title: string; units: number; revenue: number; currency: string; }
+
+/** Aggregate order line items into a per-day, per-product sales series (pure). */
+export function aggregateProductSales(nodes: SalesOrderNode[]): ProductSaleDayAgg[] {
+  const map = new Map<string, ProductSaleDayAgg>();
+  for (const n of nodes) {
+    if (n.test) continue;
+    const date = n.createdAt.slice(0, 10);
+    for (const li of n.lineItems?.nodes ?? []) {
+      const productId = li.product?.id ?? "unknown";
+      const title = li.product?.title ?? "Unknown / deleted product";
+      const units = Number(li.quantity ?? 0);
+      const amount = Number(li.discountedTotalSet?.shopMoney?.amount ?? 0);
+      const currency = li.discountedTotalSet?.shopMoney?.currencyCode ?? "EUR";
+      const key = `${date}|${productId}`;
+      const e = map.get(key) ?? { date, productId, title, units: 0, revenue: 0, currency };
+      e.units += Number.isFinite(units) ? units : 0;
+      e.revenue += Number.isFinite(amount) ? amount : 0;
+      map.set(key, e);
+    }
+  }
+  return [...map.values()].sort((a, b) => a.date.localeCompare(b.date) || b.revenue - a.revenue);
+}
+
+const PRODUCT_SALES_QUERY = `
+query($cursor: String, $q: String!) {
+  orders(first: 100, after: $cursor, query: $q, sortKey: CREATED_AT) {
+    pageInfo { hasNextPage endCursor }
+    nodes {
+      createdAt
+      test
+      lineItems(first: 100) {
+        nodes {
+          quantity
+          product { id title }
+          discountedTotalSet { shopMoney { amount currencyCode } }
+        }
+      }
+    }
+  }
+}`;
+
+/** Per-day, per-product sales between startDate and endDate (inclusive). */
+export async function fetchProductSalesByDay(
+  shop: string, accessToken: string, startDate: string, endDate: string, apiVersion = "2025-07",
+): Promise<ProductSaleDayAgg[]> {
+  if (!isValidShopDomain(shop)) throw new Error(`invalid shop domain: ${shop}`);
+  const q = `created_at:>='${startDate}T00:00:00Z' created_at:<='${endDate}T23:59:59Z'`;
+  const url = `https://${shop}/admin/api/${apiVersion}/graphql.json`;
+
+  const nodes: SalesOrderNode[] = [];
+  let cursor: string | null = null;
+  for (let page = 0; page < 60; page++) {
+    const res: Response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Shopify-Access-Token": accessToken },
+      body: JSON.stringify({ query: PRODUCT_SALES_QUERY, variables: { cursor, q } }),
+    });
+    if (!res.ok) throw new Error(`Shopify product-sales query failed (${res.status}): ${await res.text().catch(() => "")}`);
+    const body = await res.json() as {
+      data?: { orders?: { pageInfo: { hasNextPage: boolean; endCursor: string | null }; nodes: SalesOrderNode[] } };
+      errors?: unknown;
+    };
+    if (body.errors) throw new Error(`Shopify GraphQL errors: ${JSON.stringify(body.errors)}`);
+    const orders = body.data?.orders;
+    if (!orders) break;
+    nodes.push(...orders.nodes);
+    if (!orders.pageInfo.hasNextPage) break;
+    cursor = orders.pageInfo.endCursor;
+  }
+  return aggregateProductSales(nodes);
+}
+
+// ─── Catalog ───────────────────────────────────────────────────────────────────
+
+export interface CatalogProduct { externalId: string; title: string; productType: string | null; status: string | null; price: number | null; sku: string | null; }
+
+const CATALOG_QUERY = `
+query($cursor: String) {
+  products(first: 100, after: $cursor) {
+    pageInfo { hasNextPage endCursor }
+    nodes {
+      id title productType status
+      variants(first: 1) { nodes { price sku } }
+    }
+  }
+}`;
+
+/** Fetch the current product catalog (id, title, type, status, first-variant price/sku). */
+export async function fetchProductCatalog(
+  shop: string, accessToken: string, apiVersion = "2025-07",
+): Promise<CatalogProduct[]> {
+  if (!isValidShopDomain(shop)) throw new Error(`invalid shop domain: ${shop}`);
+  const url = `https://${shop}/admin/api/${apiVersion}/graphql.json`;
+
+  const out: CatalogProduct[] = [];
+  let cursor: string | null = null;
+  for (let page = 0; page < 60; page++) {
+    const res: Response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Shopify-Access-Token": accessToken },
+      body: JSON.stringify({ query: CATALOG_QUERY, variables: { cursor } }),
+    });
+    if (!res.ok) throw new Error(`Shopify catalog query failed (${res.status}): ${await res.text().catch(() => "")}`);
+    const body = await res.json() as {
+      data?: { products?: { pageInfo: { hasNextPage: boolean; endCursor: string | null }; nodes: Array<{
+        id: string; title?: string; productType?: string; status?: string;
+        variants?: { nodes: Array<{ price?: string; sku?: string }> };
+      }> } };
+      errors?: unknown;
+    };
+    if (body.errors) throw new Error(`Shopify GraphQL errors: ${JSON.stringify(body.errors)}`);
+    const products = body.data?.products;
+    if (!products) break;
+    for (const p of products.nodes) {
+      const v = p.variants?.nodes?.[0];
+      out.push({
+        externalId: p.id, title: p.title ?? "", productType: p.productType ?? null, status: p.status ?? null,
+        price: v?.price != null ? Number(v.price) : null, sku: v?.sku ?? null,
+      });
+    }
+    if (!products.pageInfo.hasNextPage) break;
+    cursor = products.pageInfo.endCursor;
+  }
+  return out;
 }

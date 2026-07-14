@@ -35,6 +35,16 @@ interface WindowRow {
 }
 interface Trend { acuteDrop: boolean; spendSpike: boolean; note: string | null; }
 interface ShopifyStatus { appConfigured: boolean; connected: boolean; shopDomain: string | null; lastSyncAt: string | null; }
+interface JoinedProduct {
+  key: string; title: string; matched: boolean;
+  spend: number; clicks: number; adConversions: number;
+  units: number; revenue: number; poas: number | null; spendNoSales: boolean;
+}
+interface ProductDiagnostic {
+  products: JoinedProduct[];
+  concentration: { topShare: number; top3Share: number; productCount: number; breadth: "concentrated" | "balanced" | "broad" | "unknown" };
+  spendNoSalesCount: number; spendNoSalesTotal: number;
+}
 
 const STATUS_COLOR: Record<Status, string> = { green: "var(--accent)", yellow: "var(--accent-2)", red: "var(--danger)" };
 const STATUS_LABEL: Record<Status, string> = { green: "Under control", yellow: "Action needed", red: "Immediate action" };
@@ -56,6 +66,7 @@ export default function DiagnosePage() {
   const [windows, setWindows] = useState<WindowRow[]>([]);
   const [trend, setTrend] = useState<Trend | null>(null);
   const [shopify, setShopify] = useState<ShopifyStatus | null>(null);
+  const [products, setProducts] = useState<ProductDiagnostic | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [shopDomain, setShopDomain] = useState("");
@@ -70,6 +81,7 @@ export default function DiagnosePage() {
       setWindows(j.windows ?? []);
       setTrend(j.trend ?? null);
       setShopify(j.shopify ?? null);
+      setProducts(j.products ?? null);
     } catch { setError(true); }
     setLoading(false);
   }
@@ -287,6 +299,59 @@ export default function DiagnosePage() {
                 </div>
                 <div style={{ fontSize: 11.5, color: "var(--text-muted)", margin: "8px 4px 0" }}>
                   Each window ends yesterday. POAS and Orders need Shopify connected. &ldquo;partial&rdquo; = history doesn&rsquo;t yet cover the full window — back-fill 90 days to fill it in.
+                </div>
+              </>
+            )}
+
+            {/* Product breakdown — ad spend vs real sales (§4/§8) */}
+            {products && products.products.length > 0 && (
+              <>
+                <SectionTitle>By product — what the ads did vs what actually sold</SectionTitle>
+                {products.spendNoSalesCount > 0 && (
+                  <div style={{
+                    marginBottom: 10, padding: "10px 14px", borderRadius: 10, fontSize: 12.5, fontWeight: 500,
+                    color: "var(--danger)", background: "color-mix(in srgb, var(--danger) 10%, transparent)",
+                    border: "1px solid color-mix(in srgb, var(--danger) 30%, transparent)",
+                    display: "flex", alignItems: "center", gap: 8,
+                  }}>
+                    <AlertTriangle size={14} style={{ flexShrink: 0 }} />
+                    {fmtMoney(products.spendNoSalesTotal)} of ad spend went to {products.spendNoSalesCount} product{products.spendNoSalesCount === 1 ? "" : "s"} that sold nothing — check availability before touching budgets.
+                  </div>
+                )}
+                <div style={{ ...card, overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5, minWidth: 560 }}>
+                    <thead>
+                      <tr style={{ color: "var(--text-muted)", textAlign: "right" }}>
+                        <th style={{ textAlign: "left", padding: "10px 14px", fontWeight: 600 }}>Product</th>
+                        <th style={{ padding: "10px 8px", fontWeight: 600 }}>Spend</th>
+                        <th style={{ padding: "10px 8px", fontWeight: 600 }}>Clicks</th>
+                        <th style={{ padding: "10px 8px", fontWeight: 600 }}>Units sold</th>
+                        <th style={{ padding: "10px 8px", fontWeight: 600 }}>Revenue</th>
+                        <th style={{ padding: "10px 14px", fontWeight: 600 }}>POAS</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {products.products.slice(0, 12).map(p => (
+                        <tr key={p.key} style={{ borderTop: "1px solid var(--border)", textAlign: "right", color: "var(--text-2)" }}>
+                          <td style={{ textAlign: "left", padding: "9px 14px", fontWeight: 600, color: "var(--text)", maxWidth: 240, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {p.spendNoSales && <span title="ad spend, zero sales" style={{ color: "var(--danger)", marginRight: 6 }}>●</span>}
+                            {p.title}
+                          </td>
+                          <td style={{ padding: "9px 8px", fontVariantNumeric: "tabular-nums" }}>{p.spend > 0 ? fmtMoney(p.spend) : "—"}</td>
+                          <td style={{ padding: "9px 8px", fontVariantNumeric: "tabular-nums" }}>{p.clicks || "—"}</td>
+                          <td style={{ padding: "9px 8px", fontVariantNumeric: "tabular-nums", color: p.spendNoSales ? "var(--danger)" : "var(--text-2)" }}>{p.units}</td>
+                          <td style={{ padding: "9px 8px", fontVariantNumeric: "tabular-nums" }}>{p.revenue > 0 ? fmtMoney(p.revenue) : "—"}</td>
+                          <td style={{ padding: "9px 14px", fontVariantNumeric: "tabular-nums", color: p.poas != null ? (p.poas < 1 ? "var(--danger)" : "var(--accent)") : "var(--text-dim)" }}>{p.poas != null ? p.poas.toFixed(2) : "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div style={{ fontSize: 11.5, color: "var(--text-muted)", margin: "8px 4px 0" }}>
+                  {products.concentration.breadth !== "unknown" && (
+                    <>Revenue is <b>{products.concentration.breadth}</b> — top product is {Math.round(products.concentration.topShare * 100)}% of sales, top 3 are {Math.round(products.concentration.top3Share * 100)}%. </>
+                  )}
+                  Ads matched to sales by product name; units &amp; revenue need Shopify connected. Last 7 days.
                 </div>
               </>
             )}

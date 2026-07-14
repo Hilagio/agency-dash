@@ -6,7 +6,9 @@
  * Ads conversions. Idempotent: the trailing window is rewritten each run.
  */
 import { prisma } from "@/lib/db";
-import { fetchOrdersByDay, shopifyAppConfig } from "@/lib/integrations/shopify";
+import {
+  fetchOrdersByDay, fetchProductSalesByDay, fetchProductCatalog, shopifyAppConfig,
+} from "@/lib/integrations/shopify";
 
 function daysAgo(n: number): string {
   const d = new Date();
@@ -18,21 +20,27 @@ export interface OrderIngestResult {
   accountId: string;
   days: number;
   orderDays: number;
+  productSaleRows: number;
+  catalogProducts: number;
   skipped?: "no-connection";
   error?: string;
 }
 
-/** Ingest the Shopify order series for one account over the trailing window. */
+/** Ingest the Shopify order + product series + catalog for one account. */
 export async function ingestAccountOrders(accountId: string, days = 14): Promise<OrderIngestResult> {
   const conn = await prisma.shopifyConnection.findUnique({ where: { accountId } });
-  if (!conn) return { accountId, days, orderDays: 0, skipped: "no-connection" };
+  if (!conn) return { accountId, days, orderDays: 0, productSaleRows: 0, catalogProducts: 0, skipped: "no-connection" };
 
   const start = daysAgo(days);
   const end = daysAgo(1);
   const apiVersion = shopifyAppConfig()?.apiVersion;
 
   try {
-    const series = await fetchOrdersByDay(conn.shopDomain, conn.accessToken, start, end, apiVersion);
+    const [series, productSales, catalog] = await Promise.all([
+      fetchOrdersByDay(conn.shopDomain, conn.accessToken, start, end, apiVersion),
+      fetchProductSalesByDay(conn.shopDomain, conn.accessToken, start, end, apiVersion),
+      fetchProductCatalog(conn.shopDomain, conn.accessToken, apiVersion).catch(() => []),
+    ]);
     const inWindow = { accountId, date: { gte: start, lte: end } };
 
     await prisma.$transaction([
@@ -42,12 +50,27 @@ export async function ingestAccountOrders(accountId: string, days = 14): Promise
             data: series.map(s => ({ accountId, date: s.date, orders: s.orders, revenue: s.revenue, currency: s.currency })),
           })]
         : []),
+      prisma.productSalesDaily.deleteMany({ where: inWindow }),
+      ...(productSales.length
+        ? [prisma.productSalesDaily.createMany({
+            data: productSales.map(s => ({ accountId, date: s.date, productId: s.productId, title: s.title, units: s.units, revenue: s.revenue, currency: s.currency })),
+          })]
+        : []),
       prisma.shopifyConnection.update({ where: { accountId }, data: { lastSyncAt: new Date() } }),
     ]);
 
-    return { accountId, days, orderDays: series.length };
+    // Catalog is a current-state upsert (not windowed).
+    for (const p of catalog) {
+      await prisma.product.upsert({
+        where: { accountId_externalId: { accountId, externalId: p.externalId } },
+        create: { accountId, externalId: p.externalId, title: p.title, productType: p.productType, status: p.status, price: p.price, sku: p.sku },
+        update: { title: p.title, productType: p.productType, status: p.status, price: p.price, sku: p.sku },
+      });
+    }
+
+    return { accountId, days, orderDays: series.length, productSaleRows: productSales.length, catalogProducts: catalog.length };
   } catch (err) {
-    return { accountId, days, orderDays: 0, error: err instanceof Error ? err.message : String(err) };
+    return { accountId, days, orderDays: 0, productSaleRows: 0, catalogProducts: 0, error: err instanceof Error ? err.message : String(err) };
   }
 }
 
