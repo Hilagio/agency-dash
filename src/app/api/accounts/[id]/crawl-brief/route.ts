@@ -68,7 +68,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   // Ask Claude to extract the brief
   const client = new Anthropic();
   const message = await client.messages.create({
-    model:      "claude-sonnet-4-6",
+    model:      "claude-sonnet-5",
     max_tokens: 600,
     messages: [{
       role:    "user",

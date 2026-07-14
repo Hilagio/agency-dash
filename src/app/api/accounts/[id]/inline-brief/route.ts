@@ -188,7 +188,7 @@ Write this structure exactly:
     async start(controller) {
       try {
         const aiStream = await client.messages.stream({
-          model:      "claude-sonnet-4-6",
+          model:      "claude-sonnet-5",
           max_tokens: 1200,
           system:     systemPrompt,
           messages:   [{ role: "user", content: userPrompt }],

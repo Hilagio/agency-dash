@@ -353,7 +353,7 @@ ${isLeadGen ? `- LEAD GEN RULES: Never mention ROAS, product feeds, Shopping, or
     async start(controller) {
       try {
         const aiStream = await client.messages.stream({
-          model: "claude-sonnet-4-6",
+          model: "claude-opus-4-8",
           max_tokens: 1200,
           system: isLeadGen
             ? `You are the senior lead generation Google Ads specialist at a Dutch performance agency. You have deep expertise in B2B and B2C lead gen campaigns — search intent mapping, CPL optimisation, lead quality vs volume trade-offs, offline conversion tracking, CRM integration, and funnel handoff.

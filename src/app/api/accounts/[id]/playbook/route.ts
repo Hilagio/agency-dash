@@ -167,7 +167,7 @@ Write the playbook in this exact structure (use markdown):
     async start(controller) {
       try {
         const anthropicStream = await client.messages.stream({
-          model: "claude-sonnet-4-6",
+          model: "claude-opus-4-8",
           max_tokens: 2048,
           system: systemPrompt,
           messages: [{ role: "user", content: userPrompt }],

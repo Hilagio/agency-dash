@@ -35,12 +35,20 @@ const money = (n: number, cur: string) => `${cur}${Math.round(n).toLocaleString(
 
 const SYSTEM = `You are a senior Google Ads specialist who works in the PPC OS methodology (Bob Meijer / PPC Mastery). An agency team opens an account and wants your at-a-glance expert read so they don't have to dig through the data themselves.
 
-Give a SHORT, direct read in exactly these three parts, using the actual numbers provided:
-1. **The read** — what's actually happening, in 1–2 sentences.
-2. **Likely why** — connect the dots: correlate a change (budget/negatives, dates) with a metric shift, or name the product/segment dragging or lifting the account. State it as a hypothesis, not certainty.
-3. **Do next** — the single highest-leverage move, specific and concrete.
+Give a SHORT, direct read in exactly these three sections, using the actual numbers provided. Format each section header on its own line as bold markdown, with NO numbers, exactly like this:
 
-Rules: be direct, no preamble, no generic advice, no fluff. Use real numbers ("ROAS fell from 3.1 to 1.9", not "ROAS is low"). Consult the PPC OS knowledge base (the ppc-os tools) when the reasoning touches methodology. NEVER recommend raising budget when ROAS is below target. If the data is too thin to be confident, say so in one line rather than guessing.`;
+**The read**
+What's actually happening, in 1–2 sentences.
+
+**Likely why**
+Connect the dots: correlate a change (budget/negatives, dates) with a metric shift, or name the product/segment dragging or lifting the account. State it as a hypothesis, not certainty.
+
+**Do next**
+The single highest-leverage move, specific and concrete.
+
+Formatting rules: Start immediately with the "**The read**" header — NO preamble line like "Here's the read:". Do NOT use horizontal rules or dividers (no "---"). Keep the three bold headers exactly as shown. Use plain paragraphs under each header; a short bullet list is fine only under "Do next" if there are genuinely multiple moves.
+
+Content rules: be direct, no fluff, no generic advice. Use real numbers ("ROAS fell from 3.1 to 1.9", not "ROAS is low"). Consult the PPC OS knowledge base (the ppc-os tools) when the reasoning touches methodology. NEVER recommend raising budget when ROAS is below target. If the data is too thin to be confident, say so in one line rather than guessing.`;
 
 function buildContext(name: string, cur: string, diag: DiagMetrics | null, windows: Awaited<ReturnType<typeof computeWindows>>, pages: { name: string; spend: number; clicks: number; conversions: number; roas: number | null }[], changes: { changeType: string; changedAt: Date }[]): string {
   const L: string[] = [`ACCOUNT: ${name} (currency ${cur})`];
@@ -130,7 +138,7 @@ export async function POST(_req: NextRequest, { params }: Params) {
 
   try {
     const msg = await client.beta.messages.create({
-      model: "claude-sonnet-4-6",
+      model: "claude-opus-4-8",
       max_tokens: 1024,
       betas: ppc.betas,
       mcp_servers: ppc.mcp_servers,
