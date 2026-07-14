@@ -10,15 +10,22 @@ export interface DigestEntry {
   name: string;
   clientName?: string | null;
   ownerName?: string | null;
-  status: OwnershipStatus;
+  /** null = the account could not be evaluated this run (shown, never dropped). */
+  status: OwnershipStatus | null;
   reasons: RuleResult[];
+  /** Stale-data or failure note, e.g. "couldn't refresh — showing status from 12 Jul". */
+  note?: string;
 }
 
-const EMOJI: Record<OwnershipStatus, string> = { green: "🟢", yellow: "🟡", red: "🔴" };
-const LABEL: Record<OwnershipStatus, string> = {
-  green: "Under control", yellow: "Action needed", red: "Immediate action",
+// "unknown" (status === null) is a presentation-only bucket for accounts we
+// couldn't evaluate — it never touches the DB status enum.
+type DisplayStatus = OwnershipStatus | "unknown";
+const EMOJI: Record<DisplayStatus, string> = { green: "🟢", yellow: "🟡", red: "🔴", unknown: "⚪" };
+const LABEL: Record<DisplayStatus, string> = {
+  green: "Under control", yellow: "Action needed", red: "Immediate action", unknown: "Couldn't evaluate",
 };
-const RANK: Record<OwnershipStatus, number> = { red: 0, yellow: 1, green: 2 };
+const RANK: Record<DisplayStatus, number> = { red: 0, yellow: 1, unknown: 2, green: 3 };
+const disp = (s: OwnershipStatus | null): DisplayStatus => s ?? "unknown";
 
 /** Format a single date as e.g. "13 Jul 2026" (UTC, locale-independent). */
 function formatDate(d: Date): string {
@@ -36,26 +43,31 @@ function ownerTag(name?: string | null): string {
  * triggered reasons, green is a single line.
  */
 export function composeShadowDigest(entries: DigestEntry[], now: Date): string {
-  const counts = { green: 0, yellow: 0, red: 0 };
-  for (const e of entries) counts[e.status]++;
+  const counts: Record<DisplayStatus, number> = { green: 0, yellow: 0, red: 0, unknown: 0 };
+  for (const e of entries) counts[disp(e.status)]++;
+
+  const summary =
+    `${EMOJI.green} ${counts.green}  ${EMOJI.yellow} ${counts.yellow}  ${EMOJI.red} ${counts.red}` +
+    (counts.unknown ? `  ${EMOJI.unknown} ${counts.unknown}` : "");
 
   const header = [
     `🕵️ *Ownership shadow digest* — ${formatDate(now)}`,
-    `Pilot: ${entries.length} account${entries.length === 1 ? "" : "s"} · ` +
-      `${EMOJI.green} ${counts.green}  ${EMOJI.yellow} ${counts.yellow}  ${EMOJI.red} ${counts.red}`,
+    `Pilot: ${entries.length} account${entries.length === 1 ? "" : "s"} · ${summary}`,
   ].join("\n");
 
   if (entries.length === 0) {
     return header + "\n\n_No accounts have ownership enabled yet._";
   }
 
-  const sorted = [...entries].sort((a, b) => RANK[a.status] - RANK[b.status] || a.name.localeCompare(b.name));
+  const sorted = [...entries].sort((a, b) => RANK[disp(a.status)] - RANK[disp(b.status)] || a.name.localeCompare(b.name));
 
   const lines: string[] = [];
   for (const e of sorted) {
+    const d = disp(e.status);
     const client = e.clientName ? ` (${e.clientName})` : "";
-    lines.push(`\n${EMOJI[e.status]} *${e.name}*${client} — ${LABEL[e.status]}${ownerTag(e.ownerName)}`);
-    if (e.status !== "green") {
+    const note = e.note ? ` · _${e.note}_` : "";
+    lines.push(`\n${EMOJI[d]} *${e.name}*${client} — ${LABEL[d]}${ownerTag(e.ownerName)}${note}`);
+    if (d !== "green") {
       for (const r of e.reasons) lines.push(`    • ${r.message}`);
     }
   }

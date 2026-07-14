@@ -8,7 +8,7 @@ import { prisma } from "@/lib/db";
 import { fetchOwnershipMetrics } from "@/lib/integrations/google-ads";
 import { postSlackMessage } from "@/lib/integrations/slack";
 import { evaluateAccount } from "./rules";
-import { AccountConfig, EvaluationResult, OwnershipMetrics, RuleId } from "./types";
+import { AccountConfig, EvaluationResult, OwnershipMetrics, OwnershipStatus, RuleId, RuleResult } from "./types";
 import { composeShadowDigest, DigestEntry } from "./digest";
 
 const SHADOW_CHANNEL_ID = process.env.OWNERSHIP_SHADOW_CHANNEL_ID ?? "C0BGYLDP941";
@@ -57,17 +57,31 @@ export interface AccountRunResult {
   name: string;
   clientName: string | null;
   ownerName: string | null;
-  evaluation: EvaluationResult;
+  /** null = could not evaluate and there is no prior status to fall back to. */
+  evaluation: EvaluationResult | null;
+  /** Set when this run could not refresh live data (stale fallback or hard failure). */
+  note?: string;
+  /** True when the shown status is a fallback from a prior run, not a fresh evaluation. */
+  degraded?: boolean;
 }
 
-/** Compute + persist status for one account. Returns null on fetch failure. */
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const shortDate = (d: Date) => `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}`;
+
+/**
+ * Compute + persist status for one account. Never returns null: on a fetch
+ * failure it falls back to the last good status (marked stale) or, if there is
+ * none, reports "couldn't evaluate" — so an account is never silently dropped
+ * from the dashboard.
+ */
 export async function computeAccountStatus(
   account: AccountRow,
   now: Date = new Date(),
-): Promise<AccountRunResult | null> {
+): Promise<AccountRunResult> {
+  const base = { accountId: account.id, name: account.name, clientName: account.clientName ?? null, ownerName: account.owner?.name ?? null };
   try {
-    const base = await fetchOwnershipMetrics(account.googleAdsId, account.organizationId);
-    const metrics = await mergeDbState(account.id, base, now);
+    const metricsBase = await fetchOwnershipMetrics(account.googleAdsId, account.organizationId);
+    const metrics = await mergeDbState(account.id, metricsBase, now);
     const evaluation = evaluateAccount(accountToConfig(account), metrics, now);
 
     await prisma.accountStatus.create({
@@ -80,16 +94,28 @@ export async function computeAccountStatus(
       },
     });
 
-    return {
-      accountId: account.id,
-      name: account.name,
-      clientName: account.clientName ?? null,
-      ownerName: account.owner?.name ?? null,
-      evaluation,
-    };
+    return { ...base, evaluation };
   } catch (err) {
-    console.warn(`[ownership] compute failed for ${account.name}:`, err instanceof Error ? err.message : err);
-    return null;
+    const reason = err instanceof Error ? err.message : String(err);
+    console.warn(`[ownership] compute failed for ${account.name}:`, reason);
+
+    // Never blank: fall back to the last good status if we have one.
+    const prior = await prisma.accountStatus.findFirst({
+      where: { accountId: account.id },
+      orderBy: { computedAt: "desc" },
+    }).catch(() => null);
+
+    if (prior) {
+      let reasons: RuleResult[] = [];
+      try { reasons = JSON.parse(prior.reasons) as RuleResult[]; } catch { /* ignore */ }
+      return {
+        ...base,
+        evaluation: { status: prior.status as OwnershipStatus, reasons, sufficient: false, hasCurrentReview: false },
+        note: `couldn't refresh — showing status from ${shortDate(prior.computedAt)}`,
+        degraded: true,
+      };
+    }
+    return { ...base, evaluation: null, note: `couldn't evaluate — ${reason}`, degraded: true };
   }
 }
 
@@ -115,16 +141,17 @@ export async function runShadowDigest(organizationId: string, now: Date = new Da
   // Sequential — same OOM caution as score-all on Railway.
   for (const account of accounts) {
     const r = await computeAccountStatus(account, now);
-    if (r) results.push(r);
-    else failed.push(account.name);
+    results.push(r);
+    if (r.degraded) failed.push(account.name);
   }
 
   const entries: DigestEntry[] = results.map(r => ({
     name: r.name,
     clientName: r.clientName,
     ownerName: r.ownerName,
-    status: r.evaluation.status,
-    reasons: r.evaluation.reasons,
+    status: r.evaluation?.status ?? null, // null → couldn't evaluate
+    reasons: r.evaluation?.reasons ?? [],
+    note: r.note,
   }));
 
   const slack = await prisma.slackConnection.findUnique({ where: { organizationId } });
@@ -135,5 +162,5 @@ export async function runShadowDigest(organizationId: string, now: Date = new Da
     posted = true;
   }
 
-  return { evaluated: results.length, failed, posted, channel: SHADOW_CHANNEL_ID };
+  return { evaluated: results.length - failed.length, failed, posted, channel: SHADOW_CHANNEL_ID };
 }
