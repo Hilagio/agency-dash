@@ -122,6 +122,30 @@ export default function DiagnosePage() {
     } finally { setSyncing(false); }
   }
 
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshMsg, setRefreshMsg] = useState<string | null>(null);
+  async function refreshData() {
+    setRefreshing(true); setRefreshMsg(null);
+    try {
+      const r = await fetch(`/api/diagnostics/account/${id}/refresh`, {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ days: 30 }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || j.error) {
+        setRefreshMsg(`Couldn't pull data: ${j.error ?? `HTTP ${r.status}`}`);
+      } else if (!j.ok) {
+        setRefreshMsg("Google Ads returned no data for this window (is the account active?).");
+      } else {
+        setRefreshMsg(`Pulled ${j.pulled?.metricDays ?? 0} metric-days, ${j.pulled?.productRows ?? 0} product rows · Shopify: ${j.pulled?.shopify ?? "—"}.`);
+      }
+      await load();
+    } catch (e) {
+      setRefreshMsg(e instanceof Error ? e.message : "Network error");
+    } finally { setRefreshing(false); }
+  }
+
   const shopifyMsg = search.get("shopify");
   const shopifyReason = search.get("reason");
 
@@ -132,17 +156,28 @@ export default function DiagnosePage() {
         position: "sticky", top: 0, zIndex: 9, background: "var(--header-bg)", backdropFilter: "blur(12px)", borderBottom: "1px solid var(--border)",
       }}>
         <Link href="/" style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--text-3)", textDecoration: "none", fontSize: 13, fontWeight: 500 }}>
-          <ArrowLeft size={15} /> Today
+          <ArrowLeft size={15} /> Portfolio
         </Link>
-        <div style={{ marginLeft: "auto" }}>
+        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>
+          <button onClick={refreshData} disabled={refreshing} style={{
+            display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600,
+            color: "#fff", border: "none", background: "var(--btn-primary, var(--accent))", padding: "7px 14px", borderRadius: 8, cursor: refreshing ? "default" : "pointer",
+          }}>
+            {refreshing ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />} {refreshing ? "Pulling…" : "Refresh data"}
+          </button>
           <Link href={`/accounts/${id}`} style={{
             display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, textDecoration: "none",
             color: "var(--text-3)", border: "1px solid var(--border-2)", background: "var(--surface)", padding: "7px 13px", borderRadius: 8,
           }}>
-            Full account analysis <ArrowUpRight size={13} />
+            Full analysis <ArrowUpRight size={13} />
           </Link>
         </div>
       </nav>
+      {refreshMsg && (
+        <div style={{ maxWidth: 900, margin: "0 auto", padding: "10px 26px 0" }}>
+          <div style={{ fontSize: 12.5, padding: "9px 13px", borderRadius: 10, background: "var(--surface-2)", border: "1px solid var(--border-2)", color: "var(--text-3)" }}>{refreshMsg}</div>
+        </div>
+      )}
 
       <main style={{ maxWidth: 900, margin: "0 auto", padding: "26px 26px 90px" }}>
         {loading ? (
