@@ -262,6 +262,28 @@ export async function fetchProductSalesByDay(
   return aggregateProductSales(nodes);
 }
 
+// ─── Health probe ──────────────────────────────────────────────────────────────
+
+export interface ShopifyPing { ok: boolean; shopName?: string; error?: string; }
+
+/** Cheapest possible live check that a store's token still works. */
+export async function pingShopify(shop: string, accessToken: string, apiVersion = "2025-07"): Promise<ShopifyPing> {
+  if (!isValidShopDomain(shop)) return { ok: false, error: "invalid shop domain" };
+  try {
+    const res = await fetch(`https://${shop}/admin/api/${apiVersion}/graphql.json`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Shopify-Access-Token": accessToken },
+      body: JSON.stringify({ query: "{ shop { name } }" }),
+    });
+    if (!res.ok) return { ok: false, error: `HTTP ${res.status}${res.status === 401 ? " — token revoked/expired" : ""}` };
+    const body = await res.json() as { data?: { shop?: { name?: string } }; errors?: unknown };
+    if (body.errors) return { ok: false, error: JSON.stringify(body.errors).slice(0, 200) };
+    return { ok: true, shopName: body.data?.shop?.name };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
 // ─── Catalog ───────────────────────────────────────────────────────────────────
 
 export interface CatalogProduct { externalId: string; title: string; productType: string | null; status: string | null; price: number | null; sku: string | null; }
