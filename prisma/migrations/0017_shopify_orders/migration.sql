@@ -1,9 +1,8 @@
 -- Shopify connection + the order feed (BUILD-SPEC §4.3/§8 reconciliation, Phase 8).
--- ShopifyConnection holds the per-account OAuth access token; OrderDaily is the
--- daily order/revenue time-series used to reconcile Google Ads conversions
--- against real orders and to compute POAS.
+-- Idempotent (IF NOT EXISTS) so it re-runs cleanly after a partially-applied /
+-- interrupted first attempt (P3009 recovery).
 
-CREATE TABLE "ShopifyConnection" (
+CREATE TABLE IF NOT EXISTS "ShopifyConnection" (
   "accountId"   TEXT NOT NULL PRIMARY KEY,
   "shopDomain"  TEXT NOT NULL,
   "accessToken" TEXT NOT NULL,
@@ -13,9 +12,9 @@ CREATE TABLE "ShopifyConnection" (
   "updatedAt"   TIMESTAMP(3) NOT NULL,
   CONSTRAINT "ShopifyConnection_accountId_fkey" FOREIGN KEY ("accountId") REFERENCES "Account"("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
-CREATE UNIQUE INDEX "ShopifyConnection_shopDomain_key" ON "ShopifyConnection"("shopDomain");
+CREATE UNIQUE INDEX IF NOT EXISTS "ShopifyConnection_shopDomain_key" ON "ShopifyConnection"("shopDomain");
 
-CREATE TABLE "OrderDaily" (
+CREATE TABLE IF NOT EXISTS "OrderDaily" (
   "id"         TEXT NOT NULL PRIMARY KEY,
   "accountId"  TEXT NOT NULL,
   "date"       TEXT NOT NULL,
@@ -24,5 +23,5 @@ CREATE TABLE "OrderDaily" (
   "currency"   TEXT NOT NULL DEFAULT 'EUR',
   CONSTRAINT "OrderDaily_accountId_fkey" FOREIGN KEY ("accountId") REFERENCES "Account"("id") ON DELETE RESTRICT ON UPDATE CASCADE
 );
-CREATE UNIQUE INDEX "OrderDaily_accountId_date_key" ON "OrderDaily"("accountId", "date");
-CREATE INDEX "OrderDaily_accountId_date_idx" ON "OrderDaily"("accountId", "date");
+CREATE UNIQUE INDEX IF NOT EXISTS "OrderDaily_accountId_date_key" ON "OrderDaily"("accountId", "date");
+CREATE INDEX IF NOT EXISTS "OrderDaily_accountId_date_idx" ON "OrderDaily"("accountId", "date");
