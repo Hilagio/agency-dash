@@ -8,7 +8,8 @@
  */
 import { prisma } from "@/lib/db";
 import {
-  fetchSpineData, type MetricDailyRow, type ProductDailyRow, type SearchTermDailyRow,
+  fetchSpineData, describeGoogleAdsError,
+  type MetricDailyRow, type ProductDailyRow, type ProductAdsDailyRow, type SearchTermDailyRow,
 } from "@/lib/integrations/google-ads";
 
 /** YYYY-MM-DD, `n` days before today (UTC). */
@@ -36,6 +37,7 @@ export interface IngestResult {
   accountId: string;
   metrics: number;
   products: number;
+  productAds: number;
   searchTerms: number;
   changeEvents: number;
   error?: string;
@@ -56,6 +58,8 @@ export async function ingestAccountSpine(
       ["spend", "impressions", "clicks", "conversions", "conversionValue"]);
     const products = dedupe<ProductDailyRow>(data.products, p => `${p.date}|${p.landingPageUrl}`,
       ["clicks", "spend", "conversions", "conversionValue"]);
+    const productAds = dedupe<ProductAdsDailyRow>(data.productAds, p => `${p.date}|${p.itemId}`,
+      ["spend", "clicks", "impressions", "conversions", "conversionValue"]);
     const searchTerms = dedupe<SearchTermDailyRow>(data.searchTerms, s => `${s.date}|${s.campaignId}|${s.searchTerm}`,
       ["clicks", "cost", "conversions", "conversionValue"]);
 
@@ -65,10 +69,12 @@ export async function ingestAccountSpine(
     await prisma.$transaction([
       prisma.metricDaily.deleteMany({ where: inWindow }),
       prisma.metricProductDaily.deleteMany({ where: inWindow }),
+      prisma.productAdsDaily.deleteMany({ where: inWindow }),
       prisma.searchTermDaily.deleteMany({ where: inWindow }),
     ]);
     if (metrics.length)     await prisma.metricDaily.createMany({ data: metrics.map(m => ({ accountId: account.id, ...m })) });
     if (products.length)    await prisma.metricProductDaily.createMany({ data: products.map(p => ({ accountId: account.id, ...p })) });
+    if (productAds.length)  await prisma.productAdsDaily.createMany({ data: productAds.map(p => ({ accountId: account.id, ...p })) });
     if (searchTerms.length) await prisma.searchTermDaily.createMany({ data: searchTerms.map(s => ({ accountId: account.id, ...s })) });
 
     // Change events are immutable once logged — add new ones, skip seen.
@@ -83,13 +89,14 @@ export async function ingestAccountSpine(
       accountId: account.id,
       metrics: metrics.length,
       products: products.length,
+      productAds: productAds.length,
       searchTerms: searchTerms.length,
       changeEvents: data.changeEvents.length,
     };
   } catch (err) {
     return {
-      accountId: account.id, metrics: 0, products: 0, searchTerms: 0, changeEvents: 0,
-      error: err instanceof Error ? err.message : String(err),
+      accountId: account.id, metrics: 0, products: 0, productAds: 0, searchTerms: 0, changeEvents: 0,
+      error: describeGoogleAdsError(err),
     };
   }
 }

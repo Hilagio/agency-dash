@@ -14,6 +14,7 @@ import type { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
 import { getAuthContext, unauthorized } from "@/lib/auth";
 import { ingestOrgSpine } from "@/lib/diagnostics/ingest";
+import { ingestOrgOrders } from "@/lib/diagnostics/orders";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -31,17 +32,27 @@ async function readDays(req: NextRequest): Promise<number> {
   return Number.isFinite(d) && d > 0 && d <= 365 ? Math.floor(d) : 14;
 }
 
-function summarize(results: Awaited<ReturnType<typeof ingestOrgSpine>>) {
+function summarize(
+  results: Awaited<ReturnType<typeof ingestOrgSpine>>,
+  orders: Awaited<ReturnType<typeof ingestOrgOrders>>,
+) {
   return {
     accounts: results.length,
     failed: results.filter(r => r.error).map(r => ({ accountId: r.accountId, error: r.error })),
     totals: results.reduce(
       (t, r) => ({
-        metrics: t.metrics + r.metrics, products: t.products + r.products,
+        metrics: t.metrics + r.metrics, products: t.products + r.products, productAds: t.productAds + r.productAds,
         searchTerms: t.searchTerms + r.searchTerms, changeEvents: t.changeEvents + r.changeEvents,
       }),
-      { metrics: 0, products: 0, searchTerms: 0, changeEvents: 0 },
+      { metrics: 0, products: 0, productAds: 0, searchTerms: 0, changeEvents: 0 },
     ),
+    orders: {
+      connected: orders.filter(o => o.skipped !== "no-connection").length,
+      orderDays: orders.reduce((s, o) => s + o.orderDays, 0),
+      productSaleRows: orders.reduce((s, o) => s + o.productSaleRows, 0),
+      catalogProducts: orders.reduce((s, o) => s + o.catalogProducts, 0),
+      failed: orders.filter(o => o.error).map(o => ({ accountId: o.accountId, error: o.error })),
+    },
   };
 }
 
@@ -51,12 +62,15 @@ export async function POST(req: NextRequest) {
   if (isCronRequest(req)) {
     const orgs = await prisma.oAuthCredential.findMany({ select: { organizationId: true } });
     const results = [];
-    for (const o of orgs) results.push({ organizationId: o.organizationId, ...summarize(await ingestOrgSpine(o.organizationId, days)) });
+    for (const o of orgs) {
+      const [spine, orders] = [await ingestOrgSpine(o.organizationId, days), await ingestOrgOrders(o.organizationId, days)];
+      results.push({ organizationId: o.organizationId, ...summarize(spine, orders) });
+    }
     return NextResponse.json({ mode: "cron", days, orgs: results.length, results });
   }
 
   const ctx = await getAuthContext();
   if (!ctx) return unauthorized();
-  const results = await ingestOrgSpine(ctx.orgId, days);
-  return NextResponse.json({ mode: "manual", days, ...summarize(results) });
+  const [spine, orders] = [await ingestOrgSpine(ctx.orgId, days), await ingestOrgOrders(ctx.orgId, days)];
+  return NextResponse.json({ mode: "manual", days, ...summarize(spine, orders) });
 }

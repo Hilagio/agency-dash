@@ -1701,6 +1701,72 @@ export async function isGoogleAdsConfigured(orgId?: string): Promise<boolean> {
   return false;
 }
 
+// ─── Live health check ────────────────────────────────────────────────────────
+// isGoogleAdsConfigured only checks that credentials EXIST. pingGoogleAds proves
+// the whole chain actually works: listAccessibleCustomers is the cheapest real
+// call and validates client_id/secret + developer_token + refresh_token in one
+// round trip, without touching any account data.
+
+/**
+ * Turn a Google Ads error into a readable string. The google-ads-api library
+ * throws GoogleAdsFailure-shaped objects (not Error instances), so a naive
+ * String(err) yields "[object Object]" and hides the real cause. This digs the
+ * actual message(s) out.
+ */
+export function describeGoogleAdsError(err: unknown): string {
+  if (err instanceof Error && err.message) return err.message;
+  if (err && typeof err === "object") {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const e = err as any;
+    const arr = e.errors ?? e.failure?.errors;
+    if (Array.isArray(arr) && arr.length) {
+      const msgs = arr
+        .map((x: { message?: string; error_code?: unknown }) => x?.message ?? (x?.error_code ? JSON.stringify(x.error_code) : ""))
+        .filter(Boolean);
+      if (msgs.length) return msgs.join("; ");
+    }
+    if (typeof e.message === "string" && e.message) return e.message;
+    try { const s = JSON.stringify(e); if (s && s !== "{}") return s.slice(0, 500); } catch { /* ignore */ }
+  }
+  return String(err);
+}
+
+export interface GoogleAdsPing {
+  ok: boolean;
+  accountCount?: number;
+  sample?: string[];
+  error?: string;
+  hint?: string;
+}
+
+/** Map a raw Google Ads error to a plain-language cause the user can act on. */
+function pingHint(msg: string): string | undefined {
+  const m = msg.toLowerCase();
+  if (m.includes("invalid_grant")) return "The OAuth refresh token is expired or revoked — reconnect at /api/auth/google-ads.";
+  if (m.includes("developer") && m.includes("token")) return "Developer token problem — check it's approved (basic/standard access) and correct.";
+  if (m.includes("permission") || m.includes("unauthenticated") || m.includes("login-customer-id") || m.includes("login_customer_id"))
+    return "Auth/permission issue — verify the login-customer-id (MCP) and that the token has access to the accounts.";
+  if (m.includes("not found") || m.includes("version")) return "API version issue — the pinned Google Ads API version may need a bump.";
+  if (m.includes("quota") || m.includes("rate")) return "Rate/quota limit — retry shortly.";
+  return undefined;
+}
+
+export async function pingGoogleAds(orgId?: string): Promise<GoogleAdsPing> {
+  try {
+    if (!(process.env.GOOGLE_ADS_DEVELOPER_TOKEN && process.env.GOOGLE_ADS_CLIENT_ID && process.env.GOOGLE_ADS_CLIENT_SECRET)) {
+      return { ok: false, error: "Google Ads app credentials not set", hint: "Set GOOGLE_ADS_DEVELOPER_TOKEN / CLIENT_ID / CLIENT_SECRET." };
+    }
+    const client = getClient();
+    const refreshToken = await getRefreshToken(orgId);
+    const res = await client.listAccessibleCustomers(refreshToken) as { resource_names?: string[] };
+    const names = res?.resource_names ?? [];
+    return { ok: true, accountCount: names.length, sample: names.slice(0, 3) };
+  } catch (err) {
+    const error = describeGoogleAdsError(err);
+    return { ok: false, error, hint: pingHint(error) };
+  }
+}
+
 // ─── Persona Data ─────────────────────────────────────────────────────────────
 
 export interface GeoRow {
@@ -2168,12 +2234,14 @@ export async function fetchOwnershipMetrics(customerId: string, orgId?: string):
 
 export interface MetricDailyRow { date: string; campaignId: string; campaignName: string; spend: number; impressions: number; clicks: number; conversions: number; conversionValue: number; }
 export interface ProductDailyRow { date: string; landingPageUrl: string; clicks: number; spend: number; conversions: number; conversionValue: number; }
+export interface ProductAdsDailyRow { date: string; itemId: string; title: string; spend: number; clicks: number; impressions: number; conversions: number; conversionValue: number; }
 export interface SearchTermDailyRow { date: string; campaignId: string; searchTerm: string; matchType: string; clicks: number; cost: number; conversions: number; conversionValue: number; }
 export interface ChangeEventRow { changedAt: Date; userEmail: string | null; campaignName: string | null; resourceType: string; changeType: string; oldValue: string | null; newValue: string | null; raw: string; dedupeKey: string; }
 
 export interface SpineData {
   metrics: MetricDailyRow[];
   products: ProductDailyRow[];
+  productAds: ProductAdsDailyRow[];
   searchTerms: SearchTermDailyRow[];
   changeEvents: ChangeEventRow[];
 }
@@ -2233,6 +2301,27 @@ export async function fetchSpineData(
     conversionValue: Number(r.metrics?.conversions_value ?? 0),
   })).filter(p => p.date && p.landingPageUrl);
 
+  // Product (shopping item) × day — what the ads DID per product (§4/§8).
+  // Omitting campaign fields lets GAQL auto-aggregate across Shopping + PMax.
+  const productAdsRows = await safeQuery(() => customer.query(`
+    SELECT segments.date, segments.product_item_id, segments.product_title,
+           metrics.cost_micros, metrics.clicks, metrics.impressions,
+           metrics.conversions, metrics.conversions_value
+    FROM shopping_performance_view
+    WHERE segments.date BETWEEN '${start}' AND '${end}'
+      AND (metrics.impressions > 0 OR metrics.cost_micros > 0)
+  `), "spine product_ads_daily", 60_000).catch(() => []);
+  const productAds: ProductAdsDailyRow[] = productAdsRows.map(r => ({
+    date: String(r.segments?.date ?? ""),
+    itemId: String(r.segments?.product_item_id ?? ""),
+    title: String(r.segments?.product_title ?? ""),
+    spend: Number(r.metrics?.cost_micros ?? 0) / 1_000_000,
+    clicks: Number(r.metrics?.clicks ?? 0),
+    impressions: Number(r.metrics?.impressions ?? 0),
+    conversions: Number(r.metrics?.conversions ?? 0),
+    conversionValue: Number(r.metrics?.conversions_value ?? 0),
+  })).filter(p => p.date && p.itemId);
+
   // Search term × day.
   const stRows = await safeQuery(() => customer.query(`
     SELECT segments.date, campaign.id, search_term_view.search_term,
@@ -2284,5 +2373,5 @@ export async function fetchSpineData(
     };
   }).filter(c => c.changedAt.getTime() > 0);
 
-  return { metrics, products, searchTerms, changeEvents };
+  return { metrics, products, productAds, searchTerms, changeEvents };
 }

@@ -161,6 +161,15 @@ model Account {
   productDaily     MetricProductDaily[]
   searchTermsDaily SearchTermDaily[]
   changeEvents     ChangeEvent[]
+
+  // Commerce (Shopify order feed — §4.3 reconciliation, POAS)
+  shopify          ShopifyConnection?
+  ordersDaily      OrderDaily[]
+
+  // Product-level (ad performance vs real sales, + catalog)
+  productAdsDaily   ProductAdsDaily[]
+  productSalesDaily ProductSalesDaily[]
+  products          Product[]
 }
 
 // ─── Diagnostic spine — one timeline per client (BUILD-SPEC §6) ────────────────
@@ -236,6 +245,88 @@ model ChangeEvent {
   dedupeKey    String   @unique // stable hash so re-runs upsert instead of duplicating
 
   @@index([accountId, changedAt])
+}
+
+// ─── Commerce (Shopify) — the order feed (BUILD-SPEC §4.3/§8, Phase 8) ─────────
+// Shopify is the source of truth for actual orders. OrderDaily is reconciled
+// against Google Ads conversions; when they don't match, the system stops
+// trusting the ads number (§4.3). Revenue drives POAS alongside account margin.
+
+model ShopifyConnection {
+  accountId   String    @id
+  account     Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  shopDomain  String    @unique // e.g. "acme.myshopify.com"
+  accessToken String    // OAuth (or custom-app) Admin API token — secret
+  scope       String    @default("")
+  installedAt DateTime  @default(now())
+  lastSyncAt  DateTime?
+  updatedAt   DateTime  @updatedAt
+}
+
+model OrderDaily {
+  id        String @id @default(cuid())
+  accountId String
+  account   Account @relation(fields: [accountId], references: [id])
+  date      String  // YYYY-MM-DD (account tz)
+  orders    Int
+  revenue   Float
+  currency  String  @default("EUR")
+
+  @@unique([accountId, date])
+  @@index([accountId, date])
+}
+
+// ─── Product-level (BUILD-SPEC §4 concentration, §8 buyability) ────────────────
+// Two per-day series joined per product: what the ads did (Google Ads shopping)
+// vs what actually sold (Shopify line items). Plus the current Shopify catalog.
+
+model ProductAdsDaily {
+  id              String  @id @default(cuid())
+  accountId       String
+  account         Account @relation(fields: [accountId], references: [id])
+  date            String  // YYYY-MM-DD
+  itemId          String  // Google Ads product_item_id (Merchant offer id)
+  title           String  @default("")
+  spend           Float
+  clicks          Int
+  impressions     Int
+  conversions     Float
+  conversionValue Float
+
+  @@unique([accountId, date, itemId])
+  @@index([accountId, date])
+}
+
+model ProductSalesDaily {
+  id           String  @id @default(cuid())
+  accountId    String
+  account      Account @relation(fields: [accountId], references: [id])
+  date         String  // YYYY-MM-DD
+  productId    String  // Shopify product id
+  variantId    String  @default("") // Shopify variant id ("" = product-level / unknown)
+  title        String  @default("")
+  variantTitle String  @default("")
+  units        Int
+  revenue      Float
+  currency     String  @default("EUR")
+
+  @@unique([accountId, date, productId, variantId])
+  @@index([accountId, date])
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  accountId   String
+  account     Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  externalId  String   // Shopify product gid
+  title       String   @default("")
+  productType String?
+  status      String?  // ACTIVE | ARCHIVED | DRAFT
+  price       Float?
+  sku         String?
+  updatedAt   DateTime @updatedAt
+
+  @@unique([accountId, externalId])
 }
 
 // ─── Account Ownership System ─────────────────────────────────────────────────

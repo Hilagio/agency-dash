@@ -145,6 +145,11 @@ export async function runShadowDigest(organizationId: string, now: Date = new Da
     if (r.degraded) failed.push(account.name);
   }
 
+  // Resolve the public origin so the digest can deep-link into the diagnostic
+  // workspace. RAILWAY_PUBLIC_DOMAIN is auto-injected in production (AGENTS.md).
+  const domain = process.env.RAILWAY_PUBLIC_DOMAIN ?? process.env.APP_BASE_URL;
+  const baseUrl = domain ? (domain.startsWith("http") ? domain : `https://${domain}`) : null;
+
   const entries: DigestEntry[] = results.map(r => ({
     name: r.name,
     clientName: r.clientName,
@@ -152,6 +157,7 @@ export async function runShadowDigest(organizationId: string, now: Date = new Da
     status: r.evaluation?.status ?? null, // null → couldn't evaluate
     reasons: r.evaluation?.reasons ?? [],
     note: r.note,
+    link: baseUrl ? `${baseUrl}/diagnose/${r.accountId}` : undefined,
   }));
 
   const slack = await prisma.slackConnection.findUnique({ where: { organizationId } });
