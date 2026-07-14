@@ -60,11 +60,17 @@ export interface DiagnosisInput {
   currency?: string;
   /** Present only when an order feed exists; drives the tracking check. */
   reconciliation?: { adsConversions: number; actualOrders: number } | null;
+  /** Real orders + revenue from Shopify over the window (§4.3). */
+  commerce?: { orders: number; revenue: number; currency?: string } | null;
+  /** Gross margin (0–1) for POAS = gross profit ÷ spend (§4, POAS not ROAS). */
+  grossMarginPct?: number | null;
 }
 
 export const BOUNDARY_LINE =
   "This points at facts and questions. It does not name the cause — that's the specialist's call.";
 
+const CURRENCY_SYMBOL: Record<string, string> = { EUR: "€", USD: "$", GBP: "£" };
+const symbolOf = (code: string) => CURRENCY_SYMBOL[code] ?? `${code} `;
 const num = (n: number) => n.toLocaleString("en-GB", { maximumFractionDigits: n < 10 ? 2 : 0 });
 const money = (n: number, cur: string) => `${cur}${Math.round(n).toLocaleString("en-GB")}`;
 const pct = (x: number) => `${x > 0 ? "+" : ""}${Math.round(x * 100)}%`;
@@ -103,6 +109,31 @@ function buildFacts(input: DiagnosisInput): DiagnosisFact[] {
     facts.push({
       label: "Conversions", value: num(w.conversions),
       context: `${num(w.conversions / w.days)}/day`, tone: "neutral",
+    });
+
+    // POAS — the number that actually matters (§4). Needs revenue + margin.
+    const revenue = input.commerce?.revenue;
+    const margin = input.grossMarginPct;
+    if (revenue != null && margin != null && margin > 0 && w.spend > 0) {
+      const poas = (revenue * margin) / w.spend;
+      const breakEven = 1 / margin;
+      facts.push({
+        label: "POAS", value: poas.toFixed(2),
+        context: `break-even ${breakEven.toFixed(2)} (margin ${Math.round(margin * 100)}%)`,
+        tone: poas < breakEven ? "bad" : "good",
+      });
+    }
+  }
+
+  // Real orders from Shopify (§4.3) — the source of truth.
+  if (input.commerce) {
+    facts.push({
+      label: "Orders (Shopify)", value: num(input.commerce.orders),
+      context: w && w.days > 0 ? `${num(input.commerce.orders / w.days)}/day` : "real orders", tone: "neutral",
+    });
+    facts.push({
+      label: "Revenue (Shopify)", value: money(input.commerce.revenue, input.commerce.currency ? symbolOf(input.commerce.currency) : cur),
+      context: "actual store revenue", tone: "neutral",
     });
   }
 

@@ -9,11 +9,11 @@
  * the page. From here you can jump to the full analysis if you want to dig.
  */
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft, ArrowUpRight, Loader2, CheckCircle2, AlertTriangle, HelpCircle,
-  ShieldCheck, Sprout, XCircle, MinusCircle, TrendingUp,
+  ShieldCheck, Sprout, XCircle, MinusCircle, TrendingUp, ShoppingBag, RefreshCw,
 } from "lucide-react";
 
 type Status = "green" | "yellow" | "red";
@@ -28,6 +28,13 @@ interface Diagnosis {
   facts: Fact[]; observations: Observation[]; checksRun: CheckRun[];
   questions: Question[]; opportunities: { text: string }[]; boundary: string;
 }
+interface WindowRow {
+  days: number; coverageDays: number; partial: boolean;
+  spend: number; conversions: number; roas: number | null;
+  orders: number | null; revenue: number | null; poas: number | null;
+}
+interface Trend { acuteDrop: boolean; spendSpike: boolean; note: string | null; }
+interface ShopifyStatus { appConfigured: boolean; connected: boolean; shopDomain: string | null; lastSyncAt: string | null; }
 
 const STATUS_COLOR: Record<Status, string> = { green: "var(--accent)", yellow: "var(--accent-2)", red: "var(--danger)" };
 const STATUS_LABEL: Record<Status, string> = { green: "Under control", yellow: "Action needed", red: "Immediate action" };
@@ -44,21 +51,50 @@ function CheckIcon({ result }: { result: CheckRun["result"] }) {
 
 export default function DiagnosePage() {
   const { id } = useParams<{ id: string }>();
+  const search = useSearchParams();
   const [diag, setDiag] = useState<Diagnosis | null>(null);
+  const [windows, setWindows] = useState<WindowRow[]>([]);
+  const [trend, setTrend] = useState<Trend | null>(null);
+  const [shopify, setShopify] = useState<ShopifyStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [shopDomain, setShopDomain] = useState("");
+  const [syncing, setSyncing] = useState(false);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const r = await fetch(`/api/diagnostics/account/${id}`, { credentials: "include" });
-        if (!r.ok) { setError(true); setLoading(false); return; }
-        const j = await r.json();
-        setDiag(j.diagnosis);
-      } catch { setError(true); }
-      setLoading(false);
-    })();
-  }, [id]);
+  async function load() {
+    try {
+      const r = await fetch(`/api/diagnostics/account/${id}`, { credentials: "include" });
+      if (!r.ok) { setError(true); setLoading(false); return; }
+      const j = await r.json();
+      setDiag(j.diagnosis);
+      setWindows(j.windows ?? []);
+      setTrend(j.trend ?? null);
+      setShopify(j.shopify ?? null);
+    } catch { setError(true); }
+    setLoading(false);
+  }
+
+  useEffect(() => { load(); }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function connectShopify() {
+    const shop = shopDomain.trim();
+    if (!shop) return;
+    window.location.href = `/api/shopify/install?accountId=${encodeURIComponent(id)}&shop=${encodeURIComponent(shop)}`;
+  }
+  async function syncNow() {
+    setSyncing(true);
+    try {
+      await fetch(`/api/shopify/sync`, {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accountId: id, days: 60 }),
+      });
+      await load();
+    } finally { setSyncing(false); }
+  }
+
+  const shopifyMsg = search.get("shopify");
+  const shopifyReason = search.get("reason");
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)" }}>
@@ -137,6 +173,60 @@ export default function DiagnosePage() {
               </div>
             )}
 
+            {/* Shopify connect / status banner */}
+            {shopifyMsg === "connected" && (
+              <div style={{ marginTop: 12, padding: "11px 15px", borderRadius: 12, fontSize: 13, color: "var(--accent)", background: "var(--accent-dim)", border: "1px solid color-mix(in srgb, var(--accent) 30%, transparent)", display: "flex", alignItems: "center", gap: 9 }}>
+                <CheckCircle2 size={15} /> Shopify connected. Click <b>Sync orders</b> below to pull the order history.
+              </div>
+            )}
+            {shopifyMsg === "error" && (
+              <div style={{ marginTop: 12, padding: "11px 15px", borderRadius: 12, fontSize: 13, color: "var(--danger)", background: "color-mix(in srgb, var(--danger) 10%, transparent)", border: "1px solid color-mix(in srgb, var(--danger) 30%, transparent)", display: "flex", alignItems: "center", gap: 9 }}>
+                <XCircle size={15} /> Shopify connection failed{shopifyReason ? `: ${shopifyReason}` : ""}.
+              </div>
+            )}
+
+            {/* Commerce (Shopify order feed) */}
+            {shopify && (
+              <div style={{ ...card, padding: "15px 17px", marginTop: 12 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: shopify.connected ? 4 : 10 }}>
+                  <ShoppingBag size={16} style={{ color: shopify.connected ? "var(--accent)" : "var(--text-dim)" }} />
+                  <span style={{ fontSize: 13.5, fontWeight: 700 }}>Order feed (Shopify)</span>
+                  {shopify.connected && (
+                    <span style={{ marginLeft: "auto", fontSize: 12, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 8 }}>
+                      {shopify.shopDomain} · synced {shopify.lastSyncAt ? new Date(shopify.lastSyncAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "never"}
+                      <button onClick={syncNow} disabled={syncing} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 600, color: "var(--text-2)", background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 7, padding: "5px 10px", cursor: syncing ? "default" : "pointer" }}>
+                        {syncing ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />} Sync orders
+                      </button>
+                    </span>
+                  )}
+                </div>
+                {!shopify.connected && (
+                  shopify.appConfigured ? (
+                    <>
+                      <div style={{ fontSize: 12.5, color: "var(--text-3)", marginBottom: 10 }}>
+                        Connect this client&rsquo;s store to reconcile real orders against Google Ads and unlock POAS. Enter their <code>.myshopify.com</code> domain.
+                      </div>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <input
+                          value={shopDomain} onChange={e => setShopDomain(e.target.value)}
+                          onKeyDown={e => e.key === "Enter" && connectShopify()}
+                          placeholder="acme.myshopify.com"
+                          style={{ flex: 1, fontSize: 13, padding: "9px 12px", borderRadius: 8, border: "1px solid var(--border-2)", background: "var(--surface-2)", color: "var(--text)" }}
+                        />
+                        <button onClick={connectShopify} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600, color: "#fff", background: "var(--btn-primary, var(--accent))", border: "none", borderRadius: 8, padding: "9px 16px", cursor: "pointer" }}>
+                          Connect <ArrowUpRight size={14} />
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>
+                      The Shopify app isn&rsquo;t set up yet. Add <code>SHOPIFY_API_KEY</code> and <code>SHOPIFY_API_SECRET</code> on Railway, then the connect button appears here.
+                    </div>
+                  )
+                )}
+              </div>
+            )}
+
             {/* Facts */}
             {diag.facts.length > 0 && (
               <>
@@ -149,6 +239,54 @@ export default function DiagnosePage() {
                       {f.context && <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginTop: 3 }}>{f.context}</div>}
                     </div>
                   ))}
+                </div>
+              </>
+            )}
+
+            {/* Multi-window trend (§4) */}
+            {windows.some(w => w.spend > 0) && (
+              <>
+                <SectionTitle>Across windows — spotting drift vs the baseline</SectionTitle>
+                {trend?.note && (
+                  <div style={{
+                    marginBottom: 10, padding: "10px 14px", borderRadius: 10, fontSize: 12.5, fontWeight: 500,
+                    color: "var(--accent-2)", background: "color-mix(in srgb, var(--accent-2) 12%, transparent)",
+                    border: "1px solid color-mix(in srgb, var(--accent-2) 30%, transparent)",
+                    display: "flex", alignItems: "center", gap: 8,
+                  }}>
+                    <AlertTriangle size={14} style={{ flexShrink: 0 }} /> {trend.note}
+                  </div>
+                )}
+                <div style={{ ...card, overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 520 }}>
+                    <thead>
+                      <tr style={{ color: "var(--text-muted)", textAlign: "right" }}>
+                        <th style={{ textAlign: "left", padding: "11px 14px", fontWeight: 600 }}>Window</th>
+                        <th style={{ padding: "11px 10px", fontWeight: 600 }}>Spend</th>
+                        <th style={{ padding: "11px 10px", fontWeight: 600 }}>ROAS</th>
+                        <th style={{ padding: "11px 10px", fontWeight: 600 }}>POAS</th>
+                        <th style={{ padding: "11px 10px", fontWeight: 600 }}>Orders</th>
+                        <th style={{ padding: "11px 14px", fontWeight: 600 }}>Conv.</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {windows.map((w, i) => (
+                        <tr key={w.days} style={{ borderTop: "1px solid var(--border)", textAlign: "right", color: w.partial ? "var(--text-dim)" : "var(--text-2)" }}>
+                          <td style={{ textAlign: "left", padding: "10px 14px", fontWeight: 600, color: w.partial ? "var(--text-dim)" : "var(--text)" }}>
+                            {w.days}d{w.partial ? <span title={`only ${w.coverageDays} days of history`} style={{ fontSize: 10, color: "var(--text-dim)", marginLeft: 6 }}>partial</span> : null}
+                          </td>
+                          <td style={{ padding: "10px 10px", fontVariantNumeric: "tabular-nums" }}>{fmtMoney(w.spend)}</td>
+                          <td style={{ padding: "10px 10px", fontVariantNumeric: "tabular-nums", color: cmpColor(w.roas, windows, i, "roas") }}>{w.roas != null ? w.roas.toFixed(2) : "—"}</td>
+                          <td style={{ padding: "10px 10px", fontVariantNumeric: "tabular-nums", color: cmpColor(w.poas, windows, i, "poas") }}>{w.poas != null ? w.poas.toFixed(2) : "—"}</td>
+                          <td style={{ padding: "10px 10px", fontVariantNumeric: "tabular-nums" }}>{w.orders != null ? w.orders : "—"}</td>
+                          <td style={{ padding: "10px 14px", fontVariantNumeric: "tabular-nums" }}>{Math.round(w.conversions)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div style={{ fontSize: 11.5, color: "var(--text-muted)", margin: "8px 4px 0" }}>
+                  Each window ends yesterday. POAS and Orders need Shopify connected. &ldquo;partial&rdquo; = history doesn&rsquo;t yet cover the full window — back-fill 90 days to fill it in.
                 </div>
               </>
             )}
@@ -232,6 +370,20 @@ export default function DiagnosePage() {
       </main>
     </div>
   );
+}
+
+function fmtMoney(n: number): string {
+  return `€${Math.round(n).toLocaleString("en-GB")}`;
+}
+
+/** Tint a window's ROAS/POAS relative to the longest (baseline) window. */
+function cmpColor(v: number | null, rows: WindowRow[], i: number, key: "roas" | "poas"): string {
+  if (v == null) return "var(--text-dim)";
+  const base = rows[rows.length - 1]?.[key];
+  if (base == null || i === rows.length - 1) return "var(--text-2)";
+  if (v >= base * 1.1) return "var(--accent)";
+  if (v <= base * 0.75) return "var(--danger)";
+  return "var(--text-2)";
 }
 
 function SectionTitle({ children }: { children: React.ReactNode }) {

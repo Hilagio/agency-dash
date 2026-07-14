@@ -11,6 +11,8 @@ import { prisma } from "@/lib/db";
 import { getAuthContext, unauthorized, forbidden } from "@/lib/auth";
 import { buildDiagnosis } from "@/lib/diagnostics/engine";
 import { computeAccountSignals } from "@/lib/diagnostics/run-signals";
+import { computeWindows, detectTrend } from "@/lib/diagnostics/windows";
+import { shopifyAppConfig } from "@/lib/integrations/shopify";
 import type { Signal } from "@/lib/diagnostics/signals";
 
 export const dynamic = "force-dynamic";
@@ -24,6 +26,9 @@ interface DiagnosticsMetrics {
   source?: string;
   dataVerified?: boolean;
   window?: { spend: number; conversions: number; conversionValue: number; days: number };
+  commerce?: { orders: number; revenue: number; currency: string } | null;
+  reconciliation?: { adsConversions: number; actualOrders: number } | null;
+  grossMarginPct?: number | null;
   signals?: Signal[];
 }
 
@@ -74,6 +79,43 @@ export async function GET(_req: Request, { params }: Params) {
   const diag = status ? parseDiagnostics(status.metrics) : null;
   const signals = diag?.signals ?? [];
 
+  // Multi-window trend (§4) — computed fresh from up to 90 days of spine.
+  const since = new Date();
+  since.setUTCDate(since.getUTCDate() - 91);
+  const sinceYmd = since.toISOString().slice(0, 10);
+  const todayYmd = new Date().toISOString().slice(0, 10);
+  const marginPct = diag?.grossMarginPct ?? account.grossMarginPercent ?? null;
+  const [mRows, oRows] = await Promise.all([
+    prisma.metricDaily.findMany({
+      where: { accountId: id, date: { gte: sinceYmd } },
+      select: { date: true, spend: true, clicks: true, conversions: true, conversionValue: true },
+    }),
+    prisma.orderDaily.findMany({
+      where: { accountId: id, date: { gte: sinceYmd } },
+      select: { date: true, orders: true, revenue: true },
+    }),
+  ]);
+  // Collapse per-campaign metric rows to per-day before windowing.
+  const perDay = new Map<string, { date: string; spend: number; clicks: number; conversions: number; conversionValue: number }>();
+  for (const r of mRows) {
+    const e = perDay.get(r.date) ?? { date: r.date, spend: 0, clicks: 0, conversions: 0, conversionValue: 0 };
+    e.spend += r.spend; e.clicks += r.clicks; e.conversions += r.conversions; e.conversionValue += r.conversionValue;
+    perDay.set(r.date, e);
+  }
+  const windows = computeWindows([...perDay.values()], oRows, todayYmd, marginPct);
+  const trend = detectTrend(windows);
+
+  // Shopify connection status — drives the connect card on the workspace.
+  const conn = await prisma.shopifyConnection.findUnique({
+    where: { accountId: id }, select: { shopDomain: true, lastSyncAt: true },
+  });
+  const shopify = {
+    appConfigured: !!shopifyAppConfig(),
+    connected: !!conn,
+    shopDomain: conn?.shopDomain ?? null,
+    lastSyncAt: conn?.lastSyncAt ?? null,
+  };
+
   const diagnosis = buildDiagnosis({
     accountId: account.id,
     name: account.name,
@@ -84,8 +126,10 @@ export async function GET(_req: Request, { params }: Params) {
     signals,
     window: diag?.window,
     currency: symbol(account.currency),
-    reconciliation: null,
+    reconciliation: diag?.reconciliation ?? null,
+    commerce: diag?.commerce ?? null,
+    grossMarginPct: diag?.grossMarginPct ?? account.grossMarginPercent ?? null,
   });
 
-  return NextResponse.json({ diagnosis, hasData: !!diag });
+  return NextResponse.json({ diagnosis, windows, trend, shopify, hasData: !!diag });
 }

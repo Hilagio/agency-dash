@@ -85,6 +85,28 @@ ok("never asserts a cause in headline/observations", !causeWords.test(prose));
 // §5A — brings a win.
 ok("surfaces the Rotterdam opportunity (bring a win)", d.opportunities.length > 0);
 
+// ─── Commerce: POAS + reconciliation (§4.3) ───────────────────────────────────
+const withCommerce = buildDiagnosis({
+  ...input,
+  commerce: { orders: 40, revenue: 5000, currency: "EUR" },
+  grossMarginPct: 0.5,
+  reconciliation: { adsConversions: 6.2, actualOrders: 5.6 }, // within tolerance → tracking intact
+});
+ok("POAS fact appears when revenue + margin known", withCommerce.facts.some(f => f.label === "POAS"));
+ok("POAS carries break-even context", !!withCommerce.facts.find(f => f.label === "POAS")?.context?.includes("break-even"));
+ok("shows real Shopify orders", withCommerce.facts.some(f => f.label === "Orders (Shopify)" && f.value === "40"));
+ok("shows real store revenue", withCommerce.facts.some(f => f.label === "Revenue (Shopify)"));
+ok("with an order feed, tracking is checked and ruled out", withCommerce.checksRun.some(c => c.label.startsWith("Tracking") && c.result === "ruled_out"));
+
+// A real tracking mismatch (20x fake conversions) flags the check.
+const mismatchSignals = runSignals({ ...signalInput, reconciliation: { adsConversions: 100, actualOrders: 5 } });
+const mismatch = buildDiagnosis({
+  ...input, signals: mismatchSignals,
+  commerce: { orders: 5, revenue: 600, currency: "EUR" },
+  reconciliation: { adsConversions: 100, actualOrders: 5 },
+});
+ok("tracking mismatch flags the check (steer on nothing)", mismatch.checksRun.some(c => c.label.startsWith("Tracking") && c.result === "flagged"));
+
 // Green account: calm, no questions, no alarm.
 const green = buildDiagnosis({
   accountId: "a", name: "Healthy Co", status: "green", dataVerified: true,

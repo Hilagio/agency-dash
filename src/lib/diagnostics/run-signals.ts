@@ -34,22 +34,32 @@ export interface AccountSignals {
   signals: Signal[];
 }
 
+export interface CommerceAgg { orders: number; revenue: number; currency: string; }
+
+/** SignalInput plus the commerce context we persist for the diagnosis view. */
+export interface AssembledInput {
+  input: SignalInput;
+  commerce: CommerceAgg | null;
+  grossMarginPct: number | null;
+}
+
 /**
  * Assemble the SignalInput for one account from the spine.
  * current window = last 7 days (ending yesterday); prior = the 7 before that,
  * used for the brand before/after canary.
  */
-export async function assembleSignalInput(account: AccountRow): Promise<SignalInput> {
+export async function assembleSignalInput(account: AccountRow): Promise<AssembledInput> {
   const curStart = ymd(7), curEnd = ymd(1);
   const priStart = ymd(14), priEnd = ymd(8);
   const brandToken = norm(account.name);
 
-  const [metrics, pageRows, stRows, changeRows, stPrior] = await Promise.all([
+  const [metrics, pageRows, stRows, changeRows, stPrior, orderRows] = await Promise.all([
     prisma.metricDaily.findMany({ where: { accountId: account.id, date: { gte: curStart, lte: curEnd } } }),
     prisma.metricProductDaily.findMany({ where: { accountId: account.id, date: { gte: curStart, lte: curEnd } } }),
     prisma.searchTermDaily.findMany({ where: { accountId: account.id, date: { gte: curStart, lte: curEnd } } }),
     prisma.changeEvent.findMany({ where: { accountId: account.id, changedAt: { gte: new Date(curStart) } } }),
     prisma.searchTermDaily.findMany({ where: { accountId: account.id, date: { gte: priStart, lte: priEnd } } }),
+    prisma.orderDaily.findMany({ where: { accountId: account.id, date: { gte: curStart, lte: curEnd } } }),
   ]);
 
   // Current-window totals.
@@ -91,15 +101,29 @@ export async function assembleSignalInput(account: AccountRow): Promise<SignalIn
   const brandAfter = brandAgg(stRows, brandToken);
   const brand = (brandBefore.clicks > 0 && brandAfter.clicks > 0) ? { before: brandBefore, after: brandAfter } : undefined;
 
+  // Commerce reconciliation (§4.3): real Shopify orders vs Ads conversions.
+  const commerce: CommerceAgg | null = orderRows.length
+    ? {
+        orders: orderRows.reduce((s, o) => s + o.orders, 0),
+        revenue: orderRows.reduce((s, o) => s + o.revenue, 0),
+        currency: orderRows[0]?.currency ?? "EUR",
+      }
+    : null;
+  const reconciliation = commerce ? { adsConversions: current.conversions, actualOrders: commerce.orders } : undefined;
+
   return {
-    cfg: {
-      roasFloor: account.roasFloor ?? undefined,
-      grossMarginPct: account.grossMarginPercent ?? undefined,
-      minSpend: account.minSpendForEval,
-      minConversions: account.minConversionsForEval,
-      pageMinClicks: 20,
+    input: {
+      cfg: {
+        roasFloor: account.roasFloor ?? undefined,
+        grossMarginPct: account.grossMarginPercent ?? undefined,
+        minSpend: account.minSpendForEval,
+        minConversions: account.minConversionsForEval,
+        pageMinClicks: 20,
+      },
+      current, changeEvents, budget: [], searchTerms, pages, brand, reconciliation,
     },
-    current, changeEvents, budget: [], searchTerms, pages, brand,
+    commerce,
+    grossMarginPct: account.grossMarginPercent ?? null,
   };
 }
 
@@ -111,7 +135,7 @@ function brandAgg(rows: Array<{ searchTerm: string; clicks: number; conversions:
 
 /** Run detectors for one account and persist a status (unless nothing to persist). */
 export async function computeAccountSignals(account: AccountRow, now: Date = new Date()): Promise<AccountSignals> {
-  const input = await assembleSignalInput(account);
+  const { input, commerce, grossMarginPct } = await assembleSignalInput(account);
   const signals = runSignals(input);
 
   const problems = signals.filter(s => s.kind === "problem");
@@ -134,6 +158,9 @@ export async function computeAccountSignals(account: AccountRow, now: Date = new
           conversionValue: input.current.conversionValue,
           days: input.current.days,
         },
+        commerce,
+        reconciliation: input.reconciliation ?? null,
+        grossMarginPct,
         signals,
       }),
     },
