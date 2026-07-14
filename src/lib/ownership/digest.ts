@@ -15,6 +15,8 @@ export interface DigestEntry {
   reasons: RuleResult[];
   /** Stale-data or failure note, e.g. "couldn't refresh — showing status from 12 Jul". */
   note?: string;
+  /** Absolute URL to the diagnostic workspace for this account, if resolvable. */
+  link?: string;
 }
 
 // "unknown" (status === null) is a presentation-only bucket for accounts we
@@ -69,6 +71,7 @@ export function composeShadowDigest(entries: DigestEntry[], now: Date): string {
     lines.push(`\n${EMOJI[d]} *${e.name}*${client} — ${LABEL[d]}${ownerTag(e.ownerName)}${note}`);
     if (d !== "green") {
       for (const r of e.reasons) lines.push(`    • ${r.message}`);
+      if (e.link) lines.push(`    → <${e.link}|Open diagnosis>`);
     }
   }
 

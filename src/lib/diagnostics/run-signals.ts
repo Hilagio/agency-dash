@@ -128,6 +128,12 @@ export async function computeAccountSignals(account: AccountRow, now: Date = new
       metrics: JSON.stringify({
         source: "diagnostics",
         dataVerified: account.dataVerified,
+        window: {
+          spend: input.current.spend,
+          conversions: input.current.conversions,
+          conversionValue: input.current.conversionValue,
+          days: input.current.days,
+        },
         signals,
       }),
     },

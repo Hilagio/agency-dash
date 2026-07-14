@@ -201,7 +201,7 @@ export default function TodayPage() {
             </div>
           ) : (
             data.attention.map(a => (
-              <Link key={a.id} href={`/accounts/${a.id}`} style={{ textDecoration: "none", color: "inherit", display: "block" }}>
+              <Link key={a.id} href={`/diagnose/${a.id}`} style={{ textDecoration: "none", color: "inherit", display: "block" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "13px 16px", borderRadius: 12 }}
                   onMouseEnter={e => (e.currentTarget.style.background = "var(--surface-2)")}
                   onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
