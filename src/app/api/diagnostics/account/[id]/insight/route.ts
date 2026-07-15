@@ -77,6 +77,8 @@ Tool use: if you consult the PPC OS tools, call them BEFORE writing your message
 
 const SYSTEM_CHAT = `You are the same senior Google Ads specialist (PPC OS methodology). You already gave the team a first read on this account; the same account data is repeated at the top of the conversation. The team is now feeding you CONTEXT you could not see from the data alone — things like "their payment provider was down 3–10 July", "the vendor is in misrepresentation in Merchant Center", "we paused it on purpose", "tracking was re-implemented last week".
 
+The team may also ATTACH FILES — a screenshot of Merchant Center or the Google Ads UI, a checkout error, a client report, a spreadsheet. Read them as first-class evidence: pull the concrete detail out ("the feed shows 240 disapprovals for 'missing GTIN'") and factor it into your reasoning.
+
 Take that context as ground truth and UPDATE your thinking. Answer conversationally and concretely: confirm or revise your earlier hypothesis in light of what they told you, and give the sharpest next move now that you know more. Do NOT re-print the rigid three-section read unless they ask for a full re-read — reply like a specialist talking to a colleague: a few tight sentences, real numbers, the one thing to do next. If their context resolves the mystery (e.g. payments were down during exactly the collapse window), say so plainly and stop hunting for an in-account cause. You may consult the PPC OS tools if genuinely needed; if you do, call them before replying and answer only once.`;
 
 function buildContext(
@@ -148,6 +150,7 @@ const CUR: Record<string, string> = { EUR: "€", USD: "$", GBP: "£", CZK: "Kč
 const ymd = (daysAgo: number) => { const d = new Date(); d.setUTCDate(d.getUTCDate() - daysAgo); return d.toISOString().slice(0, 10); };
 
 type Turn = { role: "user" | "assistant"; content: string };
+interface Attachment { name: string; mediaType: string; data: string; kind: "image" | "document" | "text" }
 
 export async function POST(req: NextRequest, { params }: Params) {
   const ctx = await getAuthContext();
@@ -159,7 +162,16 @@ export async function POST(req: NextRequest, { params }: Params) {
   // Google Ads; a fresh read pulls new data but still remembers the thread.
   const body = await req.json().catch(() => ({} as Record<string, unknown>));
   const followup = typeof body?.followup === "string" ? body.followup.trim() : "";
-  const isChat = followup.length > 0;
+  const attachments: Attachment[] = Array.isArray(body?.attachments)
+    ? (body.attachments as unknown[])
+        .filter((a): a is Attachment => !!a && typeof a === "object"
+          && typeof (a as Attachment).name === "string"
+          && typeof (a as Attachment).mediaType === "string"
+          && typeof (a as Attachment).data === "string"
+          && ["image", "document", "text"].includes((a as Attachment).kind))
+        .slice(0, 4)
+    : [];
+  const isChat = followup.length > 0 || attachments.length > 0;
 
   const account = await prisma.account.findFirst({
     where: { id, organizationId: ctx.orgId },
@@ -267,19 +279,38 @@ export async function POST(req: NextRequest, { params }: Params) {
         while (memory.length && memory[memory.length - 1].role === "user") memory.pop(); // keep alternation clean
         const hasMemory = memory.length > 0;
 
+        // The team's turn, with any attached files as content blocks (images /
+        // PDFs the model reads; text files inlined). We persist a text record of
+        // it (filename markers, not the bytes — disk-safe); the understanding
+        // then lives on in the agent's reply, so the thread remembers it.
+        const attaNames = attachments.map(a => a.name).join(", ");
+        const userText = followup || (attachments.length ? "Shared file(s) for context." : "");
+        const inlineText = attachments
+          .filter(a => a.kind === "text")
+          .map(a => `\n\n--- ${a.name} ---\n${Buffer.from(a.data, "base64").toString("utf8").slice(0, 20000)}`)
+          .join("");
+        const mediaBlocks = attachments
+          .filter(a => a.kind !== "text")
+          .map(a => a.kind === "image"
+            ? { type: "image" as const, source: { type: "base64" as const, media_type: a.mediaType as "image/png" | "image/jpeg" | "image/gif" | "image/webp", data: a.data } }
+            : { type: "document" as const, source: { type: "base64" as const, media_type: "application/pdf" as const, data: a.data } });
+        const finalUserContent: string | unknown[] = mediaBlocks.length
+          ? [{ type: "text" as const, text: userText + inlineText }, ...mediaBlocks]
+          : userText + inlineText;
+
         // Persist the team's message immediately (survives a mid-stream failure).
         if (isChat) {
           await prisma.agentMessage.create({
-            data: { accountId: id, role: "user", content: followup, kind: "chat", author: ctx.email },
+            data: { accountId: id, role: "user", content: userText + (attaNames ? ` [attached: ${attaNames}]` : ""), kind: "chat", author: ctx.email },
           }).catch(() => null);
         }
 
         const context = buildClientBlock(clientCtx) + buildContext(account.name, cur, diag, windows, pages, winners, changeRows);
         const firstTurn = { role: "user" as const, content: `${context}\n\nGive the expert read.` };
-        let messages: Turn[];
+        let messages: unknown[];
         let useChatSystem: boolean;
         if (isChat) {
-          messages = [firstTurn, ...memory, { role: "user", content: followup }];
+          messages = [firstTurn, ...memory, { role: "user", content: finalUserContent }];
           useChatSystem = true;
         } else if (hasMemory) {
           messages = [firstTurn, ...memory, { role: "user", content: "(The team asked for a fresh read.) Give me an updated read on the account using the latest data above. Remember everything we've already discussed — build on it, and don't re-raise context or hypotheses you already have answers to." }];
@@ -295,7 +326,7 @@ export async function POST(req: NextRequest, { params }: Params) {
           mcp_servers: ppc.mcp_servers,
           tools: ppc.tools,
           system: (useChatSystem ? SYSTEM_CHAT : SYSTEM) + PPC_OS_SYSTEM_NOTE + trackingDirective,
-          messages,
+          messages: messages as Parameters<typeof client.beta.messages.stream>[0]["messages"],
         });
         // With MCP tool use the model can emit a draft text block, call a tool,
         // then emit the FINAL read as a second text block — which showed up as a
