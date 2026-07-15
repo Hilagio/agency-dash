@@ -14,10 +14,11 @@ import Link from "next/link";
 import {
   ArrowLeft, ArrowUpRight, Loader2, CheckCircle2, AlertTriangle, HelpCircle,
   ShieldCheck, Sprout, XCircle, MinusCircle, TrendingUp, ShoppingBag, RefreshCw, ChevronRight, Sparkles,
-  Paperclip, X, FileText,
+  Paperclip, X, FileText, Download, Trash2,
 } from "lucide-react";
 
 interface Attachment { name: string; mediaType: string; data: string; kind: "image" | "document" | "text" }
+interface DocMeta { id: string; title: string; docType: string; format: "doc" | "deck"; language: string; filename: string; createdBy: string | null; createdAt: string }
 const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5MB/file, ≤4 files — base64 stays under the 32MB request cap
 
 /** Read a File into a base64 Attachment for the chat. Images, PDF, and text/CSV. */
@@ -204,6 +205,7 @@ export default function DiagnosePage() {
   const [docFocus, setDocFocus] = useState("");
   const [docFormat, setDocFormat] = useState<"doc" | "deck">("doc");
   const [docLang, setDocLang] = useState<"en" | "nl">("nl");
+  const [library, setLibrary] = useState<DocMeta[]>([]);
   const [tracking, setTracking] = useState<TrackingStatus | null>(null);
   const [trackingSaving, setTrackingSaving] = useState<"verified" | "broken" | "clear" | null>(null);
   const [loading, setLoading] = useState(true);
@@ -394,8 +396,24 @@ export default function DiagnosePage() {
     setThread([]); setInsightErr(null);
   }
 
+  // Download an HTML deliverable and open a preview tab.
+  function deliverHtml(html: string, filename: string) {
+    const url = URL.createObjectURL(new Blob([html], { type: "text/html" }));
+    const a = document.createElement("a"); a.href = url; a.download = filename || "ecomtrada-document.html"; a.click();
+    window.open(url, "_blank");
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  }
+
+  async function loadLibrary() {
+    try {
+      const r = await fetch(`/api/diagnostics/account/${id}/documents`, { credentials: "include" });
+      if (r.ok) { const j = await r.json(); setLibrary(j.docs ?? []); }
+    } catch { /* leave empty */ }
+  }
+  useEffect(() => { loadLibrary(); }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Generate a client-ready brand document (findings / report / deck) from the
-  // conversation + data, download it, and open a preview.
+  // conversation + data, save it to the library, download it, open a preview.
   async function generateDocument() {
     if (docBusy) return;
     setDocBusy(true); setDocErr(null);
@@ -407,13 +425,26 @@ export default function DiagnosePage() {
       });
       const j = await r.json().catch(() => ({}));
       if (!r.ok || !j.html) { setDocErr(j.error ?? `HTTP ${r.status}`); return; }
-      const url = URL.createObjectURL(new Blob([j.html], { type: "text/html" }));
-      const a = document.createElement("a"); a.href = url; a.download = j.filename || "ecomtrada-document.html"; a.click();
-      window.open(url, "_blank");
-      setTimeout(() => URL.revokeObjectURL(url), 60000);
-      setDocOpen(false); setDocFocus("");
+      deliverHtml(j.html, j.filename);
+      if (j.saved) setLibrary(prev => [j.saved as DocMeta, ...prev]);
+      setDocFocus("");
     } catch (e) { setDocErr(e instanceof Error ? e.message : "Failed"); }
     finally { setDocBusy(false); }
+  }
+
+  // Reopen (or re-download) a saved deliverable from the library.
+  async function openSavedDoc(docId: string, filename: string) {
+    try {
+      const r = await fetch(`/api/diagnostics/account/${id}/documents/${docId}`, { credentials: "include" });
+      const j = await r.json().catch(() => ({}));
+      if (r.ok && j.html) deliverHtml(j.html, j.filename || filename);
+      else setDocErr(j.error ?? "Couldn't open that document.");
+    } catch { setDocErr("Couldn't open that document."); }
+  }
+
+  async function deleteSavedDoc(docId: string) {
+    setLibrary(prev => prev.filter(d => d.id !== docId));
+    await fetch(`/api/diagnostics/account/${id}/documents/${docId}`, { method: "DELETE", credentials: "include" }).catch(() => null);
   }
 
   // Record the team's tracking verdict, then re-run the read so it reasons from
@@ -619,7 +650,29 @@ export default function DiagnosePage() {
                     </button>
                   </div>
                   {docErr && <div style={{ fontSize: 12, color: "var(--danger)", marginTop: 8 }}>{docErr}</div>}
-                  <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 8 }}>Downloads an on-brand HTML file (opens in the browser; ⌘P → Save as PDF to share).</div>
+                  <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 8 }}>Downloads an on-brand HTML file (opens in the browser; ⌘P → Save as PDF to share). Every generation is saved to the library below.</div>
+
+                  {/* Library — versioned deliverables for this account */}
+                  {library.length > 0 && (
+                    <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--border-2)" }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.4, color: "var(--text-muted)", marginBottom: 9 }}>Library · {library.length}</div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        {library.map(d => (
+                          <div key={d.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: 8, background: "var(--surface)", border: "1px solid var(--border-2)" }}>
+                            <FileText size={14} style={{ color: "var(--accent)", flexShrink: 0 }} />
+                            <span style={{ flex: 1, minWidth: 0 }}>
+                              <span style={{ fontSize: 12.5, fontWeight: 600, display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.title}</span>
+                              <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
+                                {d.docType} · {d.format === "deck" ? "deck" : "doc"} · {d.language.toUpperCase()} · {new Date(d.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}{d.createdBy ? ` · ${d.createdBy}` : ""}
+                              </span>
+                            </span>
+                            <button onClick={() => openSavedDoc(d.id, d.filename)} title="Open / download" style={{ display: "inline-flex", padding: 5, background: "none", border: "none", cursor: "pointer", color: "var(--text-3)" }}><Download size={14} /></button>
+                            <button onClick={() => deleteSavedDoc(d.id)} title="Delete" style={{ display: "inline-flex", padding: 5, background: "none", border: "none", cursor: "pointer", color: "var(--text-dim)" }}><Trash2 size={13} /></button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 

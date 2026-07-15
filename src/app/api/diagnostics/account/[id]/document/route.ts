@@ -89,7 +89,14 @@ export async function POST(req: NextRequest, { params }: Params) {
     const html = renderDocHtml(doc);
     const safe = (account.clientName || account.name).replace(/[^a-z0-9]+/gi, "-").toLowerCase();
     const filename = `${safe}-${doc.docType.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}${format === "deck" ? "-deck" : ""}.html`;
-    return NextResponse.json({ html, filename, title: doc.title, docType: doc.docType });
+
+    // Save to the account's document library (versioned deliverables).
+    const saved = await prisma.generatedDoc.create({
+      data: { accountId: id, title: doc.title, docType: doc.docType, format, language, filename, html, createdBy: ctx.email },
+      select: { id: true, title: true, docType: true, format: true, language: true, filename: true, createdBy: true, createdAt: true },
+    }).catch(() => null);
+
+    return NextResponse.json({ id: saved?.id ?? null, html, filename, title: doc.title, docType: doc.docType, saved });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Document generation failed";
     return NextResponse.json({ error: message }, { status: 500 });
