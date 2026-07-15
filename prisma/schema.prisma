@@ -212,6 +212,29 @@ model Account {
 
   // The ongoing agent conversation for this account (§agent memory).
   agentMessages AgentMessage[]
+
+  // The library of client-ready documents the agent generated for this account.
+  generatedDocs GeneratedDoc[]
+}
+
+// A saved, client-ready brand document (§agent → files out). The rendered HTML
+// is stored so the team has a versioned library of deliverables per account —
+// reopen, re-download, or send any past generation.
+model GeneratedDoc {
+  id        String  @id @default(cuid())
+  accountId String
+  account   Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  title     String
+  docType   String  // "Findings" | "Account Review" | ...
+  format    String  // "doc" | "deck"
+  language  String  // "en" | "nl"
+  filename  String
+  html      String  // the full rendered, on-brand HTML
+  createdBy String? // email of the teammate who generated it
+  createdAt DateTime @default(now())
+
+  @@index([accountId, createdAt])
 }
 
 // The persistent agent conversation for one account (§agent). One ongoing
