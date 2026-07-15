@@ -63,19 +63,46 @@ export async function ingestAccountSpine(
     const searchTerms = dedupe<SearchTermDailyRow>(data.searchTerms, s => `${s.date}|${s.campaignId}|${s.searchTerm}`,
       ["clicks", "cost", "conversions", "conversionValue"]);
 
+    // The per-row tables (landing pages, items, search terms) are only needed
+    // recent (signals + product views look at 7–30d), and they are what fills
+    // the disk. Cap them hard at 30 days; only the small campaign-level table
+    // keeps the full window for the 90-day ROAS trend.
+    const HEAVY_DAYS = Math.min(days, 30);
+    const heavyStart = daysAgo(HEAVY_DAYS);
+    const productsCapped = products.filter(p => p.date >= heavyStart);
+    const productAdsCapped = productAds.filter(p => p.date >= heavyStart);
+    const searchTermsCapped = searchTerms.filter(s => s.date >= heavyStart);
+
     const inWindow = { accountId: account.id, date: { gte: start, lte: end } };
+    const heavyWindow = { accountId: account.id, date: { gte: heavyStart, lte: end } };
 
     // Rewrite each daily window (idempotent + back-fills changed history).
     await prisma.$transaction([
       prisma.metricDaily.deleteMany({ where: inWindow }),
-      prisma.metricProductDaily.deleteMany({ where: inWindow }),
-      prisma.productAdsDaily.deleteMany({ where: inWindow }),
-      prisma.searchTermDaily.deleteMany({ where: inWindow }),
+      prisma.metricProductDaily.deleteMany({ where: heavyWindow }),
+      prisma.productAdsDaily.deleteMany({ where: heavyWindow }),
+      prisma.searchTermDaily.deleteMany({ where: heavyWindow }),
     ]);
-    if (metrics.length)     await prisma.metricDaily.createMany({ data: metrics.map(m => ({ accountId: account.id, ...m })) });
-    if (products.length)    await prisma.metricProductDaily.createMany({ data: products.map(p => ({ accountId: account.id, ...p })) });
-    if (productAds.length)  await prisma.productAdsDaily.createMany({ data: productAds.map(p => ({ accountId: account.id, ...p })) });
-    if (searchTerms.length) await prisma.searchTermDaily.createMany({ data: searchTerms.map(s => ({ accountId: account.id, ...s })) });
+
+    // Retention: purge stale high-cardinality rows so the volume stays bounded
+    // and can never fill the disk again (this is what took Postgres down).
+    const stale = { accountId: account.id, date: { lt: daysAgo(45) } };
+    await prisma.$transaction([
+      prisma.metricProductDaily.deleteMany({ where: stale }),
+      prisma.productAdsDaily.deleteMany({ where: stale }),
+      prisma.searchTermDaily.deleteMany({ where: stale }),
+    ]);
+
+    // Insert in chunks — a single multi-thousand-row INSERT blows the WAL and
+    // can fill the disk mid-write; small batches keep memory + WAL bounded.
+    const CHUNK = 500;
+    const chunked = async <T>(rows: T[], create: (batch: T[]) => Promise<unknown>) => {
+      for (let i = 0; i < rows.length; i += CHUNK) await create(rows.slice(i, i + CHUNK));
+    };
+    await chunked(metrics.map(m => ({ accountId: account.id, ...m })), d => prisma.metricDaily.createMany({ data: d }));
+    await chunked(productsCapped.map(p => ({ accountId: account.id, ...p })), d => prisma.metricProductDaily.createMany({ data: d }));
+    await chunked(productAdsCapped.map(p => ({ accountId: account.id, ...p })), d => prisma.productAdsDaily.createMany({ data: d }));
+    await chunked(searchTermsCapped.map(s => ({ accountId: account.id, ...s })), d => prisma.searchTermDaily.createMany({ data: d }));
 
     // Change events are immutable once logged — add new ones, skip seen.
     if (data.changeEvents.length) {
@@ -88,9 +115,9 @@ export async function ingestAccountSpine(
     return {
       accountId: account.id,
       metrics: metrics.length,
-      products: products.length,
-      productAds: productAds.length,
-      searchTerms: searchTerms.length,
+      products: productsCapped.length,
+      productAds: productAdsCapped.length,
+      searchTerms: searchTermsCapped.length,
       changeEvents: data.changeEvents.length,
     };
   } catch (err) {
