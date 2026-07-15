@@ -376,6 +376,7 @@ export default function DiagnosePage() {
           if (s === "refreshing") { setInsightStatus("Pulling the latest Google Ads + Shopify data…"); pulled = true; }
           else if (s === "reading") setInsightStatus("Reading across 7/14/30/60/90-day windows…");
           else if (s === "thinking") setInsightStatus("Thinking…");
+          else setInsightStatus(s); // tool-use labels ("Checking impression share…")
         },
         onError: (e) => setInsightErr(e),
       });

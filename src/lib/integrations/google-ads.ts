@@ -2261,6 +2261,72 @@ export async function fetchProductReport(
   return out;
 }
 
+// ─── Agent tools — live pulls the in-conversation agent calls on demand ────────
+
+const nDayRange = (days: number) => {
+  const fmt = (d: Date) => d.toISOString().slice(0, 10);
+  const end = new Date(Date.now() - 864e5);
+  const start = new Date(); start.setDate(start.getDate() - Math.max(1, days));
+  return { start: fmt(start), end: fmt(end) };
+};
+
+export interface ImpressionShareRow {
+  campaign: string; channel: string; cost: number;
+  searchIS: number | null; budgetLostIS: number | null; rankLostIS: number | null;
+}
+/** Per-campaign impression share + share lost to budget / rank — answers
+ * "are we limited by budget?" and how much headroom there is. */
+export async function fetchImpressionShare(customerId: string, orgId: string | undefined, days: number): Promise<ImpressionShareRow[]> {
+  const client = getClient();
+  const customer = await getCustomer(client, customerId, orgId);
+  const { start, end } = nDayRange(days);
+  const rows = await safeQuery(() => customer.query(`
+    SELECT campaign.name, campaign.advertising_channel_type, metrics.cost_micros,
+           metrics.search_impression_share, metrics.search_budget_lost_impression_share,
+           metrics.search_rank_lost_impression_share
+    FROM campaign
+    WHERE segments.date BETWEEN '${start}' AND '${end}' AND metrics.cost_micros > 0
+    ORDER BY metrics.cost_micros DESC
+  `), "impression share", 30_000);
+  const num = (v: unknown): number | null => (v == null ? null : Number(v));
+  return rows.map(r => ({
+    campaign: r.campaign?.name ?? "—",
+    channel: String(r.campaign?.advertising_channel_type ?? ""),
+    cost: Number(r.metrics?.cost_micros ?? 0) / 1_000_000,
+    searchIS: num(r.metrics?.search_impression_share),
+    budgetLostIS: num(r.metrics?.search_budget_lost_impression_share),
+    rankLostIS: num(r.metrics?.search_rank_lost_impression_share),
+  }));
+}
+
+export interface CampaignOverviewRow {
+  campaign: string; channel: string; status: string;
+  dailyBudget: number | null; cost: number; conversions: number; value: number;
+}
+/** Campaign structure — types, statuses, daily budgets, spend & return.
+ * Lets the agent see if there's a feed-only PMax, which campaigns carry spend. */
+export async function fetchCampaignOverview(customerId: string, orgId: string | undefined, days: number): Promise<CampaignOverviewRow[]> {
+  const client = getClient();
+  const customer = await getCustomer(client, customerId, orgId);
+  const { start, end } = nDayRange(days);
+  const rows = await safeQuery(() => customer.query(`
+    SELECT campaign.name, campaign.advertising_channel_type, campaign.status,
+           campaign_budget.amount_micros, metrics.cost_micros, metrics.conversions, metrics.conversions_value
+    FROM campaign
+    WHERE segments.date BETWEEN '${start}' AND '${end}' AND campaign.status != 'REMOVED'
+    ORDER BY metrics.cost_micros DESC
+  `), "campaign overview", 30_000);
+  return rows.map(r => ({
+    campaign: r.campaign?.name ?? "—",
+    channel: String(r.campaign?.advertising_channel_type ?? ""),
+    status: String(r.campaign?.status ?? ""),
+    dailyBudget: r.campaign_budget?.amount_micros != null ? Number(r.campaign_budget.amount_micros) / 1_000_000 : null,
+    cost: Number(r.metrics?.cost_micros ?? 0) / 1_000_000,
+    conversions: Number(r.metrics?.conversions ?? 0),
+    value: Number(r.metrics?.conversions_value ?? 0),
+  }));
+}
+
 export async function fetchSpineData(
   customerId: string, orgId: string | undefined, start: string, end: string,
   // The per-row tables (landing pages, items, search terms) are only kept for

@@ -19,10 +19,20 @@ import { ingestAccountSpine } from "@/lib/diagnostics/ingest";
 import { ingestAccountOrders } from "@/lib/diagnostics/orders";
 import { computeAccountSignals } from "@/lib/diagnostics/run-signals";
 import { ppcOsMcp, PPC_OS_SYSTEM_NOTE } from "@/lib/integrations/ppc-os";
+import { AGENT_TOOLS, runAgentTool, toolStatusLabel } from "@/lib/diagnostics/agent-tools";
 import type { Signal } from "@/lib/diagnostics/signals";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 240;
+export const maxDuration = 300;
+
+const AGENT_TOOLS_NOTE = `
+
+YOUR DATA TOOLS — you can fetch live data yourself, so DO, before ever asking the team to look something up:
+- get_impression_share — are we limited by budget? how much headroom to scale? (search IS + share lost to budget/rank per campaign)
+- get_campaign_overview — the account structure: campaign types (is there a feed-only Performance Max?), statuses, daily budgets, spend & return
+- get_search_terms — wasted spend (cost with zero conversions) and branded queries
+- get_shopify_data — the real orders/revenue to reconcile Google Ads against
+If you catch yourself about to ask the team to "check" a metric, STOP — if one of these tools can get it, CALL THE TOOL instead and answer from the result. Only ask a human for what no tool can reach: off-platform events (payments, site, stock, promos), business context, or a judgment call about the client. Call any tools you need BEFORE writing your answer, then answer once.`;
 
 type Params = { params: Promise<{ id: string }> };
 const client = new Anthropic();
@@ -329,28 +339,55 @@ export async function POST(req: NextRequest, { params }: Params) {
           messages = [firstTurn];
           useChatSystem = false;
         }
-        const anthropicStream = client.beta.messages.stream({
-          model: "claude-opus-4-8",
-          max_tokens: 1024,
-          betas: ppc.betas,
-          mcp_servers: ppc.mcp_servers,
-          tools: ppc.tools,
-          system: (useChatSystem ? SYSTEM_CHAT : SYSTEM) + PPC_OS_SYSTEM_NOTE + trackingDirective,
-          messages: messages as Parameters<typeof client.beta.messages.stream>[0]["messages"],
-        });
-        // With MCP tool use the model can emit a draft text block, call a tool,
-        // then emit the FINAL read as a second text block — which showed up as a
-        // duplicated read. Keep only the last text block: on every text block
-        // after the first, tell the client to reset, and reset our own capture.
-        let textBlocks = 0, finalText = "";
-        for await (const ev of anthropicStream) {
-          if (ev.type === "content_block_start" && ev.content_block?.type === "text") {
-            textBlocks++;
-            if (textBlocks > 1) { send(controller, { reset: true }); finalText = ""; }
-          } else if (ev.type === "content_block_delta" && ev.delta.type === "text_delta") {
-            send(controller, { text: ev.delta.text });
-            finalText += ev.delta.text;
+        // Agent loop: the model can call its own data tools (impression share,
+        // campaign structure, search terms, Shopify) — we execute them and feed
+        // the results back until it produces its final answer. Pre-tool narration
+        // ("let me check…") is reset away; only the final text is shown/persisted.
+        const sysPrompt = (useChatSystem ? SYSTEM_CHAT : SYSTEM) + PPC_OS_SYSTEM_NOTE + AGENT_TOOLS_NOTE + trackingDirective;
+        const allTools = [...(ppc.tools ?? []), ...AGENT_TOOLS] as Parameters<typeof client.beta.messages.stream>[0]["tools"];
+        const loopMessages = messages.slice();
+        const toolAcc = { id: account.id, googleAdsId: account.googleAdsId, organizationId: account.organizationId, currency: account.currency };
+        let finalText = "";
+        const MAX_STEPS = 6;
+
+        for (let step = 0; step < MAX_STEPS; step++) {
+          const anthropicStream = client.beta.messages.stream({
+            model: "claude-opus-4-8",
+            max_tokens: 1500,
+            betas: ppc.betas,
+            mcp_servers: ppc.mcp_servers,
+            tools: allTools,
+            system: sysPrompt,
+            messages: loopMessages as Parameters<typeof client.beta.messages.stream>[0]["messages"],
+          });
+          let textBlocks = 0;
+          for await (const ev of anthropicStream) {
+            if (ev.type === "content_block_start" && ev.content_block?.type === "text") {
+              textBlocks++;
+              if (textBlocks > 1) { send(controller, { reset: true }); finalText = ""; }
+            } else if (ev.type === "content_block_start" && ev.content_block?.type === "tool_use") {
+              send(controller, { status: toolStatusLabel(ev.content_block.name) });
+            } else if (ev.type === "content_block_delta" && ev.delta.type === "text_delta") {
+              send(controller, { text: ev.delta.text });
+              finalText += ev.delta.text;
+            }
           }
+          const finalMsg = await anthropicStream.finalMessage();
+          const toolUses = finalMsg.content.filter(b => b.type === "tool_use") as Array<{ id: string; name: string; input: unknown }>;
+          if (finalMsg.stop_reason !== "tool_use" || toolUses.length === 0) break;
+
+          // Execute the agent's tool calls and feed the results back. Clear any
+          // pre-tool narration from the client — only the post-tool answer shows.
+          send(controller, { reset: true }); finalText = "";
+          loopMessages.push({ role: "assistant", content: finalMsg.content });
+          const results = [];
+          for (const tu of toolUses) {
+            let out: string;
+            try { out = await runAgentTool(tu.name, (tu.input ?? {}) as Record<string, unknown>, toolAcc); }
+            catch (e) { out = `Error running ${tu.name}: ${e instanceof Error ? e.message : String(e)}. Tell the team you couldn't fetch this.`; }
+            results.push({ type: "tool_result" as const, tool_use_id: tu.id, content: out });
+          }
+          loopMessages.push({ role: "user", content: results });
         }
         // Persist the agent's message so the conversation is remembered.
         if (finalText.trim()) {
