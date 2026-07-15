@@ -197,6 +197,13 @@ export default function DiagnosePage() {
   const [followInput, setFollowInput] = useState("");
   const [followSending, setFollowSending] = useState(false);
   const [pending, setPending] = useState<Attachment[]>([]);
+  // Brand document generation (§agent → files out).
+  const [docOpen, setDocOpen] = useState(false);
+  const [docBusy, setDocBusy] = useState(false);
+  const [docErr, setDocErr] = useState<string | null>(null);
+  const [docFocus, setDocFocus] = useState("");
+  const [docFormat, setDocFormat] = useState<"doc" | "deck">("doc");
+  const [docLang, setDocLang] = useState<"en" | "nl">("nl");
   const [tracking, setTracking] = useState<TrackingStatus | null>(null);
   const [trackingSaving, setTrackingSaving] = useState<"verified" | "broken" | "clear" | null>(null);
   const [loading, setLoading] = useState(true);
@@ -387,6 +394,28 @@ export default function DiagnosePage() {
     setThread([]); setInsightErr(null);
   }
 
+  // Generate a client-ready brand document (findings / report / deck) from the
+  // conversation + data, download it, and open a preview.
+  async function generateDocument() {
+    if (docBusy) return;
+    setDocBusy(true); setDocErr(null);
+    try {
+      const r = await fetch(`/api/diagnostics/account/${id}/document`, {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ request: docFocus.trim(), format: docFormat, language: docLang }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !j.html) { setDocErr(j.error ?? `HTTP ${r.status}`); return; }
+      const url = URL.createObjectURL(new Blob([j.html], { type: "text/html" }));
+      const a = document.createElement("a"); a.href = url; a.download = j.filename || "ecomtrada-document.html"; a.click();
+      window.open(url, "_blank");
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+      setDocOpen(false); setDocFocus("");
+    } catch (e) { setDocErr(e instanceof Error ? e.message : "Failed"); }
+    finally { setDocBusy(false); }
+  }
+
   // Record the team's tracking verdict, then re-run the read so it reasons from
   // certainty. Clearing (null) drops back to "unknown".
   async function setTrackingStatus(status: "verified" | "broken" | null) {
@@ -547,6 +576,9 @@ export default function DiagnosePage() {
                 ) : (
                   <span style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 8 }}>
                     <button onClick={clearConversation} disabled={insightLoading || followSending} title="Clear this conversation and start over" style={{ fontSize: 11.5, fontWeight: 600, color: "var(--text-3)", background: "none", border: "none", cursor: insightLoading || followSending ? "default" : "pointer", textDecoration: "underline" }}>Clear</button>
+                    <button onClick={() => setDocOpen(o => !o)} title="Turn this into a client-ready document or deck" style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 600, color: docOpen ? "var(--accent)" : "var(--text-3)", background: "var(--surface-2)", border: `1px solid ${docOpen ? "color-mix(in srgb, var(--accent) 40%, var(--border))" : "var(--border-2)"}`, borderRadius: 7, padding: "5px 10px", cursor: "pointer" }}>
+                      <FileText size={12} /> Document
+                    </button>
                     <button onClick={getInsight} disabled={insightLoading || followSending} title="Fresh read with the latest data — keeps the conversation" style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 600, color: "var(--text-3)", background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 7, padding: "5px 10px", cursor: insightLoading || followSending ? "default" : "pointer" }}>
                       {insightLoading ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />} Fresh read
                     </button>
@@ -554,6 +586,42 @@ export default function DiagnosePage() {
                 )}
               </div>
               {insightErr && <div style={{ fontSize: 12.5, color: "var(--danger)", marginTop: 10 }}>{insightErr}</div>}
+
+              {/* Brand document generator — turn the conversation into a client-ready deliverable */}
+              {docOpen && thread.length > 0 && (
+                <div style={{ marginTop: 12, padding: "13px 14px", borderRadius: 11, background: "var(--surface-2)", border: "1px solid var(--border-2)" }}>
+                  <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 9, display: "flex", alignItems: "center", gap: 7 }}>
+                    <FileText size={14} style={{ color: "var(--accent)" }} /> Create a client-ready document
+                  </div>
+                  <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 10 }}>
+                    <div style={{ display: "inline-flex", background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: 8, padding: 2 }}>
+                      {(["doc", "deck"] as const).map(f => (
+                        <button key={f} onClick={() => setDocFormat(f)} style={{ fontSize: 11.5, fontWeight: 600, padding: "5px 11px", borderRadius: 6, border: "none", cursor: "pointer", background: docFormat === f ? "var(--accent)" : "transparent", color: docFormat === f ? "#fff" : "var(--text-3)" }}>{f === "doc" ? "Document" : "Slide deck"}</button>
+                      ))}
+                    </div>
+                    <div style={{ display: "inline-flex", background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: 8, padding: 2 }}>
+                      {(["nl", "en"] as const).map(l => (
+                        <button key={l} onClick={() => setDocLang(l)} style={{ fontSize: 11.5, fontWeight: 600, padding: "5px 11px", borderRadius: 6, border: "none", cursor: "pointer", background: docLang === l ? "var(--accent)" : "transparent", color: docLang === l ? "#fff" : "var(--text-3)" }}>{l === "nl" ? "Nederlands" : "English"}</button>
+                      ))}
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
+                    <input
+                      value={docFocus}
+                      onChange={e => setDocFocus(e.target.value)}
+                      onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); generateDocument(); } }}
+                      placeholder="What should it cover? (optional — defaults to the findings so far)"
+                      disabled={docBusy}
+                      style={{ flex: 1, fontSize: 12.5, color: "var(--text)", background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: 8, padding: "8px 11px" }}
+                    />
+                    <button onClick={generateDocument} disabled={docBusy} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: "#fff", background: "var(--btn-primary, var(--accent))", border: "none", borderRadius: 8, padding: "8px 14px", cursor: docBusy ? "default" : "pointer", whiteSpace: "nowrap" }}>
+                      {docBusy ? <Loader2 size={13} className="animate-spin" /> : <FileText size={13} />} {docBusy ? "Writing…" : "Generate"}
+                    </button>
+                  </div>
+                  {docErr && <div style={{ fontSize: 12, color: "var(--danger)", marginTop: 8 }}>{docErr}</div>}
+                  <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 8 }}>Downloads an on-brand HTML file (opens in the browser; ⌘P → Save as PDF to share).</div>
+                </div>
+              )}
 
               {/* The persisted conversation */}
               {thread.map((m, i) => (
