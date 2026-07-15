@@ -83,6 +83,19 @@ export function verifyShopifyHmac(params: Record<string, string>, secret: string
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 
+/**
+ * Verify a Shopify webhook. Unlike the OAuth HMAC (hex, over sorted query
+ * params), webhooks sign the RAW request body and send a base64 digest in the
+ * `X-Shopify-Hmac-Sha256` header. Timing-safe.
+ */
+export function verifyShopifyWebhook(rawBody: string, hmacHeader: string | null, secret: string): boolean {
+  if (!hmacHeader) return false;
+  const digest = crypto.createHmac("sha256", secret).update(rawBody, "utf8").digest("base64");
+  const a = Buffer.from(digest, "utf8");
+  const b = Buffer.from(hmacHeader, "utf8");
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
 export interface TokenResult { accessToken: string; scope: string; }
 
 /** Exchange the OAuth code for a permanent Admin API access token. */
