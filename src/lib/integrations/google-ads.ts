@@ -2223,6 +2223,10 @@ function classifyChange(changedFields: string, resourceType: string): string {
 /** Fetch the diagnostic spine for one account over [start, end] (YYYY-MM-DD). */
 export async function fetchSpineData(
   customerId: string, orgId: string | undefined, start: string, end: string,
+  // The per-row tables (landing pages, items, search terms) are only kept for
+  // ~30 days, so fetch them for a shorter window than the campaign metrics —
+  // pulling 90 days of them into memory is what OOM'd the app during backfill.
+  heavyStart: string = start,
 ): Promise<SpineData> {
   const client   = getClient();
   const customer = await getCustomer(client, customerId, orgId);
@@ -2251,7 +2255,7 @@ export async function fetchSpineData(
     SELECT segments.date, landing_page_view.unexpanded_final_url,
            metrics.clicks, metrics.cost_micros, metrics.conversions, metrics.conversions_value
     FROM landing_page_view
-    WHERE segments.date BETWEEN '${start}' AND '${end}'
+    WHERE segments.date BETWEEN '${heavyStart}' AND '${end}'
       AND metrics.impressions > 0
   `), "spine landing_page_daily", 60_000);
   const products: ProductDailyRow[] = pageRows.map(r => ({
@@ -2270,7 +2274,7 @@ export async function fetchSpineData(
            metrics.cost_micros, metrics.clicks, metrics.impressions,
            metrics.conversions, metrics.conversions_value
     FROM shopping_performance_view
-    WHERE segments.date BETWEEN '${start}' AND '${end}'
+    WHERE segments.date BETWEEN '${heavyStart}' AND '${end}'
       AND (metrics.impressions > 0 OR metrics.cost_micros > 0)
   `), "spine product_ads_daily", 60_000).catch(() => []);
   const productAds: ProductAdsDailyRow[] = productAdsRows.map(r => ({
@@ -2290,7 +2294,7 @@ export async function fetchSpineData(
            segments.search_term_match_type,
            metrics.clicks, metrics.cost_micros, metrics.conversions, metrics.conversions_value
     FROM search_term_view
-    WHERE segments.date BETWEEN '${start}' AND '${end}'
+    WHERE segments.date BETWEEN '${heavyStart}' AND '${end}'
   `), "spine search_terms_daily", 60_000);
   const searchTerms: SearchTermDailyRow[] = stRows.map(r => ({
     date: String(r.segments?.date ?? ""),
