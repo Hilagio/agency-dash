@@ -222,6 +222,7 @@ export default function DiagnosePage() {
   // The persisted agent conversation (§agent memory): one ongoing thread.
   const [thread, setThread] = useState<Msg[]>([]);
   const [convoLoaded, setConvoLoaded] = useState(false);
+  const threadRef = useRef<HTMLDivElement>(null);
   const [insightLoading, setInsightLoading] = useState(false);
   const [insightErr, setInsightErr] = useState<string | null>(null);
   const [insightStatus, setInsightStatus] = useState<string | null>(null);
@@ -329,6 +330,14 @@ export default function DiagnosePage() {
       setRefreshMsg(e instanceof Error ? e.message : "Network error");
     } finally { setRefreshing(false); }
   }
+
+  // Keep the conversation pinned to the latest message as it streams — but only
+  // if the reader is already near the bottom, so scrolling up to re-read holds.
+  useEffect(() => {
+    const el = threadRef.current;
+    if (!el) return;
+    if (el.scrollHeight - el.scrollTop - el.clientHeight < 140) el.scrollTop = el.scrollHeight;
+  }, [thread]);
 
   // Load the persisted conversation so a read survives refresh and the next
   // teammate sees the thread + the context already fed in.
@@ -793,20 +802,25 @@ export default function DiagnosePage() {
                 </div>
               )}
 
-              {/* The persisted conversation */}
-              {thread.map((m, i) => (
-                m.role === "user" ? (
-                  <div key={m.id ?? i} style={{ fontSize: 12.5, color: "var(--text-2)", background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 9, padding: "8px 11px", marginTop: 12 }}>
-                    <span style={{ fontWeight: 700, color: "var(--text-3)" }}>You: </span>{m.content}
-                  </div>
-                ) : (
-                  <div key={m.id ?? i} style={{ fontSize: 14, lineHeight: 1.6, color: "var(--text-2)", marginTop: 12 }}>
-                    {m.content
-                      ? renderMarkdown(m.content)
-                      : <div style={{ fontSize: 12.5, color: "var(--text-3)", display: "flex", alignItems: "center", gap: 8 }}><Loader2 size={13} className="animate-spin" style={{ color: "var(--accent)" }} /> {insightStatus ?? "Reading…"}</div>}
-                  </div>
-                )
-              ))}
+              {/* The persisted conversation — scrolls within a fixed height once
+                  it grows past a few turns, so the composer stays in view. */}
+              {thread.length > 0 && (
+                <div ref={threadRef} style={{ maxHeight: "min(58vh, 620px)", overflowY: "auto", marginRight: -6, paddingRight: 6 }}>
+                  {thread.map((m, i) => (
+                    m.role === "user" ? (
+                      <div key={m.id ?? i} style={{ fontSize: 12.5, color: "var(--text-2)", background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 9, padding: "8px 11px", marginTop: 12 }}>
+                        <span style={{ fontWeight: 700, color: "var(--text-3)" }}>You: </span>{m.content}
+                      </div>
+                    ) : (
+                      <div key={m.id ?? i} style={{ fontSize: 14, lineHeight: 1.6, color: "var(--text-2)", marginTop: 12 }}>
+                        {m.content
+                          ? renderMarkdown(m.content)
+                          : <div style={{ fontSize: 12.5, color: "var(--text-3)", display: "flex", alignItems: "center", gap: 8 }}><Loader2 size={13} className="animate-spin" style={{ color: "var(--accent)" }} /> {insightStatus ?? "Reading…"}</div>}
+                      </div>
+                    )
+                  ))}
+                </div>
+              )}
 
               {thread.length === 0 && !insightErr && !insightLoading && (
                 <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 8 }}>I&rsquo;ll open with what I noticed on this account and my best hypothesis, then we figure it out together — grounded in your PPC OS methodology.</div>
