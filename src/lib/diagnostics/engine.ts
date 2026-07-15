@@ -198,7 +198,7 @@ function buildFacts(input: DiagnosisInput): DiagnosisFact[] {
 
 // ─── Observations (shapes, never causes) ──────────────────────────────────────
 
-function buildObservations(signals: Signal[]): Observation[] {
+function buildObservations(signals: Signal[], cur = "€"): Observation[] {
   const obs: Observation[] = [];
   const push = (key: string, text: string) => obs.push({ key, text });
 
@@ -218,10 +218,19 @@ function buildObservations(signals: Signal[]): Observation[] {
       `Over the last 7 days, ${share != null ? Math.round(Number(share) * 100) + "% of" : "a large share of"} itemised search-term spend had zero attributed conversions${slice}.`);
   }
 
-  for (const p of all(signals, "page_traffic_no_conversions")) {
-    const url = ev<string>(p, "url"), clicks = ev(p, "clicks"), days = ev(p, "daysZeroConv");
+  // Birds-eye: collapse the (often dozens of) "product took clicks, converted
+  // nothing" pages into ONE summary line. The per-product list lives in the
+  // Products breakdown, validated over multiple windows — not here.
+  const noConv = all(signals, "page_traffic_no_conversions");
+  if (noConv.length) {
+    const spend = noConv.reduce((s, p) => s + (Number(ev(p, "spend")) || 0), 0);
+    const clicks = noConv.reduce((s, p) => s + (Number(ev(p, "clicks")) || 0), 0);
+    const detail = [
+      spend > 0 ? `${money(spend, cur)} spent` : null,
+      clicks > 0 ? `${clicks} clicks` : null,
+    ].filter(Boolean).join(", ");
     push("page_traffic_no_conversions",
-      `${cleanProductLabel(url)} took ${clicks ?? "significant"} clicks and converted nothing for ${days ?? "several"} days running.`);
+      `${noConv.length} product${noConv.length === 1 ? "" : "s"} took clicks but converted nothing in the last 7 days${detail ? ` (${detail})` : ""}. See the product breakdown for the list and their longer-window performance.`);
   }
 
   const brand = find(signals, "brand_cr_drop");
@@ -376,7 +385,7 @@ export function buildDiagnosis(input: DiagnosisInput): Diagnosis {
       ? undefined
       : "Not yet reconciled against real orders — numbers are provisional and no client-facing alert is raised (§4.9).",
     facts: buildFacts(input),
-    observations: buildObservations(input.signals),
+    observations: buildObservations(input.signals, input.currency ?? "€"),
     checksRun: buildChecks(input),
     questions: buildQuestions(input),
     opportunities: buildOpportunities(input.signals),

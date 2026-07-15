@@ -119,7 +119,9 @@ async function handle(id: string, orgId: string) {
 
   // Product-level join (§4/§8): what the ads did per product vs what sold.
   // Current window = last 7 days (ends yesterday), matching the signal window.
-  const prodStart = new Date(); prodStart.setUTCDate(prodStart.getUTCDate() - 7);
+  // 30-day window: a product/page underperformance claim shouldn't rest on 7
+  // days (too noisy for lower-frequency purchases) — 30d is more representative.
+  const prodStart = new Date(); prodStart.setUTCDate(prodStart.getUTCDate() - 30);
   const prodStartYmd = prodStart.toISOString().slice(0, 10);
   const prodEndYmd = new Date(Date.now() - 864e5).toISOString().slice(0, 10);
   const [adRows, saleRows] = await Promise.all([

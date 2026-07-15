@@ -564,7 +564,7 @@ export default function DiagnosePage() {
             {/* Product performance — winners & losers, by spend (Google Ads) */}
             {productPages.length > 0 && (
               <>
-                <SectionTitle>Product performance — where the spend goes (last 7 days)</SectionTitle>
+                <SectionTitle>Product performance — where the spend goes (last 30 days)</SectionTitle>
                 <div style={{ ...card, overflowX: "auto" }}>
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5, minWidth: 520 }}>
                     <thead>
@@ -738,7 +738,7 @@ export default function DiagnosePage() {
                   {products.concentration.breadth !== "unknown" && (
                     <>Revenue is <b>{products.concentration.breadth}</b> — top product is {Math.round(products.concentration.topShare * 100)}% of sales, top 3 are {Math.round(products.concentration.top3Share * 100)}%. </>
                   )}
-                  Click a product to see its variants. Ads roll up from item/variant level; units &amp; revenue need Shopify connected. Last 7 days.
+                  Click a product to see its variants. Ads roll up from item/variant level; units &amp; revenue need Shopify connected. Last 30 days.
                 </div>
               </>
             )}
