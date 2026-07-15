@@ -71,6 +71,36 @@ function renderMarkdown(md: string): React.ReactNode {
   return blocks;
 }
 
+/** Consume the insight SSE stream, accumulating text and firing handlers. */
+async function consumeInsightStream(
+  body: ReadableStream<Uint8Array>,
+  h: { onText: (acc: string) => void; onReset: () => void; onStatus: (s: string) => void; onError: (e: string) => void },
+): Promise<string> {
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let buf = "", acc = "";
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buf += decoder.decode(value, { stream: true });
+    const parts = buf.split("\n\n");
+    buf = parts.pop() ?? "";
+    for (const part of parts) {
+      const line = part.trim();
+      if (!line.startsWith("data:")) continue;
+      const payload = line.slice(5).trim();
+      if (!payload) continue;
+      let ev: { text?: string; error?: string; status?: string; reset?: boolean };
+      try { ev = JSON.parse(payload); } catch { continue; }
+      if (ev.error) h.onError(ev.error);
+      else if (ev.reset) { acc = ""; h.onReset(); }
+      else if (ev.status) h.onStatus(ev.status);
+      else if (ev.text) { acc += ev.text; h.onText(acc); }
+    }
+  }
+  return acc;
+}
+
 type Status = "green" | "yellow" | "red";
 interface Fact { label: string; value: string; context?: string; tone: "bad" | "warn" | "good" | "neutral"; }
 interface Observation { key: string; text: string; }
@@ -139,6 +169,10 @@ export default function DiagnosePage() {
   const [insightLoading, setInsightLoading] = useState(false);
   const [insightErr, setInsightErr] = useState<string | null>(null);
   const [insightStatus, setInsightStatus] = useState<string | null>(null);
+  // Conversational follow-ups: {q} = team's added context, {a} = updated read.
+  const [followups, setFollowups] = useState<{ q: string; a: string }[]>([]);
+  const [followInput, setFollowInput] = useState("");
+  const [followSending, setFollowSending] = useState(false);
   const [tracking, setTracking] = useState<TrackingStatus | null>(null);
   const [trackingSaving, setTrackingSaving] = useState<"verified" | "broken" | "clear" | null>(null);
   const [loading, setLoading] = useState(true);
@@ -215,45 +249,73 @@ export default function DiagnosePage() {
   }
 
   async function getInsight() {
-    setInsightLoading(true); setInsightErr(null); setInsight(null); setInsightStatus("Pulling fresh data…");
+    setInsightLoading(true); setInsightErr(null); setInsight(null); setFollowups([]); setInsightStatus("Pulling fresh data…");
     let pulled = false;
     try {
-      const r = await fetch(`/api/diagnostics/account/${id}/insight`, { method: "POST", credentials: "include" });
+      const r = await fetch(`/api/diagnostics/account/${id}/insight`, {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" }, body: "{}",
+      });
       // Early validation errors (PPC OS not connected) come back as JSON.
       if (!r.ok || !r.body || !r.headers.get("content-type")?.includes("text/event-stream")) {
         const j = await r.json().catch(() => ({}));
         setInsightErr(j.error ?? `HTTP ${r.status}`);
         return;
       }
-      const reader = r.body.getReader();
-      const decoder = new TextDecoder();
-      let buf = "", acc = "";
-      for (;;) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        buf += decoder.decode(value, { stream: true });
-        const parts = buf.split("\n\n");
-        buf = parts.pop() ?? "";
-        for (const part of parts) {
-          const line = part.trim();
-          if (!line.startsWith("data:")) continue;
-          const payload = line.slice(5).trim();
-          if (!payload) continue;
-          let ev: { text?: string; error?: string; done?: boolean; status?: string };
-          try { ev = JSON.parse(payload); } catch { continue; }
-          if (ev.error) setInsightErr(ev.error);
-          else if (ev.status === "refreshing") { setInsightStatus("Pulling the latest Google Ads + Shopify data…"); pulled = true; }
-          else if (ev.status === "reading") setInsightStatus("Reading across 7/14/30/60/90-day windows…");
-          else if (ev.text) { setInsightStatus(null); acc += ev.text; setInsight(acc); }
-        }
-      }
-      if (!acc) setInsight(prev => prev ?? "");
+      await consumeInsightStream(r.body, {
+        onReset: () => setInsight(""),
+        onText: (acc) => { setInsightStatus(null); setInsight(acc); },
+        onStatus: (s) => {
+          if (s === "refreshing") { setInsightStatus("Pulling the latest Google Ads + Shopify data…"); pulled = true; }
+          else if (s === "reading") setInsightStatus("Reading across 7/14/30/60/90-day windows…");
+        },
+        onError: (e) => setInsightErr(e),
+      });
+      setInsight(prev => prev ?? "");
     } catch (e) { setInsightErr(e instanceof Error ? e.message : "Failed"); }
     finally {
       setInsightLoading(false); setInsightStatus(null);
       // The read just pulled fresh data — refresh the rest of the cockpit too.
       if (pulled) load();
     }
+  }
+
+  // Feed the read context it can't see from data ("payments were down") and let
+  // it re-reason. No Google Ads re-pull — continues the same thread.
+  async function askFollowup() {
+    const q = followInput.trim();
+    if (!q || !insight || followSending) return;
+    setFollowSending(true); setInsightErr(null); setFollowInput("");
+    // Build the prior thread (assistant read + earlier Q/A pairs) for the server.
+    const thread = [
+      { role: "assistant" as const, content: insight },
+      ...followups.flatMap(f => [
+        { role: "user" as const, content: f.q },
+        { role: "assistant" as const, content: f.a },
+      ]),
+    ];
+    const idx = followups.length;
+    setFollowups(prev => [...prev, { q, a: "" }]);
+    const setA = (a: string) => setFollowups(prev => prev.map((f, i) => i === idx ? { ...f, a } : f));
+    try {
+      const r = await fetch(`/api/diagnostics/account/${id}/insight`, {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ followup: q, thread }),
+      });
+      if (!r.ok || !r.body || !r.headers.get("content-type")?.includes("text/event-stream")) {
+        const j = await r.json().catch(() => ({}));
+        setInsightErr(j.error ?? `HTTP ${r.status}`);
+        return;
+      }
+      await consumeInsightStream(r.body, {
+        onReset: () => setA(""),
+        onText: (acc) => setA(acc),
+        onStatus: () => {},
+        onError: (e) => setInsightErr(e),
+      });
+    } catch (e) { setInsightErr(e instanceof Error ? e.message : "Failed"); }
+    finally { setFollowSending(false); }
   }
 
   // Record the team's tracking verdict, then re-run the read so it reasons from
@@ -430,6 +492,37 @@ export default function DiagnosePage() {
               )}
               {!insight && !insightErr && !insightLoading && (
                 <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 8 }}>A short, direct read — what&rsquo;s happening, the likely why, and the next move — grounded in your PPC OS methodology.</div>
+              )}
+
+              {/* Conversational follow-ups — feed the read context it can't see
+                  (payments down, vendor in misrep) and let it re-reason. */}
+              {insight && (
+                <div style={{ marginTop: 14, paddingTop: 13, borderTop: "1px solid var(--border-2)" }}>
+                  {followups.map((f, i) => (
+                    <div key={i} style={{ marginBottom: 12 }}>
+                      <div style={{ fontSize: 12.5, color: "var(--text-2)", background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 9, padding: "8px 11px", marginBottom: 8 }}>
+                        <span style={{ fontWeight: 700, color: "var(--text-3)" }}>You: </span>{f.q}
+                      </div>
+                      {f.a
+                        ? <div style={{ fontSize: 13.5, lineHeight: 1.6, color: "var(--text-2)", paddingLeft: 2 }}>{renderMarkdown(f.a)}</div>
+                        : <div style={{ fontSize: 12.5, color: "var(--text-3)", display: "flex", alignItems: "center", gap: 8, paddingLeft: 2 }}><Loader2 size={13} className="animate-spin" style={{ color: "var(--accent)" }} /> Re-reading with your context…</div>}
+                    </div>
+                  ))}
+                  <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
+                    <textarea
+                      value={followInput}
+                      onChange={e => setFollowInput(e.target.value)}
+                      onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); askFollowup(); } }}
+                      placeholder="Add context it can't see — e.g. 'payment provider was down 3–10 July', 'vendor is in misrep in Merchant Center'…"
+                      rows={1}
+                      disabled={followSending}
+                      style={{ flex: 1, resize: "none", fontSize: 12.5, lineHeight: 1.5, color: "var(--text)", background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 9, padding: "8px 11px", fontFamily: "inherit", minHeight: 36 }}
+                    />
+                    <button onClick={askFollowup} disabled={followSending || !followInput.trim()} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12.5, fontWeight: 600, color: "#fff", background: "var(--btn-primary, var(--accent))", border: "none", borderRadius: 8, padding: "8px 13px", cursor: followSending || !followInput.trim() ? "default" : "pointer", opacity: followSending || !followInput.trim() ? 0.6 : 1, whiteSpace: "nowrap" }}>
+                      {followSending ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />} Send
+                    </button>
+                  </div>
+                </div>
               )}
 
               {/* Resolve-and-re-reason: confirm the read's #1 assumption (tracking)
