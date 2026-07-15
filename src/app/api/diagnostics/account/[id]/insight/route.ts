@@ -52,7 +52,20 @@ Connect the dots: correlate a change (budget/negatives, dates) with a metric shi
 **Do next**
 The single highest-leverage move, specific and concrete.
 
-Analysis rules: Base your read on the FULL multi-window picture (7 / 14 / 30 / 60 / 90 days), NOT just the last 7 days. Establish the trend — improving, declining, or stable — by comparing windows, and cite it ("ROAS 3.1 over 30d but 1.9 over 7d"). Separate a short-term blip from a real shift. Use the longer windows to judge whether a recent number is signal or noise.
+Analysis rules: Base your read on the FULL multi-window picture (7 / 14 / 30 / 60 / 90 days), NOT just the last 7 days. Establish the trend — improving, declining, or stable — by comparing windows, and cite it ("ROAS 3.1 over 30d but 1.9 over 7d"). Separate a short-term blip from a real shift. Use the longer windows to judge whether a recent number is signal or noise. If CLIENT EXPECTATIONS are provided, judge performance against THEM (their target ROAS / KPI / margin), not a generic bar.
+
+REASONING PROTOCOL — this is how a senior specialist on our team actually works an account. Reason through it IN THIS ORDER, and PREFER ASKING a sharp question over assuming a cause. Don't dump the whole checklist in the output; use it to decide what to say and, crucially, what to ASK.
+1. Conversions & expectation FIRST. Do the conversions make sense — stable, growing, and matching the client's expectation? Be suspicious BOTH ways: a ROAS that looks too HIGH is as much a red flag as one too low (both smell like a tracking problem — double-counting, wrong conversion, or a broken tag). If a number looks too good or too bad to be true, question the tracking before you trust it.
+2. Tracking must be confirmed before you trust ANY ROAS/conversion figure. If it hasn't been verified, say the read is provisional and ask the team to confirm tracking fires end-to-end.
+3. Spend distribution — where is the money going and what's working? Most ecommerce needs a feed-only Performance Max (Shopping) campaign as the performance backbone; note if it looks absent or starved.
+4. Shopping in the EEA → CSS. If they serve Shopping in the EEA and are NOT on a CSS partner (e.g. Producthero), they overpay ~20% on CPCs — flag it and ask whether they're on a CSS.
+5. Brand vs non-brand. Are branded searches being paid for inside non-brand campaigns? Flag the bleed. It isn't always an error (feeding branded signal can help the algorithm find the audience), but for an ESTABLISHED brand, not separating brand from generic makes no sense.
+6. Trust signals. Look at new-vs-returning, brand performance, and brand search-term quality — e.g. a low conversion rate on "[brand] + reviews" means trust/reputation is the leak, not the ads.
+7. Product & search-term waste over LONGER periods. Which products or search terms have quietly burned budget over weeks (not a noisy 7 days)?
+8. CRO / the site — a core part of what we advise on, not an afterthought. When the ads clearly do their job (healthy clicks/traffic to a product) but conversion is weak, the page is the bottleneck, and we give concrete guidance on what to CHANGE: above-the-fold clarity and value proposition, trust elements (reviews, guarantees, payment/shipping badges), product imagery, price presentation, checkout friction, page speed, mobile layout. Don't just ask "has anyone looked" — when the data points at the landing page, name the most likely CRO fix in concrete terms.
+9. Portfolio comparison. When you're unsure, benchmark this account's conversion rate / assortment against similar accounts to judge whether a number is actually bad.
+
+DATA-PARTNER LENS (we advise on growth, not just Google Ads): when an account is healthy and scaling, the highest-leverage "Do next" may be OFF Google Ads entirely — expanding to Meta/UGC, or fixing retention. In particular, if returning-customer revenue is low, the move is email/retention marketing, not more ad spend. Say so when it fits; don't tunnel-vision on in-account levers.
 
 Formatting rules: Start immediately with the "**The read**" header — NO preamble line. Do NOT use horizontal rules or dividers. Keep the three bold headers exactly as shown. Plain paragraphs under each header; a short bullet list is fine only under "Do next".
 
@@ -105,6 +118,32 @@ function buildContext(
     L.push(`\nAccount changes (last 30d): ${Object.entries(counts).map(([t, n]) => `${n}× ${t}`).join(", ")}`);
   }
   return L.join("\n");
+}
+
+interface ClientCtx {
+  goal?: string | null; mainKpi?: string | null; targetRoasNote?: string | null;
+  strategyPreference?: string | null; usps?: string | null; audienceNuances?: string | null;
+  makeOrBreak?: string | null; anythingElse?: string | null; adsStartedNote?: string | null;
+  netMarginPct?: number | null; breakEvenRoas?: number | null;
+}
+
+/** The client's own expectations & context — so the read judges "does this match
+ * what they want" instead of guessing at a target. Empty string if nothing set. */
+function buildClientBlock(c: ClientCtx | null): string {
+  if (!c) return "";
+  const L: string[] = [];
+  if (c.goal) L.push(`  Goal: ${c.goal}`);
+  if (c.mainKpi) L.push(`  Main KPI: ${c.mainKpi}`);
+  if (c.targetRoasNote) L.push(`  Target ROAS: ${c.targetRoasNote}`);
+  if (c.breakEvenRoas) L.push(`  Break-even ROAS: ${c.breakEvenRoas.toFixed(2)}`);
+  if (c.netMarginPct) L.push(`  Net margin: ${Math.round(c.netMarginPct * 100)}%`);
+  if (c.strategyPreference) L.push(`  Strategy preference: ${c.strategyPreference}`);
+  if (c.makeOrBreak) L.push(`  Make-or-break: ${c.makeOrBreak}`);
+  if (c.usps) L.push(`  USPs: ${c.usps}`);
+  if (c.audienceNuances) L.push(`  Audience nuances: ${c.audienceNuances}`);
+  if (c.adsStartedNote) L.push(`  Ads history: ${c.adsStartedNote}`);
+  if (c.anythingElse) L.push(`  Constraints/notes: ${c.anythingElse}`);
+  return L.length ? `CLIENT EXPECTATIONS & CONTEXT (judge performance against THIS, not a generic target):\n${L.join("\n")}\n\n` : "";
 }
 
 const CUR: Record<string, string> = { EUR: "€", USD: "$", GBP: "£", CZK: "Kč", PLN: "zł" };
@@ -181,13 +220,14 @@ export async function POST(req: NextRequest, { params }: Params) {
         // 2. Gather the full multi-window picture from the spine.
         send(controller, { status: isChat ? "thinking" : "reading" });
         const since = ymd(91), win30 = ymd(31), end = ymd(1);
-        const [statusRow, mRows, oRows, pageRows, adRows, changeRows] = await Promise.all([
+        const [statusRow, mRows, oRows, pageRows, adRows, changeRows, clientCtx] = await Promise.all([
           prisma.accountStatus.findMany({ where: { accountId: id }, orderBy: { computedAt: "desc" }, take: 6 }),
           prisma.metricDaily.findMany({ where: { accountId: id, date: { gte: since } }, select: { date: true, spend: true, clicks: true, conversions: true, conversionValue: true } }),
           prisma.orderDaily.findMany({ where: { accountId: id, date: { gte: since } }, select: { date: true, orders: true, revenue: true } }),
           prisma.metricProductDaily.findMany({ where: { accountId: id, date: { gte: win30, lte: end } }, select: { landingPageUrl: true, spend: true, clicks: true, conversions: true, conversionValue: true } }),
           prisma.productAdsDaily.findMany({ where: { accountId: id, date: { gte: win30, lte: end } }, select: { itemId: true, title: true, spend: true, conversions: true, conversionValue: true } }),
           prisma.changeEvent.findMany({ where: { accountId: id, changedAt: { gte: new Date(win30) } }, select: { changeType: true, changedAt: true } }),
+          prisma.clientContext.findUnique({ where: { accountId: id } }).catch(() => null),
         ]);
 
         let diag: DiagMetrics | null = null;
@@ -226,7 +266,7 @@ export async function POST(req: NextRequest, { params }: Params) {
 
         // 3. Stream the expert read — or, on a follow-up, continue the thread with
         // the team's added context on top of the same account data.
-        const context = buildContext(account.name, cur, diag, windows, pages, winners, changeRows);
+        const context = buildClientBlock(clientCtx) + buildContext(account.name, cur, diag, windows, pages, winners, changeRows);
         const messages = isChat
           ? [
               { role: "user" as const, content: `${context}\n\nGive the expert read.` },
