@@ -175,7 +175,7 @@ function buildFacts(input: DiagnosisInput): DiagnosisFact[] {
     facts.push({
       label: "Brand conversion rate",
       value: before != null && after != null ? `${Math.round(Number(before) * 100)}% → ${Math.round(Number(after) * 100)}%` : "fell",
-      context: drop != null ? `${pct(-Number(drop))}, highest-intent traffic` : undefined,
+      context: drop != null ? `${pct(-Number(drop))} · last 7d vs prior 7d, highest-intent traffic` : "last 7d vs prior 7d",
       tone: "bad",
     });
   }
@@ -183,9 +183,13 @@ function buildFacts(input: DiagnosisInput): DiagnosisFact[] {
   const zero = find(input.signals, "zero_conversion_spend");
   if (zero) {
     const share = ev(zero, "share");
+    const stShareOfTotal = ev(zero, "stShareOfTotal");
     facts.push({
-      label: "Zero-conversion spend", value: share != null ? `${Math.round(Number(share) * 100)}%` : "high",
-      context: "share of search-term spend, converting nothing", tone: "warn",
+      label: "Zero-conversion search terms", value: share != null ? `${Math.round(Number(share) * 100)}%` : "high",
+      context: stShareOfTotal != null
+        ? `of itemised search-term spend (only ${pct(Number(stShareOfTotal))} of total) · last 7d`
+        : "of the search-terms-report slice, not total spend · last 7d",
+      tone: "warn",
     });
   }
 
@@ -206,8 +210,12 @@ function buildObservations(signals: Signal[]): Observation[] {
   const zero = find(signals, "zero_conversion_spend");
   if (zero) {
     const share = ev(zero, "share");
+    const stShareOfTotal = ev(zero, "stShareOfTotal");
+    const slice = stShareOfTotal != null
+      ? ` — but itemised search terms are only ${Math.round(Number(stShareOfTotal) * 100)}% of total spend, so this is a search-query hygiene flag, not total waste`
+      : ` (search-terms-report slice only, not total spend)`;
     push("zero_conversion_spend",
-      `${share != null ? Math.round(Number(share) * 100) + "% of" : "A large share of"} search-term spend went to terms that converted nothing.`);
+      `Over the last 7 days, ${share != null ? Math.round(Number(share) * 100) + "% of" : "a large share of"} itemised search-term spend had zero attributed conversions${slice}.`);
   }
 
   for (const p of all(signals, "page_traffic_no_conversions")) {
