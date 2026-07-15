@@ -125,6 +125,16 @@ async function consumeInsightStream(
 
 interface Msg { id?: string; role: "assistant" | "user"; content: string; kind?: string }
 
+// One-click follow-ups so the team can steer without typing.
+const PRESET_QUESTIONS = [
+  "What should we check first?",
+  "What's the single highest-leverage fix?",
+  "What would confirm your hypothesis?",
+  "How does this compare to similar accounts?",
+  "Draft the next steps for the team",
+  "Summarise this for the client",
+];
+
 type Status = "green" | "yellow" | "red";
 interface Fact { label: string; value: string; context?: string; tone: "bad" | "warn" | "good" | "neutral"; }
 interface Observation { key: string; text: string; }
@@ -386,6 +396,15 @@ export default function DiagnosePage() {
     const label = q + (atts.length ? `${q ? "  " : ""}📎 ${atts.map(a => a.name).join(", ")}` : "");
     setThread(prev => [...prev, { role: "user", content: label }]);
     await runStream({ followup: q, attachments: atts });
+    setFollowSending(false);
+  }
+
+  // One-click preset question — sends without typing.
+  async function sendPreset(text: string) {
+    if (followSending || insightLoading) return;
+    setFollowSending(true); setInsightErr(null);
+    setThread(prev => [...prev, { role: "user", content: text }]);
+    await runStream({ followup: text });
     setFollowSending(false);
   }
 
@@ -699,6 +718,18 @@ export default function DiagnosePage() {
                   steer. It reads screenshots/PDFs/CSVs and remembers. */}
               {thread.length > 0 && (
                 <div style={{ marginTop: 14 }}>
+                  {/* Preset questions — steer with one click, no typing */}
+                  {!insightLoading && !followSending && thread[thread.length - 1]?.role === "assistant" && (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 9 }}>
+                      {PRESET_QUESTIONS.map(q => (
+                        <button key={q} onClick={() => sendPreset(q)} style={{ fontSize: 11.5, fontWeight: 500, color: "var(--text-2)", background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 999, padding: "5px 12px", cursor: "pointer", whiteSpace: "nowrap" }}
+                          onMouseEnter={e => { e.currentTarget.style.borderColor = "color-mix(in srgb, var(--accent) 40%, var(--border))"; e.currentTarget.style.color = "var(--text)"; }}
+                          onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border-2)"; e.currentTarget.style.color = "var(--text-2)"; }}>
+                          {q}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                   {pending.length > 0 && (
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 8 }}>
                       {pending.map((a, i) => (
