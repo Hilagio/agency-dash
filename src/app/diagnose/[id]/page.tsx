@@ -286,6 +286,12 @@ export default function DiagnosePage() {
           }}>
             {refreshing ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />} {refreshing ? "Pulling…" : "Refresh data"}
           </button>
+          <Link href={`/plan/${id}`} style={{
+            display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, textDecoration: "none",
+            color: "var(--accent)", border: "1px solid color-mix(in srgb, var(--accent) 35%, var(--border))", background: "var(--accent-dim)", padding: "7px 13px", borderRadius: 8,
+          }}>
+            <Sparkles size={13} /> 90-day plan
+          </Link>
           <Link href={`/accounts/${id}`} style={{
             display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, textDecoration: "none",
             color: "var(--text-3)", border: "1px solid var(--border-2)", background: "var(--surface)", padding: "7px 13px", borderRadius: 8,

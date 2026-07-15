@@ -198,6 +198,38 @@ model Account {
 
   // Per-user "my accounts" watchlist entries pointing at this account.
   watchers AccountWatch[]
+
+  // Client Context Pack (the enrichment the data can't fetch — drives the plan).
+  clientContextPack ClientContext?
+}
+
+// The Client Context Pack (SOP v2.0): the six enrichment inputs that don't live
+// in any Google/Shopify export, captured once per client. Mirrors the Typeform.
+// The make-or-break factor is the field that carries the plan's value.
+model ClientContext {
+  id        String  @id @default(cuid())
+  accountId String  @unique
+  account   Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  amName            String? // account manager
+  goal              String? // what does the client want to achieve?
+  mainKpi           String? // their main KPI for us to hit
+  targetRoasNote    String? // target ROAS — and have they hit it before?
+  adsStartedNote    String? // when did their Google Ads account start spending?
+  strategyPreference String? // scale aggressively | cautious | balanced (free text)
+  usps              String? // what makes this client different?
+  audienceNuances   String? // audiences the algorithm must learn separately
+  makeOrBreak       String? // ⭐ the make-or-break particularity (the key field)
+  anythingElse      String? // constraints / stock inputs / anything else
+
+  // Optional P&L enrichment for exact margin steering (POAS).
+  netMarginPct  Float?  // e.g. 0.28 → 28% net margin
+  breakEvenRoas Float?  // e.g. 2.0
+
+  defaultLanguage String   @default("en") // "en" | "nl"
+  updatedBy       String?  // email of last editor
+  updatedAt       DateTime @updatedAt
+  createdAt       DateTime @default(now())
 }
 
 // ─── Diagnostic spine — one timeline per client (BUILD-SPEC §6) ────────────────
