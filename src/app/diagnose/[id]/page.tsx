@@ -214,12 +214,36 @@ export default function DiagnosePage() {
   }
 
   async function getInsight() {
-    setInsightLoading(true); setInsightErr(null);
+    setInsightLoading(true); setInsightErr(null); setInsight(null);
     try {
       const r = await fetch(`/api/diagnostics/account/${id}/insight`, { method: "POST", credentials: "include" });
-      const j = await r.json().catch(() => ({}));
-      if (!r.ok || j.error) setInsightErr(j.error ?? `HTTP ${r.status}`);
-      else setInsight(j.insight ?? "");
+      // Early validation errors (no data / PPC OS not connected) come back as JSON.
+      if (!r.ok || !r.body || !r.headers.get("content-type")?.includes("text/event-stream")) {
+        const j = await r.json().catch(() => ({}));
+        setInsightErr(j.error ?? `HTTP ${r.status}`);
+        return;
+      }
+      const reader = r.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = "", acc = "";
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const parts = buf.split("\n\n");
+        buf = parts.pop() ?? "";
+        for (const part of parts) {
+          const line = part.trim();
+          if (!line.startsWith("data:")) continue;
+          const payload = line.slice(5).trim();
+          if (!payload) continue;
+          let ev: { text?: string; error?: string; done?: boolean };
+          try { ev = JSON.parse(payload); } catch { continue; }
+          if (ev.error) setInsightErr(ev.error);
+          else if (ev.text) { acc += ev.text; setInsight(acc); }
+        }
+      }
+      if (!acc) setInsight(prev => prev ?? "");
     } catch (e) { setInsightErr(e instanceof Error ? e.message : "Failed"); }
     finally { setInsightLoading(false); }
   }

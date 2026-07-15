@@ -152,19 +152,42 @@ export async function POST(_req: NextRequest, { params }: Params) {
 
   const context = buildContext(account.name, cur, diag, windows, pages, changeRows);
 
-  try {
-    const msg = await client.beta.messages.create({
-      model: "claude-opus-4-8",
-      max_tokens: 1024,
-      betas: ppc.betas,
-      mcp_servers: ppc.mcp_servers,
-      tools: ppc.tools,
-      system: SYSTEM + PPC_OS_SYSTEM_NOTE + trackingDirective,
-      messages: [{ role: "user", content: `${context}\n\nGive the expert read.` }],
-    });
-    const insight = msg.content.filter(b => b.type === "text").map(b => (b as { text: string }).text).join("\n").trim();
-    return NextResponse.json({ insight, generatedAt: new Date().toISOString() });
-  } catch (err) {
-    return NextResponse.json({ error: err instanceof Error ? err.message : "Insight generation failed" }, { status: 502 });
-  }
+  // Stream as SSE. Opus + the PPC OS MCP tool round-trips can run long, and a
+  // non-streaming response idles the Railway gateway into a 502. Streaming keeps
+  // bytes flowing (connection stays alive) and the read renders progressively.
+  const encoder = new TextEncoder();
+  const send = (controller: ReadableStreamDefaultController, obj: unknown) =>
+    controller.enqueue(encoder.encode(`data: ${JSON.stringify(obj)}\n\n`));
+
+  const stream = new ReadableStream({
+    async start(controller) {
+      try {
+        // Flush a first byte immediately so the proxy sees the response start.
+        send(controller, { started: true });
+        const anthropicStream = client.beta.messages.stream({
+          model: "claude-opus-4-8",
+          max_tokens: 1024,
+          betas: ppc.betas,
+          mcp_servers: ppc.mcp_servers,
+          tools: ppc.tools,
+          system: SYSTEM + PPC_OS_SYSTEM_NOTE + trackingDirective,
+          messages: [{ role: "user", content: `${context}\n\nGive the expert read.` }],
+        });
+        for await (const ev of anthropicStream) {
+          if (ev.type === "content_block_delta" && ev.delta.type === "text_delta") {
+            send(controller, { text: ev.delta.text });
+          }
+        }
+        send(controller, { done: true, generatedAt: new Date().toISOString() });
+      } catch (err) {
+        send(controller, { error: err instanceof Error ? err.message : "Insight generation failed" });
+      } finally {
+        controller.close();
+      }
+    },
+  });
+
+  return new NextResponse(stream, {
+    headers: { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", Connection: "keep-alive" },
+  });
 }
