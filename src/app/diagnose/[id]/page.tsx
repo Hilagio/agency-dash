@@ -19,6 +19,21 @@ import {
 
 interface Attachment { name: string; mediaType: string; data: string; kind: "image" | "document" | "text" }
 interface DocMeta { id: string; title: string; docType: string; format: "doc" | "deck"; language: string; filename: string; createdBy: string | null; createdAt: string }
+interface Connections { googleAds: string; merchantCenter: string; shopify: string; context: string; contextFilled: number; contextTotal: number }
+
+// The context we ask the team to fill so the agent knows the client — the things
+// the data can't tell it. Keys map to the ClientContext / Typeform fields.
+const CONTEXT_QUESTIONS: { key: string; q: string }[] = [
+  { key: "goal", q: "What does this client want to achieve?" },
+  { key: "mainKpi", q: "Their main KPI for us to hit?" },
+  { key: "targetRoasNote", q: "Target ROAS — and have they hit it before?" },
+  { key: "makeOrBreak", q: "The one make-or-break factor for this client?" },
+  { key: "usps", q: "What makes them different (USPs)?" },
+  { key: "audienceNuances", q: "Audiences the algorithm must learn separately?" },
+  { key: "adsStartedNote", q: "When did their Google Ads start spending?" },
+  { key: "strategyPreference", q: "Scale aggressively, cautiously, or balanced?" },
+  { key: "anythingElse", q: "Anything else / constraints (stock, seasonality…)?" },
+];
 const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5MB/file, ≤4 files — base64 stays under the 32MB request cap
 
 /** Read a File into a base64 Attachment for the chat. Images, PDF, and text/CSV. */
@@ -196,6 +211,11 @@ export default function DiagnosePage() {
   const [windows, setWindows] = useState<WindowRow[]>([]);
   const [trend, setTrend] = useState<Trend | null>(null);
   const [shopify, setShopify] = useState<ShopifyStatus | null>(null);
+  const [connections, setConnections] = useState<Connections | null>(null);
+  const [ctxOpen, setCtxOpen] = useState(false);
+  const [ctxValues, setCtxValues] = useState<Record<string, string>>({});
+  const [ctxLoading, setCtxLoading] = useState(false);
+  const [ctxSaving, setCtxSaving] = useState(false);
   const [products, setProducts] = useState<ProductDiagnostic | null>(null);
   const [productPages, setProductPages] = useState<ProductPage[]>([]);
   const [wins, setWins] = useState<string[]>([]);
@@ -243,6 +263,7 @@ export default function DiagnosePage() {
       setWindows(j.windows ?? []);
       setTrend(j.trend ?? null);
       setShopify(j.shopify ?? null);
+      setConnections(j.connections ?? null);
       setProducts(j.products ?? null);
       setProductPages(j.productPages ?? []);
       setWins(j.wins ?? []);
@@ -408,6 +429,34 @@ export default function DiagnosePage() {
     setThread(prev => [...prev, { role: "user", content: text }]);
     await runStream({ followup: text });
     setFollowSending(false);
+  }
+
+  // Add-context form — the questions the data can't answer.
+  async function openContextForm() {
+    setCtxOpen(true); setCtxLoading(true);
+    try {
+      const r = await fetch(`/api/accounts/${id}/context`, { credentials: "include" });
+      if (r.ok) {
+        const j = await r.json();
+        const pack = j.context ?? {};
+        const vals: Record<string, string> = {};
+        for (const { key } of CONTEXT_QUESTIONS) vals[key] = pack[key] ?? "";
+        setCtxValues(vals);
+      }
+    } catch { /* start blank */ }
+    setCtxLoading(false);
+  }
+  async function saveContext() {
+    setCtxSaving(true);
+    try {
+      await fetch(`/api/accounts/${id}/context`, {
+        method: "PUT", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(ctxValues),
+      });
+      setCtxOpen(false);
+      load(); // refresh the connections completeness
+    } finally { setCtxSaving(false); }
   }
 
   // Wipe the conversation and start over.
@@ -613,6 +662,52 @@ export default function DiagnosePage() {
                 ...((diag.observations.length || diag.checksRun.length || diag.questions.length) ? [{ id: "diagnosis", label: "Diagnosis" }] : []),
                 ...(shopify ? [{ id: "data", label: "Data & connections" }] : []),
               ]} />
+            )}
+
+            {/* Connections & context — what this account knows, at a glance */}
+            {connections && (
+              <div style={{ ...card, padding: "12px 15px", marginTop: 14 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, color: "var(--text-muted)", marginRight: 4 }}>Connected</span>
+                  <ConnPill label="Google Ads" status={connections.googleAds} note="spend & performance" />
+                  <ConnPill label="Merchant Center" status={connections.merchantCenter} note={connections.merchantCenter === "green" ? "feed & products" : "not detected"} />
+                  <ConnPill label="Shopify" status={connections.shopify} note={shopify?.connected ? (shopify.shopDomain ?? "orders") : "orders & POAS"} onClick={connections.shopify !== "green" ? () => setDetailsOpen(true) : undefined} />
+                  <ConnPill label="Context" status={connections.context} note={`${connections.contextFilled}/${connections.contextTotal} answered`} onClick={openContextForm} />
+                </div>
+
+                {/* Add-context form — the questions the data can't answer */}
+                {ctxOpen && (
+                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--border-2)" }}>
+                    <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 3 }}>Tell the agent about this client</div>
+                    <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginBottom: 11 }}>The things the data can&rsquo;t know — so its read reasons against what the client actually wants. Fill what you can; blanks are fine.</div>
+                    {ctxLoading ? (
+                      <div style={{ fontSize: 12.5, color: "var(--text-3)", display: "flex", alignItems: "center", gap: 8 }}><Loader2 size={13} className="animate-spin" /> Loading…</div>
+                    ) : (
+                      <>
+                        <div style={{ display: "grid", gap: 10 }}>
+                          {CONTEXT_QUESTIONS.map(({ key, q }) => (
+                            <div key={key}>
+                              <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", display: "block", marginBottom: 4 }}>{q}</label>
+                              <textarea
+                                value={ctxValues[key] ?? ""}
+                                onChange={e => setCtxValues(v => ({ ...v, [key]: e.target.value }))}
+                                rows={key === "makeOrBreak" || key === "goal" || key === "usps" ? 2 : 1}
+                                style={{ width: "100%", resize: "vertical", fontSize: 12.5, lineHeight: 1.5, color: "var(--text)", background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 8, padding: "7px 10px", fontFamily: "inherit" }}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                        <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                          <button onClick={saveContext} disabled={ctxSaving} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: "#fff", background: "var(--btn-primary, var(--accent))", border: "none", borderRadius: 8, padding: "8px 16px", cursor: ctxSaving ? "default" : "pointer" }}>
+                            {ctxSaving ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />} Save context
+                          </button>
+                          <button onClick={() => setCtxOpen(false)} disabled={ctxSaving} style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-3)", background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 8, padding: "8px 14px", cursor: "pointer" }}>Cancel</button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
             )}
 
             {/* Expert read (PPC OS) — the agent conversation; the hero of the page */}
@@ -1266,4 +1361,17 @@ function SectionNav({ items }: { items: { id: string; label: string }[] }) {
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return <h2 style={{ fontSize: 13, fontWeight: 700, color: "var(--text-2)", margin: "26px 4px 11px", letterSpacing: "-0.2px" }}>{children}</h2>;
+}
+
+function ConnPill({ label, status, note, onClick }: { label: string; status: string; note: string; onClick?: () => void }) {
+  const color = status === "green" ? "var(--accent)" : status === "yellow" ? "var(--accent-2)" : "var(--danger)";
+  return (
+    <div onClick={onClick} role={onClick ? "button" : undefined} title={note}
+      style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 12, background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 999, padding: "5px 12px", cursor: onClick ? "pointer" : "default" }}>
+      <span style={{ width: 8, height: 8, borderRadius: "50%", background: color, flexShrink: 0 }} />
+      <span style={{ fontWeight: 600, color: "var(--text-2)" }}>{label}</span>
+      <span style={{ color: "var(--text-muted)", fontSize: 11 }}>{note}</span>
+      {onClick && <ChevronRight size={12} style={{ color: "var(--text-dim)" }} />}
+    </div>
+  );
 }

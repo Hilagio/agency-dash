@@ -63,6 +63,7 @@ async function handle(id: string, orgId: string) {
       id: true, name: true, clientName: true, currency: true, dataVerified: true,
       roasFloor: true, grossMarginPercent: true, minSpendForEval: true, minConversionsForEval: true,
       trackingStatus: true, trackingNote: true, trackingSetAt: true, trackingSetBy: true,
+      merchantCenterId: true,
     },
   });
   if (!account) return NextResponse.json({ error: "This account isn't in your organization, or doesn't exist." }, { status: 404 });
@@ -188,14 +189,32 @@ async function handle(id: string, orgId: string) {
   }
 
   // Shopify connection status — drives the connect card on the workspace.
-  const conn = await prisma.shopifyConnection.findUnique({
-    where: { accountId: id }, select: { shopDomain: true, lastSyncAt: true },
-  });
+  const [conn, ctxPack] = await Promise.all([
+    prisma.shopifyConnection.findUnique({ where: { accountId: id }, select: { shopDomain: true, lastSyncAt: true } }),
+    prisma.clientContext.findUnique({ where: { accountId: id } }).catch(() => null),
+  ]);
   const shopify = {
     appConfigured: !!shopifyAppConfig(),
     connected: !!conn,
     shopDomain: conn?.shopDomain ?? null,
     lastSyncAt: conn?.lastSyncAt ?? null,
+  };
+
+  // Connections & context — the visual "what does this account know" panel.
+  const anySpend = windows.some(w => w.spend > 0);
+  const CTX_KEYS = ["goal", "mainKpi", "targetRoasNote", "makeOrBreak", "usps", "audienceNuances", "adsStartedNote", "strategyPreference", "anythingElse"] as const;
+  const ctxFilled = ctxPack ? CTX_KEYS.filter(k => {
+    const v = (ctxPack as Record<string, unknown>)[k];
+    return typeof v === "string" && v.trim().length > 0;
+  }).length : 0;
+  const ctxStatus = ctxFilled === 0 ? "red" : ctxFilled >= Math.ceil(CTX_KEYS.length * 0.7) ? "green" : "yellow";
+  const connections = {
+    googleAds: (anySpend || !!diag) ? "green" : "yellow",
+    merchantCenter: account.merchantCenterId ? "green" : "yellow",
+    shopify: conn ? "green" : "red",
+    context: ctxStatus,
+    contextFilled: ctxFilled,
+    contextTotal: CTX_KEYS.length,
   };
 
   const diagnosis = buildDiagnosis({
@@ -220,5 +239,5 @@ async function handle(id: string, orgId: string) {
     setBy: account.trackingSetBy ?? null,
   };
 
-  return NextResponse.json({ diagnosis, windows, trend, shopify, products, productPages, wins, tracking, hasData: !!diag });
+  return NextResponse.json({ diagnosis, windows, trend, shopify, connections, products, productPages, wins, tracking, hasData: !!diag });
 }
