@@ -208,6 +208,8 @@ export default function DiagnosePage() {
   const [followInput, setFollowInput] = useState("");
   const [followSending, setFollowSending] = useState(false);
   const [pending, setPending] = useState<Attachment[]>([]);
+  // Quick-answer to the agent's closing question (Yes → "what changed?").
+  const [whatChanged, setWhatChanged] = useState<string | null>(null);
   // Brand document generation (§agent → files out).
   const [docOpen, setDocOpen] = useState(false);
   const [docBusy, setDocBusy] = useState(false);
@@ -392,17 +394,17 @@ export default function DiagnosePage() {
     const q = followInput.trim();
     const atts = pending;
     if ((!q && atts.length === 0) || followSending || insightLoading) return;
-    setFollowSending(true); setInsightErr(null); setFollowInput(""); setPending([]);
+    setFollowSending(true); setInsightErr(null); setFollowInput(""); setPending([]); setWhatChanged(null);
     const label = q + (atts.length ? `${q ? "  " : ""}📎 ${atts.map(a => a.name).join(", ")}` : "");
     setThread(prev => [...prev, { role: "user", content: label }]);
     await runStream({ followup: q, attachments: atts });
     setFollowSending(false);
   }
 
-  // One-click preset question — sends without typing.
+  // One-click preset / quick-answer — sends without typing.
   async function sendPreset(text: string) {
     if (followSending || insightLoading) return;
-    setFollowSending(true); setInsightErr(null);
+    setFollowSending(true); setInsightErr(null); setWhatChanged(null);
     setThread(prev => [...prev, { role: "user", content: text }]);
     await runStream({ followup: text });
     setFollowSending(false);
@@ -718,6 +720,36 @@ export default function DiagnosePage() {
                   steer. It reads screenshots/PDFs/CSVs and remembers. */}
               {thread.length > 0 && (
                 <div style={{ marginTop: 14 }}>
+                  {/* Quick answer to the agent's closing question — Yes/No/Not sure,
+                      and Yes opens a "what changed?" box. Shown when its last
+                      message ends on a question. */}
+                  {!insightLoading && !followSending && thread[thread.length - 1]?.role === "assistant" && /\?\s*$/.test(thread[thread.length - 1].content.trim()) && (
+                    <div style={{ marginBottom: 10 }}>
+                      {whatChanged === null ? (
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                          <span style={{ fontSize: 11.5, color: "var(--text-muted)", fontWeight: 600 }}>Quick answer:</span>
+                          <button onClick={() => setWhatChanged("")} style={{ fontSize: 12, fontWeight: 600, color: "var(--accent)", background: "var(--accent-dim)", border: "1px solid color-mix(in srgb, var(--accent) 35%, var(--border))", borderRadius: 999, padding: "5px 14px", cursor: "pointer" }}>Yes</button>
+                          <button onClick={() => sendPreset("No — nothing changed that we're aware of.")} style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 999, padding: "5px 14px", cursor: "pointer" }}>No</button>
+                          <button onClick={() => sendPreset("I'm not sure — I'd have to check.")} style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 999, padding: "5px 14px", cursor: "pointer" }}>I&rsquo;m not sure</button>
+                        </div>
+                      ) : (
+                        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                          <input
+                            autoFocus
+                            value={whatChanged}
+                            onChange={e => setWhatChanged(e.target.value)}
+                            onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); sendPreset(`Yes — ${(whatChanged || "").trim() || "something changed"}.`); } if (e.key === "Escape") setWhatChanged(null); }}
+                            placeholder="What changed? (e.g. payment provider was down 3–10 July, checkout broke, stock-out…)"
+                            style={{ flex: 1, fontSize: 12.5, color: "var(--text)", background: "var(--surface-2)", border: "1px solid color-mix(in srgb, var(--accent) 30%, var(--border-2))", borderRadius: 9, padding: "8px 11px" }}
+                          />
+                          <button onClick={() => sendPreset(`Yes — ${(whatChanged || "").trim() || "something changed"}.`)} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12.5, fontWeight: 600, color: "#fff", background: "var(--btn-primary, var(--accent))", border: "none", borderRadius: 8, padding: "8px 13px", cursor: "pointer", whiteSpace: "nowrap" }}>
+                            <Sparkles size={13} /> Send
+                          </button>
+                          <button onClick={() => setWhatChanged(null)} title="Cancel" style={{ display: "inline-flex", padding: 6, background: "none", border: "none", cursor: "pointer", color: "var(--text-dim)" }}><X size={15} /></button>
+                        </div>
+                      )}
+                    </div>
+                  )}
                   {/* Preset questions — steer with one click, no typing */}
                   {!insightLoading && !followSending && thread[thread.length - 1]?.role === "assistant" && (
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 9 }}>
