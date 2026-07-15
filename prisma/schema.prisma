@@ -209,6 +209,28 @@ model Account {
 
   // Client Context Pack (the enrichment the data can't fetch — drives the plan).
   clientContextPack ClientContext?
+
+  // The ongoing agent conversation for this account (§agent memory).
+  agentMessages AgentMessage[]
+}
+
+// The persistent agent conversation for one account (§agent). One ongoing
+// thread the whole team shares: the agent's reads/openers plus the context the
+// team feeds back ("payments were down 3-10 July"). This is the memory — every
+// future read reasons with what's already been said, so the agent stops
+// re-guessing what it's already been told.
+model AgentMessage {
+  id        String  @id @default(cuid())
+  accountId String
+  account   Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  role      String   // "assistant" (the agent) | "user" (the team)
+  content   String   // markdown for assistant, plain text for user
+  kind      String   @default("chat") // "opener" (a fresh read) | "chat" (a reply)
+  author    String?  // email of the teammate, for user messages
+  createdAt DateTime @default(now())
+
+  @@index([accountId, createdAt])
 }
 
 // The Client Context Pack (SOP v2.0): the six enrichment inputs that don't live

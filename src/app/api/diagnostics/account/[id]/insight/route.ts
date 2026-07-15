@@ -154,18 +154,12 @@ export async function POST(req: NextRequest, { params }: Params) {
   if (!ctx) return unauthorized();
   const { id } = await params;
 
-  // Conversational follow-up: the team feeds context ("payments were down",
-  // "vendor in misrep") and we re-reason WITHOUT re-pulling Google Ads.
+  // The conversation is persisted per account (§agent memory). A follow-up feeds
+  // the agent context ("payments were down") and re-reasons WITHOUT re-pulling
+  // Google Ads; a fresh read pulls new data but still remembers the thread.
   const body = await req.json().catch(() => ({} as Record<string, unknown>));
   const followup = typeof body?.followup === "string" ? body.followup.trim() : "";
-  const thread: Turn[] = Array.isArray(body?.thread)
-    ? (body.thread as unknown[])
-        .filter((t): t is Turn => !!t && typeof t === "object"
-          && ((t as Turn).role === "user" || (t as Turn).role === "assistant")
-          && typeof (t as Turn).content === "string" && (t as Turn).content.length > 0)
-        .slice(-8)
-    : [];
-  const isChat = followup.length > 0 && thread.length > 0;
+  const isChat = followup.length > 0;
 
   const account = await prisma.account.findFirst({
     where: { id, organizationId: ctx.orgId },
@@ -262,37 +256,66 @@ export async function POST(req: NextRequest, { params }: Params) {
           return;
         }
 
-        // 3. Stream the expert read — or, on a follow-up, continue the thread with
-        // the team's added context on top of the same account data.
+        // 3. Load the persisted conversation (memory) and build the turns. A
+        // fresh read with history becomes an UPDATED read that remembers; a
+        // follow-up appends the team's context.
+        const priorRaw = await prisma.agentMessage.findMany({
+          where: { accountId: id }, orderBy: { createdAt: "asc" }, take: 12,
+          select: { role: true, content: true },
+        });
+        const memory: Turn[] = priorRaw.map(m => ({ role: m.role === "user" ? "user" : "assistant", content: m.content }));
+        while (memory.length && memory[memory.length - 1].role === "user") memory.pop(); // keep alternation clean
+        const hasMemory = memory.length > 0;
+
+        // Persist the team's message immediately (survives a mid-stream failure).
+        if (isChat) {
+          await prisma.agentMessage.create({
+            data: { accountId: id, role: "user", content: followup, kind: "chat", author: ctx.email },
+          }).catch(() => null);
+        }
+
         const context = buildClientBlock(clientCtx) + buildContext(account.name, cur, diag, windows, pages, winners, changeRows);
-        const messages = isChat
-          ? [
-              { role: "user" as const, content: `${context}\n\nGive the expert read.` },
-              ...thread,
-              { role: "user" as const, content: followup },
-            ]
-          : [{ role: "user" as const, content: `${context}\n\nGive the expert read.` }];
+        const firstTurn = { role: "user" as const, content: `${context}\n\nGive the expert read.` };
+        let messages: Turn[];
+        let useChatSystem: boolean;
+        if (isChat) {
+          messages = [firstTurn, ...memory, { role: "user", content: followup }];
+          useChatSystem = true;
+        } else if (hasMemory) {
+          messages = [firstTurn, ...memory, { role: "user", content: "(The team asked for a fresh read.) Give me an updated read on the account using the latest data above. Remember everything we've already discussed — build on it, and don't re-raise context or hypotheses you already have answers to." }];
+          useChatSystem = true;
+        } else {
+          messages = [firstTurn];
+          useChatSystem = false;
+        }
         const anthropicStream = client.beta.messages.stream({
           model: "claude-opus-4-8",
           max_tokens: 1024,
           betas: ppc.betas,
           mcp_servers: ppc.mcp_servers,
           tools: ppc.tools,
-          system: (isChat ? SYSTEM_CHAT : SYSTEM) + PPC_OS_SYSTEM_NOTE + trackingDirective,
+          system: (useChatSystem ? SYSTEM_CHAT : SYSTEM) + PPC_OS_SYSTEM_NOTE + trackingDirective,
           messages,
         });
         // With MCP tool use the model can emit a draft text block, call a tool,
         // then emit the FINAL read as a second text block — which showed up as a
         // duplicated read. Keep only the last text block: on every text block
-        // after the first, tell the client to reset what it has rendered so far.
-        let textBlocks = 0;
+        // after the first, tell the client to reset, and reset our own capture.
+        let textBlocks = 0, finalText = "";
         for await (const ev of anthropicStream) {
           if (ev.type === "content_block_start" && ev.content_block?.type === "text") {
             textBlocks++;
-            if (textBlocks > 1) send(controller, { reset: true });
+            if (textBlocks > 1) { send(controller, { reset: true }); finalText = ""; }
           } else if (ev.type === "content_block_delta" && ev.delta.type === "text_delta") {
             send(controller, { text: ev.delta.text });
+            finalText += ev.delta.text;
           }
+        }
+        // Persist the agent's message so the conversation is remembered.
+        if (finalText.trim()) {
+          await prisma.agentMessage.create({
+            data: { accountId: id, role: "assistant", content: finalText.trim(), kind: isChat ? "chat" : "opener" },
+          }).catch(() => null);
         }
         send(controller, { done: true, generatedAt: new Date().toISOString() });
       } catch (err) {
