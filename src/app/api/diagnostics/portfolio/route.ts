@@ -32,15 +32,19 @@ export async function GET() {
   const ctx = await getAuthContext();
   if (!ctx) return unauthorized();
 
-  const accounts = await prisma.account.findMany({
-    where: { organizationId: ctx.orgId, active: true, archived: false },
-    select: {
-      id: true, name: true, clientName: true, grossMarginPercent: true,
-      owner: { select: { name: true } },
-      shopify: { select: { shopDomain: true } },
-    },
-    orderBy: { name: "asc" },
-  });
+  const [accounts, watches] = await Promise.all([
+    prisma.account.findMany({
+      where: { organizationId: ctx.orgId, active: true, archived: false },
+      select: {
+        id: true, name: true, clientName: true, grossMarginPercent: true,
+        owner: { select: { name: true } },
+        shopify: { select: { shopDomain: true } },
+      },
+      orderBy: { name: "asc" },
+    }),
+    prisma.accountWatch.findMany({ where: { userId: ctx.userId }, select: { accountId: true } }),
+  ]);
+  const watched = new Set(watches.map(w => w.accountId));
 
   const rows = await Promise.all(accounts.map(async (a) => {
     const recent = await prisma.accountStatus.findMany({
@@ -65,6 +69,7 @@ export async function GET() {
       name: a.name,
       clientName: a.clientName,
       ownerName: a.owner?.name ?? null,
+      watched: watched.has(a.id),
       status: (st?.status as "red" | "yellow" | "green") ?? "unknown",
       computedAt: st?.computedAt ?? null,
       hasData: !!diag,
@@ -95,5 +100,6 @@ export async function GET() {
     total: rows.length,
     unverified: rows.filter(r => r.hasData && !r.dataVerified).length,
     withData: rows.filter(r => r.hasData).length,
+    watchedCount: watched.size,
   });
 }

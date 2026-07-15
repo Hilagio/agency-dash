@@ -9,14 +9,14 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   ShieldCheck, Settings as SettingsIcon, Store, ListChecks, BookOpen,
-  Loader2, ArrowRight, Sprout, Activity, ShoppingBag, AlertTriangle, CheckCircle2, XCircle,
+  Loader2, ArrowRight, Sprout, Activity, ShoppingBag, AlertTriangle, CheckCircle2, XCircle, Star,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 type Colour = "red" | "yellow" | "green" | "unknown";
 interface Row {
   id: string; name: string; clientName: string | null; ownerName: string | null;
-  status: Colour; hasData: boolean;
+  status: Colour; hasData: boolean; watched: boolean;
   spend: number; roas: number | null; poas: number | null; orders: number | null;
   revenue: number | null; dataVerified: boolean; shopifyConnected: boolean;
   reconciliationMismatch: boolean;
@@ -26,7 +26,7 @@ interface Row {
 interface Portfolio {
   accounts: Row[];
   counts: Record<Colour, number>;
-  total: number; unverified: number; withData: number;
+  total: number; unverified: number; withData: number; watchedCount: number;
 }
 interface Health { ok: boolean; accountCount?: number; error?: string; hint?: string }
 
@@ -44,6 +44,13 @@ const navLink = (active: boolean): React.CSSProperties => ({
   color: active ? "var(--text)" : "var(--text-3)", background: active ? "var(--accent-dim)" : "transparent", fontWeight: active ? 600 : 500,
 });
 const money = (n: number) => `€${Math.round(n).toLocaleString("en-GB")}`;
+const segBtn = (active: boolean): React.CSSProperties => ({
+  display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600,
+  padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer",
+  background: active ? "var(--surface)" : "transparent",
+  color: active ? "var(--text)" : "var(--text-3)",
+  boxShadow: active ? "0 1px 3px rgba(0,0,0,0.10)" : "none",
+});
 
 export default function PortfolioHome() {
   const [name, setName] = useState<string | null>(null);
@@ -51,6 +58,9 @@ export default function PortfolioHome() {
   const [health, setHealth] = useState<Health | null>(null);
   const [loading, setLoading] = useState(true);
   const [nowMs, setNowMs] = useState<number | null>(null);
+  const [view, setView] = useState<"mine" | "all">("all");
+  const [viewLoaded, setViewLoaded] = useState(false);
+  const [busyWatch, setBusyWatch] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -62,16 +72,55 @@ export default function PortfolioHome() {
       ]);
       setName(me?.user?.name ?? (me?.user?.email ? String(me.user.email).split("@")[0] : null));
       setData(pf);
+      // Open on "My accounts" if the user has any, unless they've chosen otherwise.
+      const saved = typeof window !== "undefined" ? window.localStorage.getItem("portfolioView") : null;
+      setView(saved === "mine" || saved === "all" ? saved : (pf?.watchedCount ? "mine" : "all"));
+      setViewLoaded(true);
       setLoading(false);
       // Health probe is independent (can be slow / fail) — load it after.
       fetch("/api/google-ads/health", { credentials: "include" }).then(r => r.json()).then(setHealth).catch(() => setHealth({ ok: false, error: "unreachable" }));
     })();
   }, []);
 
+  function chooseView(v: "mine" | "all") {
+    setView(v);
+    if (typeof window !== "undefined") window.localStorage.setItem("portfolioView", v);
+  }
+
+  async function toggleWatch(id: string, next: boolean) {
+    setBusyWatch(prev => new Set(prev).add(id));
+    // Optimistic update.
+    setData(prev => prev && ({
+      ...prev,
+      accounts: prev.accounts.map(a => a.id === id ? { ...a, watched: next } : a),
+      watchedCount: prev.watchedCount + (next ? 1 : -1),
+    }));
+    try {
+      const r = await fetch("/api/me/watch", {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accountId: id, watch: next }),
+      });
+      if (!r.ok) throw new Error();
+    } catch {
+      // Revert on failure.
+      setData(prev => prev && ({
+        ...prev,
+        accounts: prev.accounts.map(a => a.id === id ? { ...a, watched: !next } : a),
+        watchedCount: prev.watchedCount + (next ? -1 : 1),
+      }));
+    } finally {
+      setBusyWatch(prev => { const n = new Set(prev); n.delete(id); return n; });
+    }
+  }
+
   const hour = nowMs != null ? new Date(nowMs).getHours() : 9;
   const partOfDay = hour < 12 ? "morning" : hour < 18 ? "afternoon" : "evening";
   const first = (name ?? "there").split(" ")[0];
   const c = data?.counts ?? { red: 0, yellow: 0, green: 0, unknown: 0 };
+  const allAccounts = data?.accounts ?? [];
+  const watchedCount = data?.watchedCount ?? 0;
+  const visible = view === "mine" ? allAccounts.filter(a => a.watched) : allAccounts;
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)" }}>
@@ -132,10 +181,29 @@ export default function PortfolioHome() {
                 No diagnostic data yet — run the back-fill (POST /api/diagnostics/ingest &#123;&quot;days&quot;:90&#125;) and the nightly signals, then the numbers fill in here.
               </div>
             )}
+            {/* My accounts / All */}
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
+              <div style={{ display: "inline-flex", background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: 10, padding: 3 }}>
+                <button onClick={() => chooseView("mine")} style={segBtn(view === "mine")}>
+                  <Star size={12} style={{ fill: view === "mine" ? "currentColor" : "none" }} /> My accounts{watchedCount ? ` · ${watchedCount}` : ""}
+                </button>
+                <button onClick={() => chooseView("all")} style={segBtn(view === "all")}>All · {data.total}</button>
+              </div>
+              {view === "mine" && watchedCount > 0 && <span style={{ fontSize: 11.5, color: "var(--text-muted)" }}>The accounts you work on, pinned here.</span>}
+            </div>
+
+            {view === "mine" && visible.length === 0 ? (
+              <div style={{ ...card, padding: "40px 20px", textAlign: "center", color: "var(--text-muted)" }}>
+                <Star size={24} style={{ color: "var(--accent)", marginBottom: 8 }} />
+                <div style={{ fontWeight: 600, color: "var(--text-2)" }}>No accounts pinned yet</div>
+                <div style={{ fontSize: 13, marginTop: 4 }}>Switch to <button onClick={() => chooseView("all")} style={{ background: "none", border: "none", color: "var(--accent)", cursor: "pointer", fontSize: 13, padding: 0, textDecoration: "underline" }}>All accounts</button> and tap the star on the ones you manage.</div>
+              </div>
+            ) : (
             <div style={{ ...card, overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 760 }}>
                 <thead>
                   <tr style={{ color: "var(--text-muted)", textAlign: "right" }}>
+                    <th style={{ width: 34 }}></th>
                     <th style={{ textAlign: "left", padding: "11px 16px", fontWeight: 600 }}>Account</th>
                     <th style={{ padding: "11px 10px", fontWeight: 600 }}>Spend 7d</th>
                     <th style={{ padding: "11px 10px", fontWeight: 600 }}>POAS</th>
@@ -147,10 +215,16 @@ export default function PortfolioHome() {
                   </tr>
                 </thead>
                 <tbody>
-                  {data.accounts.map(a => (
+                  {visible.map(a => (
                     <tr key={a.id} style={{ borderTop: "1px solid var(--border)" }}
                       onMouseEnter={e => (e.currentTarget.style.background = "var(--surface-2)")}
                       onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
+                      <td style={{ padding: "11px 0 11px 14px", width: 34 }}>
+                        <button title={a.watched ? "Unpin from My accounts" : "Pin to My accounts"} onClick={() => toggleWatch(a.id, !a.watched)} disabled={busyWatch.has(a.id)}
+                          style={{ background: "none", border: "none", cursor: busyWatch.has(a.id) ? "default" : "pointer", display: "inline-flex", padding: 4, color: a.watched ? "#e0a92e" : "var(--text-dim)" }}>
+                          <Star size={15} style={{ fill: a.watched ? "currentColor" : "none" }} />
+                        </button>
+                      </td>
                       <td style={{ padding: "11px 16px" }}>
                         <Link href={`/diagnose/${a.id}`} style={{ textDecoration: "none", color: "inherit", display: "flex", alignItems: "center", gap: 10 }}>
                           <span title={STATUS_LABEL[a.status]} style={{ width: 9, height: 9, borderRadius: "50%", background: STATUS_COLOR[a.status], flexShrink: 0, boxShadow: a.status === "red" ? "0 0 0 3px color-mix(in srgb, var(--danger) 20%, transparent)" : "none" }} />
@@ -189,8 +263,9 @@ export default function PortfolioHome() {
                 </tbody>
               </table>
             </div>
+            )}
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11.5, color: "var(--text-muted)", margin: "10px 4px 0", flexWrap: "wrap", gap: 8 }}>
-              <span>{data.total} accounts · {data.withData} with data{data.unverified ? ` · ${data.unverified} unverified` : ""}</span>
+              <span>{view === "mine" ? `${visible.length} pinned` : `${data.total} accounts`} · {data.withData} with data{data.unverified ? ` · ${data.unverified} unverified` : ""}</span>
               <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><ShoppingBag size={12} /> {data.accounts.filter(a => a.shopifyConnected).length} Shopify connected</span>
             </div>
           </>

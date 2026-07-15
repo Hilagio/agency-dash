@@ -36,6 +36,22 @@ model User {
   updatedAt DateTime @updatedAt
 
   memberships OrganizationMember[]
+  watches     AccountWatch[]
+}
+
+// A per-user "my accounts" watchlist: the accounts a manager is working on, so
+// the portfolio can open focused on them. Distinct from Owner (agency AM), which
+// isn't tied to a login.
+model AccountWatch {
+  id        String   @id @default(cuid())
+  userId    String
+  accountId String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account   Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, accountId])
+  @@index([userId])
 }
 
 model OrganizationMember {
@@ -179,6 +195,9 @@ model Account {
   productAdsDaily   ProductAdsDaily[]
   productSalesDaily ProductSalesDaily[]
   products          Product[]
+
+  // Per-user "my accounts" watchlist entries pointing at this account.
+  watchers AccountWatch[]
 }
 
 // ─── Diagnostic spine — one timeline per client (BUILD-SPEC §6) ────────────────
