@@ -1,0 +1,40 @@
+# Nightly data refresh — keeps every account fresh without anyone clicking.
+#
+# The deploy branch is this repo's default branch, so this scheduled workflow
+# fires from it. It pulls the recent window (conversions mature within ~7 days,
+# so 14 days is plenty; historical days don't change) and recomputes signals.
+# The one-time 90-day history load is done from the portfolio "Backfill all"
+# button.
+#
+# Setup (once): add repository secrets
+#   - CRON_SECRET : the SAME value you set as CRON_SECRET on Railway
+#   - APP_URL     : optional; defaults to the production URL below
+name: Nightly data refresh
+
+on:
+  schedule:
+    - cron: "0 5 * * *"   # 05:00 UTC daily (~07:00 in NL) — fresh before the team starts
+  workflow_dispatch: {}    # allow manual runs from the Actions tab
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ingest Google Ads spine + Shopify orders (last 14 days)
+        env:
+          APP_URL: ${{ secrets.APP_URL || 'https://agency-dash-production.up.railway.app' }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          curl -fsS -X POST "$APP_URL/api/diagnostics/ingest" \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -H "Content-Type: application/json" \
+            -d '{"days":14}' --max-time 600
+
+      - name: Recompute signals (fills the portfolio red/yellow/green + numbers)
+        env:
+          APP_URL: ${{ secrets.APP_URL || 'https://agency-dash-production.up.railway.app' }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          curl -fsS -X POST "$APP_URL/api/diagnostics/run-signals" \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -H "Content-Type: application/json" --max-time 600
