@@ -8,7 +8,7 @@
  * questions to ask. It never names a cause (§9) — that boundary is printed on
  * the page. From here you can jump to the full analysis if you want to dig.
  */
-import { useEffect, useState, Fragment } from "react";
+import { useEffect, useRef, useState, Fragment } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -179,6 +179,7 @@ export default function DiagnosePage() {
   const [error, setError] = useState<string | null>(null);
   const [shopDomain, setShopDomain] = useState("");
   const [syncing, setSyncing] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const toggle = (k: string) => setExpanded(prev => { const n = new Set(prev); if (n.has(k)) n.delete(k); else n.add(k); return n; });
 
@@ -206,6 +207,19 @@ export default function DiagnosePage() {
   }
 
   useEffect(() => { load(); }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // The platform speaks first (§agent): on a flagged account, auto-open the
+  // conversation so the teammate lands on "here's what I noticed", not a button —
+  // and the analytical sections collapse to "evidence" behind the conversation.
+  // On a green account there's nothing to talk about, so show the numbers.
+  const inited = useRef(false);
+  useEffect(() => {
+    if (inited.current || !diag) return;
+    inited.current = true;
+    const flagged = diag.status === "yellow" || diag.status === "red";
+    if (flagged && !insight && !insightLoading) getInsight();
+    else setDetailsOpen(true);
+  }, [diag]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function connectShopify() {
     const shop = shopDomain.trim();
@@ -453,16 +467,18 @@ export default function DiagnosePage() {
               </div>
             )}
 
-            {/* Section nav — jump within the cockpit, no scrolling hunt */}
-            <SectionNav items={[
-              { id: "overview", label: "Overview" },
-              ...(windows.some(w => w.spend > 0) ? [{ id: "trends", label: "Trends" }] : []),
-              ...(products && products.groups.length ? [{ id: "products", label: "Products" }] : []),
-              ...((diag.observations.length || diag.checksRun.length || diag.questions.length) ? [{ id: "diagnosis", label: "Diagnosis" }] : []),
-              ...(shopify ? [{ id: "data", label: "Data & connections" }] : []),
-            ]} />
+            {/* Section nav — only when the evidence is expanded (its targets live there) */}
+            {detailsOpen && (
+              <SectionNav items={[
+                { id: "overview", label: "Overview" },
+                ...(windows.some(w => w.spend > 0) ? [{ id: "trends", label: "Trends" }] : []),
+                ...(products && products.groups.length ? [{ id: "products", label: "Products" }] : []),
+                ...((diag.observations.length || diag.checksRun.length || diag.questions.length) ? [{ id: "diagnosis", label: "Diagnosis" }] : []),
+                ...(shopify ? [{ id: "data", label: "Data & connections" }] : []),
+              ]} />
+            )}
 
-            {/* Expert read (PPC OS) — the "don't figure it out yourself" layer */}
+            {/* Expert read (PPC OS) — the agent conversation; the hero of the page */}
             <div style={{ ...card, border: "1px solid color-mix(in srgb, var(--accent) 30%, var(--border))", padding: "15px 17px", marginTop: 14, background: "linear-gradient(160deg, var(--accent-dim), transparent), var(--surface)" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
                 <Sparkles size={16} style={{ color: "var(--accent)" }} />
@@ -470,7 +486,7 @@ export default function DiagnosePage() {
                 <span style={{ fontSize: 11, color: "var(--text-muted)" }}>PPC OS</span>
                 {!insight && (
                   <button onClick={getInsight} disabled={insightLoading} style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: "#fff", background: "var(--btn-primary, var(--accent))", border: "none", borderRadius: 8, padding: "7px 14px", cursor: insightLoading ? "default" : "pointer" }}>
-                    {insightLoading ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />} {insightLoading ? "Thinking…" : "Get the read"}
+                    {insightLoading ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />} {insightLoading ? "Looking…" : "Start the read"}
                   </button>
                 )}
                 {insight && (
@@ -491,7 +507,7 @@ export default function DiagnosePage() {
                 </div>
               )}
               {!insight && !insightErr && !insightLoading && (
-                <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 8 }}>A short, direct read — what&rsquo;s happening, the likely why, and the next move — grounded in your PPC OS methodology.</div>
+                <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 8 }}>I&rsquo;ll open with what I noticed on this account and my best hypothesis, then we figure it out together — grounded in your PPC OS methodology.</div>
               )}
 
               {/* Conversational follow-ups — feed the read context it can't see
@@ -568,6 +584,15 @@ export default function DiagnosePage() {
               </div>
             </div>
 
+            {/* Evidence toggle — the analytical sections are demoted below the
+                conversation: they're what the agent noticed, not the main surface. */}
+            <button onClick={() => setDetailsOpen(o => !o)} style={{ marginTop: 14, display: "flex", alignItems: "center", gap: 7, width: "100%", justifyContent: "center", fontSize: 12.5, fontWeight: 600, color: "var(--text-3)", background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 9, padding: "9px 14px", cursor: "pointer" }}>
+              <ChevronRight size={14} style={{ transform: detailsOpen ? "rotate(90deg)" : "none", transition: "transform .15s" }} />
+              {detailsOpen ? "Hide the numbers & evidence" : "Show the numbers & evidence"}
+            </button>
+
+            {detailsOpen && (
+              <>
             {/* Facts */}
             {diag.facts.length > 0 && (
               <>
@@ -933,6 +958,8 @@ export default function DiagnosePage() {
                     )
                   )}
                 </div>
+              </>
+            )}
               </>
             )}
 
