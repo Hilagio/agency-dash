@@ -2221,6 +2221,46 @@ function classifyChange(changedFields: string, resourceType: string): string {
 }
 
 /** Fetch the diagnostic spine for one account over [start, end] (YYYY-MM-DD). */
+/** One row per product, aggregated over the last `days` — no per-day rows, so
+ *  it stays small (tens of thousands of products = a few MB) and safe for long
+ *  windows. Powers the client-facing product-performance report. */
+export interface ProductReportRow {
+  itemId: string; title: string; cost: number; revenue: number;
+  conversions: number; clicks: number; roas: number;
+}
+export async function fetchProductReport(
+  customerId: string, orgId: string | undefined, days: number,
+): Promise<ProductReportRow[]> {
+  const client = getClient();
+  const customer = await getCustomer(client, customerId, orgId);
+  const fmt = (d: Date) => d.toISOString().slice(0, 10);
+  const end = new Date(Date.now() - 864e5);
+  const start = new Date(); start.setDate(start.getDate() - Math.max(1, days));
+  const rows = await safeQuery(() => customer.query(`
+    SELECT segments.product_item_id, segments.product_title,
+           metrics.clicks, metrics.conversions, metrics.conversions_value, metrics.cost_micros
+    FROM shopping_performance_view
+    WHERE segments.date BETWEEN '${fmt(start)}' AND '${fmt(end)}'
+      AND (metrics.impressions > 0 OR metrics.cost_micros > 0)
+  `), "product report", 60_000).catch(() => []);
+  // Aggregate per item id (a product can appear under a changed title).
+  const agg = new Map<string, ProductReportRow>();
+  for (const r of rows) {
+    const itemId = String(r.segments?.product_item_id ?? "");
+    if (!itemId) continue;
+    const e = agg.get(itemId) ?? { itemId, title: String(r.segments?.product_title ?? ""), cost: 0, revenue: 0, conversions: 0, clicks: 0, roas: 0 };
+    e.cost += Number(r.metrics?.cost_micros ?? 0) / 1_000_000;
+    e.revenue += Number(r.metrics?.conversions_value ?? 0);
+    e.conversions += Number(r.metrics?.conversions ?? 0);
+    e.clicks += Number(r.metrics?.clicks ?? 0);
+    if (!e.title && r.segments?.product_title) e.title = String(r.segments.product_title);
+    agg.set(itemId, e);
+  }
+  const out = [...agg.values()];
+  for (const p of out) p.roas = p.cost > 0 ? p.revenue / p.cost : 0;
+  return out;
+}
+
 export async function fetchSpineData(
   customerId: string, orgId: string | undefined, start: string, end: string,
   // The per-row tables (landing pages, items, search terms) are only kept for
