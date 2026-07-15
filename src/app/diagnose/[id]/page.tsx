@@ -138,6 +138,7 @@ export default function DiagnosePage() {
   const [insight, setInsight] = useState<string | null>(null);
   const [insightLoading, setInsightLoading] = useState(false);
   const [insightErr, setInsightErr] = useState<string | null>(null);
+  const [insightStatus, setInsightStatus] = useState<string | null>(null);
   const [tracking, setTracking] = useState<TrackingStatus | null>(null);
   const [trackingSaving, setTrackingSaving] = useState<"verified" | "broken" | "clear" | null>(null);
   const [loading, setLoading] = useState(true);
@@ -214,10 +215,11 @@ export default function DiagnosePage() {
   }
 
   async function getInsight() {
-    setInsightLoading(true); setInsightErr(null); setInsight(null);
+    setInsightLoading(true); setInsightErr(null); setInsight(null); setInsightStatus("Pulling fresh data…");
+    let pulled = false;
     try {
       const r = await fetch(`/api/diagnostics/account/${id}/insight`, { method: "POST", credentials: "include" });
-      // Early validation errors (no data / PPC OS not connected) come back as JSON.
+      // Early validation errors (PPC OS not connected) come back as JSON.
       if (!r.ok || !r.body || !r.headers.get("content-type")?.includes("text/event-stream")) {
         const j = await r.json().catch(() => ({}));
         setInsightErr(j.error ?? `HTTP ${r.status}`);
@@ -237,15 +239,21 @@ export default function DiagnosePage() {
           if (!line.startsWith("data:")) continue;
           const payload = line.slice(5).trim();
           if (!payload) continue;
-          let ev: { text?: string; error?: string; done?: boolean };
+          let ev: { text?: string; error?: string; done?: boolean; status?: string };
           try { ev = JSON.parse(payload); } catch { continue; }
           if (ev.error) setInsightErr(ev.error);
-          else if (ev.text) { acc += ev.text; setInsight(acc); }
+          else if (ev.status === "refreshing") { setInsightStatus("Pulling the latest Google Ads + Shopify data…"); pulled = true; }
+          else if (ev.status === "reading") setInsightStatus("Reading across 7/14/30/60/90-day windows…");
+          else if (ev.text) { setInsightStatus(null); acc += ev.text; setInsight(acc); }
         }
       }
       if (!acc) setInsight(prev => prev ?? "");
     } catch (e) { setInsightErr(e instanceof Error ? e.message : "Failed"); }
-    finally { setInsightLoading(false); }
+    finally {
+      setInsightLoading(false); setInsightStatus(null);
+      // The read just pulled fresh data — refresh the rest of the cockpit too.
+      if (pulled) load();
+    }
   }
 
   // Record the team's tracking verdict, then re-run the read so it reasons from
@@ -410,6 +418,11 @@ export default function DiagnosePage() {
                 )}
               </div>
               {insightErr && <div style={{ fontSize: 12.5, color: "var(--danger)", marginTop: 10 }}>{insightErr}</div>}
+              {insightStatus && !insight && (
+                <div style={{ fontSize: 12.5, color: "var(--text-3)", marginTop: 11, display: "flex", alignItems: "center", gap: 8 }}>
+                  <Loader2 size={13} className="animate-spin" style={{ color: "var(--accent)" }} /> {insightStatus}
+                </div>
+              )}
               {insight && (
                 <div style={{ fontSize: 14, lineHeight: 1.6, color: "var(--text-2)", marginTop: 12 }}>
                   {renderMarkdown(insight)}
