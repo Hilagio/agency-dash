@@ -14,7 +14,28 @@ import Link from "next/link";
 import {
   ArrowLeft, ArrowUpRight, Loader2, CheckCircle2, AlertTriangle, HelpCircle,
   ShieldCheck, Sprout, XCircle, MinusCircle, TrendingUp, ShoppingBag, RefreshCw, ChevronRight, Sparkles,
+  Paperclip, X, FileText,
 } from "lucide-react";
+
+interface Attachment { name: string; mediaType: string; data: string; kind: "image" | "document" | "text" }
+const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5MB/file, ≤4 files — base64 stays under the 32MB request cap
+
+/** Read a File into a base64 Attachment for the chat. Images, PDF, and text/CSV. */
+async function fileToAttachment(file: File): Promise<Attachment> {
+  if (file.size > MAX_FILE_BYTES) throw new Error(`${file.name} is too large (max 8 MB).`);
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  let bin = "";
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  const data = btoa(bin);
+  const mt = file.type || "";
+  const kind: Attachment["kind"] | null =
+    mt.startsWith("image/") ? "image"
+    : mt === "application/pdf" ? "document"
+    : (mt.startsWith("text/") || /\.(csv|tsv|txt|md|json)$/i.test(file.name)) ? "text"
+    : null;
+  if (!kind) throw new Error(`${file.name}: unsupported type — attach an image, PDF, or CSV/text file.`);
+  return { name: file.name, mediaType: mt || "text/plain", data, kind };
+}
 
 /** Minimal inline markdown: render **bold** segments safely as React nodes. */
 function renderInline(text: string): React.ReactNode {
@@ -175,6 +196,7 @@ export default function DiagnosePage() {
   const [insightStatus, setInsightStatus] = useState<string | null>(null);
   const [followInput, setFollowInput] = useState("");
   const [followSending, setFollowSending] = useState(false);
+  const [pending, setPending] = useState<Attachment[]>([]);
   const [tracking, setTracking] = useState<TrackingStatus | null>(null);
   const [trackingSaving, setTrackingSaving] = useState<"verified" | "broken" | "clear" | null>(null);
   const [loading, setLoading] = useState(true);
@@ -332,14 +354,29 @@ export default function DiagnosePage() {
     if (pulled) load();
   }
 
-  // Feed the agent context it can't see ("payments were down") and let it
-  // re-reason. No Google Ads re-pull; persisted so it's remembered.
+  // Read picked files into pending attachments (deduped, capped at 6).
+  async function onPickFiles(files: FileList | null) {
+    if (!files?.length) return;
+    setInsightErr(null);
+    const added: Attachment[] = [];
+    for (const f of Array.from(files)) {
+      try { added.push(await fileToAttachment(f)); }
+      catch (e) { setInsightErr(e instanceof Error ? e.message : "Couldn't read file"); }
+    }
+    if (added.length) setPending(prev => [...prev, ...added].slice(0, 4));
+  }
+
+  // Feed the agent context it can't see — typed ("payments were down") or as
+  // files (Merchant Center screenshot, a report). No Google Ads re-pull; the
+  // agent's takeaway is persisted so the thread remembers it.
   async function askFollowup() {
     const q = followInput.trim();
-    if (!q || followSending || insightLoading) return;
-    setFollowSending(true); setInsightErr(null); setFollowInput("");
-    setThread(prev => [...prev, { role: "user", content: q }]);
-    await runStream({ followup: q });
+    const atts = pending;
+    if ((!q && atts.length === 0) || followSending || insightLoading) return;
+    setFollowSending(true); setInsightErr(null); setFollowInput(""); setPending([]);
+    const label = q + (atts.length ? `${q ? "  " : ""}📎 ${atts.map(a => a.name).join(", ")}` : "");
+    setThread(prev => [...prev, { role: "user", content: label }]);
+    await runStream({ followup: q, attachments: atts });
     setFollowSending(false);
   }
 
@@ -537,21 +574,40 @@ export default function DiagnosePage() {
                 <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 8 }}>I&rsquo;ll open with what I noticed on this account and my best hypothesis, then we figure it out together — grounded in your PPC OS methodology.</div>
               )}
 
-              {/* Composer — feed the agent context, ask, steer. It remembers. */}
+              {/* Composer — feed the agent context (typed or as files), ask,
+                  steer. It reads screenshots/PDFs/CSVs and remembers. */}
               {thread.length > 0 && (
-                <div style={{ marginTop: 14, display: "flex", gap: 8, alignItems: "flex-end" }}>
-                  <textarea
-                    value={followInput}
-                    onChange={e => setFollowInput(e.target.value)}
-                    onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); askFollowup(); } }}
-                    placeholder="Tell it what it can't see — 'payment provider was down 3–10 July', 'vendor is in misrep' — or ask a question…"
-                    rows={1}
-                    disabled={followSending || insightLoading}
-                    style={{ flex: 1, resize: "none", fontSize: 12.5, lineHeight: 1.5, color: "var(--text)", background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 9, padding: "8px 11px", fontFamily: "inherit", minHeight: 36 }}
-                  />
-                  <button onClick={askFollowup} disabled={followSending || insightLoading || !followInput.trim()} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12.5, fontWeight: 600, color: "#fff", background: "var(--btn-primary, var(--accent))", border: "none", borderRadius: 8, padding: "8px 13px", cursor: followSending || insightLoading || !followInput.trim() ? "default" : "pointer", opacity: followSending || insightLoading || !followInput.trim() ? 0.6 : 1, whiteSpace: "nowrap" }}>
-                    {followSending ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />} Send
-                  </button>
+                <div style={{ marginTop: 14 }}>
+                  {pending.length > 0 && (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 8 }}>
+                      {pending.map((a, i) => (
+                        <span key={i} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11.5, color: "var(--text-2)", background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 7, padding: "4px 8px" }}>
+                          {a.kind === "image" ? <FileText size={12} style={{ color: "var(--accent)" }} /> : <FileText size={12} style={{ color: "var(--text-3)" }} />}
+                          <span style={{ maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.name}</span>
+                          <button onClick={() => setPending(prev => prev.filter((_, j) => j !== i))} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-dim)", display: "inline-flex", padding: 0 }}><X size={12} /></button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
+                    <label title="Attach a screenshot, PDF, or CSV" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 36, height: 36, flexShrink: 0, borderRadius: 9, border: "1px solid var(--border-2)", background: "var(--surface-2)", cursor: followSending || insightLoading ? "default" : "pointer", color: "var(--text-3)" }}>
+                      <Paperclip size={15} />
+                      <input type="file" multiple accept="image/*,application/pdf,.csv,.tsv,.txt,.md,.json" disabled={followSending || insightLoading}
+                        onChange={e => { onPickFiles(e.target.files); e.target.value = ""; }} style={{ display: "none" }} />
+                    </label>
+                    <textarea
+                      value={followInput}
+                      onChange={e => setFollowInput(e.target.value)}
+                      onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); askFollowup(); } }}
+                      placeholder="Tell it what it can't see, attach a screenshot/report, or ask a question…"
+                      rows={1}
+                      disabled={followSending || insightLoading}
+                      style={{ flex: 1, resize: "none", fontSize: 12.5, lineHeight: 1.5, color: "var(--text)", background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 9, padding: "8px 11px", fontFamily: "inherit", minHeight: 36 }}
+                    />
+                    <button onClick={askFollowup} disabled={followSending || insightLoading || (!followInput.trim() && pending.length === 0)} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12.5, fontWeight: 600, color: "#fff", background: "var(--btn-primary, var(--accent))", border: "none", borderRadius: 8, padding: "8px 13px", cursor: followSending || insightLoading || (!followInput.trim() && pending.length === 0) ? "default" : "pointer", opacity: followSending || insightLoading || (!followInput.trim() && pending.length === 0) ? 0.6 : 1, whiteSpace: "nowrap" }}>
+                      {followSending ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />} Send
+                    </button>
+                  </div>
                 </div>
               )}
 
