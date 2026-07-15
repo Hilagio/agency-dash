@@ -50,9 +50,13 @@ export async function ingestAccountSpine(
 ): Promise<IngestResult> {
   const start = daysAgo(days);
   const end = daysAgo(1); // yesterday — today is incomplete
+  // Heavy tables (landing pages / items / terms) are only kept ~30 days, so
+  // fetch them for that shorter window — pulling 90 days of them into memory is
+  // what took the app down during backfill.
+  const heavyStart = daysAgo(Math.min(days, 30));
 
   try {
-    const data = await fetchSpineData(account.googleAdsId, account.organizationId, start, end);
+    const data = await fetchSpineData(account.googleAdsId, account.organizationId, start, end, heavyStart);
 
     const metrics = dedupe<MetricDailyRow>(data.metrics, m => `${m.date}|${m.campaignId}`,
       ["spend", "impressions", "clicks", "conversions", "conversionValue"]);
@@ -63,12 +67,8 @@ export async function ingestAccountSpine(
     const searchTerms = dedupe<SearchTermDailyRow>(data.searchTerms, s => `${s.date}|${s.campaignId}|${s.searchTerm}`,
       ["clicks", "cost", "conversions", "conversionValue"]);
 
-    // The per-row tables (landing pages, items, search terms) are only needed
-    // recent (signals + product views look at 7–30d), and they are what fills
-    // the disk. Cap them hard at 30 days; only the small campaign-level table
-    // keeps the full window for the 90-day ROAS trend.
-    const HEAVY_DAYS = Math.min(days, 30);
-    const heavyStart = daysAgo(HEAVY_DAYS);
+    // The heavy tables are already fetched only for the last 30 days (heavyStart
+    // above); this is a belt-and-braces filter in case a fetch returns more.
     const productsCapped = products.filter(p => p.date >= heavyStart);
     const productAdsCapped = productAds.filter(p => p.date >= heavyStart);
     const searchTermsCapped = searchTerms.filter(s => s.date >= heavyStart);

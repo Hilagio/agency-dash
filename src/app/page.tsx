@@ -88,31 +88,25 @@ export default function PortfolioHome() {
     if (typeof window !== "undefined") window.localStorage.setItem("portfolioView", v);
   }
 
-  // One-time history load: pull 90 days for every account (3 at a time to stay
-  // under Google Ads rate limits), then reload the portfolio. The nightly cron
-  // keeps it fresh after this.
+  // One-time history load: pull data for every account, ONE AT A TIME so the app
+  // never holds more than a single account's data in memory (concurrent pulls of
+  // 90-day data OOM'd the process). The nightly cron keeps it fresh after this.
   async function backfillAll() {
     if (!data || backfill.running) return;
     const ids = data.accounts.map(a => a.id);
     setBackfill({ running: true, done: 0, total: ids.length });
-    const queue = [...ids];
     let done = 0;
-    const worker = async () => {
-      for (;;) {
-        const id = queue.shift();
-        if (!id) break;
-        try {
-          await fetch(`/api/diagnostics/account/${id}/refresh`, {
-            method: "POST", credentials: "include",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ days: 90 }),
-          });
-        } catch { /* keep going — one failure shouldn't stop the batch */ }
-        done++;
-        setBackfill(b => ({ ...b, done }));
-      }
-    };
-    await Promise.all([worker(), worker(), worker()]);
+    for (const id of ids) {
+      try {
+        await fetch(`/api/diagnostics/account/${id}/refresh`, {
+          method: "POST", credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ days: 90 }),
+        });
+      } catch { /* keep going — one failure shouldn't stop the batch */ }
+      done++;
+      setBackfill(b => ({ ...b, done }));
+    }
     const pf = await fetch("/api/diagnostics/portfolio", { credentials: "include" }).then(r => r.ok ? r.json() : null).catch(() => null);
     if (pf) setData(pf);
     setBackfill({ running: false, done, total: ids.length });
