@@ -56,7 +56,17 @@ Analysis rules: Base your read on the FULL multi-window picture (7 / 14 / 30 / 6
 
 Formatting rules: Start immediately with the "**The read**" header — NO preamble line. Do NOT use horizontal rules or dividers. Keep the three bold headers exactly as shown. Plain paragraphs under each header; a short bullet list is fine only under "Do next".
 
-Content rules: be direct, no fluff, no generic advice. Use real numbers. Consult the PPC OS knowledge base (the ppc-os tools) when the reasoning touches methodology. NEVER recommend raising budget when ROAS is below target. If the data is genuinely too thin to be confident, say so in one line rather than guessing.`;
+OFF-PLATFORM FIRST (critical): If ROAS has COLLAPSED on an account that used to perform — recent windows far below the older ones (a cliff, e.g. 2.8 over 60d → 0.1 over 7–14d) — your FIRST hypothesis must be an OFF-PLATFORM cause, not an in-account one: a broken checkout or payment provider, a site outage, a stock-out on key products, a pricing/currency error, or a tracking break. These kill conversions across the board no matter how good the ads are, and a broad, sudden, sustained collapse is exactly their signature. Say this explicitly and ASK the team to confirm ("Did anything change on the site, payments, checkout, or stock in this window?") BEFORE concluding it's a feed/bidding/product problem. Only pin it on specific products if the decline is concentrated in those products while others hold.
+
+PMAX / SHOPPING SPEND DROP (critical): If SPEND itself has fallen sharply on a Shopping-led or Performance Max account — the campaign can't spend its budget, not just a ROAS dip — your first hypothesis must be a MERCHANT CENTER / FEED cause. When Google can't serve the products, spend collapses on its own. Name the most likely ones and ask the team to check them in Merchant Center: a misrepresentation or policy suspension of the whole account, product disapprovals (e.g. price/availability mismatch, missing GTIN, prohibited content), or a feed that stopped refreshing so items expired. Also flag account-level restrictions (destination/targeted-country limits, review holds). Direct the team to Merchant Center → Products/Diagnostics and the account Notifications. Do NOT tell them to raise budget or change bids to "fix" a spend drop that is really a serving/eligibility problem.
+
+Content rules: be direct, no fluff, no generic advice. Use real numbers. NEVER recommend raising budget when ROAS is below target. If the data is genuinely too thin to be confident, say so in one line rather than guessing.
+
+Tool use: if you consult the PPC OS tools, call them BEFORE writing your read. Output the read only ONCE — do NOT write a draft first, do NOT narrate "let me check the methodology", and do NOT repeat the read. Your reply is the single finished read.`;
+
+const SYSTEM_CHAT = `You are the same senior Google Ads specialist (PPC OS methodology). You already gave the team a first read on this account; the same account data is repeated at the top of the conversation. The team is now feeding you CONTEXT you could not see from the data alone — things like "their payment provider was down 3–10 July", "the vendor is in misrepresentation in Merchant Center", "we paused it on purpose", "tracking was re-implemented last week".
+
+Take that context as ground truth and UPDATE your thinking. Answer conversationally and concretely: confirm or revise your earlier hypothesis in light of what they told you, and give the sharpest next move now that you know more. Do NOT re-print the rigid three-section read unless they ask for a full re-read — reply like a specialist talking to a colleague: a few tight sentences, real numbers, the one thing to do next. If their context resolves the mystery (e.g. payments were down during exactly the collapse window), say so plainly and stop hunting for an in-account cause. You may consult the PPC OS tools if genuinely needed; if you do, call them before replying and answer only once.`;
 
 function buildContext(
   name: string, cur: string, diag: DiagMetrics | null,
@@ -100,10 +110,25 @@ function buildContext(
 const CUR: Record<string, string> = { EUR: "€", USD: "$", GBP: "£", CZK: "Kč", PLN: "zł" };
 const ymd = (daysAgo: number) => { const d = new Date(); d.setUTCDate(d.getUTCDate() - daysAgo); return d.toISOString().slice(0, 10); };
 
-export async function POST(_req: NextRequest, { params }: Params) {
+type Turn = { role: "user" | "assistant"; content: string };
+
+export async function POST(req: NextRequest, { params }: Params) {
   const ctx = await getAuthContext();
   if (!ctx) return unauthorized();
   const { id } = await params;
+
+  // Conversational follow-up: the team feeds context ("payments were down",
+  // "vendor in misrep") and we re-reason WITHOUT re-pulling Google Ads.
+  const body = await req.json().catch(() => ({} as Record<string, unknown>));
+  const followup = typeof body?.followup === "string" ? body.followup.trim() : "";
+  const thread: Turn[] = Array.isArray(body?.thread)
+    ? (body.thread as unknown[])
+        .filter((t): t is Turn => !!t && typeof t === "object"
+          && ((t as Turn).role === "user" || (t as Turn).role === "assistant")
+          && typeof (t as Turn).content === "string" && (t as Turn).content.length > 0)
+        .slice(-8)
+    : [];
+  const isChat = followup.length > 0 && thread.length > 0;
 
   const account = await prisma.account.findFirst({
     where: { id, organizationId: ctx.orgId },
@@ -137,20 +162,24 @@ export async function POST(_req: NextRequest, { params }: Params) {
       try {
         send(controller, { started: true });
 
-        // 1. Pull the most recent data BEFORE reading it (90-day window).
-        send(controller, { status: "refreshing" });
-        const spine = await ingestAccountSpine(
-          { id: account.id, googleAdsId: account.googleAdsId, organizationId: account.organizationId }, 90,
-        ).catch((e) => ({ metrics: 0, productAds: 0, searchTerms: 0, changeEvents: 0, error: e instanceof Error ? e.message : String(e) }));
-        await ingestAccountOrders(account.id, 90).catch(() => null);
-        await computeAccountSignals({
-          id: account.id, name: account.name, roasFloor: account.roasFloor,
-          grossMarginPercent: account.grossMarginPercent, minSpendForEval: account.minSpendForEval,
-          minConversionsForEval: account.minConversionsForEval, dataVerified: account.dataVerified,
-        }).catch(() => null);
+        // 1. Pull the most recent data BEFORE reading it (90-day window). Skipped
+        // on a conversational follow-up — the data is already fresh from the read.
+        let spine: { error?: string } = {};
+        if (!isChat) {
+          send(controller, { status: "refreshing" });
+          spine = await ingestAccountSpine(
+            { id: account.id, googleAdsId: account.googleAdsId, organizationId: account.organizationId }, 90,
+          ).catch((e) => ({ metrics: 0, productAds: 0, searchTerms: 0, changeEvents: 0, error: e instanceof Error ? e.message : String(e) }));
+          await ingestAccountOrders(account.id, 90).catch(() => null);
+          await computeAccountSignals({
+            id: account.id, name: account.name, roasFloor: account.roasFloor,
+            grossMarginPercent: account.grossMarginPercent, minSpendForEval: account.minSpendForEval,
+            minConversionsForEval: account.minConversionsForEval, dataVerified: account.dataVerified,
+          }).catch(() => null);
+        }
 
-        // 2. Gather the full multi-window picture from the freshly-pulled spine.
-        send(controller, { status: "reading" });
+        // 2. Gather the full multi-window picture from the spine.
+        send(controller, { status: isChat ? "thinking" : "reading" });
         const since = ymd(91), win30 = ymd(31), end = ymd(1);
         const [statusRow, mRows, oRows, pageRows, adRows, changeRows] = await Promise.all([
           prisma.accountStatus.findMany({ where: { accountId: id }, orderBy: { computedAt: "desc" }, take: 6 }),
@@ -189,25 +218,43 @@ export async function POST(_req: NextRequest, { params }: Params) {
         }
         const winners = [...winAgg.values()].filter(w => w.value > 0 || w.conv > 0).sort((a, b) => b.value - a.value);
 
-        if (!diag && windows.every(w => w.spend === 0)) {
+        if (!isChat && !diag && windows.every(w => w.spend === 0)) {
           send(controller, { error: spine.error ? `Google Ads returned no data: ${spine.error}` : "Google Ads returned no data for this account (paused, or no access?)." });
           controller.close();
           return;
         }
 
-        // 3. Stream the expert read.
+        // 3. Stream the expert read — or, on a follow-up, continue the thread with
+        // the team's added context on top of the same account data.
         const context = buildContext(account.name, cur, diag, windows, pages, winners, changeRows);
+        const messages = isChat
+          ? [
+              { role: "user" as const, content: `${context}\n\nGive the expert read.` },
+              ...thread,
+              { role: "user" as const, content: followup },
+            ]
+          : [{ role: "user" as const, content: `${context}\n\nGive the expert read.` }];
         const anthropicStream = client.beta.messages.stream({
           model: "claude-opus-4-8",
           max_tokens: 1024,
           betas: ppc.betas,
           mcp_servers: ppc.mcp_servers,
           tools: ppc.tools,
-          system: SYSTEM + PPC_OS_SYSTEM_NOTE + trackingDirective,
-          messages: [{ role: "user", content: `${context}\n\nGive the expert read.` }],
+          system: (isChat ? SYSTEM_CHAT : SYSTEM) + PPC_OS_SYSTEM_NOTE + trackingDirective,
+          messages,
         });
+        // With MCP tool use the model can emit a draft text block, call a tool,
+        // then emit the FINAL read as a second text block — which showed up as a
+        // duplicated read. Keep only the last text block: on every text block
+        // after the first, tell the client to reset what it has rendered so far.
+        let textBlocks = 0;
         for await (const ev of anthropicStream) {
-          if (ev.type === "content_block_delta" && ev.delta.type === "text_delta") send(controller, { text: ev.delta.text });
+          if (ev.type === "content_block_start" && ev.content_block?.type === "text") {
+            textBlocks++;
+            if (textBlocks > 1) send(controller, { reset: true });
+          } else if (ev.type === "content_block_delta" && ev.delta.type === "text_delta") {
+            send(controller, { text: ev.delta.text });
+          }
         }
         send(controller, { done: true, generatedAt: new Date().toISOString() });
       } catch (err) {
