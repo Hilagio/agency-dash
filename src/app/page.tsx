@@ -61,6 +61,7 @@ export default function PortfolioHome() {
   const [view, setView] = useState<"mine" | "all">("all");
   const [viewLoaded, setViewLoaded] = useState(false);
   const [busyWatch, setBusyWatch] = useState<Set<string>>(new Set());
+  const [backfill, setBackfill] = useState<{ running: boolean; done: number; total: number }>({ running: false, done: 0, total: 0 });
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -85,6 +86,36 @@ export default function PortfolioHome() {
   function chooseView(v: "mine" | "all") {
     setView(v);
     if (typeof window !== "undefined") window.localStorage.setItem("portfolioView", v);
+  }
+
+  // One-time history load: pull 90 days for every account (3 at a time to stay
+  // under Google Ads rate limits), then reload the portfolio. The nightly cron
+  // keeps it fresh after this.
+  async function backfillAll() {
+    if (!data || backfill.running) return;
+    const ids = data.accounts.map(a => a.id);
+    setBackfill({ running: true, done: 0, total: ids.length });
+    const queue = [...ids];
+    let done = 0;
+    const worker = async () => {
+      for (;;) {
+        const id = queue.shift();
+        if (!id) break;
+        try {
+          await fetch(`/api/diagnostics/account/${id}/refresh`, {
+            method: "POST", credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ days: 90 }),
+          });
+        } catch { /* keep going — one failure shouldn't stop the batch */ }
+        done++;
+        setBackfill(b => ({ ...b, done }));
+      }
+    };
+    await Promise.all([worker(), worker(), worker()]);
+    const pf = await fetch("/api/diagnostics/portfolio", { credentials: "include" }).then(r => r.ok ? r.json() : null).catch(() => null);
+    if (pf) setData(pf);
+    setBackfill({ running: false, done, total: ids.length });
   }
 
   async function toggleWatch(id: string, next: boolean) {
@@ -161,6 +192,12 @@ export default function PortfolioHome() {
             <SummaryChip color={STATUS_COLOR.yellow} label="Action" value={c.yellow} />
             <SummaryChip color={STATUS_COLOR.green} label="Under control" value={c.green} />
             <HealthChip health={health} />
+            {data && data.total > 0 && (
+              <button onClick={backfillAll} disabled={backfill.running} title="Pull 90 days for every account"
+                style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 10, fontSize: 12, fontWeight: 600, cursor: backfill.running ? "default" : "pointer", color: backfill.running ? "var(--text-3)" : "var(--accent)", background: "var(--accent-dim)", border: "1px solid color-mix(in srgb, var(--accent) 30%, var(--border))" }}>
+                {backfill.running ? <><Loader2 size={12} className="animate-spin" /> Backfilling {backfill.done}/{backfill.total}…</> : <><Activity size={12} /> Refresh all</>}
+              </button>
+            )}
           </div>
         </div>
 
@@ -176,9 +213,12 @@ export default function PortfolioHome() {
         ) : (
           <>
             {data.withData === 0 && (
-              <div style={{ marginBottom: 12, padding: "11px 15px", borderRadius: 12, fontSize: 12.5, color: "var(--text-3)", background: "var(--surface-2)", border: "1px dashed var(--border-2)", display: "flex", alignItems: "center", gap: 9 }}>
+              <div style={{ marginBottom: 12, padding: "12px 15px", borderRadius: 12, fontSize: 12.5, color: "var(--text-3)", background: "var(--surface-2)", border: "1px dashed var(--border-2)", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                 <Activity size={15} style={{ color: "var(--text-dim)", flexShrink: 0 }} />
-                No diagnostic data yet — run the back-fill (POST /api/diagnostics/ingest &#123;&quot;days&quot;:90&#125;) and the nightly signals, then the numbers fill in here.
+                <span>No diagnostic data yet — pull 90 days for every account to fill the numbers in. After this, the nightly refresh keeps it current.</span>
+                <button onClick={backfillAll} disabled={backfill.running} style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 6, padding: "7px 14px", borderRadius: 8, fontSize: 12.5, fontWeight: 600, cursor: backfill.running ? "default" : "pointer", color: "#fff", background: "var(--accent)", border: "none" }}>
+                  {backfill.running ? <><Loader2 size={13} className="animate-spin" /> Backfilling {backfill.done}/{backfill.total}…</> : <>Backfill all accounts</>}
+                </button>
               </div>
             )}
             {/* My accounts / All */}
