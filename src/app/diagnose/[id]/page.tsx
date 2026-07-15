@@ -101,6 +101,8 @@ async function consumeInsightStream(
   return acc;
 }
 
+interface Msg { id?: string; role: "assistant" | "user"; content: string; kind?: string }
+
 type Status = "green" | "yellow" | "red";
 interface Fact { label: string; value: string; context?: string; tone: "bad" | "warn" | "good" | "neutral"; }
 interface Observation { key: string; text: string; }
@@ -165,12 +167,12 @@ export default function DiagnosePage() {
   const [products, setProducts] = useState<ProductDiagnostic | null>(null);
   const [productPages, setProductPages] = useState<ProductPage[]>([]);
   const [wins, setWins] = useState<string[]>([]);
-  const [insight, setInsight] = useState<string | null>(null);
+  // The persisted agent conversation (§agent memory): one ongoing thread.
+  const [thread, setThread] = useState<Msg[]>([]);
+  const [convoLoaded, setConvoLoaded] = useState(false);
   const [insightLoading, setInsightLoading] = useState(false);
   const [insightErr, setInsightErr] = useState<string | null>(null);
   const [insightStatus, setInsightStatus] = useState<string | null>(null);
-  // Conversational follow-ups: {q} = team's added context, {a} = updated read.
-  const [followups, setFollowups] = useState<{ q: string; a: string }[]>([]);
   const [followInput, setFollowInput] = useState("");
   const [followSending, setFollowSending] = useState(false);
   const [tracking, setTracking] = useState<TrackingStatus | null>(null);
@@ -214,12 +216,14 @@ export default function DiagnosePage() {
   // On a green account there's nothing to talk about, so show the numbers.
   const inited = useRef(false);
   useEffect(() => {
-    if (inited.current || !diag) return;
+    if (inited.current || !diag || !convoLoaded) return;
     inited.current = true;
     const flagged = diag.status === "yellow" || diag.status === "red";
-    if (flagged && !insight && !insightLoading) getInsight();
-    else setDetailsOpen(true);
-  }, [diag]); // eslint-disable-line react-hooks/exhaustive-deps
+    // Flagged + no conversation yet → the agent speaks first. Flagged with an
+    // existing thread → show it (don't re-generate). Green → show the numbers.
+    if (flagged && thread.length === 0 && !insightLoading) getInsight();
+    else if (!flagged) setDetailsOpen(true);
+  }, [diag, convoLoaded]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function connectShopify() {
     const shop = shopDomain.trim();
@@ -262,74 +266,88 @@ export default function DiagnosePage() {
     } finally { setRefreshing(false); }
   }
 
-  async function getInsight() {
-    setInsightLoading(true); setInsightErr(null); setInsight(null); setFollowups([]); setInsightStatus("Pulling fresh data…");
+  // Load the persisted conversation so a read survives refresh and the next
+  // teammate sees the thread + the context already fed in.
+  async function loadConversation() {
+    try {
+      const r = await fetch(`/api/diagnostics/account/${id}/conversation`, { credentials: "include" });
+      if (r.ok) {
+        const j = await r.json();
+        setThread((j.messages ?? []).map((m: Msg) => ({ id: m.id, role: m.role, content: m.content, kind: m.kind })));
+      }
+    } catch { /* leave empty */ }
+    setConvoLoaded(true);
+  }
+  useEffect(() => { loadConversation(); }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Stream one agent turn into the thread. Appends an assistant placeholder and
+  // streams into it; the server persists both sides. Returns whether fresh data
+  // was pulled (so we can refresh the cockpit numbers).
+  async function runStream(reqBody: Record<string, unknown>): Promise<boolean> {
+    setInsightErr(null);
+    setThread(prev => [...prev, { role: "assistant", content: "" }]);
+    const setLast = (next: string) => setThread(prev => {
+      const copy = prev.slice();
+      for (let i = copy.length - 1; i >= 0; i--) {
+        if (copy[i].role === "assistant") { copy[i] = { ...copy[i], content: next }; break; }
+      }
+      return copy;
+    });
     let pulled = false;
     try {
       const r = await fetch(`/api/diagnostics/account/${id}/insight`, {
         method: "POST", credentials: "include",
-        headers: { "Content-Type": "application/json" }, body: "{}",
+        headers: { "Content-Type": "application/json" }, body: JSON.stringify(reqBody),
       });
-      // Early validation errors (PPC OS not connected) come back as JSON.
       if (!r.ok || !r.body || !r.headers.get("content-type")?.includes("text/event-stream")) {
         const j = await r.json().catch(() => ({}));
         setInsightErr(j.error ?? `HTTP ${r.status}`);
-        return;
+        setThread(prev => prev.filter((m, i) => !(i === prev.length - 1 && m.role === "assistant" && !m.content)));
+        return false;
       }
       await consumeInsightStream(r.body, {
-        onReset: () => setInsight(""),
-        onText: (acc) => { setInsightStatus(null); setInsight(acc); },
+        onReset: () => setLast(""),
+        onText: (acc) => { setInsightStatus(null); setLast(acc); },
         onStatus: (s) => {
           if (s === "refreshing") { setInsightStatus("Pulling the latest Google Ads + Shopify data…"); pulled = true; }
           else if (s === "reading") setInsightStatus("Reading across 7/14/30/60/90-day windows…");
+          else if (s === "thinking") setInsightStatus("Thinking…");
         },
         onError: (e) => setInsightErr(e),
       });
-      setInsight(prev => prev ?? "");
-    } catch (e) { setInsightErr(e instanceof Error ? e.message : "Failed"); }
-    finally {
-      setInsightLoading(false); setInsightStatus(null);
-      // The read just pulled fresh data — refresh the rest of the cockpit too.
-      if (pulled) load();
+    } catch (e) {
+      setInsightErr(e instanceof Error ? e.message : "Failed");
+      setThread(prev => prev.filter((m, i) => !(i === prev.length - 1 && m.role === "assistant" && !m.content)));
     }
+    return pulled;
   }
 
-  // Feed the read context it can't see from data ("payments were down") and let
-  // it re-reason. No Google Ads re-pull — continues the same thread.
+  // Fresh read — pulls the latest data and opens (or re-opens) the read. With an
+  // existing thread it comes back as an updated read that remembers.
+  async function getInsight() {
+    if (insightLoading || followSending) return;
+    setInsightLoading(true); setInsightStatus("Pulling fresh data…");
+    const pulled = await runStream({});
+    setInsightLoading(false); setInsightStatus(null);
+    if (pulled) load();
+  }
+
+  // Feed the agent context it can't see ("payments were down") and let it
+  // re-reason. No Google Ads re-pull; persisted so it's remembered.
   async function askFollowup() {
     const q = followInput.trim();
-    if (!q || !insight || followSending) return;
+    if (!q || followSending || insightLoading) return;
     setFollowSending(true); setInsightErr(null); setFollowInput("");
-    // Build the prior thread (assistant read + earlier Q/A pairs) for the server.
-    const thread = [
-      { role: "assistant" as const, content: insight },
-      ...followups.flatMap(f => [
-        { role: "user" as const, content: f.q },
-        { role: "assistant" as const, content: f.a },
-      ]),
-    ];
-    const idx = followups.length;
-    setFollowups(prev => [...prev, { q, a: "" }]);
-    const setA = (a: string) => setFollowups(prev => prev.map((f, i) => i === idx ? { ...f, a } : f));
-    try {
-      const r = await fetch(`/api/diagnostics/account/${id}/insight`, {
-        method: "POST", credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ followup: q, thread }),
-      });
-      if (!r.ok || !r.body || !r.headers.get("content-type")?.includes("text/event-stream")) {
-        const j = await r.json().catch(() => ({}));
-        setInsightErr(j.error ?? `HTTP ${r.status}`);
-        return;
-      }
-      await consumeInsightStream(r.body, {
-        onReset: () => setA(""),
-        onText: (acc) => setA(acc),
-        onStatus: () => {},
-        onError: (e) => setInsightErr(e),
-      });
-    } catch (e) { setInsightErr(e instanceof Error ? e.message : "Failed"); }
-    finally { setFollowSending(false); }
+    setThread(prev => [...prev, { role: "user", content: q }]);
+    await runStream({ followup: q });
+    setFollowSending(false);
+  }
+
+  // Wipe the conversation and start over.
+  async function clearConversation() {
+    if (insightLoading || followSending) return;
+    await fetch(`/api/diagnostics/account/${id}/conversation`, { method: "DELETE", credentials: "include" }).catch(() => null);
+    setThread([]); setInsightErr(null);
   }
 
   // Record the team's tracking verdict, then re-run the read so it reasons from
@@ -345,8 +363,9 @@ export default function DiagnosePage() {
       const j = await r.json().catch(() => ({}));
       if (r.ok && j.tracking) {
         setTracking({ status: j.tracking.trackingStatus, note: j.tracking.trackingNote, setAt: j.tracking.trackingSetAt, setBy: j.tracking.trackingSetBy });
-        // Re-reason if a read is already on screen (or was requested).
-        if (insight || insightErr) await getInsight();
+        // Re-reason if a conversation is already on screen — a fresh read that
+        // now reasons from the confirmed tracking verdict, keeping the thread.
+        if (thread.length > 0 || insightErr) await getInsight();
       }
     } finally { setTrackingSaving(null); }
   }
@@ -484,60 +503,55 @@ export default function DiagnosePage() {
                 <Sparkles size={16} style={{ color: "var(--accent)" }} />
                 <span style={{ fontSize: 13.5, fontWeight: 700 }}>Expert read</span>
                 <span style={{ fontSize: 11, color: "var(--text-muted)" }}>PPC OS</span>
-                {!insight && (
+                {thread.length === 0 ? (
                   <button onClick={getInsight} disabled={insightLoading} style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: "#fff", background: "var(--btn-primary, var(--accent))", border: "none", borderRadius: 8, padding: "7px 14px", cursor: insightLoading ? "default" : "pointer" }}>
                     {insightLoading ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />} {insightLoading ? "Looking…" : "Start the read"}
                   </button>
-                )}
-                {insight && (
-                  <button onClick={getInsight} disabled={insightLoading} title="Regenerate" style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 600, color: "var(--text-3)", background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 7, padding: "5px 10px", cursor: insightLoading ? "default" : "pointer" }}>
-                    {insightLoading ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />} Regenerate
-                  </button>
+                ) : (
+                  <span style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 8 }}>
+                    <button onClick={clearConversation} disabled={insightLoading || followSending} title="Clear this conversation and start over" style={{ fontSize: 11.5, fontWeight: 600, color: "var(--text-3)", background: "none", border: "none", cursor: insightLoading || followSending ? "default" : "pointer", textDecoration: "underline" }}>Clear</button>
+                    <button onClick={getInsight} disabled={insightLoading || followSending} title="Fresh read with the latest data — keeps the conversation" style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 600, color: "var(--text-3)", background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 7, padding: "5px 10px", cursor: insightLoading || followSending ? "default" : "pointer" }}>
+                      {insightLoading ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />} Fresh read
+                    </button>
+                  </span>
                 )}
               </div>
               {insightErr && <div style={{ fontSize: 12.5, color: "var(--danger)", marginTop: 10 }}>{insightErr}</div>}
-              {insightStatus && !insight && (
-                <div style={{ fontSize: 12.5, color: "var(--text-3)", marginTop: 11, display: "flex", alignItems: "center", gap: 8 }}>
-                  <Loader2 size={13} className="animate-spin" style={{ color: "var(--accent)" }} /> {insightStatus}
-                </div>
-              )}
-              {insight && (
-                <div style={{ fontSize: 14, lineHeight: 1.6, color: "var(--text-2)", marginTop: 12 }}>
-                  {renderMarkdown(insight)}
-                </div>
-              )}
-              {!insight && !insightErr && !insightLoading && (
+
+              {/* The persisted conversation */}
+              {thread.map((m, i) => (
+                m.role === "user" ? (
+                  <div key={m.id ?? i} style={{ fontSize: 12.5, color: "var(--text-2)", background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 9, padding: "8px 11px", marginTop: 12 }}>
+                    <span style={{ fontWeight: 700, color: "var(--text-3)" }}>You: </span>{m.content}
+                  </div>
+                ) : (
+                  <div key={m.id ?? i} style={{ fontSize: 14, lineHeight: 1.6, color: "var(--text-2)", marginTop: 12 }}>
+                    {m.content
+                      ? renderMarkdown(m.content)
+                      : <div style={{ fontSize: 12.5, color: "var(--text-3)", display: "flex", alignItems: "center", gap: 8 }}><Loader2 size={13} className="animate-spin" style={{ color: "var(--accent)" }} /> {insightStatus ?? "Reading…"}</div>}
+                  </div>
+                )
+              ))}
+
+              {thread.length === 0 && !insightErr && !insightLoading && (
                 <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 8 }}>I&rsquo;ll open with what I noticed on this account and my best hypothesis, then we figure it out together — grounded in your PPC OS methodology.</div>
               )}
 
-              {/* Conversational follow-ups — feed the read context it can't see
-                  (payments down, vendor in misrep) and let it re-reason. */}
-              {insight && (
-                <div style={{ marginTop: 14, paddingTop: 13, borderTop: "1px solid var(--border-2)" }}>
-                  {followups.map((f, i) => (
-                    <div key={i} style={{ marginBottom: 12 }}>
-                      <div style={{ fontSize: 12.5, color: "var(--text-2)", background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 9, padding: "8px 11px", marginBottom: 8 }}>
-                        <span style={{ fontWeight: 700, color: "var(--text-3)" }}>You: </span>{f.q}
-                      </div>
-                      {f.a
-                        ? <div style={{ fontSize: 13.5, lineHeight: 1.6, color: "var(--text-2)", paddingLeft: 2 }}>{renderMarkdown(f.a)}</div>
-                        : <div style={{ fontSize: 12.5, color: "var(--text-3)", display: "flex", alignItems: "center", gap: 8, paddingLeft: 2 }}><Loader2 size={13} className="animate-spin" style={{ color: "var(--accent)" }} /> Re-reading with your context…</div>}
-                    </div>
-                  ))}
-                  <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
-                    <textarea
-                      value={followInput}
-                      onChange={e => setFollowInput(e.target.value)}
-                      onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); askFollowup(); } }}
-                      placeholder="Add context it can't see — e.g. 'payment provider was down 3–10 July', 'vendor is in misrep in Merchant Center'…"
-                      rows={1}
-                      disabled={followSending}
-                      style={{ flex: 1, resize: "none", fontSize: 12.5, lineHeight: 1.5, color: "var(--text)", background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 9, padding: "8px 11px", fontFamily: "inherit", minHeight: 36 }}
-                    />
-                    <button onClick={askFollowup} disabled={followSending || !followInput.trim()} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12.5, fontWeight: 600, color: "#fff", background: "var(--btn-primary, var(--accent))", border: "none", borderRadius: 8, padding: "8px 13px", cursor: followSending || !followInput.trim() ? "default" : "pointer", opacity: followSending || !followInput.trim() ? 0.6 : 1, whiteSpace: "nowrap" }}>
-                      {followSending ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />} Send
-                    </button>
-                  </div>
+              {/* Composer — feed the agent context, ask, steer. It remembers. */}
+              {thread.length > 0 && (
+                <div style={{ marginTop: 14, display: "flex", gap: 8, alignItems: "flex-end" }}>
+                  <textarea
+                    value={followInput}
+                    onChange={e => setFollowInput(e.target.value)}
+                    onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); askFollowup(); } }}
+                    placeholder="Tell it what it can't see — 'payment provider was down 3–10 July', 'vendor is in misrep' — or ask a question…"
+                    rows={1}
+                    disabled={followSending || insightLoading}
+                    style={{ flex: 1, resize: "none", fontSize: 12.5, lineHeight: 1.5, color: "var(--text)", background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 9, padding: "8px 11px", fontFamily: "inherit", minHeight: 36 }}
+                  />
+                  <button onClick={askFollowup} disabled={followSending || insightLoading || !followInput.trim()} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12.5, fontWeight: 600, color: "#fff", background: "var(--btn-primary, var(--accent))", border: "none", borderRadius: 8, padding: "8px 13px", cursor: followSending || insightLoading || !followInput.trim() ? "default" : "pointer", opacity: followSending || insightLoading || !followInput.trim() ? 0.6 : 1, whiteSpace: "nowrap" }}>
+                    {followSending ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />} Send
+                  </button>
                 </div>
               )}
 
