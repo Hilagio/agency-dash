@@ -95,17 +95,32 @@ export function budgetChangedFast(budget: BudgetPoint[], threshold = 0.25): Sign
   };
 }
 
-/** Zero-conversion spend > threshold of the search-term spend (§8, §4.6). */
+/**
+ * Zero-conversion spend > threshold of the search-term spend (§8, §4.6).
+ *
+ * IMPORTANT: this is the *search-terms report* slice only — a subset of spend
+ * (Search/Shopping queries Google itemises) that also under-attributes
+ * conversions. It is NOT a share of total account spend, and a high value here
+ * is compatible with a healthy account whose conversions come through
+ * Shopping/PMax. We pass totalSpend so the label can say how big the slice
+ * actually is instead of reading as "100% of the account is wasted".
+ */
 export function zeroConversionSpendHigh(
-  searchTerms: Array<{ cost: number; conversions: number }>, threshold = 0.4,
+  searchTerms: Array<{ cost: number; conversions: number }>, totalSpend = 0, threshold = 0.4,
 ): Signal | null {
   const share = zeroConversionSpendShare(searchTerms);
   if (share < threshold) return null;
+  const stTotal = searchTerms.reduce((s, t) => s + t.cost, 0);
+  const wasted = searchTerms.filter(t => t.conversions === 0).reduce((s, t) => s + t.cost, 0);
+  const stShareOfTotal = totalSpend > 0 ? stTotal / totalSpend : null;
+  const scope = stShareOfTotal != null
+    ? ` But itemised search terms are only ${pct(stShareOfTotal)} of total spend and the report under-reports conversions — read this as a search-query hygiene flag, not total waste.`
+    : ` This is the search-terms-report slice only (a subset of spend that under-reports conversions), not a share of the account.`;
   return {
     key: "zero_conversion_spend", kind: "problem", severity: "yellow",
-    title: "High zero-conversion spend",
-    detail: `${pct(share)} of search-term spend went to terms with zero conversions (share, not total).`,
-    evidence: { share },
+    title: "High zero-conversion search-term spend",
+    detail: `${pct(share)} of itemised search-term spend had zero attributed conversions in the last 7 days.${scope}`,
+    evidence: { share, stTotal, wasted, stShareOfTotal },
   };
 }
 
@@ -150,7 +165,7 @@ export function brandConversionRateDrop(before: BrandWindow, after: BrandWindow,
   return {
     key: "brand_cr_drop", kind: "problem", severity: "red", triggersDiagnosis: true,
     title: "Brand conversion rate collapsed",
-    detail: `Brand conversion rate fell ${pct(drop)} (${pct(crBefore)} → ${pct(crAfter)}). Brand is the highest-intent traffic — when it converts worse, it is almost never the ads.`,
+    detail: `Brand conversion rate fell ${pct(drop)} (${pct(crBefore)} → ${pct(crAfter)}) over the last 7 days vs the prior 7. Brand is the highest-intent traffic — when it converts worse, it is almost never the ads. (Recent days aren't fully matured for conversion lag; confirm before it's fully attributed.)`,
     evidence: { crBefore, crAfter, drop },
   };
 }
@@ -211,7 +226,7 @@ export function runSignals(input: SignalInput): Signal[] {
   if (sufficient) {
     out.push(roasBelowFloor(current, cfg));
     out.push(budgetRaisedWhileBelowFloor(current, input.changeEvents, cfg));
-    out.push(zeroConversionSpendHigh(input.searchTerms));
+    out.push(zeroConversionSpendHigh(input.searchTerms, current.spend));
   }
   // Always-on (hygiene, buyability shape, canary, reconciliation, opportunity).
   out.push(budgetChangedFast(input.budget));
