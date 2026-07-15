@@ -155,8 +155,16 @@ export function pagesTrafficNoConversions(pages: PageAgg[], cfg: SignalConfig): 
  * don't get worse because you raised a PMax budget — so this is almost never the
  * ads. Fires red AND triggers a diagnosis.
  */
+// THE red canary triggers a full diagnosis, so it must not fire on noise. Below
+// these volumes a brand window is too thin to trust: 1 conv / 25 clicks → 0 is a
+// "100% drop" that's really sampling noise, made worse by conversion lag.
+const MIN_BRAND_CLICKS = 20;        // per window
+const MIN_BRAND_CONV_BEFORE = 2;    // the baseline conversion count must be stable
+
 export function brandConversionRateDrop(before: BrandWindow, after: BrandWindow, threshold = 0.4): Signal | null {
   if (before.clicks === 0 || after.clicks === 0) return null;
+  // Min-sample guard: too little brand volume to red-alert on.
+  if (before.clicks < MIN_BRAND_CLICKS || after.clicks < MIN_BRAND_CLICKS || before.conversions < MIN_BRAND_CONV_BEFORE) return null;
   const crBefore = before.conversions / before.clicks;
   const crAfter = after.conversions / after.clicks;
   if (crBefore === 0) return null;

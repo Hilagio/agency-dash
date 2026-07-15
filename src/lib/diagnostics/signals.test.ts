@@ -4,7 +4,7 @@
  * Pure — no I/O.
  */
 import {
-  runSignals, conversionsVsOrders, type SignalInput,
+  runSignals, conversionsVsOrders, brandConversionRateDrop, type SignalInput,
 } from "./signals";
 
 let fail = 0;
@@ -65,6 +65,11 @@ ok("worst severity first (a red leads)", signals[0].severity === "red");
 // Guards / correctness.
 ok("reconciliation does NOT false-fire at 10.7% (< 15% threshold)", !keys.has("conversions_vs_orders"));
 ok("but a 20x fake-conversion account DOES fire", conversionsVsOrders(100, 5) !== null);
+
+// Brand min-sample guard: THE red canary must not fire on a thin, noisy window.
+ok("brand guard suppresses noise (1 conv / 25 clicks → 0)", brandConversionRateDrop({ clicks: 25, conversions: 1 }, { clicks: 20, conversions: 0 }) === null);
+ok("brand guard suppresses low click volume", brandConversionRateDrop({ clicks: 12, conversions: 3 }, { clicks: 10, conversions: 0 }) === null);
+ok("brand still fires on a solid base (5/100 → 1/100)", brandConversionRateDrop({ clicks: 100, conversions: 5 }, { clicks: 100, conversions: 1 }) !== null);
 
 // Data-sufficiency guard: a low-volume account with an awful ROAS stays quiet on performance.
 const lowVol = runSignals({ ...input, current: { spend: 40, clicks: 30, conversions: 1, conversionValue: 5, days: 10 } });
