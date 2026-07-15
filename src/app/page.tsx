@@ -9,7 +9,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   ShieldCheck, Settings as SettingsIcon, Store, ListChecks, BookOpen,
-  Loader2, ArrowRight, Sprout, Activity, ShoppingBag, AlertTriangle, CheckCircle2, XCircle, Star,
+  Loader2, ArrowRight, Sprout, Activity, ShoppingBag, AlertTriangle, CheckCircle2, XCircle, Star, Sparkles,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
@@ -22,6 +22,7 @@ interface Row {
   reconciliationMismatch: boolean;
   worstSignal: { title: string; severity: string } | null;
   problemCount: number; opportunityCount: number;
+  briefing: string | null; briefingAt: string | null;
 }
 interface Portfolio {
   accounts: Row[];
@@ -107,6 +108,9 @@ export default function PortfolioHome() {
       done++;
       setBackfill(b => ({ ...b, done }));
     }
+    // Freshly-pulled data → regenerate the morning briefings so the dash greets
+    // the team with what it noticed, without waiting for the nightly run.
+    await fetch("/api/diagnostics/briefings", { method: "POST", credentials: "include" }).catch(() => null);
     const pf = await fetch("/api/diagnostics/portfolio", { credentials: "include" }).then(r => r.ok ? r.json() : null).catch(() => null);
     if (pf) setData(pf);
     setBackfill({ running: false, done, total: ids.length });
@@ -225,6 +229,36 @@ export default function PortfolioHome() {
               </div>
               {view === "mine" && watchedCount > 0 && <span style={{ fontSize: 11.5, color: "var(--text-muted)" }}>The accounts you work on, pinned here.</span>}
             </div>
+
+            {/* Morning briefing (§agent) — what the platform noticed overnight,
+                each line a conversation waiting to be opened. */}
+            {(() => {
+              const briefed = visible.filter(a => a.briefing && (a.status === "red" || a.status === "yellow"));
+              if (!briefed.length) return null;
+              return (
+                <div style={{ ...card, padding: "14px 16px", marginBottom: 14, background: "linear-gradient(160deg, var(--accent-dim), transparent), var(--surface)", border: "1px solid color-mix(in srgb, var(--accent) 24%, var(--border))" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                    <Sparkles size={15} style={{ color: "var(--accent)" }} />
+                    <span style={{ fontSize: 13, fontWeight: 700 }}>What I noticed{view === "mine" ? " on your accounts" : ""}</span>
+                    <span style={{ fontSize: 11.5, color: "var(--text-muted)" }}>{briefed.length} {briefed.length === 1 ? "account needs" : "accounts need"} a look — open one to dig in</span>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+                    {briefed.map(a => (
+                      <Link key={a.id} href={`/diagnose/${a.id}`} style={{ textDecoration: "none", color: "inherit", display: "flex", alignItems: "flex-start", gap: 10, padding: "9px 11px", borderRadius: 9, background: "var(--surface)", border: "1px solid var(--border-2)" }}
+                        onMouseEnter={e => (e.currentTarget.style.borderColor = "color-mix(in srgb, var(--accent) 40%, var(--border))")}
+                        onMouseLeave={e => (e.currentTarget.style.borderColor = "var(--border-2)")}>
+                        <span title={STATUS_LABEL[a.status]} style={{ width: 9, height: 9, borderRadius: "50%", background: STATUS_COLOR[a.status], flexShrink: 0, marginTop: 5 }} />
+                        <span style={{ flex: 1, minWidth: 0 }}>
+                          <span style={{ fontSize: 12.5, fontWeight: 700, marginRight: 7 }}>{a.name}</span>
+                          <span style={{ fontSize: 12.5, color: "var(--text-2)", lineHeight: 1.5 }}>{a.briefing}</span>
+                        </span>
+                        <ArrowRight size={14} style={{ color: "var(--text-dim)", flexShrink: 0, marginTop: 3 }} />
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
 
             {view === "mine" && visible.length === 0 ? (
               <div style={{ ...card, padding: "40px 20px", textAlign: "center", color: "var(--text-muted)" }}>

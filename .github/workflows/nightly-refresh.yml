@@ -38,3 +38,12 @@ jobs:
           curl -fsS -X POST "$APP_URL/api/diagnostics/run-signals" \
             -H "Authorization: Bearer $CRON_SECRET" \
             -H "Content-Type: application/json" --max-time 600
+
+      - name: Generate morning briefings (one-line agent openers per flagged account)
+        env:
+          APP_URL: ${{ secrets.APP_URL || 'https://agency-dash-production.up.railway.app' }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          curl -fsS -X POST "$APP_URL/api/diagnostics/briefings" \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -H "Content-Type: application/json" --max-time 600

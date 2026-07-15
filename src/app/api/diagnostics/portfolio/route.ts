@@ -37,6 +37,7 @@ export async function GET() {
       where: { organizationId: ctx.orgId, active: true, archived: false },
       select: {
         id: true, name: true, clientName: true, grossMarginPercent: true,
+        briefing: true, briefingAt: true,
         owner: { select: { name: true } },
         shopify: { select: { shopDomain: true } },
       },
@@ -72,6 +73,8 @@ export async function GET() {
       watched: watched.has(a.id),
       status: (st?.status as "red" | "yellow" | "green") ?? "unknown",
       computedAt: st?.computedAt ?? null,
+      briefing: a.briefing ?? null,
+      briefingAt: a.briefingAt ?? null,
       hasData: !!diag,
       spend,
       conversions: w?.conversions ?? null,
