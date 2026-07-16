@@ -14,12 +14,13 @@ import Link from "next/link";
 import {
   ArrowLeft, ArrowUpRight, Loader2, CheckCircle2, AlertTriangle, HelpCircle,
   ShieldCheck, Sprout, XCircle, MinusCircle, TrendingUp, ShoppingBag, RefreshCw, ChevronRight, Sparkles,
-  Paperclip, X, FileText, Download, Trash2,
+  Paperclip, X, FileText, Download, Trash2, Plug,
 } from "lucide-react";
 
 interface Attachment { name: string; mediaType: string; data: string; kind: "image" | "document" | "text" }
 interface DocMeta { id: string; title: string; docType: string; format: "doc" | "deck"; language: string; filename: string; createdBy: string | null; createdAt: string }
-interface Connections { googleAds: string; merchantCenter: string; shopify: string; context: string; contextFilled: number; contextTotal: number }
+interface Connections { googleAds: string; merchantCenter: string; shopify: string; slack: string; slackConfigured: boolean; slackChannelName: string | null; context: string; contextFilled: number; contextTotal: number }
+interface SlackChannel { id: string; name: string; isPrivate: boolean; memberCount?: number }
 
 // The context we ask the team to fill so the agent knows the client — the things
 // the data can't tell it. Keys map to the ClientContext / Typeform fields.
@@ -300,6 +301,13 @@ export default function DiagnosePage() {
   const [ctxValues, setCtxValues] = useState<Record<string, string>>({});
   const [ctxLoading, setCtxLoading] = useState(false);
   const [ctxSaving, setCtxSaving] = useState(false);
+  // Inline Slack-channel linking — connect the client's channel without leaving the chat.
+  const [slackOpen, setSlackOpen] = useState(false);
+  const [slackChannels, setSlackChannels] = useState<SlackChannel[]>([]);
+  const [slackLoading, setSlackLoading] = useState(false);
+  const [slackSaving, setSlackSaving] = useState<string | null>(null);
+  const [slackErr, setSlackErr] = useState<string | null>(null);
+  const [slackFilter, setSlackFilter] = useState("");
   const [products, setProducts] = useState<ProductDiagnostic | null>(null);
   const [productPages, setProductPages] = useState<ProductPage[]>([]);
   const [wins, setWins] = useState<string[]>([]);
@@ -307,6 +315,7 @@ export default function DiagnosePage() {
   const [thread, setThread] = useState<Msg[]>([]);
   const [convoLoaded, setConvoLoaded] = useState(false);
   const threadRef = useRef<HTMLDivElement>(null);
+  const connRef = useRef<HTMLDivElement>(null);
   const [insightLoading, setInsightLoading] = useState(false);
   const [insightErr, setInsightErr] = useState<string | null>(null);
   const [insightStatus, setInsightStatus] = useState<string | null>(null);
@@ -562,6 +571,50 @@ export default function DiagnosePage() {
     } finally { setCtxSaving(false); }
   }
 
+  // Link the client's Slack channel from inside the chat — the agent reads it
+  // for off-platform context (a promo, a checkout change, a payment switch).
+  async function openSlackLink() {
+    setSlackOpen(true); setSlackErr(null);
+    if (slackChannels.length) return; // already loaded
+    setSlackLoading(true);
+    try {
+      const r = await fetch(`/api/integrations/slack/channels`, { credentials: "include" });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) setSlackErr(j.error === "Slack not connected" ? "No Slack workspace is connected for your organisation yet — add the bot token in Settings → Slack, then link a channel here." : (j.error ?? "Couldn't load Slack channels."));
+      else setSlackChannels(j.channels ?? []);
+    } catch { setSlackErr("Couldn't reach Slack."); }
+    setSlackLoading(false);
+  }
+  async function linkSlackChannel(ch: SlackChannel | null) {
+    setSlackSaving(ch?.id ?? "unlink"); setSlackErr(null);
+    try {
+      const r = await fetch(`/api/accounts/${id}`, {
+        method: "PATCH", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slackChannelId: ch?.id ?? null, slackChannelName: ch?.name ?? null }),
+      });
+      if (!r.ok) { setSlackErr("Couldn't save the channel."); return; }
+      setSlackOpen(false);
+      load(); // refresh the connections strip
+    } catch { setSlackErr("Couldn't save the channel."); }
+    finally { setSlackSaving(null); }
+  }
+
+  function scrollToConn() { connRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }); }
+  // Turn a "No data — not connected" tool result into a one-click connect action
+  // right inside the conversation, so a missing source is fixable on the spot.
+  function connectActions(tools: { name: string; ok: boolean }[]) {
+    const notOk = new Set(tools.filter(t => !t.ok).map(t => t.name));
+    const actions: { key: string; label: string; onClick: () => void }[] = [];
+    if (notOk.has("get_slack_context") && connections?.slack !== "green") {
+      actions.push({ key: "slack", label: connections?.slackConfigured ? "Link Slack channel" : "Connect Slack", onClick: () => { openSlackLink(); scrollToConn(); } });
+    }
+    if (notOk.has("get_shopify_data") && connections?.shopify !== "green") {
+      actions.push({ key: "shopify", label: "Connect Shopify", onClick: () => { setDetailsOpen(true); scrollToConn(); } });
+    }
+    return actions;
+  }
+
   // Wipe the conversation and start over.
   async function clearConversation() {
     if (insightLoading || followSending) return;
@@ -769,14 +822,43 @@ export default function DiagnosePage() {
 
             {/* Connections & context — what this account knows, at a glance */}
             {connections && (
-              <div style={{ ...card, padding: "12px 15px", marginTop: 14 }}>
+              <div ref={connRef} style={{ ...card, padding: "12px 15px", marginTop: 14 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                   <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, color: "var(--text-muted)", marginRight: 4 }}>Connected</span>
                   <ConnPill label="Google Ads" status={connections.googleAds} note="spend & performance" />
                   <ConnPill label="Merchant Center" status={connections.merchantCenter} note={connections.merchantCenter === "green" ? "feed & products" : "not detected"} />
                   <ConnPill label="Shopify" status={connections.shopify} note={shopify?.connected ? (shopify.shopDomain ?? "orders") : "orders & POAS"} onClick={connections.shopify !== "green" ? () => setDetailsOpen(true) : undefined} />
+                  <ConnPill label="Slack" status={connections.slack} note={connections.slack === "green" ? `#${connections.slackChannelName}` : connections.slackConfigured ? "link a channel" : "not connected"} onClick={connections.slackConfigured ? () => (slackOpen ? setSlackOpen(false) : openSlackLink()) : undefined} />
                   <ConnPill label="Context" status={connections.context} note={`${connections.contextFilled}/${connections.contextTotal} answered`} onClick={openContextForm} />
                 </div>
+
+                {/* Inline Slack-channel picker — link the client's channel without leaving the chat */}
+                {slackOpen && (
+                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--border-2)" }}>
+                    <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 3 }}>Link this client&rsquo;s Slack channel</div>
+                    <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginBottom: 11 }}>The agent reads it for off-platform context — a promo, a checkout or price change, a payment switch, &ldquo;paused for the holidays.&rdquo; Invite the bot to the channel first if it&rsquo;s not listed.</div>
+                    {slackErr && <div style={{ fontSize: 12, color: "var(--danger, #d33)", marginBottom: 10 }}>{slackErr}</div>}
+                    {slackLoading ? (
+                      <div style={{ fontSize: 12.5, color: "var(--text-3)", display: "flex", alignItems: "center", gap: 8 }}><Loader2 size={13} className="animate-spin" /> Loading channels…</div>
+                    ) : slackChannels.length > 0 ? (
+                      <>
+                        <input value={slackFilter} onChange={e => setSlackFilter(e.target.value)} placeholder="Filter channels…" style={{ width: "100%", fontSize: 12.5, color: "var(--text)", background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 8, padding: "7px 10px", marginBottom: 8, fontFamily: "inherit" }} />
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, maxHeight: 180, overflowY: "auto" }}>
+                          {slackChannels.filter(c => c.name.toLowerCase().includes(slackFilter.toLowerCase())).slice(0, 60).map(ch => (
+                            <button key={ch.id} onClick={() => linkSlackChannel(ch)} disabled={!!slackSaving} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 600, color: "var(--text-2)", background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 999, padding: "5px 11px", cursor: slackSaving ? "default" : "pointer" }}>
+                              {slackSaving === ch.id ? <Loader2 size={11} className="animate-spin" /> : null}#{ch.name}{ch.isPrivate ? " 🔒" : ""}
+                            </button>
+                          ))}
+                        </div>
+                        {connections.slack === "green" && (
+                          <button onClick={() => linkSlackChannel(null)} disabled={!!slackSaving} style={{ marginTop: 10, fontSize: 12, fontWeight: 600, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>Unlink current channel</button>
+                        )}
+                      </>
+                    ) : !slackErr ? (
+                      <div style={{ fontSize: 12.5, color: "var(--text-3)" }}>No channels the bot can see. Invite it to the client&rsquo;s channel with <code>/invite</code>, then reopen this.</div>
+                    ) : null}
+                  </div>
+                )}
 
                 {/* Add-context form — the questions the data can't answer */}
                 {ctxOpen && (
@@ -921,6 +1003,12 @@ export default function DiagnosePage() {
                                 <MinusCircle size={12} /> No data: {m.tools.filter(t => !t.ok).map(t => TOOL_LABELS[t.name] ?? t.name).join(", ")}
                               </span>
                             )}
+                            {/* Connect it right here — turn a missing source into a one-click fix in the chat */}
+                            {connectActions(m.tools).map(a => (
+                              <button key={a.key} onClick={a.onClick} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, fontWeight: 600, color: "var(--accent)", background: "var(--accent-dim)", border: "1px solid color-mix(in srgb, var(--accent) 25%, var(--border))", borderRadius: 7, padding: "3px 9px", cursor: "pointer" }}>
+                                <Plug size={12} /> {a.label}
+                              </button>
+                            ))}
                           </div>
                         )}
                       </div>

@@ -63,7 +63,7 @@ async function handle(id: string, orgId: string) {
       id: true, name: true, clientName: true, currency: true, dataVerified: true,
       roasFloor: true, grossMarginPercent: true, minSpendForEval: true, minConversionsForEval: true,
       trackingStatus: true, trackingNote: true, trackingSetAt: true, trackingSetBy: true,
-      merchantCenterId: true,
+      merchantCenterId: true, slackChannelId: true, slackChannelName: true,
     },
   });
   if (!account) return NextResponse.json({ error: "This account isn't in your organization, or doesn't exist." }, { status: 404 });
@@ -208,10 +208,18 @@ async function handle(id: string, orgId: string) {
     return typeof v === "string" && v.trim().length > 0;
   }).length : 0;
   const ctxStatus = ctxFilled === 0 ? "red" : ctxFilled >= Math.ceil(CTX_KEYS.length * 0.7) ? "green" : "yellow";
+  // Slack: green = a channel is linked to this account; yellow = the org has a
+  // Slack bot but no channel is linked here yet (linkable in one click);
+  // red = no Slack bot connected for the org at all.
+  const slackConfigured = !!(await prisma.slackConnection.findUnique({ where: { organizationId: orgId }, select: { id: true } }));
+  const slackStatus = account.slackChannelId ? "green" : slackConfigured ? "yellow" : "red";
   const connections = {
     googleAds: (anySpend || !!diag) ? "green" : "yellow",
     merchantCenter: account.merchantCenterId ? "green" : "yellow",
     shopify: conn ? "green" : "red",
+    slack: slackStatus,
+    slackConfigured,
+    slackChannelName: account.slackChannelName ?? null,
     context: ctxStatus,
     contextFilled: ctxFilled,
     contextTotal: CTX_KEYS.length,
