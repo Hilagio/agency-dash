@@ -224,6 +224,7 @@ function agoLabel(iso: string | null): string {
 }
 
 const TOOL_LABELS: Record<string, string> = {
+  run_healthcheck: "fundamentals check",
   get_impression_share: "impression share",
   get_campaign_overview: "campaign structure",
   get_change_history: "change history",

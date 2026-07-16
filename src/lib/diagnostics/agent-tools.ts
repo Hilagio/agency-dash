@@ -19,6 +19,11 @@ const CUR: Record<string, string> = { EUR: "€", USD: "$", GBP: "£", CZK: "Kč
 // Tool definitions handed to the model (custom tools alongside the PPC OS MCP).
 export const AGENT_TOOLS = [
   {
+    name: "run_healthcheck",
+    description: "Run the account's FUNDAMENTALS in priority order and return pass / ⚠ / fail for each: (1) tracking trustworthy? (2) Merchant Center / feed not suspended & serving? (3) is it actually spending? (4) are real sales/conversions coming in? (5) is efficiency above break-even? Do this FIRST on any 'what's wrong / is it healthy / diagnose / any risks' question — it confirms the important things are genuinely working before you theorise, and the first ✗ (upstream) is the governing constraint to fix before anything downstream. Cheap and fast; lead your read with it.",
+    input_schema: { type: "object", properties: {} },
+  },
+  {
     name: "get_impression_share",
     description: "Live from Google Ads: per-campaign impression share, share LOST TO BUDGET, and share lost to rank over the last N days. Use this to answer 'are we limited by budget / is there headroom to scale?' — high budget-lost % means raising budget will win more volume. Only Search/Shopping report search IS; Performance Max may return blanks.",
     input_schema: { type: "object", properties: { days: { type: "number", description: "Look-back window in days (default 30)." } } },
@@ -61,6 +66,7 @@ export const AGENT_TOOLS = [
 ] as const;
 
 const LABELS: Record<string, string> = {
+  run_healthcheck: "Running the fundamentals check…",
   get_impression_share: "Checking impression share in Google Ads…",
   get_campaign_overview: "Pulling the campaign structure from Google Ads…",
   get_search_terms: "Reading the search terms…",
@@ -113,10 +119,97 @@ function detectSetup(rows: { campaign: string; channel: string; biddingStrategy:
   return `DETECTED SETUP — recognised from the account itself (use this as context; don't ask the team what you can already see):\n${notes.map(n => `- ${n}`).join("\n")}`;
 }
 
+// The fundamentals check — the Way of Work "foundation & truth" run as a
+// sequence, upstream first. Confirms the important things are actually working
+// (tracking → feed → spend → sales → efficiency) so the read starts from what's
+// real, and the first ✗ is the governing constraint. Everything here is derived
+// from real data; nothing is asserted that a check didn't return.
+async function runVitals(acc: AgentAccount): Promise<string> {
+  const cur = CUR[acc.currency] ?? `${acc.currency} `;
+  const money = (n: number) => `${cur}${Math.round(n).toLocaleString("en-GB")}`;
+  const day = (n: number) => { const d = new Date(); d.setUTCDate(d.getUTCDate() - n); return d.toISOString().slice(0, 10); };
+  const d30 = day(30), d7 = day(7);
+
+  const [account, m30, m7, o30, o7, orderRows] = await Promise.all([
+    prisma.account.findUnique({ where: { id: acc.id }, select: { trackingStatus: true, roasFloor: true, grossMarginPercent: true } }),
+    prisma.metricDaily.aggregate({ where: { accountId: acc.id, date: { gte: d30 } }, _sum: { spend: true, conversions: true, conversionValue: true } }),
+    prisma.metricDaily.aggregate({ where: { accountId: acc.id, date: { gte: d7 } }, _sum: { spend: true, conversions: true } }),
+    prisma.orderDaily.aggregate({ where: { accountId: acc.id, date: { gte: d30 } }, _sum: { orders: true, revenue: true } }),
+    prisma.orderDaily.aggregate({ where: { accountId: acc.id, date: { gte: d7 } }, _sum: { orders: true, revenue: true } }),
+    prisma.orderDaily.count({ where: { accountId: acc.id, date: { gte: d30 } } }),
+  ]);
+
+  const spend30 = m30._sum.spend ?? 0, spend7 = m7._sum.spend ?? 0;
+  const conv30 = m30._sum.conversions ?? 0, conv7 = m7._sum.conversions ?? 0;
+  const val30 = m30._sum.conversionValue ?? 0;
+  const hasOrderData = orderRows > 0;
+  const orders30 = o30._sum.orders ?? 0, orders7 = o7._sum.orders ?? 0, rev7 = o7._sum.revenue ?? 0;
+
+  const L: string[] = ["FUNDAMENTALS CHECK (upstream first — the first ✗ is the governing constraint):"];
+  const fails: string[] = [];
+  const mark = (icon: string, label: string, detail: string) => L.push(`${icon} ${label}: ${detail}`);
+
+  // 1. TRACKING — can we trust the numbers at all?
+  if (account?.trackingStatus === "broken") { mark("✗", "Tracking", "flagged BROKEN — fix before trusting any number here; every downstream read is unreliable until it's fixed."); fails.push("tracking"); }
+  else if (account?.trackingStatus === "verified") mark("✓", "Tracking", "confirmed working.");
+  else mark("⚠", "Tracking", "not confirmed — verify the primary conversion is a real purchase and reconciles to orders.");
+  // Reconciliation sanity (only if we have real orders to compare)
+  if (hasOrderData && orders30 > 0 && conv30 > orders30 * 1.5) {
+    mark("⚠", "Reconciliation", `Google shows ${conv30.toFixed(0)} conversions/30d but only ${orders30} real orders — possible over-counting (non-purchase goals?).`);
+  }
+
+  // 2. MERCHANT CENTER / FEED — is Google even allowed to serve the products?
+  try {
+    const ids = await getMerchantCenterIds(acc.googleAdsId, acc.organizationId, acc.merchantCenterId ?? null);
+    if (ids.length) {
+      const h = await fetchMerchantCenterHealth(ids[0], acc.organizationId);
+      if (h.scopeOrAuthError) mark("⚠", "Merchant Center", `couldn't read it (${h.scopeOrAuthError.slice(0, 80)}).`);
+      else if (h.accountIssues.length) { mark("✗", "Merchant Center", `account-level issue — ${h.accountIssues.map(i => i.title).join("; ")}. This can take the whole feed down.`); fails.push("merchant center"); }
+      else {
+        const tot = h.totals.active + h.totals.disapproved;
+        const disPct = tot > 0 ? Math.round((h.totals.disapproved / tot) * 100) : 0;
+        if (disPct >= 20) mark("⚠", "Merchant Center", `no suspension, but ${h.totals.disapproved}/${tot} products disapproved (${disPct}%).`);
+        else mark("✓", "Merchant Center", `no account-level issues; ${h.totals.active} products serving${h.totals.disapproved ? `, ${h.totals.disapproved} disapproved` : ""}.`);
+      }
+    }
+  } catch { /* MC is best-effort — a failure here shouldn't sink the whole check */ }
+
+  // 3. SPEND — is the account actually delivering?
+  if (spend30 <= 0) { mark("✗", "Spend", "€0 in 30d — not delivering (paused, or blocked by billing/policy)."); fails.push("spend"); }
+  else if (spend7 <= spend30 / 30 * 0.2) mark("⚠", "Spend", `spending ${money(spend30)}/30d but the last 7d (${money(spend7)}) has collapsed — check serving/feed/budget.`);
+  else mark("✓", "Spend", `delivering — ${money(spend30)}/30d, ${money(spend7)}/7d.`);
+
+  // 4. SALES — is the money turning into orders?
+  if (hasOrderData) {
+    if (orders7 === 0 && spend7 > 0) { mark("✗", "Sales", `spending but ZERO real orders in 7d — the classic checkout/site/stock break (clicks arriving, till closed).`); fails.push("sales"); }
+    else mark("✓", "Sales", `${orders7} real orders/7d (${money(rev7)}); ${orders30} over 30d.`);
+  } else {
+    if (conv7 === 0 && spend7 > 0) { mark("✗", "Sales", `spending but ZERO conversions in 7d (Google's count — no Shopify to confirm real orders).`); fails.push("sales"); }
+    else mark("✓", "Sales", `${conv7.toFixed(0)} conversions/7d (Google's attribution).`);
+    mark("⚠", "Order data", "no Shopify orders connected — flying on Google's attribution; connect Shopify or upload a CSV to confirm real sales.");
+  }
+
+  // 5. EFFICIENCY — profitable? (lagging, so last; may be contaminated by an upstream break)
+  const roas30 = spend30 > 0 ? val30 / spend30 : 0;
+  const floor = account?.roasFloor ?? (account?.grossMarginPercent ? 1 / account.grossMarginPercent : null);
+  if (spend30 > 0) {
+    const floorTxt = floor != null ? ` (break-even ${floor.toFixed(2)})` : "";
+    if (floor != null && roas30 < floor) mark(fails.length ? "⚠" : "✗", "Efficiency", `ROAS ${roas30.toFixed(2)} over 30d, BELOW break-even${floorTxt}${fails.length ? " — but likely contaminated by the upstream ✗ above; don't act on it until that's fixed." : "."}`);
+    else mark("✓", "Efficiency", `ROAS ${roas30.toFixed(2)} over 30d${floorTxt}.`);
+  }
+
+  L.push(fails.length
+    ? `→ Governing constraint: ${fails[0].toUpperCase()} is broken — fix that first; everything downstream (including efficiency) is unreliable until it is.`
+    : `→ Fundamentals hold. No hard failure — if performance is off, it's a tuning/optimisation question, not a broken foundation.`);
+  return L.join("\n");
+}
+
 export async function runAgentTool(name: string, input: Record<string, unknown>, acc: AgentAccount): Promise<string> {
   const cur = CUR[acc.currency] ?? `${acc.currency} `;
   const money = (n: number) => `${cur}${Math.round(n).toLocaleString("en-GB")}`;
   const days = clampDays(input?.days);
+
+  if (name === "run_healthcheck") return runVitals(acc);
 
   if (name === "get_impression_share") {
     const rows = (await fetchImpressionShare(acc.googleAdsId, acc.organizationId, days)).slice(0, 20);
