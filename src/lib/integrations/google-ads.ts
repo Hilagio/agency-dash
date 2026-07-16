@@ -2273,9 +2273,11 @@ const nDayRange = (days: number) => {
 export interface ImpressionShareRow {
   campaign: string; channel: string; cost: number;
   searchIS: number | null; budgetLostIS: number | null; rankLostIS: number | null;
+  absTopIS: number | null;
 }
-/** Per-campaign impression share + share lost to budget / rank — answers
- * "are we limited by budget?" and how much headroom there is. */
+/** Per-campaign impression share + share lost to budget / rank + absolute-top IS
+ * — answers "are we limited by budget?", "is there headroom?", and "are we
+ * sitting at the bottom of the page?" (low abs-top = raise bids on converters). */
 export async function fetchImpressionShare(customerId: string, orgId: string | undefined, days: number): Promise<ImpressionShareRow[]> {
   const client = getClient();
   const customer = await getCustomer(client, customerId, orgId);
@@ -2283,7 +2285,7 @@ export async function fetchImpressionShare(customerId: string, orgId: string | u
   const rows = await safeQuery(() => customer.query(`
     SELECT campaign.name, campaign.advertising_channel_type, metrics.cost_micros,
            metrics.search_impression_share, metrics.search_budget_lost_impression_share,
-           metrics.search_rank_lost_impression_share
+           metrics.search_rank_lost_impression_share, metrics.search_absolute_top_impression_share
     FROM campaign
     WHERE segments.date BETWEEN '${start}' AND '${end}' AND metrics.cost_micros > 0
     ORDER BY metrics.cost_micros DESC
@@ -2296,7 +2298,103 @@ export async function fetchImpressionShare(customerId: string, orgId: string | u
     searchIS: num(r.metrics?.search_impression_share),
     budgetLostIS: num(r.metrics?.search_budget_lost_impression_share),
     rankLostIS: num(r.metrics?.search_rank_lost_impression_share),
+    absTopIS: num(r.metrics?.search_absolute_top_impression_share),
   }));
+}
+
+export interface QualityScoreRow { keyword: string; qs: number; expCtr: string; adRelevance: string; lpExperience: string; cost: number }
+/** Quality Score components per keyword (Search) — expected CTR, ad relevance,
+ * landing-page experience. The lead-gen tree's rank check: all three below
+ * average = Ad Rank too low to enter the auction. */
+export async function fetchQualityScore(customerId: string, orgId: string | undefined, days: number): Promise<QualityScoreRow[]> {
+  const client = getClient();
+  const customer = await getCustomer(client, customerId, orgId);
+  const { start, end } = nDayRange(days);
+  const rows = await safeQuery(() => customer.query(`
+    SELECT ad_group_criterion.keyword.text,
+           ad_group_criterion.quality_info.quality_score,
+           ad_group_criterion.quality_info.creative_quality_score,
+           ad_group_criterion.quality_info.post_click_quality_score,
+           ad_group_criterion.quality_info.search_predicted_ctr,
+           metrics.cost_micros
+    FROM keyword_view
+    WHERE segments.date BETWEEN '${start}' AND '${end}' AND ad_group_criterion.quality_info.quality_score > 0
+    ORDER BY metrics.cost_micros DESC
+  `), "quality score", 30_000);
+  return rows.map(r => ({
+    keyword: r.ad_group_criterion?.keyword?.text ?? "—",
+    qs: Number(r.ad_group_criterion?.quality_info?.quality_score ?? 0),
+    expCtr: String(r.ad_group_criterion?.quality_info?.search_predicted_ctr ?? ""),
+    adRelevance: String(r.ad_group_criterion?.quality_info?.creative_quality_score ?? ""),
+    lpExperience: String(r.ad_group_criterion?.quality_info?.post_click_quality_score ?? ""),
+    cost: Number(r.metrics?.cost_micros ?? 0) / 1_000_000,
+  }));
+}
+
+export interface AdStrengthRow { campaign: string; adGroup: string; strength: string; headlines: number; descriptions: number }
+/** Responsive Search Ad strength + asset counts — "the ad is weak, build it
+ * out" (most accounts run 3-4 headlines; the ceiling is 15 headlines / 4 desc). */
+export async function fetchAdStrength(customerId: string, orgId: string | undefined): Promise<AdStrengthRow[]> {
+  const client = getClient();
+  const customer = await getCustomer(client, customerId, orgId);
+  const rows = await safeQuery(() => customer.query(`
+    SELECT campaign.name, ad_group.name, ad_group_ad.ad_strength,
+           ad_group_ad.ad.responsive_search_ad.headlines,
+           ad_group_ad.ad.responsive_search_ad.descriptions
+    FROM ad_group_ad
+    WHERE ad_group_ad.status = 'ENABLED' AND campaign.status = 'ENABLED'
+      AND ad_group_ad.ad.type = 'RESPONSIVE_SEARCH_AD'
+  `), "ad strength", 30_000);
+  return rows.map(r => {
+    const rsa = r.ad_group_ad?.ad?.responsive_search_ad;
+    return {
+      campaign: r.campaign?.name ?? "—",
+      adGroup: r.ad_group?.name ?? "—",
+      strength: String(r.ad_group_ad?.ad_strength ?? ""),
+      headlines: Array.isArray(rsa?.headlines) ? rsa.headlines.length : 0,
+      descriptions: Array.isArray(rsa?.descriptions) ? rsa.descriptions.length : 0,
+    };
+  });
+}
+
+export interface GeoPerfRow { location: string; cost: number; clicks: number; conversions: number; value: number }
+/** Performance by geographic location (resolved to names) — spot a geo that
+ * outperforms on little spend (shift budget) or a country dragging the average. */
+export async function fetchGeoPerformance(customerId: string, orgId: string | undefined, days: number): Promise<GeoPerfRow[]> {
+  const client = getClient();
+  const customer = await getCustomer(client, customerId, orgId);
+  const { start, end } = nDayRange(days);
+  const rows = await safeQuery(() => customer.query(`
+    SELECT geographic_view.country_criterion_id, geographic_view.location_type,
+           metrics.cost_micros, metrics.clicks, metrics.conversions, metrics.conversions_value
+    FROM geographic_view
+    WHERE segments.date BETWEEN '${start}' AND '${end}' AND metrics.cost_micros > 0
+  `), "geo performance", 30_000);
+  // Aggregate by country criterion id.
+  const agg = new Map<string, { id: string; cost: number; clicks: number; conversions: number; value: number }>();
+  for (const r of rows) {
+    const id = String(r.geographic_view?.country_criterion_id ?? "");
+    if (!id) continue;
+    const e = agg.get(id) ?? { id, cost: 0, clicks: 0, conversions: 0, value: 0 };
+    e.cost += Number(r.metrics?.cost_micros ?? 0) / 1_000_000;
+    e.clicks += Number(r.metrics?.clicks ?? 0);
+    e.conversions += Number(r.metrics?.conversions ?? 0);
+    e.value += Number(r.metrics?.conversions_value ?? 0);
+    agg.set(id, e);
+  }
+  const top = [...agg.values()].sort((a, b) => b.cost - a.cost).slice(0, 20);
+  // Resolve the criterion ids to readable names.
+  const names = new Map<string, string>();
+  if (top.length) {
+    const idList = top.map(t => t.id).join(",");
+    const geoRows = await safeQuery(() => customer.query(`
+      SELECT geo_target_constant.id, geo_target_constant.canonical_name
+      FROM geo_target_constant
+      WHERE geo_target_constant.id IN (${idList})
+    `), "geo names", 15_000).catch(() => []);
+    for (const g of geoRows) names.set(String(g.geo_target_constant?.id ?? ""), String(g.geo_target_constant?.canonical_name ?? ""));
+  }
+  return top.map(t => ({ location: names.get(t.id) || `location ${t.id}`, cost: t.cost, clicks: t.clicks, conversions: t.conversions, value: t.value }));
 }
 
 export interface CampaignOverviewRow {
