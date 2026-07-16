@@ -11,6 +11,56 @@ import { prisma } from "@/lib/db";
 import {
   runSignals, type Signal, type SignalInput, type PageAgg, type WindowAgg,
 } from "./signals";
+import { getMerchantCenterIds, fetchMerchantCenterHealth } from "@/lib/integrations/merchant-center";
+
+/**
+ * Merchant Center feed health as a nightly signal. Per the team's rule:
+ * RED only when the feed genuinely can't advertise — an account-level
+ * suspension / policy block, nothing serving, or near-total disapproval.
+ * Minor stuff (a handful of disapprovals, non-blocking notices) stays YELLOW.
+ * Best-effort: any read failure returns null (no false alarm).
+ */
+async function merchantCenterSignal(googleAdsId: string, orgId: string, storedId: string | null): Promise<Signal | null> {
+  let ids: string[] = [];
+  try { ids = await getMerchantCenterIds(googleAdsId, orgId, storedId); } catch { return null; }
+  if (!ids.length) return null;
+  let h: Awaited<ReturnType<typeof fetchMerchantCenterHealth>>;
+  try { h = await fetchMerchantCenterHealth(ids[0], orgId); } catch { return null; }
+  if (h.scopeOrAuthError) return null; // couldn't read it — don't raise a false flag
+
+  const tot = h.totals.active + h.totals.disapproved;
+  const disPct = tot > 0 ? h.totals.disapproved / tot : 0;
+  const nothingServing = tot > 0 && h.totals.active === 0;
+  // Serving-blocking account issues: a suspension / policy / misrepresentation
+  // flag, or anything the API marks "critical".
+  const blocking = h.accountIssues.filter(i =>
+    /critical/i.test(i.severity) ||
+    /suspend|misrepresent|policy|not eligible|under review|disabled|account disapprov/i.test(i.title));
+
+  if (blocking.length || nothingServing || disPct >= 0.8) {
+    const why = blocking.length ? blocking.map(i => i.title).join("; ")
+      : nothingServing ? "no products are currently serving"
+      : `${Math.round(disPct * 100)}% of products are disapproved`;
+    return {
+      key: "merchant_center_blocked", kind: "problem", severity: "red",
+      title: "Merchant Center is blocking the feed",
+      detail: `Merchant Center (${ids[0]}) — ${why}. Shopping/Performance Max can't serve until this is resolved; check Merchant Center → Diagnostics.`,
+      evidence: { merchantId: ids[0], active: h.totals.active, disapproved: h.totals.disapproved, accountIssues: h.accountIssues },
+    };
+  }
+  if (h.accountIssues.length || h.totals.disapproved > 0) {
+    const parts: string[] = [];
+    if (h.totals.disapproved > 0) parts.push(`${h.totals.disapproved} product${h.totals.disapproved === 1 ? "" : "s"} disapproved (${Math.round(disPct * 100)}%)`);
+    if (h.accountIssues.length) parts.push(h.accountIssues.map(i => i.title).join("; "));
+    return {
+      key: "merchant_center_issues", kind: "problem", severity: "yellow",
+      title: "Merchant Center has minor feed issues",
+      detail: `Merchant Center (${ids[0]}) — ${parts.join(" · ")}. Not blocking serving, but worth cleaning up.`,
+      evidence: { merchantId: ids[0], active: h.totals.active, disapproved: h.totals.disapproved },
+    };
+  }
+  return null;
+}
 
 function ymd(offsetDays: number): string {
   const d = new Date();
@@ -134,9 +184,26 @@ function brandAgg(rows: Array<{ searchTerm: string; clicks: number; conversions:
 }
 
 /** Run detectors for one account and persist a status (unless nothing to persist). */
-export async function computeAccountSignals(account: AccountRow, now: Date = new Date()): Promise<AccountSignals> {
+export async function computeAccountSignals(account: AccountRow, now: Date = new Date(), opts: { checkMerchantCenter?: boolean } = {}): Promise<AccountSignals> {
   const { input, commerce, grossMarginPct } = await assembleSignalInput(account);
   const signals = runSignals(input);
+
+  // Nightly (and manual refresh): add live Merchant Center feed health. Gated so
+  // an account-page load doesn't pay the API latency — the live health strip
+  // covers MC there. Best-effort, so a slow/failed MC read can't sink the run.
+  if (opts.checkMerchantCenter) {
+    try {
+      const acc = await prisma.account.findUnique({ where: { id: account.id }, select: { googleAdsId: true, organizationId: true, merchantCenterId: true } });
+      if (acc?.googleAdsId) {
+        const mc = await merchantCenterSignal(acc.googleAdsId, acc.organizationId, acc.merchantCenterId);
+        if (mc) signals.push(mc);
+      }
+    } catch { /* MC is best-effort */ }
+  }
+  // Keep worst-first (red → yellow → info) so the portfolio's "worst signal" and
+  // the status colour reflect a newly-added Merchant Center flag correctly.
+  const sevRank: Record<Signal["severity"], number> = { red: 0, yellow: 1, info: 2 };
+  signals.sort((a, b) => sevRank[a.severity] - sevRank[b.severity]);
 
   const problems = signals.filter(s => s.kind === "problem");
   const status: AccountSignals["status"] =
@@ -179,6 +246,7 @@ export async function computeOrgSignals(organizationId: string, now: Date = new 
     },
   });
   const out: AccountSignals[] = [];
-  for (const a of accounts) out.push(await computeAccountSignals(a, now));
+  // Nightly run includes the live Merchant Center check (feed suspension/blocks).
+  for (const a of accounts) out.push(await computeAccountSignals(a, now, { checkMerchantCenter: true }));
   return out;
 }
