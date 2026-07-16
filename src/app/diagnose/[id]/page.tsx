@@ -833,8 +833,8 @@ export default function DiagnosePage() {
                           ? renderMarkdown(m.content)
                           : <div style={{ fontSize: 12.5, color: "var(--text-3)", display: "flex", alignItems: "center", gap: 8 }}><Loader2 size={13} className="animate-spin" style={{ color: "var(--accent)" }} /> {insightStatus ?? "Reading…"}</div>}
                         {m.tools && m.tools.length > 0 && (
-                          <div style={{ marginTop: 8, display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, color: "var(--accent)", background: "var(--accent-dim)", border: "1px solid color-mix(in srgb, var(--accent) 25%, var(--border))", borderRadius: 7, padding: "3px 9px" }} title="Live data this read actually pulled from Google Ads / Shopify">
-                            <CheckCircle2 size={12} /> Pulled live: {m.tools.map(t => TOOL_LABELS[t] ?? t).join(", ")}
+                          <div style={{ marginTop: 8, display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, color: "var(--accent)", background: "var(--accent-dim)", border: "1px solid color-mix(in srgb, var(--accent) 25%, var(--border))", borderRadius: 7, padding: "3px 9px" }} title="Live sources this read actually queried from Google Ads / Shopify (a source may return no data, e.g. 'not connected')">
+                            <CheckCircle2 size={12} /> Checked live: {m.tools.map(t => TOOL_LABELS[t] ?? t).join(", ")}
                           </div>
                         )}
                       </div>
