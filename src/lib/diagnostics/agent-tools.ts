@@ -7,6 +7,7 @@
 import { prisma } from "@/lib/db";
 import { fetchImpressionShare, fetchCampaignOverview, fetchChangeHistory } from "@/lib/integrations/google-ads";
 import { fetchSlackMessages, formatSlackForContext } from "@/lib/integrations/slack";
+import { lookupPlaybook } from "@/lib/diagnostics/agency-playbook";
 
 export interface AgentAccount { id: string; googleAdsId: string; organizationId: string; currency: string }
 
@@ -46,6 +47,11 @@ export const AGENT_TOOLS = [
     description: "The recent Slack conversation from THIS client's channel — where the team and often the client discuss off-platform events: a promo or sale, a price or checkout change, a payment-provider switch, a stockout, seasonality, 'we paused for the holidays'. Check this BEFORE asking the account manager an off-platform question — the answer is frequently already in the channel. Returns a clear note if no Slack channel is linked.",
     input_schema: { type: "object", properties: { days: { type: "number", description: "How far back to read the channel, in days (default 30)." } } },
   },
+  {
+    name: "consult_playbook",
+    description: "OUR agency's own playbook — how THIS team specifically bids, structures accounts, segments products (ProductHero Heroes/Sidekicks/Zombies/Villains), decides when to scale, and what specific signal COMBINATIONS mean. Consult it when you hit a trigger and want our house stance rather than generic advice: you're about to conclude from an impression-share / CTR / CVR / ROAS / budget / tracking / feed pattern; a bidding-strategy, campaign-structure, product-segmentation or scaling question; or judging where the account sits in its lifecycle. Pass the topic in plain words (e.g. 'impression share lost to budget with good ROAS', 'CVR dropped suddenly', 'when to raise budget', 'product segmentation labels'). It returns the matching section — apply it ONLY where it fits this account's type and what the data actually shows; it's doctrine to reason with, not a script to force.",
+    input_schema: { type: "object", properties: { topic: { type: "string", description: "What you're deciding, in plain words — the situation or pattern you want our stance on." } }, required: ["topic"] },
+  },
 ] as const;
 
 const LABELS: Record<string, string> = {
@@ -55,6 +61,7 @@ const LABELS: Record<string, string> = {
   get_shopify_data: "Checking the Shopify orders…",
   get_change_history: "Pulling the account change history from Google Ads…",
   get_slack_context: "Reading the client's Slack channel…",
+  consult_playbook: "Checking our agency playbook…",
 };
 export const toolStatusLabel = (name: string) => LABELS[name] ?? `Checking ${name.replace(/_/g, " ")}…`;
 
@@ -88,6 +95,11 @@ export async function runAgentTool(name: string, input: Record<string, unknown>,
       return `- ${day} · ${r.scope}${where}: ${what} (by ${r.who})`;
     });
     return `Account change history, last ${window}d (line the dates up against when the metric moved):\n${lines.join("\n")}`;
+  }
+
+  if (name === "consult_playbook") {
+    const topic = typeof input?.topic === "string" ? input.topic : "";
+    return lookupPlaybook(topic);
   }
 
   if (name === "get_slack_context") {

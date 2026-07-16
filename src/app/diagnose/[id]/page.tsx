@@ -223,6 +223,7 @@ const TOOL_LABELS: Record<string, string> = {
   get_search_terms: "search terms",
   get_shopify_data: "Shopify orders",
   get_slack_context: "client Slack channel",
+  consult_playbook: "agency playbook",
 };
 
 // One-click follow-ups so the team can steer without typing.
