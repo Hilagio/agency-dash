@@ -159,6 +159,14 @@ model Account {
   briefingStatus String?   // the status at generation time (red/yellow/green)
   briefingAt     DateTime?
 
+  // ─── Overnight worklist (agentic triage) ─────────────────────────────────
+  // For a flagged account, an agent investigates overnight and writes ONE
+  // worklist item (the likely cause, the single next action, a time estimate,
+  // the PPC OS skill to hand off to, confidence) as JSON. The cockpit turns
+  // these into each specialist's ranked plan for the day. Cleared when green.
+  worklist       String?   // JSON: { headline, action, minutes, skill, confidence, category }
+  worklistAt     DateTime?
+
   // ─── Merchant Center (for price competitiveness) ─────────────────────────
   // Auto-discovered via product_link on first load; set manually as fallback
   // if auto-discovery fails (e.g. the MC is owned by a different Google account).

@@ -37,7 +37,7 @@ export async function GET() {
       where: { organizationId: ctx.orgId, active: true, archived: false },
       select: {
         id: true, name: true, clientName: true, grossMarginPercent: true,
-        briefing: true, briefingAt: true,
+        briefing: true, briefingAt: true, worklist: true, worklistAt: true,
         owner: { select: { name: true } },
         shopify: { select: { shopDomain: true } },
       },
@@ -75,6 +75,7 @@ export async function GET() {
       computedAt: st?.computedAt ?? null,
       briefing: a.briefing ?? null,
       briefingAt: a.briefingAt ?? null,
+      worklist: (() => { try { return a.worklist ? JSON.parse(a.worklist) : null; } catch { return null; } })(),
       hasData: !!diag,
       spend,
       conversions: w?.conversions ?? null,

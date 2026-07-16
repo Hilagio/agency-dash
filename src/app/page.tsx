@@ -25,7 +25,9 @@ interface Row {
   worstSignal: { title: string; severity: string } | null;
   problemCount: number; opportunityCount: number;
   briefing: string | null; briefingAt: string | null;
+  worklist: WorklistItem | null;
 }
+interface WorklistItem { headline: string; action: string; minutes: number; skill: string; confidence: string; category: string }
 interface Portfolio {
   accounts: Row[];
   counts: Record<Colour, number>;
@@ -134,6 +136,7 @@ export default function PortfolioHome() {
     }
     await Promise.all(Array.from({ length: POOL }, () => worker()));
     await fetch("/api/diagnostics/briefings", { method: "POST", credentials: "include" }).catch(() => null);
+    await fetch("/api/diagnostics/worklist", { method: "POST", credentials: "include" }).catch(() => null);
     const pf = await fetch("/api/diagnostics/portfolio", { credentials: "include" }).then(r => r.ok ? r.json() : null).catch(() => null);
     if (pf) setData(pf);
     setBackfill({ running: false, done: ids.length, total: ids.length });
@@ -269,10 +272,16 @@ export default function PortfolioHome() {
               {/* NEEDS ATTENTION — the flagged accounts, cockpit-style */}
               {flagged.length > 0 ? (
                 <section style={{ marginBottom: 18 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 11 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 11, flexWrap: "wrap" }}>
                     <AlertTriangle size={15} style={{ color: "var(--danger)" }} />
                     <span style={{ fontSize: 14, fontWeight: 800, letterSpacing: "-0.3px" }}>Needs attention</span>
                     <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{flagged.length} account{flagged.length === 1 ? "" : "s"} flagged by the nightly checks — worst first</span>
+                    {(() => {
+                      const withPlan = flagged.filter(a => a.worklist);
+                      const mins = withPlan.reduce((s, a) => s + (a.worklist?.minutes ?? 0), 0);
+                      if (!withPlan.length) return null;
+                      return <span style={{ marginLeft: "auto", fontSize: 11.5, fontWeight: 600, color: "var(--accent)", background: "var(--accent-dim)", border: "1px solid color-mix(in srgb, var(--accent) 25%, var(--border))", borderRadius: 999, padding: "3px 11px" }}>Your day: {withPlan.length} action{withPlan.length === 1 ? "" : "s"} · ~{mins < 60 ? `${mins} min` : `${(mins / 60).toFixed(1)}h`}</span>;
+                    })()}
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
                     {flagged.map(a => <RadarCard key={a.id} a={a} busy={busyWatch.has(a.id)} onWatch={() => toggleWatch(a.id, !a.watched)} />)}
@@ -417,6 +426,18 @@ function RadarCard({ a, busy, onWatch }: { a: Row; busy: boolean; onWatch: () =>
             {a.briefingAt && <span style={{ fontSize: 11, color: "var(--text-dim)" }}>· noticed {relTime(a.briefingAt)}</span>}
           </div>
           <div style={{ fontSize: 12.5, color: "var(--text-2)", lineHeight: 1.5, marginTop: 4 }}>{issueText(a)}</div>
+          {a.worklist && (
+            <div style={{ marginTop: 8, padding: "8px 11px", borderRadius: 9, background: "var(--accent-dim)", border: "1px solid color-mix(in srgb, var(--accent) 22%, var(--border))" }}>
+              <div style={{ fontSize: 12.5, color: "var(--text)", lineHeight: 1.45 }}><strong style={{ color: "var(--accent)" }}>Next:</strong> {a.worklist.action}</div>
+              <div style={{ display: "flex", gap: 7, marginTop: 6, flexWrap: "wrap", alignItems: "center" }}>
+                <span style={{ fontSize: 10.5, fontWeight: 700, color: "var(--text-2)", background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: 6, padding: "2px 7px" }}>~{a.worklist.minutes} min</span>
+                {a.worklist.skill && a.worklist.skill !== "none" && (
+                  <span style={{ fontSize: 10.5, fontWeight: 700, color: a.worklist.skill === "off-platform" ? "var(--danger, #dc2626)" : "var(--accent)", background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: 6, padding: "2px 7px", fontFamily: a.worklist.skill.startsWith("/") ? "ui-monospace, monospace" : "inherit" }}>{a.worklist.skill === "off-platform" ? "off-platform (client)" : a.worklist.skill}</span>
+                )}
+                <span style={{ fontSize: 10, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 0.3 }}>{a.worklist.confidence} confidence</span>
+              </div>
+            </div>
+          )}
           <div style={{ display: "flex", gap: 16, marginTop: 9, flexWrap: "wrap" }}>
             {a.hasData && <Stat label="Spend 7d" value={money(a.spend)} />}
             {a.poas != null && <Stat label="POAS" value={a.poas.toFixed(2)} danger={a.poas < 1} />}

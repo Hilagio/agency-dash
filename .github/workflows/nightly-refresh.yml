@@ -47,3 +47,12 @@ jobs:
           curl -fsS -X POST "$APP_URL/api/diagnostics/briefings" \
             -H "Authorization: Bearer $CRON_SECRET" \
             -H "Content-Type: application/json" --max-time 600
+
+      - name: Build the worklist (agent investigates each flagged account → ranked next action)
+        env:
+          APP_URL: ${{ secrets.APP_URL || 'https://agency-dash-production.up.railway.app' }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          curl -fsS -X POST "$APP_URL/api/diagnostics/worklist" \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -H "Content-Type: application/json" --max-time 900
