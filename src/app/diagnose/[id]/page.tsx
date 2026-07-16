@@ -8,7 +8,7 @@
  * questions to ask. It never names a cause (§9) — that boundary is printed on
  * the page. From here you can jump to the full analysis if you want to dig.
  */
-import { useEffect, useRef, useState, Fragment } from "react";
+import { useEffect, useRef, useState, memo, Fragment } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -128,6 +128,14 @@ function renderTable(header: string[], rows: string[][], key: number): React.Rea
     </div>
   );
 }
+
+// Memoised message body — parsing markdown (tables, bars, inline) is the
+// expensive per-render cost, and re-running it for every message on every
+// keystroke in the chat box is what made typing feel laggy. Keyed on the
+// content string, so a stable (already-sent) message never re-parses.
+const MessageBody = memo(function MessageBody({ content }: { content: string }) {
+  return <>{renderMarkdown(content)}</>;
+});
 
 function renderMarkdown(md: string): React.ReactNode {
   const blocks: React.ReactNode[] = [];
@@ -1094,7 +1102,7 @@ export default function DiagnosePage() {
                     ) : (
                       <div key={m.id ?? i} style={{ fontSize: 14, lineHeight: 1.6, color: "var(--text-2)", marginTop: 12 }}>
                         {m.content
-                          ? renderMarkdown(m.content)
+                          ? <MessageBody content={m.content} />
                           : <div style={{ fontSize: 12.5, color: "var(--text-3)", display: "flex", alignItems: "center", gap: 8 }}><Loader2 size={13} className="animate-spin" style={{ color: "var(--accent)" }} /> {insightStatus ?? "Reading…"}</div>}
                         {m.tools && m.tools.length > 0 && (
                           <div style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 6 }}>
