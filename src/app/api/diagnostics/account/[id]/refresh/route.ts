@@ -41,12 +41,15 @@ export async function POST(req: NextRequest, { params }: Params) {
   );
   // Shopify orders + product sales (skips cleanly if no store connected).
   const orders = await ingestAccountOrders(account.id, days);
-  // Recompute the diagnosis from whatever we just pulled.
+  // Recompute the diagnosis from whatever we just pulled. Merchant Center is NOT
+  // re-checked here — it's a live API call that would slow a "Refresh all" over
+  // every account; the nightly run does it, and the account page shows MC live
+  // in the health strip.
   await computeAccountSignals({
     id: account.id, name: account.name, roasFloor: account.roasFloor,
     grossMarginPercent: account.grossMarginPercent, minSpendForEval: account.minSpendForEval,
     minConversionsForEval: account.minConversionsForEval, dataVerified: account.dataVerified,
-  }, new Date(), { checkMerchantCenter: true }).catch(() => null);
+  }).catch(() => null);
 
   const gotData = spine.metrics > 0 || spine.productAds > 0 || spine.searchTerms > 0;
   return NextResponse.json({

@@ -109,26 +109,34 @@ export default function PortfolioHome() {
     if (typeof window !== "undefined") window.localStorage.setItem("portfolioView", v);
   }
 
+  // Pull 90 days for every account, a small pool at a time. Safe to parallelise
+  // now that the memory-heavy per-row tables are capped to 30 days server-side —
+  // the old OOM was from pulling 90 days of those; the 90-day window is now just
+  // light campaign metrics. The nightly cron keeps it fresh after this.
   async function backfillAll() {
     if (!data || backfill.running) return;
     const ids = data.accounts.map(a => a.id);
     setBackfill({ running: true, done: 0, total: ids.length });
-    let done = 0;
-    for (const id of ids) {
-      try {
-        await fetch(`/api/diagnostics/account/${id}/refresh`, {
-          method: "POST", credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ days: 90 }),
-        });
-      } catch { /* keep going */ }
-      done++;
-      setBackfill(b => ({ ...b, done }));
+    const POOL = 4;
+    let cursor = 0;
+    async function worker() {
+      while (cursor < ids.length) {
+        const id = ids[cursor++];
+        try {
+          await fetch(`/api/diagnostics/account/${id}/refresh`, {
+            method: "POST", credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ days: 90 }),
+          });
+        } catch { /* keep going — one failure shouldn't stop the batch */ }
+        setBackfill(b => ({ ...b, done: b.done + 1 }));
+      }
     }
+    await Promise.all(Array.from({ length: POOL }, () => worker()));
     await fetch("/api/diagnostics/briefings", { method: "POST", credentials: "include" }).catch(() => null);
     const pf = await fetch("/api/diagnostics/portfolio", { credentials: "include" }).then(r => r.ok ? r.json() : null).catch(() => null);
     if (pf) setData(pf);
-    setBackfill({ running: false, done, total: ids.length });
+    setBackfill({ running: false, done: ids.length, total: ids.length });
   }
 
   async function toggleWatch(id: string, next: boolean) {
