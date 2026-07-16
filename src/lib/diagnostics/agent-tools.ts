@@ -181,14 +181,43 @@ export async function runAgentTool(name: string, input: Record<string, unknown>,
   }
 
   if (name === "get_shopify_data") {
-    const conn = await prisma.shopifyConnection.findUnique({ where: { accountId: acc.id }, select: { shopDomain: true } });
-    if (!conn) return "Shopify is NOT connected for this account — there's no order data to reconcile against. (If reconciliation matters here, ask the account manager to connect the store.)";
+    const [conn, upload] = await Promise.all([
+      prisma.shopifyConnection.findUnique({ where: { accountId: acc.id }, select: { shopDomain: true } }),
+      prisma.shopifyUpload.findUnique({ where: { accountId_kind: { accountId: acc.id, kind: "daily_sales" } }, select: { uploadedAt: true, uploadedBy: true, rangeStart: true, rangeEnd: true } }),
+    ]);
     const start = new Date(); start.setUTCDate(start.getUTCDate() - days);
     const ymd = start.toISOString().slice(0, 10);
     const [orders, products] = await Promise.all([
       prisma.orderDaily.findMany({ where: { accountId: acc.id, date: { gte: ymd } }, select: { orders: true, revenue: true } }),
       prisma.productSalesDaily.findMany({ where: { accountId: acc.id, date: { gte: ymd } }, select: { title: true, units: true, revenue: true } }),
     ]);
+    if (!conn && !upload && !orders.length) {
+      return "Shopify is NOT connected for this account, and no Shopify CSV has been uploaded — there's no real order data to reconcile against. (Connect the store with a custom-app token, or upload the 'Sales over time' CSV export.)";
+    }
+
+    // Freshness: uploaded CSV data is a snapshot, not live — always say how old
+    // it is and whether it even covers the window asked for, so nothing here
+    // gets passed off as current when it isn't.
+    let sourceNote: string;
+    if (conn && !upload) {
+      sourceNote = `Source: live Shopify connection (${conn.shopDomain}).`;
+    } else if (upload) {
+      const ageDays = Math.floor((Date.now() - upload.uploadedAt.getTime()) / 86_400_000);
+      const cover = upload.rangeStart && upload.rangeEnd ? ` covering ${upload.rangeStart} → ${upload.rangeEnd}` : "";
+      const tailGap = upload.rangeEnd ? Math.floor((Date.now() - new Date(`${upload.rangeEnd}T00:00:00Z`).getTime()) / 86_400_000) : null;
+      const staleness = ageDays >= 14
+        ? " This is over two weeks old — treat it as possibly stale and ask for a fresh export before trusting recent movement."
+        : tailGap != null && tailGap > 3
+          ? ` The data ends ${tailGap}d ago, so the most recent days aren't covered.`
+          : " It was recent when uploaded.";
+      sourceNote = `Source: a MANUAL CSV${upload.uploadedBy ? ` uploaded by ${upload.uploadedBy}` : ""} ${ageDays === 0 ? "today" : `${ageDays}d ago`}${cover} — NOT a live connection.${staleness}`;
+    } else {
+      sourceNote = "Source: stored order data (origin unrecorded).";
+    }
+
+    if (!orders.length) {
+      return `No Shopify orders in the last ${days} days from the data on file. ${sourceNote}`;
+    }
     const totOrders = orders.reduce((s, o) => s + o.orders, 0);
     const totRev = orders.reduce((s, o) => s + o.revenue, 0);
     const pAgg = new Map<string, { title: string; units: number; revenue: number }>();
@@ -198,7 +227,8 @@ export async function runAgentTool(name: string, input: Record<string, unknown>,
     }
     const top = [...pAgg.values()].sort((a, b) => b.revenue - a.revenue).slice(0, 10);
     const topLines = top.length ? `\nTop sellers:\n${top.map(p => `- ${p.title}: ${p.units} units, ${money(p.revenue)}`).join("\n")}` : "";
-    return `Shopify (${conn.shopDomain}), last ${days}d: ${totOrders} orders, ${money(totRev)} revenue.${topLines}`;
+    const label = conn ? `Shopify (${conn.shopDomain})` : "Shopify";
+    return `${label} — last ${days}d: ${totOrders} orders, ${money(totRev)} revenue.${topLines}\n${sourceNote}`;
   }
 
   return `Unknown tool: ${name}`;

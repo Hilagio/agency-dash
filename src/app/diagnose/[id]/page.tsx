@@ -19,7 +19,7 @@ import {
 
 interface Attachment { name: string; mediaType: string; data: string; kind: "image" | "document" | "text" }
 interface DocMeta { id: string; title: string; docType: string; format: "doc" | "deck"; language: string; filename: string; createdBy: string | null; createdAt: string }
-interface Connections { googleAds: string; merchantCenter: string; shopify: string; slack: string; slackConfigured: boolean; slackChannelName: string | null; context: string; contextFilled: number; contextTotal: number }
+interface Connections { googleAds: string; merchantCenter: string; shopify: string; shopifySource: string | null; shopifyUploadedAt: string | null; shopifyCsvRange: { start: string | null; end: string | null } | null; slack: string; slackConfigured: boolean; slackChannelName: string | null; context: string; contextFilled: number; contextTotal: number }
 interface SlackChannel { id: string; name: string; isPrivate: boolean; memberCount?: number }
 
 // The context we ask the team to fill so the agent knows the client — the things
@@ -216,6 +216,13 @@ async function consumeInsightStream(
 interface Msg { id?: string; role: "assistant" | "user"; content: string; kind?: string; tools?: { name: string; ok: boolean }[] }
 
 // Friendly labels for the live data tools, so a real pull is shown to the team.
+// "3d ago" / "today" — for showing how fresh an uploaded CSV is.
+function agoLabel(iso: string | null): string {
+  if (!iso) return "";
+  const d = Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
+  return d <= 0 ? "today" : d === 1 ? "1d ago" : `${d}d ago`;
+}
+
 const TOOL_LABELS: Record<string, string> = {
   get_impression_share: "impression share",
   get_campaign_overview: "campaign structure",
@@ -309,6 +316,10 @@ export default function DiagnosePage() {
   const [slackSaving, setSlackSaving] = useState<string | null>(null);
   const [slackErr, setSlackErr] = useState<string | null>(null);
   const [slackFilter, setSlackFilter] = useState("");
+  // Manual Shopify CSV upload (the no-API fallback).
+  const [csvBusy, setCsvBusy] = useState(false);
+  const [csvMsg, setCsvMsg] = useState<string | null>(null);
+  const csvInputRef = useRef<HTMLInputElement>(null);
   const [products, setProducts] = useState<ProductDiagnostic | null>(null);
   const [productPages, setProductPages] = useState<ProductPage[]>([]);
   const [wins, setWins] = useState<string[]>([]);
@@ -601,6 +612,25 @@ export default function DiagnosePage() {
     finally { setSlackSaving(null); }
   }
 
+  // Upload a Shopify "Sales over time" CSV — the data is kept and reconciled
+  // against until it's replaced; the server stamps when it was uploaded.
+  async function uploadShopifyCsv(file: File) {
+    setCsvBusy(true); setCsvMsg(null);
+    try {
+      const csv = await file.text();
+      const r = await fetch(`/api/diagnostics/account/${id}/shopify-csv`, {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ kind: "daily_sales", csv }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) { setCsvMsg(j.error ?? "Upload failed."); return; }
+      setCsvMsg(`Loaded ${j.rows} days${j.rangeStart ? ` (${j.rangeStart} → ${j.rangeEnd})` : ""}.${j.skipped ? ` Skipped ${j.skipped} unreadable rows.` : ""}`);
+      load();
+    } catch { setCsvMsg("Couldn't read that file."); }
+    finally { setCsvBusy(false); if (csvInputRef.current) csvInputRef.current.value = ""; }
+  }
+
   function scrollToConn() { connRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }); }
   // Turn a "No data — not connected" tool result into a one-click connect action
   // right inside the conversation, so a missing source is fixable on the spot.
@@ -828,10 +858,27 @@ export default function DiagnosePage() {
                   <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, color: "var(--text-muted)", marginRight: 4 }}>Connected</span>
                   <ConnPill label="Google Ads" status={connections.googleAds} note="spend & performance" />
                   <ConnPill label="Merchant Center" status={connections.merchantCenter} note={connections.merchantCenter === "green" ? "feed & products" : "not detected"} />
-                  <ConnPill label="Shopify" status={connections.shopify} note={shopify?.connected ? (shopify.shopDomain ?? "orders") : "orders & POAS"} onClick={connections.shopify !== "green" ? () => setDetailsOpen(true) : undefined} />
+                  <ConnPill label="Shopify" status={connections.shopify} note={connections.shopifySource === "live" ? (shopify?.shopDomain ?? "live") : connections.shopifySource === "csv" ? `CSV · ${agoLabel(connections.shopifyUploadedAt)}` : "orders & POAS"} onClick={connections.shopifySource === "live" ? undefined : () => csvInputRef.current?.click()} />
                   <ConnPill label="Slack" status={connections.slack} note={connections.slack === "green" ? `#${connections.slackChannelName}` : connections.slackConfigured ? "link a channel" : "not connected"} onClick={connections.slackConfigured ? () => (slackOpen ? setSlackOpen(false) : openSlackLink()) : undefined} />
                   <ConnPill label="Context" status={connections.context} note={`${connections.contextFilled}/${connections.contextTotal} answered`} onClick={openContextForm} />
                 </div>
+
+                {/* Manual Shopify CSV — the no-API fallback. Data is kept and used
+                    until replaced; we stamp when it was uploaded. */}
+                <input ref={csvInputRef} type="file" accept=".csv,text/csv" style={{ display: "none" }}
+                  onChange={e => { const f = e.target.files?.[0]; if (f) uploadShopifyCsv(f); }} />
+                {connections.shopifySource !== "live" && (
+                  <div style={{ marginTop: 9, display: "flex", alignItems: "center", gap: 9, flexWrap: "wrap", fontSize: 11.5, color: "var(--text-muted)" }}>
+                    <button onClick={() => csvInputRef.current?.click()} disabled={csvBusy} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11.5, fontWeight: 600, color: "var(--text-2)", background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 7, padding: "4px 10px", cursor: csvBusy ? "default" : "pointer" }}>
+                      {csvBusy ? <Loader2 size={12} className="animate-spin" /> : <FileText size={12} />} {connections.shopifySource === "csv" ? "Replace Shopify CSV" : "Upload Shopify sales CSV"}
+                    </button>
+                    {connections.shopifySource === "csv" && connections.shopifyCsvRange && (
+                      <span>Using {connections.shopifyCsvRange.start} → {connections.shopifyCsvRange.end}, uploaded {agoLabel(connections.shopifyUploadedAt)}{agoLabel(connections.shopifyUploadedAt) !== "today" && Math.floor((Date.now() - new Date(connections.shopifyUploadedAt ?? 0).getTime()) / 86_400_000) >= 14 ? " — may be stale, consider a fresh export" : ""}</span>
+                    )}
+                    {csvMsg && <span style={{ color: "var(--text-2)" }}>{csvMsg}</span>}
+                    <span style={{ opacity: 0.7 }}>Analytics → Reports → Sales over time (by Day) → Export</span>
+                  </div>
+                )}
 
                 {/* Inline Slack-channel picker — link the client's channel without leaving the chat */}
                 {slackOpen && (

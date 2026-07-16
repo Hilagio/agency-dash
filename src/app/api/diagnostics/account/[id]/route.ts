@@ -213,10 +213,21 @@ async function handle(id: string, orgId: string) {
   // red = no Slack bot connected for the org at all.
   const slackConfigured = !!(await prisma.slackConnection.findUnique({ where: { organizationId: orgId }, select: { id: true } }));
   const slackStatus = account.slackChannelId ? "green" : slackConfigured ? "yellow" : "red";
+  // Shopify: green via a live connection, or yellow via a manual CSV upload
+  // (real data, but a snapshot — the age is surfaced so it's never mistaken
+  // for live). Red = neither.
+  const csvUpload = await prisma.shopifyUpload.findUnique({
+    where: { accountId_kind: { accountId: account.id, kind: "daily_sales" } },
+    select: { uploadedAt: true, rangeStart: true, rangeEnd: true },
+  });
+  const shopifyStatus = conn ? "green" : csvUpload ? "yellow" : "red";
   const connections = {
     googleAds: (anySpend || !!diag) ? "green" : "yellow",
     merchantCenter: account.merchantCenterId ? "green" : "yellow",
-    shopify: conn ? "green" : "red",
+    shopify: shopifyStatus,
+    shopifySource: conn ? "live" : csvUpload ? "csv" : null,
+    shopifyUploadedAt: csvUpload?.uploadedAt ?? null,
+    shopifyCsvRange: csvUpload ? { start: csvUpload.rangeStart, end: csvUpload.rangeEnd } : null,
     slack: slackStatus,
     slackConfigured,
     slackChannelName: account.slackChannelName ?? null,
