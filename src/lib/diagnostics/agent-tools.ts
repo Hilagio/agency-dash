@@ -65,6 +65,32 @@ const LABELS: Record<string, string> = {
 };
 export const toolStatusLabel = (name: string) => LABELS[name] ?? `Checking ${name.replace(/_/g, " ")}…`;
 
+// Recognise the agency's own setup FROM THE DATA: campaign names carrying the
+// ProductHero / Flowboost label segments (Heroes/Sidekicks/Zombies/Villains,
+// or the HSZ/HS/H/S/Z/V shorthand the team uses) mean a Labelizer is running —
+// which is the trigger that makes the product-segmentation doctrine apply here.
+// The agent learns this by seeing it, rather than being told account by account.
+function detectLabelizer(names: string[]): string | null {
+  const found = new Set<string>();
+  let brand = false;
+  for (const n of names) {
+    for (const t of n.toUpperCase().split(/[^A-Z0-9]+/).filter(Boolean)) {
+      if (t === "HERO" || t === "HEROES") found.add("Heroes");
+      else if (t === "SIDEKICK" || t === "SIDEKICKS") found.add("Sidekicks");
+      else if (t === "ZOMBIE" || t === "ZOMBIES") found.add("Zombies");
+      else if (t === "VILLAIN" || t === "VILLAINS") found.add("Villains");
+      else if (t === "HSZV" || t === "HSZ" || t === "HS") found.add("H/S/Z groups");
+      else if (t === "H") found.add("Heroes");
+      else if (t === "S") found.add("Sidekicks");
+      else if (t === "Z") found.add("Zombies");
+      else if (t === "V") found.add("Villains");
+      else if (t === "BRAND") brand = true;
+    }
+  }
+  if (!found.size) return null;
+  return `Detected setup: this account runs the ProductHero / Flowboost Labelizer — campaigns are named for the label segments (${[...found].join(", ")}${brand ? ", plus an isolated Brand campaign" : ""}). That means performance is controlled at PRODUCT level via custom_label_0, so the segmentation doctrine applies here: consult_playbook on "product segmentation" or "villain spend" if a segment's spend or ROAS looks off, before treating it as a generic campaign problem.`;
+}
+
 export async function runAgentTool(name: string, input: Record<string, unknown>, acc: AgentAccount): Promise<string> {
   const cur = CUR[acc.currency] ?? `${acc.currency} `;
   const money = (n: number) => `${cur}${Math.round(n).toLocaleString("en-GB")}`;
@@ -81,7 +107,8 @@ export async function runAgentTool(name: string, input: Record<string, unknown>,
     const rows = (await fetchCampaignOverview(acc.googleAdsId, acc.organizationId, days)).slice(0, 30);
     if (!rows.length) return `No active campaigns found in the last ${days} days.`;
     const lines = rows.map(r => `- ${r.campaign} [${r.channel}, ${r.status}]: daily budget ${r.dailyBudget != null ? money(r.dailyBudget) : "—"}, spend ${money(r.cost)}, conv ${r.conversions.toFixed(1)}, value ${money(r.value)}, ROAS ${r.cost > 0 ? (r.value / r.cost).toFixed(2) : "—"}`);
-    return `Campaign structure, last ${days}d:\n${lines.join("\n")}`;
+    const labelizer = detectLabelizer(rows.map(r => r.campaign));
+    return `Campaign structure, last ${days}d:\n${lines.join("\n")}${labelizer ? `\n\n${labelizer}` : ""}`;
   }
 
   if (name === "get_change_history") {
