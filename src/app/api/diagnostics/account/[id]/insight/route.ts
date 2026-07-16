@@ -368,7 +368,7 @@ export async function POST(req: NextRequest, { params }: Params) {
         const loopMessages = messages.slice();
         const toolAcc = { id: account.id, googleAdsId: account.googleAdsId, organizationId: account.organizationId, currency: account.currency };
         let finalText = "";
-        const toolsUsed: string[] = [];
+        const toolsUsed: { name: string; ok: boolean }[] = [];
         const MAX_STEPS = 6;
 
         for (let step = 0; step < MAX_STEPS; step++) {
@@ -403,10 +403,13 @@ export async function POST(req: NextRequest, { params }: Params) {
           loopMessages.push({ role: "assistant", content: finalMsg.content });
           const results = [];
           for (const tu of toolUses) {
-            if (!toolsUsed.includes(tu.name)) toolsUsed.push(tu.name);
             let out: string;
             try { out = await runAgentTool(tu.name, (tu.input ?? {}) as Record<string, unknown>, toolAcc); }
             catch (e) { out = `Error running ${tu.name}: ${e instanceof Error ? e.message : String(e)}. Tell the team you couldn't fetch this.`; }
+            // "ok" = the source actually returned usable data (not "not connected",
+            // empty, or an error) — drives whether the badge reads as data or a gap.
+            const ok = !/(not connected|^\s*no\b|error running|couldn'?t|no stored|no data)/i.test(out);
+            if (!toolsUsed.some(t => t.name === tu.name)) toolsUsed.push({ name: tu.name, ok });
             results.push({ type: "tool_result" as const, tool_use_id: tu.id, content: out });
           }
           loopMessages.push({ role: "user", content: results });
@@ -420,6 +423,24 @@ export async function POST(req: NextRequest, { params }: Params) {
           await prisma.agentMessage.create({
             data: { accountId: id, role: "assistant", content: finalText.trim(), kind: isChat ? "chat" : "opener" },
           }).catch(() => null);
+
+          // Dynamic follow-up chips — the next questions THIS conversation calls
+          // for, not a static list. Cheap model, best-effort (falls back on the
+          // client if this yields nothing).
+          try {
+            const sug = await client.messages.create({
+              model: "claude-haiku-4-5-20251001",
+              max_tokens: 220,
+              system: `You suggest the next moves an ad-agency account manager would click after reading this analysis. Return 3-4 SHORT (max ~7 words each), specific, action-oriented follow-ups that fit THIS exact conversation — the next question to ask the agent or action to take, not generic ones. Return ONLY a JSON array of strings, no prose, no code fences.`,
+              messages: [{ role: "user", content: `The account manager just ${followup ? `asked: "${followup}"` : "opened the read"}.\n\nThe agent answered:\n${finalText.trim().slice(0, 2500)}\n\nSuggest the next follow-ups.` }],
+            });
+            const txt = sug.content.filter((b): b is Anthropic.TextBlock => b.type === "text").map(b => b.text).join("").trim().replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
+            const parsed = JSON.parse(txt);
+            if (Array.isArray(parsed)) {
+              const suggestions = parsed.filter((s): s is string => typeof s === "string" && s.length > 0).slice(0, 4);
+              if (suggestions.length) send(controller, { suggestions });
+            }
+          } catch { /* client falls back to defaults */ }
         }
         send(controller, { done: true, generatedAt: new Date().toISOString() });
       } catch (err) {
