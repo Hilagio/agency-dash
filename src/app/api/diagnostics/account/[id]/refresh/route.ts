@@ -46,7 +46,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     id: account.id, name: account.name, roasFloor: account.roasFloor,
     grossMarginPercent: account.grossMarginPercent, minSpendForEval: account.minSpendForEval,
     minConversionsForEval: account.minConversionsForEval, dataVerified: account.dataVerified,
-  }).catch(() => null);
+  }, new Date(), { checkMerchantCenter: true }).catch(() => null);
 
   const gotData = spine.metrics > 0 || spine.productAds > 0 || spine.searchTerms > 0;
   return NextResponse.json({
