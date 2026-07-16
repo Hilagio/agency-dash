@@ -66,12 +66,84 @@ function renderInline(text: string): React.ReactNode {
  * actually emits — `**The read**` / `**1. Likely why**` section headers, `---`
  * rules, `#` headings, `-`/`*`/`1.` bullets — instead of dumping raw asterisks.
  */
+// Pull the first number out of a cell ("€4,200" → 4200, "41%" → 41, "3.1 → 1.9"
+// → 3.1) so numeric columns can get a proportional trend bar. null = not numeric.
+function cellNum(s: string): number | null {
+  const m = s.replace(/,/g, "").match(/-?\d+(?:\.\d+)?/);
+  return m ? parseFloat(m[0]) : null;
+}
+const isTableRow = (l: string) => /^\|.*\|.*$/.test(l.trim());
+const isTableSep = (l: string) => { const t = l.trim(); return /^[|\s:-]+$/.test(t) && t.includes("-") && t.includes("|"); };
+const splitCells = (l: string) => l.trim().replace(/^\||\|$/g, "").split("|").map(c => c.trim());
+
+/** Render a GitHub-style markdown table with a proportional mini-bar behind each
+ * numeric column — the bar is scaled from the real cell values, so it can never
+ * show anything the numbers don't. */
+function renderTable(header: string[], rows: string[][], key: number): React.ReactNode {
+  const cols = header.length;
+  // A column is "numeric" (gets bars, right-aligned) if most of its cells parse.
+  const colMax: (number | null)[] = [];
+  const colNumeric: boolean[] = [];
+  for (let c = 0; c < cols; c++) {
+    const nums = rows.map(r => cellNum(r[c] ?? "")).filter((n): n is number => n != null);
+    colNumeric[c] = nums.length >= Math.max(2, Math.ceil(rows.length / 2));
+    colMax[c] = nums.length ? Math.max(...nums.map(Math.abs)) : null;
+  }
+  return (
+    <div key={key} style={{ overflowX: "auto", margin: "10px 0 12px" }}>
+      <table style={{ borderCollapse: "collapse", width: "100%", fontSize: 12.5 }}>
+        <thead>
+          <tr>
+            {header.map((h, c) => (
+              <th key={c} style={{ textAlign: colNumeric[c] ? "right" : "left", padding: "5px 10px", borderBottom: "1px solid var(--border-2)", color: "var(--text-2)", fontWeight: 600, whiteSpace: "nowrap" }}>{renderInline(h)}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, ri) => (
+            <tr key={ri}>
+              {Array.from({ length: cols }).map((_, c) => {
+                const cell = r[c] ?? "";
+                const val = colNumeric[c] ? cellNum(cell) : null;
+                const max = colMax[c];
+                const w = val != null && max && max > 0 ? Math.max(2, Math.round((Math.abs(val) / max) * 100)) : 0;
+                return (
+                  <td key={c} style={{ padding: "5px 10px", borderBottom: "1px solid var(--border-3, var(--border-2))", textAlign: colNumeric[c] ? "right" : "left", verticalAlign: "middle", color: "var(--text)", whiteSpace: "nowrap" }}>
+                    <span>{renderInline(cell)}</span>
+                    {w > 0 && (
+                      <span style={{ display: "block", height: 3, marginTop: 3, borderRadius: 2, background: "var(--accent)", opacity: 0.55, width: `${w}%`, marginLeft: "auto" }} />
+                    )}
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function renderMarkdown(md: string): React.ReactNode {
   const blocks: React.ReactNode[] = [];
   let k = 0;
-  for (const raw of md.split("\n")) {
+  const lines = md.split("\n");
+  for (let i = 0; i < lines.length; i++) {
+    const raw = lines[i];
     const line = raw.trim();
     if (!line) continue;
+    // Table: a header row, a |---|---| separator, then body rows.
+    if (isTableRow(line) && i + 1 < lines.length && isTableSep(lines[i + 1])) {
+      const header = splitCells(line);
+      const rows: string[][] = [];
+      let j = i + 2;
+      for (; j < lines.length && isTableRow(lines[j]) && !isTableSep(lines[j]); j++) {
+        rows.push(splitCells(lines[j]));
+      }
+      blocks.push(renderTable(header, rows, k++));
+      i = j - 1;
+      continue;
+    }
     // Horizontal rule (---, ***, ___, or a stray --).
     if (/^([-*_])\1+$/.test(line) || line === "--") {
       blocks.push(<hr key={k++} style={{ border: "none", borderTop: "1px solid var(--border-2)", margin: "13px 0" }} />);
@@ -149,6 +221,7 @@ const TOOL_LABELS: Record<string, string> = {
   get_change_history: "change history",
   get_search_terms: "search terms",
   get_shopify_data: "Shopify orders",
+  get_slack_context: "client Slack channel",
 };
 
 // One-click follow-ups so the team can steer without typing.

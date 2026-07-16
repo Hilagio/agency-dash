@@ -6,6 +6,7 @@
  */
 import { prisma } from "@/lib/db";
 import { fetchImpressionShare, fetchCampaignOverview, fetchChangeHistory } from "@/lib/integrations/google-ads";
+import { fetchSlackMessages, formatSlackForContext } from "@/lib/integrations/slack";
 
 export interface AgentAccount { id: string; googleAdsId: string; organizationId: string; currency: string }
 
@@ -40,6 +41,11 @@ export const AGENT_TOOLS = [
     description: "Live from Google Ads: who changed WHAT and WHEN in the account (budget edits, bid-strategy / target CPA-ROAS changes, campaign or ad-group pauses, new campaigns). This is the first thing to check when a metric swings on a specific date — line the change dates up against the metric change to find the cause instead of guessing. Google only retains ~30 days of history.",
     input_schema: { type: "object", properties: { days: { type: "number", description: "Look-back window in days (max 30, default 30)." } } },
   },
+  {
+    name: "get_slack_context",
+    description: "The recent Slack conversation from THIS client's channel — where the team and often the client discuss off-platform events: a promo or sale, a price or checkout change, a payment-provider switch, a stockout, seasonality, 'we paused for the holidays'. Check this BEFORE asking the account manager an off-platform question — the answer is frequently already in the channel. Returns a clear note if no Slack channel is linked.",
+    input_schema: { type: "object", properties: { days: { type: "number", description: "How far back to read the channel, in days (default 30)." } } },
+  },
 ] as const;
 
 const LABELS: Record<string, string> = {
@@ -48,6 +54,7 @@ const LABELS: Record<string, string> = {
   get_search_terms: "Reading the search terms…",
   get_shopify_data: "Checking the Shopify orders…",
   get_change_history: "Pulling the account change history from Google Ads…",
+  get_slack_context: "Reading the client's Slack channel…",
 };
 export const toolStatusLabel = (name: string) => LABELS[name] ?? `Checking ${name.replace(/_/g, " ")}…`;
 
@@ -81,6 +88,24 @@ export async function runAgentTool(name: string, input: Record<string, unknown>,
       return `- ${day} · ${r.scope}${where}: ${what} (by ${r.who})`;
     });
     return `Account change history, last ${window}d (line the dates up against when the metric moved):\n${lines.join("\n")}`;
+  }
+
+  if (name === "get_slack_context") {
+    const [acct, conn] = await Promise.all([
+      prisma.account.findUnique({ where: { id: acc.id }, select: { slackChannelId: true, slackChannelName: true } }),
+      prisma.slackConnection.findUnique({ where: { organizationId: acc.organizationId }, select: { botToken: true } }),
+    ]);
+    if (!conn) return "Slack is NOT connected for this organisation, so there's no channel to read.";
+    if (!acct?.slackChannelId) return "No Slack channel is linked to this account — nothing to read. (Link one in the account settings if the client's channel should feed context.)";
+    let msgs;
+    try { msgs = await fetchSlackMessages(conn.botToken, acct.slackChannelId, Math.min(90, days)); }
+    catch (e) { return `Couldn't read the Slack channel: ${e instanceof Error ? e.message : String(e)}.`; }
+    if (!msgs.length) return `No messages in #${acct.slackChannelName ?? "the channel"} in the last ${Math.min(90, days)} days (the bot may not be invited — /invite it in the channel).`;
+    // Cap what we hand back so a busy channel can't blow the context window —
+    // the most recent messages carry the freshest off-platform signal.
+    const recent = msgs.slice(-60);
+    const block = formatSlackForContext(recent, acct.slackChannelName ?? "channel");
+    return block.length > 6000 ? block.slice(block.length - 6000) : block;
   }
 
   if (name === "get_search_terms") {
