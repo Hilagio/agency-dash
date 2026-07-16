@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Constraint Optimizer",
-  description: "Identify and resolve the governing constraint in your Google Ads accounts",
+  title: "Ecomtrada AI",
+  description: "Ecomtrada's AI account manager — spots what's wrong across your Google Ads accounts and helps you fix it.",
 };
 
 // Inline script applied before React hydration to prevent theme flash
