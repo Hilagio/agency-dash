@@ -13,6 +13,36 @@ import type { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
 import { getAuthContext, unauthorized } from "@/lib/auth";
 import { generateAccountBriefing } from "@/lib/diagnostics/briefing";
+import { postSlackMessage } from "@/lib/integrations/slack";
+
+/**
+ * Proactive alert: after the briefings are written, post the accounts in the RED
+ * to an INTERNAL Slack channel (env SLACK_ALERTS_CHANNEL) so the team is pinged
+ * at ~7am instead of waiting to open the cockpit. Never posts to a client's own
+ * channel. No-op if the channel isn't configured or there's no Slack bot.
+ */
+async function postRedAlert(organizationId: string): Promise<void> {
+  const channel = process.env.SLACK_ALERTS_CHANNEL;
+  if (!channel) return;
+  const conn = await prisma.slackConnection.findUnique({ where: { organizationId }, select: { botToken: true } });
+  if (!conn) return;
+
+  const accounts = await prisma.account.findMany({
+    where: { organizationId, active: true, archived: false },
+    select: { id: true, name: true, briefing: true },
+  });
+  const reds: { name: string; briefing: string | null }[] = [];
+  for (const a of accounts) {
+    const st = await prisma.accountStatus.findFirst({ where: { accountId: a.id }, orderBy: { computedAt: "desc" }, select: { status: true } });
+    if (st?.status === "red") reds.push({ name: a.name, briefing: a.briefing });
+  }
+  if (!reds.length) return;
+
+  const base = process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : "";
+  const lines = reds.slice(0, 25).map(r => `🔴 *${r.name}* — ${r.briefing ?? "flagged, needs a look"}`);
+  const text = `*Ecomtrada AI — overnight check*\n${reds.length} account${reds.length === 1 ? "" : "s"} in the red:\n${lines.join("\n")}${base ? `\n\nOpen the cockpit → ${base}/` : ""}`;
+  await postSlackMessage(conn.botToken, channel, text);
+}
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -34,6 +64,8 @@ async function run(where: { organizationId?: string }) {
       if (r?.text) generated++; else cleared++;
     } catch { failed++; }
   }
+  // Ping the team on Slack about the reds (best-effort, internal channel only).
+  if (where.organizationId) await postRedAlert(where.organizationId).catch(() => null);
   return { accounts: accounts.length, generated, cleared, failed };
 }
 
