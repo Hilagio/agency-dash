@@ -146,6 +146,7 @@ interface Msg { id?: string; role: "assistant" | "user"; content: string; kind?:
 const TOOL_LABELS: Record<string, string> = {
   get_impression_share: "impression share",
   get_campaign_overview: "campaign structure",
+  get_change_history: "change history",
   get_search_terms: "search terms",
   get_shopify_data: "Shopify orders",
 };

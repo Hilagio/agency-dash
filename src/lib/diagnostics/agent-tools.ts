@@ -5,7 +5,7 @@
  * asks a human when the data genuinely isn't reachable through these tools.
  */
 import { prisma } from "@/lib/db";
-import { fetchImpressionShare, fetchCampaignOverview } from "@/lib/integrations/google-ads";
+import { fetchImpressionShare, fetchCampaignOverview, fetchChangeHistory } from "@/lib/integrations/google-ads";
 
 export interface AgentAccount { id: string; googleAdsId: string; organizationId: string; currency: string }
 
@@ -35,6 +35,11 @@ export const AGENT_TOOLS = [
     description: "The account's real Shopify orders and revenue by window, plus top-selling products — the ground truth to reconcile against Google Ads conversions. Returns a clear note if Shopify isn't connected for this account.",
     input_schema: { type: "object", properties: { days: { type: "number", description: "Look-back window in days (default 30)." } } },
   },
+  {
+    name: "get_change_history",
+    description: "Live from Google Ads: who changed WHAT and WHEN in the account (budget edits, bid-strategy / target CPA-ROAS changes, campaign or ad-group pauses, new campaigns). This is the first thing to check when a metric swings on a specific date — line the change dates up against the metric change to find the cause instead of guessing. Google only retains ~30 days of history.",
+    input_schema: { type: "object", properties: { days: { type: "number", description: "Look-back window in days (max 30, default 30)." } } },
+  },
 ] as const;
 
 const LABELS: Record<string, string> = {
@@ -42,6 +47,7 @@ const LABELS: Record<string, string> = {
   get_campaign_overview: "Pulling the campaign structure from Google Ads…",
   get_search_terms: "Reading the search terms…",
   get_shopify_data: "Checking the Shopify orders…",
+  get_change_history: "Pulling the account change history from Google Ads…",
 };
 export const toolStatusLabel = (name: string) => LABELS[name] ?? `Checking ${name.replace(/_/g, " ")}…`;
 
@@ -62,6 +68,19 @@ export async function runAgentTool(name: string, input: Record<string, unknown>,
     if (!rows.length) return `No active campaigns found in the last ${days} days.`;
     const lines = rows.map(r => `- ${r.campaign} [${r.channel}, ${r.status}]: daily budget ${r.dailyBudget != null ? money(r.dailyBudget) : "—"}, spend ${money(r.cost)}, conv ${r.conversions.toFixed(1)}, value ${money(r.value)}, ROAS ${r.cost > 0 ? (r.value / r.cost).toFixed(2) : "—"}`);
     return `Campaign structure, last ${days}d:\n${lines.join("\n")}`;
+  }
+
+  if (name === "get_change_history") {
+    const window = Math.min(30, days);
+    const rows = (await fetchChangeHistory(acc.googleAdsId, acc.organizationId, window)).slice(0, 120);
+    if (!rows.length) return `No account changes recorded in the last ${window} days (Google Ads only retains ~30 days of change history).`;
+    const lines = rows.map(r => {
+      const day = r.when.slice(0, 16).replace("T", " ");
+      const where = r.campaign ? ` · ${r.campaign}${r.adGroup ? ` › ${r.adGroup}` : ""}` : "";
+      const what = r.summary ?? `${r.operation.toLowerCase()} ${r.fields}`.trim();
+      return `- ${day} · ${r.scope}${where}: ${what} (by ${r.who})`;
+    });
+    return `Account change history, last ${window}d (line the dates up against when the metric moved):\n${lines.join("\n")}`;
   }
 
   if (name === "get_search_terms") {

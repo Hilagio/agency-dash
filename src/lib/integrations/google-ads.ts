@@ -2327,6 +2327,92 @@ export async function fetchCampaignOverview(customerId: string, orgId: string | 
   }));
 }
 
+export interface AgentChangeRow {
+  when: string;            // ISO-ish datetime the change was made
+  who: string;             // user email, or the client type (e.g. an automated rule)
+  scope: string;           // resource type that changed (CAMPAIGN, CAMPAIGN_BUDGET, …)
+  operation: string;       // CREATE / UPDATE / REMOVE
+  campaign: string | null; // campaign the change belongs to, when known
+  adGroup: string | null;  // ad group, when the change is at that level
+  fields: string;          // which fields were touched
+  summary: string | null;  // best-effort human diff for the high-value fields
+}
+
+// Pull an old→new human diff for the fields we most want to correlate against a
+// metric swing: budget, tCPA/tROAS targets, and status. Everything else is
+// captured by the changed-field list.
+function changeSummary(op: string, oldR: unknown, newR: unknown): string | null {
+  const g = (r: unknown, ...path: string[]): unknown => {
+    let cur: unknown = r;
+    for (const k of path) { if (cur == null || typeof cur !== "object") return undefined; cur = (cur as Record<string, unknown>)[k]; }
+    return cur;
+  };
+  const parts: string[] = [];
+  const micros = (v: unknown) => (v == null ? null : Number(v) / 1_000_000);
+  // Budget
+  const ob = micros(g(oldR, "campaign_budget", "amount_micros"));
+  const nb = micros(g(newR, "campaign_budget", "amount_micros"));
+  if (nb != null && ob !== nb) parts.push(`daily budget ${ob != null ? `${Math.round(ob)} → ` : "set to "}${Math.round(nb)}`);
+  // Target CPA / ROAS (can live on campaign or ad group)
+  for (const res of ["campaign", "ad_group"]) {
+    const ot = micros(g(oldR, res, "target_cpa", "target_cpa_micros")) ?? micros(g(oldR, res, "maximize_conversions", "target_cpa_micros"));
+    const nt = micros(g(newR, res, "target_cpa", "target_cpa_micros")) ?? micros(g(newR, res, "maximize_conversions", "target_cpa_micros"));
+    if (nt != null && ot !== nt) parts.push(`target CPA ${ot != null ? `${Math.round(ot)} → ` : "set to "}${Math.round(nt)}`);
+    const or = g(oldR, res, "target_roas", "target_roas") ?? g(oldR, res, "maximize_conversion_value", "target_roas");
+    const nr = g(newR, res, "target_roas", "target_roas") ?? g(newR, res, "maximize_conversion_value", "target_roas");
+    if (nr != null && or !== nr) parts.push(`target ROAS ${or != null ? `${Number(or).toFixed(2)} → ` : "set to "}${Number(nr).toFixed(2)}`);
+    const os = g(oldR, res, "status"), ns = g(newR, res, "status");
+    if (ns != null && os !== ns) parts.push(`status ${os != null ? `${os} → ` : ""}${ns}`);
+  }
+  if (op === "CREATE") parts.unshift("created");
+  if (op === "REMOVE") parts.unshift("removed");
+  return parts.length ? parts.join(", ") : null;
+}
+
+/** Google Ads change history — who changed what, when. The single most useful
+ * signal for correlating a metric swing with an account edit (budget cut,
+ * bid-strategy swap, campaign pause). Google only retains ~30 days. */
+export async function fetchChangeHistory(customerId: string, orgId: string | undefined, days: number): Promise<AgentChangeRow[]> {
+  const client = getClient();
+  const customer = await getCustomer(client, customerId, orgId);
+  // change_event is only queryable over the last 30 days and needs both bounds.
+  const d = Math.min(30, Math.max(1, days));
+  const fmt = (dt: Date) => dt.toISOString().slice(0, 19).replace("T", " ");
+  const end = new Date();
+  const start = new Date(); start.setDate(start.getDate() - d);
+  const rows = await safeQuery(() => customer.query(`
+    SELECT change_event.change_date_time, change_event.change_resource_type,
+           change_event.resource_change_operation, change_event.changed_fields,
+           change_event.user_email, change_event.client_type,
+           change_event.old_resource, change_event.new_resource,
+           campaign.name, ad_group.name
+    FROM change_event
+    WHERE change_event.change_date_time >= '${fmt(start)}' AND change_event.change_date_time <= '${fmt(end)}'
+    ORDER BY change_event.change_date_time DESC
+    LIMIT 200
+  `), "change history", 30_000);
+  const asFields = (cf: unknown): string => {
+    if (cf == null) return "";
+    if (typeof cf === "string") return cf;
+    const paths = (cf as { paths?: unknown }).paths;
+    return Array.isArray(paths) ? paths.map(String).join(", ") : String(cf);
+  };
+  return rows.map(r => {
+    const ce = r.change_event ?? {};
+    const op = String(ce.resource_change_operation ?? "");
+    return {
+      when: String(ce.change_date_time ?? ""),
+      who: String(ce.user_email || ce.client_type || "—"),
+      scope: String(ce.change_resource_type ?? ""),
+      operation: op,
+      campaign: r.campaign?.name ?? null,
+      adGroup: r.ad_group?.name ?? null,
+      fields: asFields(ce.changed_fields),
+      summary: changeSummary(op, ce.old_resource, ce.new_resource),
+    };
+  });
+}
+
 export async function fetchSpineData(
   customerId: string, orgId: string | undefined, start: string, end: string,
   // The per-row tables (landing pages, items, search terms) are only kept for

@@ -30,6 +30,7 @@ const AGENT_TOOLS_NOTE = `
 YOUR DATA TOOLS — you can fetch live data yourself instead of asking the team to look it up:
 - get_impression_share — budget-limited? headroom to scale? (search IS + share lost to budget/rank per campaign)
 - get_campaign_overview — account structure: campaign types, statuses, daily budgets, spend & return
+- get_change_history — who changed WHAT and WHEN (budget/bid/target edits, pauses, new campaigns). When a metric moved on a date, CHECK THIS FIRST — line the change dates up against the swing before you hypothesise an off-platform cause.
 - get_search_terms — wasted spend (cost, zero conversions) and branded queries
 - get_shopify_data — real orders/revenue to reconcile against
 
