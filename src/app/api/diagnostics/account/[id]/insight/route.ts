@@ -31,6 +31,7 @@ YOUR DATA TOOLS — you can fetch live data yourself instead of asking the team 
 - get_impression_share — budget-limited? headroom to scale? (search IS + share lost to budget/rank per campaign)
 - get_campaign_overview — account structure: campaign types, statuses, daily budgets, spend & return
 - get_change_history — who changed WHAT and WHEN (budget/bid/target edits, pauses, new campaigns). When a metric moved on a date, CHECK THIS FIRST — line the change dates up against the swing before you hypothesise an off-platform cause.
+- get_merchant_center_status — live feed health: account suspension / misrepresentation, product disapprovals by reason & count, which countries are serving. For ANY feed/GMC question — a Shopping/PMax campaign spending €0, a "is the feed disapproved / is the account suspended / is BE approved" question — CALL THIS instead of telling the team to open Merchant Center. Only ask a human if it returns an error or nothing.
 - get_search_terms — wasted spend (cost, zero conversions) and branded queries
 - get_shopify_data — real orders/revenue to reconcile against
 - get_slack_context — the client's Slack channel, where off-platform events get mentioned (promo, price/checkout change, payment-provider switch, stockout, "paused for the holidays"). Check this BEFORE asking the team an off-platform question — the answer is often already there.
@@ -224,7 +225,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     select: {
       id: true, name: true, currency: true, googleAdsId: true, organizationId: true,
       grossMarginPercent: true, roasFloor: true, minSpendForEval: true, minConversionsForEval: true, dataVerified: true,
-      trackingStatus: true, trackingNote: true, trackingSetAt: true, trackingSetBy: true,
+      trackingStatus: true, trackingNote: true, trackingSetAt: true, trackingSetBy: true, merchantCenterId: true,
     },
   });
   if (!account) return forbidden();
@@ -363,7 +364,7 @@ export async function POST(req: NextRequest, { params }: Params) {
         let liveSnapshot = "";
         if (!isChat) {
           send(controller, { status: "Pulling the latest from Google Ads…" });
-          const acc0 = { id: account.id, googleAdsId: account.googleAdsId, organizationId: account.organizationId, currency: account.currency };
+          const acc0 = { id: account.id, googleAdsId: account.googleAdsId, organizationId: account.organizationId, currency: account.currency, merchantCenterId: account.merchantCenterId };
           const want = ["get_campaign_overview", "get_impression_share", "get_change_history"];
           const pulls = await Promise.all(want.map(async name => {
             try {
@@ -398,7 +399,7 @@ export async function POST(req: NextRequest, { params }: Params) {
         const sysPrompt = (useChatSystem ? SYSTEM_CHAT : SYSTEM) + PPC_OS_SYSTEM_NOTE + AGENT_TOOLS_NOTE + LEADGEN_NOTE + trackingDirective;
         const allTools = [...(ppc.tools ?? []), ...AGENT_TOOLS] as Parameters<typeof client.beta.messages.stream>[0]["tools"];
         const loopMessages = messages.slice();
-        const toolAcc = { id: account.id, googleAdsId: account.googleAdsId, organizationId: account.organizationId, currency: account.currency };
+        const toolAcc = { id: account.id, googleAdsId: account.googleAdsId, organizationId: account.organizationId, currency: account.currency, merchantCenterId: account.merchantCenterId };
         let finalText = "";
         // Seed with the up-front pulls so the opener's badge shows they were
         // fetched live (the loop dedupes by name if the model pulls again).

@@ -407,6 +407,72 @@ export async function fetchMerchantCenterProductList(
   return products;
 }
 
+// ─── Feed / account health (disapprovals, suspensions, country approval) ──────
+
+export interface MerchantHealth {
+  linked: boolean;
+  scopeOrAuthError?: string;
+  accountIssues: { title: string; severity: string; country?: string }[];
+  // Serving summary per country/destination (from the account status products stats).
+  destinations: { country: string; destination: string; active: number; pending: number; disapproved: number }[];
+  // Top item-level issues aggregated across the feed, by product count.
+  itemIssues: { description: string; servability: string; numItems: number; country?: string }[];
+  totals: { active: number; pending: number; disapproved: number };
+}
+
+/**
+ * Live Merchant Center feed health via the Content API v2.1 `accountstatuses`
+ * endpoint — one call returns account-level issues (suspension, misrepresentation,
+ * policy) AND per-country serving stats + aggregated item-level disapproval reasons
+ * with product counts. This is what lets the agent answer "is the feed suspended /
+ * are products disapproved / is BE approved?" itself instead of sending the team
+ * into Merchant Center. Uses the `content` scope (no GCP registration needed).
+ */
+export async function fetchMerchantCenterHealth(merchantId: string, orgId?: string): Promise<MerchantHealth> {
+  const empty: MerchantHealth = { linked: true, accountIssues: [], destinations: [], itemIssues: [], totals: { active: 0, pending: 0, disapproved: 0 } };
+  let accessToken: string;
+  try { accessToken = await getAccessToken(await getRefreshToken(orgId)); }
+  catch (e) { return { ...empty, scopeOrAuthError: e instanceof Error ? e.message : String(e) }; }
+
+  const res = await fetch(
+    `https://shoppingcontent.googleapis.com/content/v2.1/${merchantId}/accountstatuses/${merchantId}`,
+    { headers: { Authorization: `Bearer ${accessToken}` } },
+  ).catch((e: unknown) => { throw e; });
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    return { ...empty, scopeOrAuthError: `accountstatuses ${res.status}: ${body.slice(0, 200)}` };
+  }
+
+  const json = await res.json() as {
+    accountLevelIssues?: Array<{ title?: string; severity?: string; country?: string }>;
+    products?: Array<{
+      country?: string; destination?: string;
+      statistics?: { active?: string | number; pending?: string | number; disapproved?: string | number };
+      itemLevelIssues?: Array<{ description?: string; servability?: string; numItems?: string | number; country?: string }>;
+    }>;
+  };
+
+  const n = (v: string | number | undefined) => Number(v ?? 0) || 0;
+  const accountIssues = (json.accountLevelIssues ?? []).map(i => ({ title: i.title ?? "issue", severity: i.severity ?? "", country: i.country }));
+  const destinations = (json.products ?? []).map(p => ({
+    country: p.country ?? "", destination: p.destination ?? "",
+    active: n(p.statistics?.active), pending: n(p.statistics?.pending), disapproved: n(p.statistics?.disapproved),
+  }));
+  const issueAgg = new Map<string, { description: string; servability: string; numItems: number; country?: string }>();
+  for (const p of json.products ?? []) {
+    for (const it of p.itemLevelIssues ?? []) {
+      const key = `${it.description ?? ""}|${it.country ?? p.country ?? ""}`;
+      const e = issueAgg.get(key) ?? { description: it.description ?? "issue", servability: it.servability ?? "", numItems: 0, country: it.country ?? p.country };
+      e.numItems += n(it.numItems);
+      issueAgg.set(key, e);
+    }
+  }
+  const itemIssues = [...issueAgg.values()].sort((a, b) => b.numItems - a.numItems).slice(0, 15);
+  const totals = destinations.reduce((t, d) => ({ active: t.active + d.active, pending: t.pending + d.pending, disapproved: t.disapproved + d.disapproved }), { active: 0, pending: 0, disapproved: 0 });
+  return { linked: true, accountIssues, destinations, itemIssues, totals };
+}
+
 // ─── Internal types (Merchant Center Reports API v1 response shape) ──────────
 
 interface MerchantReportRow {

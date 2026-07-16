@@ -227,6 +227,7 @@ const TOOL_LABELS: Record<string, string> = {
   get_impression_share: "impression share",
   get_campaign_overview: "campaign structure",
   get_change_history: "change history",
+  get_merchant_center_status: "Merchant Center feed health",
   get_search_terms: "search terms",
   get_shopify_data: "Shopify orders",
   get_slack_context: "client Slack channel",

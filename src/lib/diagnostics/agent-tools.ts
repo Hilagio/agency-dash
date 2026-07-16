@@ -7,9 +7,10 @@
 import { prisma } from "@/lib/db";
 import { fetchImpressionShare, fetchCampaignOverview, fetchChangeHistory } from "@/lib/integrations/google-ads";
 import { fetchSlackMessages, formatSlackForContext } from "@/lib/integrations/slack";
+import { getMerchantCenterIds, fetchMerchantCenterHealth } from "@/lib/integrations/merchant-center";
 import { lookupPlaybook } from "@/lib/diagnostics/agency-playbook";
 
-export interface AgentAccount { id: string; googleAdsId: string; organizationId: string; currency: string }
+export interface AgentAccount { id: string; googleAdsId: string; organizationId: string; currency: string; merchantCenterId?: string | null }
 
 const pct = (v: number | null) => (v == null ? "—" : `${Math.round(v * 100)}%`);
 const clampDays = (d: unknown) => { const n = Number(d); return Number.isFinite(n) ? Math.min(90, Math.max(3, Math.round(n))) : 30; };
@@ -38,6 +39,11 @@ export const AGENT_TOOLS = [
     input_schema: { type: "object", properties: { days: { type: "number", description: "Look-back window in days (default 30)." } } },
   },
   {
+    name: "get_merchant_center_status",
+    description: "Live from Google Merchant Center: the feed's health — any ACCOUNT-LEVEL issues (suspension, misrepresentation, policy warning), how many products are approved vs disapproved vs pending, the top disapproval reasons by product count, and which countries/destinations are actually serving. Use this to answer feed / GMC questions YOURSELF — is the account suspended, are products disapproved, is a country (e.g. BE) not approved, is a dark feed-campaign caused by a serving/eligibility problem — instead of asking the team to open Merchant Center. Needs a linked Merchant Center account.",
+    input_schema: { type: "object", properties: {} },
+  },
+  {
     name: "get_change_history",
     description: "Live from Google Ads: who changed WHAT and WHEN in the account (budget edits, bid-strategy / target CPA-ROAS changes, campaign or ad-group pauses, new campaigns). This is the first thing to check when a metric swings on a specific date — line the change dates up against the metric change to find the cause instead of guessing. Google only retains ~30 days of history.",
     input_schema: { type: "object", properties: { days: { type: "number", description: "Look-back window in days (max 30, default 30)." } } },
@@ -60,6 +66,7 @@ const LABELS: Record<string, string> = {
   get_search_terms: "Reading the search terms…",
   get_shopify_data: "Checking the Shopify orders…",
   get_change_history: "Pulling the account change history from Google Ads…",
+  get_merchant_center_status: "Checking Merchant Center feed health…",
   get_slack_context: "Reading the client's Slack channel…",
   consult_playbook: "Checking our agency playbook…",
 };
@@ -124,6 +131,31 @@ export async function runAgentTool(name: string, input: Record<string, unknown>,
     const lines = rows.map(r => `- ${r.campaign} [${r.channel}, ${r.status}]: daily budget ${r.dailyBudget != null ? money(r.dailyBudget) : "—"}, spend ${money(r.cost)}, conv ${r.conversions.toFixed(1)}, value ${money(r.value)}, ROAS ${r.cost > 0 ? (r.value / r.cost).toFixed(2) : "—"}`);
     const setup = detectSetup(rows);
     return `Campaign structure, last ${days}d:\n${lines.join("\n")}${setup ? `\n\n${setup}` : ""}`;
+  }
+
+  if (name === "get_merchant_center_status") {
+    const ids = await getMerchantCenterIds(acc.googleAdsId, acc.organizationId, acc.merchantCenterId ?? null);
+    if (!ids.length) return "No Merchant Center account is linked to this Google Ads account (couldn't discover one via the product link, and none is stored). If feed health matters here, link Merchant Center — otherwise this can't be checked from the API.";
+    const h = await fetchMerchantCenterHealth(ids[0], acc.organizationId);
+    if (h.scopeOrAuthError) return `Couldn't read Merchant Center (${ids[0]}): ${h.scopeOrAuthError}. The Google login may be missing the 'content' scope — reconnect Google to grant it.`;
+    const out: string[] = [`Merchant Center ${ids[0]} — feed health:`];
+    if (h.accountIssues.length) {
+      out.push(`ACCOUNT-LEVEL ISSUES (these can take the whole feed down):`);
+      for (const i of h.accountIssues) out.push(`- ${i.title}${i.severity ? ` [${i.severity}]` : ""}${i.country ? ` (${i.country})` : ""}`);
+    } else {
+      out.push(`No account-level issues (no suspension / misrepresentation flag).`);
+    }
+    out.push(`Products: ${h.totals.active} active, ${h.totals.disapproved} disapproved, ${h.totals.pending} pending.`);
+    if (h.destinations.length) {
+      const byC = h.destinations.filter(d => d.active + d.disapproved + d.pending > 0)
+        .map(d => `${d.country || "?"}: ${d.active} active${d.disapproved ? `, ${d.disapproved} disapproved` : ""}${d.pending ? `, ${d.pending} pending` : ""}`);
+      if (byC.length) out.push(`By country: ${byC.join(" · ")} (a country missing here isn't serving — check it's approved).`);
+    }
+    if (h.itemIssues.length) {
+      out.push(`Top disapproval reasons (by product count):`);
+      for (const it of h.itemIssues.slice(0, 10)) out.push(`- ${it.description} [${it.servability || "?"}]: ${it.numItems} products${it.country ? ` (${it.country})` : ""}`);
+    }
+    return out.join("\n");
   }
 
   if (name === "get_change_history") {
