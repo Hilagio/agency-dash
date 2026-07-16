@@ -5,7 +5,7 @@
  * asks a human when the data genuinely isn't reachable through these tools.
  */
 import { prisma } from "@/lib/db";
-import { fetchImpressionShare, fetchCampaignOverview, fetchChangeHistory, fetchDemographics } from "@/lib/integrations/google-ads";
+import { fetchImpressionShare, fetchCampaignOverview, fetchChangeHistory, fetchDemographics, fetchQualityScore, fetchAdStrength, fetchGeoPerformance } from "@/lib/integrations/google-ads";
 import { fetchSlackMessages, formatSlackForContext } from "@/lib/integrations/slack";
 import { getMerchantCenterIds, fetchMerchantCenterHealth, fetchPriceCompetitiveness } from "@/lib/integrations/merchant-center";
 import { lookupPlaybook } from "@/lib/diagnostics/agency-playbook";
@@ -46,6 +46,26 @@ export const AGENT_TOOLS = [
     input_schema: { type: "object", properties: {} },
   },
   {
+    name: "get_products",
+    description: "Product-level ad performance. Answers 'which products are structurally underperforming?' — products with REAL spend but return below break-even (or zero conversions), sorted by spend, with the share of budget they're eating. In our doctrine a big underperformer share is a SEGMENTATION signal (recalibrate ProductHero thresholds), not just 'pause them'. Use for feed/Shopping/PMax accounts to find where the money leaks at product level.",
+    input_schema: { type: "object", properties: { days: { type: "number", description: "Look-back window in days (default 30)." } } },
+  },
+  {
+    name: "get_geo",
+    description: "Performance by geographic location (country/region, resolved to names) — spend, clicks, conversions, ROAS. Use to spot a geo outperforming on little spend (shift budget there) or a country dragging the blended average (a margin/AOV question, or tighten targeting). Part of segmenting down before trusting a blended number.",
+    input_schema: { type: "object", properties: { days: { type: "number", description: "Look-back window in days (default 30)." } } },
+  },
+  {
+    name: "get_quality_score",
+    description: "Quality Score components per keyword (Search only): expected CTR, ad relevance, landing-page experience, and the 1–10 score. The lead-gen rank check — if all three components are Below Average, Ad Rank is too low to enter the auction (rewrite RSAs, fix landing-page relevance). Not applicable to Shopping/PMax (feed-based, no keyword QS).",
+    input_schema: { type: "object", properties: { days: { type: "number", description: "Look-back window in days (default 30)." } } },
+  },
+  {
+    name: "get_ad_strength",
+    description: "Responsive Search Ad strength (Poor/Average/Good/Excellent) and how many headlines/descriptions each ad actually uses. The 'the ad is the problem — build it out' check: most accounts run 3–4 headlines against a ceiling of 15; low ad strength with few assets means the creative is underbuilt. Search campaigns only.",
+    input_schema: { type: "object", properties: {} },
+  },
+  {
     name: "get_search_terms",
     description: "Top search terms by spend over the last N days (from the stored spine), with clicks, cost, and conversions. Use to spot wasted spend (high cost, zero conversions) and branded queries. Note: Performance Max search terms are limited by Google.",
     input_schema: { type: "object", properties: { days: { type: "number", description: "Look-back window in days (default 30)." } } },
@@ -83,6 +103,10 @@ const LABELS: Record<string, string> = {
   get_campaign_overview: "Pulling the campaign structure from Google Ads…",
   get_segments: "Segmenting by device and brand vs non-brand…",
   get_price_competitiveness: "Checking product prices vs the market…",
+  get_products: "Finding the underperforming products…",
+  get_geo: "Breaking performance down by location…",
+  get_quality_score: "Reading Quality Score components…",
+  get_ad_strength: "Checking ad strength & assets…",
   get_search_terms: "Reading the search terms…",
   get_shopify_data: "Checking the Shopify orders…",
   get_change_history: "Pulling the account change history from Google Ads…",
@@ -260,8 +284,62 @@ export async function runAgentTool(name: string, input: Record<string, unknown>,
   if (name === "get_impression_share") {
     const rows = (await fetchImpressionShare(acc.googleAdsId, acc.organizationId, days)).slice(0, 20);
     if (!rows.length) return `No campaigns with spend in the last ${days} days.`;
-    const lines = rows.map(r => `- ${r.campaign} [${r.channel}]: spend ${money(r.cost)}, search IS ${pct(r.searchIS)}, lost to BUDGET ${pct(r.budgetLostIS)}, lost to rank ${pct(r.rankLostIS)}`);
-    return `Impression share, last ${days}d (higher "lost to budget" = more headroom if you raise budget; blanks are usually Performance Max, which doesn't report search IS):\n${lines.join("\n")}`;
+    const lines = rows.map(r => `- ${r.campaign} [${r.channel}]: spend ${money(r.cost)}, search IS ${pct(r.searchIS)}, lost to BUDGET ${pct(r.budgetLostIS)}, lost to rank ${pct(r.rankLostIS)}, abs-top ${pct(r.absTopIS)}`);
+    return `Impression share, last ${days}d (higher "lost to budget" = more headroom if you raise budget; low abs-top = sitting at the bottom of the page, raise bids on converters; blanks are usually Performance Max):\n${lines.join("\n")}`;
+  }
+
+  if (name === "get_products") {
+    const start = new Date(); start.setUTCDate(start.getUTCDate() - days);
+    const rows = await prisma.productAdsDaily.findMany({
+      where: { accountId: acc.id, date: { gte: start.toISOString().slice(0, 10) } },
+      select: { itemId: true, title: true, spend: true, clicks: true, conversions: true, conversionValue: true },
+    });
+    if (!rows.length) return `No product-level ad data for the last ${days} days (item-level Shopping/PMax reporting may be missing, or the spine hasn't ingested it).`;
+    const agg = new Map<string, { title: string; spend: number; clicks: number; conv: number; val: number }>();
+    for (const r of rows) {
+      const e = agg.get(r.itemId) ?? { title: r.title || r.itemId, spend: 0, clicks: 0, conv: 0, val: 0 };
+      e.spend += r.spend; e.clicks += r.clicks; e.conv += r.conversions; e.val += r.conversionValue;
+      if (!e.title && r.title) e.title = r.title;
+      agg.set(r.itemId, e);
+    }
+    const acct = await prisma.account.findUnique({ where: { id: acc.id }, select: { roasFloor: true, grossMarginPercent: true } });
+    const breakEven = acct?.roasFloor ?? (acct?.grossMarginPercent ? 1 / acct.grossMarginPercent : 1);
+    const all = [...agg.values()];
+    const totalSpend = all.reduce((s, p) => s + p.spend, 0);
+    const under = all.filter(p => p.spend >= 20 && (p.conv === 0 || p.val / p.spend < breakEven)).sort((a, b) => b.spend - a.spend).slice(0, 20);
+    if (!under.length) return `No structurally underperforming products over ${days}d — every product with real spend (≥${money(20)}) is at or above break-even (${breakEven.toFixed(2)}). Total product spend ${money(totalSpend)}.`;
+    const wasted = under.reduce((s, p) => s + p.spend, 0);
+    const lines = under.map(p => `- ${p.title}: spend ${money(p.spend)}, ${p.conv === 0 ? "0 conv" : `ROAS ${(p.val / p.spend).toFixed(2)}`}, ${p.clicks} clicks`);
+    return `Structurally underperforming products, last ${days}d — real spend, return below break-even ${breakEven.toFixed(2)}${acct?.grossMarginPercent ? " (from margin)" : ""}. ${money(wasted)} of ${money(totalSpend)} product spend (${totalSpend > 0 ? Math.round(wasted / totalSpend * 100) : 0}%) is here:\n${lines.join("\n")}\n\nDoctrine: a large underperformer share is a SEGMENTATION signal — recalibrate ProductHero thresholds (tighter ROAS = smaller Villain pool) or move marginal items to Zombies for re-testing, rather than just pausing them.`;
+  }
+
+  if (name === "get_geo") {
+    const rows = await fetchGeoPerformance(acc.googleAdsId, acc.organizationId, days);
+    if (!rows.length) return `No geographic performance data for the last ${days} days.`;
+    const lines = rows.map(r => `- ${r.location}: spend ${money(r.cost)}, ${r.clicks} clicks, ${r.conversions.toFixed(1)} conv, ROAS ${r.cost > 0 ? (r.value / r.cost).toFixed(2) : "—"}`);
+    return `Performance by location, last ${days}d (look for a geo converting well on little spend = shift budget; or a country dragging the average = margin/AOV or tighten targeting):\n${lines.join("\n")}`;
+  }
+
+  if (name === "get_quality_score") {
+    const rows = (await fetchQualityScore(acc.googleAdsId, acc.organizationId, days)).slice(0, 400);
+    if (!rows.length) return `No Quality Score data (this is Search-only — a Shopping/PMax account has no keyword QS, and that's expected).`;
+    const wAvg = rows.reduce((s, r) => s + r.qs, 0) / rows.length;
+    const belowExpCtr = rows.filter(r => /BELOW/i.test(r.expCtr)).length;
+    const belowAdRel = rows.filter(r => /BELOW/i.test(r.adRelevance)).length;
+    const belowLp = rows.filter(r => /BELOW/i.test(r.lpExperience)).length;
+    const allThree = rows.filter(r => /BELOW/i.test(r.expCtr) && /BELOW/i.test(r.adRelevance) && /BELOW/i.test(r.lpExperience));
+    const worst = rows.filter(r => r.qs > 0).sort((a, b) => a.qs - b.qs).slice(0, 12)
+      .map(r => `- "${r.keyword}": QS ${r.qs}/10 — CTR ${r.expCtr.toLowerCase()}, relevance ${r.adRelevance.toLowerCase()}, LP ${r.lpExperience.toLowerCase()} (spend ${money(r.cost)})`);
+    return `Quality Score, last ${days}d (${rows.length} keywords, avg ${wAvg.toFixed(1)}/10): ${belowExpCtr} below-avg expected CTR, ${belowAdRel} below-avg ad relevance, ${belowLp} below-avg landing page. ${allThree.length} keywords are Below Average on ALL THREE (Ad Rank too low — rewrite RSAs + fix LP relevance).\nLowest QS:\n${worst.join("\n")}`;
+  }
+
+  if (name === "get_ad_strength") {
+    const rows = await fetchAdStrength(acc.googleAdsId, acc.organizationId);
+    if (!rows.length) return `No responsive search ads found (this is a Search-campaign check; Shopping/PMax have no RSAs).`;
+    const dist = rows.reduce((m, r) => { const k = r.strength || "UNKNOWN"; m[k] = (m[k] ?? 0) + 1; return m; }, {} as Record<string, number>);
+    const weak = rows.filter(r => /POOR|AVERAGE/i.test(r.strength)).sort((a, b) => a.headlines - b.headlines).slice(0, 15)
+      .map(r => `- ${r.campaign} › ${r.adGroup}: ${r.strength.toLowerCase()} — ${r.headlines} headlines, ${r.descriptions} descriptions`);
+    return `Ad strength across ${rows.length} responsive search ads: ${Object.entries(dist).map(([k, n]) => `${n} ${k.toLowerCase()}`).join(", ")}.\nWeakest / most underbuilt (ceiling is 15 headlines / 4 descriptions):\n${weak.join("\n") || "— none flagged weak"}`;
   }
 
   if (name === "get_campaign_overview") {

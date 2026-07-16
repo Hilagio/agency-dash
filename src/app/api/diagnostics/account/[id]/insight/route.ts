@@ -34,6 +34,10 @@ YOUR DATA TOOLS — you can fetch live data yourself instead of asking the team 
 - get_change_history — who changed WHAT and WHEN (budget/bid/target edits, pauses, new campaigns). When a metric moved on a date, CHECK THIS FIRST — line the change dates up against the swing before you hypothesise an off-platform cause.
 - get_merchant_center_status — live feed health: account suspension / misrepresentation, product disapprovals by reason & count, which countries are serving. For ANY feed/GMC question — a Shopping/PMax campaign spending €0, a "is the feed disapproved / is the account suspended / is BE approved" question — CALL THIS instead of telling the team to open Merchant Center. Only ask a human if it returns an error or nothing.
 - get_segments — device split + brand vs non-brand (NEVER trust a blended number — segment before you conclude or scale; a mobile-CVR gap = site/UX, brand inflates ROAS)
+- get_products — which products are STRUCTURALLY UNDERPERFORMING (real spend, return below break-even / zero conv) and the budget share they eat — the answer to "give me a list of underperforming products"
+- get_geo — performance by location (a geo converting on little spend = shift budget; a country dragging the average = margin/AOV or targeting)
+- get_quality_score — Search QS components (all three Below Average = Ad Rank too low; lead-gen rank check)
+- get_ad_strength — RSA strength + headline/description counts (weak ad, underbuilt = build it out)
 - get_price_competitiveness — each product's price vs the market benchmark (clicks fine but CVR weak → check if the clicked products are overpriced; pricing is a client conversation, not a bid change)
 - get_search_terms — wasted spend (cost, zero conversions) and branded queries
 - get_shopify_data — real orders/revenue to reconcile against
