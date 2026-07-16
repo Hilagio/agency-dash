@@ -111,7 +111,7 @@ function renderMarkdown(md: string): React.ReactNode {
 /** Consume the insight SSE stream, accumulating text and firing handlers. */
 async function consumeInsightStream(
   body: ReadableStream<Uint8Array>,
-  h: { onText: (acc: string) => void; onReset: () => void; onStatus: (s: string) => void; onError: (e: string) => void; onTools?: (t: string[]) => void },
+  h: { onText: (acc: string) => void; onReset: () => void; onStatus: (s: string) => void; onError: (e: string) => void; onTools?: (t: { name: string; ok: boolean }[]) => void; onSuggestions?: (s: string[]) => void },
 ): Promise<string> {
   const reader = body.getReader();
   const decoder = new TextDecoder();
@@ -127,11 +127,12 @@ async function consumeInsightStream(
       if (!line.startsWith("data:")) continue;
       const payload = line.slice(5).trim();
       if (!payload) continue;
-      let ev: { text?: string; error?: string; status?: string; reset?: boolean; toolsUsed?: string[] };
+      let ev: { text?: string; error?: string; status?: string; reset?: boolean; toolsUsed?: { name: string; ok: boolean }[]; suggestions?: string[] };
       try { ev = JSON.parse(payload); } catch { continue; }
       if (ev.error) h.onError(ev.error);
       else if (ev.reset) { acc = ""; h.onReset(); }
       else if (ev.toolsUsed) h.onTools?.(ev.toolsUsed);
+      else if (ev.suggestions) h.onSuggestions?.(ev.suggestions);
       else if (ev.status) h.onStatus(ev.status);
       else if (ev.text) { acc += ev.text; h.onText(acc); }
     }
@@ -139,7 +140,7 @@ async function consumeInsightStream(
   return acc;
 }
 
-interface Msg { id?: string; role: "assistant" | "user"; content: string; kind?: string; tools?: string[] }
+interface Msg { id?: string; role: "assistant" | "user"; content: string; kind?: string; tools?: { name: string; ok: boolean }[] }
 
 // Friendly labels for the live data tools, so a real pull is shown to the team.
 const TOOL_LABELS: Record<string, string> = {
@@ -238,6 +239,7 @@ export default function DiagnosePage() {
   const [followInput, setFollowInput] = useState("");
   const [followSending, setFollowSending] = useState(false);
   const [pending, setPending] = useState<Attachment[]>([]);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
   // Quick-answer to the agent's closing question (Yes → "what changed?").
   const [whatChanged, setWhatChanged] = useState<string | null>(null);
   // Brand document generation (§agent → files out).
@@ -366,7 +368,7 @@ export default function DiagnosePage() {
   // streams into it; the server persists both sides. Returns whether fresh data
   // was pulled (so we can refresh the cockpit numbers).
   async function runStream(reqBody: Record<string, unknown>): Promise<boolean> {
-    setInsightErr(null);
+    setInsightErr(null); setSuggestions([]);
     setThread(prev => [...prev, { role: "assistant", content: "" }]);
     const setLast = (next: string) => setThread(prev => {
       const copy = prev.slice();
@@ -403,6 +405,7 @@ export default function DiagnosePage() {
           }
           return copy;
         }),
+        onSuggestions: (s) => setSuggestions(s),
         onError: (e) => setInsightErr(e),
       });
     } catch (e) {
@@ -833,8 +836,17 @@ export default function DiagnosePage() {
                           ? renderMarkdown(m.content)
                           : <div style={{ fontSize: 12.5, color: "var(--text-3)", display: "flex", alignItems: "center", gap: 8 }}><Loader2 size={13} className="animate-spin" style={{ color: "var(--accent)" }} /> {insightStatus ?? "Reading…"}</div>}
                         {m.tools && m.tools.length > 0 && (
-                          <div style={{ marginTop: 8, display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, color: "var(--accent)", background: "var(--accent-dim)", border: "1px solid color-mix(in srgb, var(--accent) 25%, var(--border))", borderRadius: 7, padding: "3px 9px" }} title="Live sources this read actually queried from Google Ads / Shopify (a source may return no data, e.g. 'not connected')">
-                            <CheckCircle2 size={12} /> Checked live: {m.tools.map(t => TOOL_LABELS[t] ?? t).join(", ")}
+                          <div style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 6 }}>
+                            {m.tools.some(t => t.ok) && (
+                              <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, color: "var(--accent)", background: "var(--accent-dim)", border: "1px solid color-mix(in srgb, var(--accent) 25%, var(--border))", borderRadius: 7, padding: "3px 9px" }} title="Live sources this read actually pulled data from">
+                                <CheckCircle2 size={12} /> Pulled live: {m.tools.filter(t => t.ok).map(t => TOOL_LABELS[t.name] ?? t.name).join(", ")}
+                              </span>
+                            )}
+                            {m.tools.some(t => !t.ok) && (
+                              <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, color: "var(--text-muted)", background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 7, padding: "3px 9px" }} title="Checked, but the source returned no data (e.g. not connected)">
+                                <MinusCircle size={12} /> No data: {m.tools.filter(t => !t.ok).map(t => TOOL_LABELS[t.name] ?? t.name).join(", ")}
+                              </span>
+                            )}
                           </div>
                         )}
                       </div>
@@ -881,10 +893,11 @@ export default function DiagnosePage() {
                       )}
                     </div>
                   )}
-                  {/* Preset questions — steer with one click, no typing */}
+                  {/* Follow-up chips — dynamic to this conversation when available,
+                      otherwise a sensible default set. Steer with one click. */}
                   {!insightLoading && !followSending && thread[thread.length - 1]?.role === "assistant" && (
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 9 }}>
-                      {PRESET_QUESTIONS.map(q => (
+                      {(suggestions.length ? suggestions : PRESET_QUESTIONS).map(q => (
                         <button key={q} onClick={() => sendPreset(q)} style={{ fontSize: 11.5, fontWeight: 500, color: "var(--text-2)", background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 999, padding: "5px 12px", cursor: "pointer", whiteSpace: "nowrap" }}
                           onMouseEnter={e => { e.currentTarget.style.borderColor = "color-mix(in srgb, var(--accent) 40%, var(--border))"; e.currentTarget.style.color = "var(--text)"; }}
                           onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border-2)"; e.currentTarget.style.color = "var(--text-2)"; }}>
