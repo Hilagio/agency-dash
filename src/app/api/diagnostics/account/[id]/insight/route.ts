@@ -27,12 +27,19 @@ export const maxDuration = 300;
 
 const AGENT_TOOLS_NOTE = `
 
-YOUR DATA TOOLS — you can fetch live data yourself, so DO, before ever asking the team to look something up:
-- get_impression_share — are we limited by budget? how much headroom to scale? (search IS + share lost to budget/rank per campaign)
-- get_campaign_overview — the account structure: campaign types (is there a feed-only Performance Max?), statuses, daily budgets, spend & return
-- get_search_terms — wasted spend (cost with zero conversions) and branded queries
-- get_shopify_data — the real orders/revenue to reconcile Google Ads against
-If you catch yourself about to ask the team to "check" a metric, STOP — if one of these tools can get it, CALL THE TOOL instead and answer from the result. Only ask a human for what no tool can reach: off-platform events (payments, site, stock, promos), business context, or a judgment call about the client. Call any tools you need BEFORE writing your answer, then answer once.`;
+YOUR DATA TOOLS — you can fetch live data yourself instead of asking the team to look it up:
+- get_impression_share — budget-limited? headroom to scale? (search IS + share lost to budget/rank per campaign)
+- get_campaign_overview — account structure: campaign types, statuses, daily budgets, spend & return
+- get_search_terms — wasted spend (cost, zero conversions) and branded queries
+- get_shopify_data — real orders/revenue to reconcile against
+
+THE ONE UNBREAKABLE RULE — NEVER FABRICATE DATA. You have exactly two sources of truth: (1) the account data written above in this conversation, and (2) the RESULT of a tool you actually called this turn. Nothing else exists.
+- You may state a specific number, campaign NAME, status, budget, or ROAS ONLY if it came from one of those two sources. If it didn't, you may not say it.
+- To talk about live campaign structure, impression share, search terms, or Shopify data, you MUST call the tool and wait for its result. If you have NOT called a tool this turn, you have pulled NOTHING — so do NOT write "I pulled", "I can see the live data", "the live numbers show", or invent campaign names/budgets/statuses. Doing that is fabrication, and it is the single worst failure possible here — it destroys the team's trust in every number you give.
+- If a tool returns nothing, an error, or "not connected", say so plainly ("I couldn't pull the campaign data") and stop — never backfill with plausible-looking figures.
+- Name your source when it matters: "from the campaign data I just pulled…" vs "from the 30-day landing pages above…". A hedged "I don't have that yet" always beats a confident invented number.
+
+Only ask a human for what NO tool can reach: off-platform events (payments, site, stock, promos), business context, or a judgment call. Call the tools you need BEFORE writing your answer, then answer once.`;
 
 type Params = { params: Promise<{ id: string }> };
 const client = new Anthropic();
@@ -348,6 +355,7 @@ export async function POST(req: NextRequest, { params }: Params) {
         const loopMessages = messages.slice();
         const toolAcc = { id: account.id, googleAdsId: account.googleAdsId, organizationId: account.organizationId, currency: account.currency };
         let finalText = "";
+        const toolsUsed: string[] = [];
         const MAX_STEPS = 6;
 
         for (let step = 0; step < MAX_STEPS; step++) {
@@ -382,6 +390,7 @@ export async function POST(req: NextRequest, { params }: Params) {
           loopMessages.push({ role: "assistant", content: finalMsg.content });
           const results = [];
           for (const tu of toolUses) {
+            if (!toolsUsed.includes(tu.name)) toolsUsed.push(tu.name);
             let out: string;
             try { out = await runAgentTool(tu.name, (tu.input ?? {}) as Record<string, unknown>, toolAcc); }
             catch (e) { out = `Error running ${tu.name}: ${e instanceof Error ? e.message : String(e)}. Tell the team you couldn't fetch this.`; }
@@ -389,7 +398,11 @@ export async function POST(req: NextRequest, { params }: Params) {
           }
           loopMessages.push({ role: "user", content: results });
         }
-        // Persist the agent's message so the conversation is remembered.
+        // Surface which live tools actually ran, so a real pull is visible and a
+        // fabricated "I pulled…" (with no tools) is obvious.
+        if (toolsUsed.length) send(controller, { toolsUsed });
+        // Persist the agent's message so the conversation is remembered (clean —
+        // the tools-used indicator is live-only, not stored in the content).
         if (finalText.trim()) {
           await prisma.agentMessage.create({
             data: { accountId: id, role: "assistant", content: finalText.trim(), kind: isChat ? "chat" : "opener" },

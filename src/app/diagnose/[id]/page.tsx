@@ -111,7 +111,7 @@ function renderMarkdown(md: string): React.ReactNode {
 /** Consume the insight SSE stream, accumulating text and firing handlers. */
 async function consumeInsightStream(
   body: ReadableStream<Uint8Array>,
-  h: { onText: (acc: string) => void; onReset: () => void; onStatus: (s: string) => void; onError: (e: string) => void },
+  h: { onText: (acc: string) => void; onReset: () => void; onStatus: (s: string) => void; onError: (e: string) => void; onTools?: (t: string[]) => void },
 ): Promise<string> {
   const reader = body.getReader();
   const decoder = new TextDecoder();
@@ -127,10 +127,11 @@ async function consumeInsightStream(
       if (!line.startsWith("data:")) continue;
       const payload = line.slice(5).trim();
       if (!payload) continue;
-      let ev: { text?: string; error?: string; status?: string; reset?: boolean };
+      let ev: { text?: string; error?: string; status?: string; reset?: boolean; toolsUsed?: string[] };
       try { ev = JSON.parse(payload); } catch { continue; }
       if (ev.error) h.onError(ev.error);
       else if (ev.reset) { acc = ""; h.onReset(); }
+      else if (ev.toolsUsed) h.onTools?.(ev.toolsUsed);
       else if (ev.status) h.onStatus(ev.status);
       else if (ev.text) { acc += ev.text; h.onText(acc); }
     }
@@ -138,7 +139,15 @@ async function consumeInsightStream(
   return acc;
 }
 
-interface Msg { id?: string; role: "assistant" | "user"; content: string; kind?: string }
+interface Msg { id?: string; role: "assistant" | "user"; content: string; kind?: string; tools?: string[] }
+
+// Friendly labels for the live data tools, so a real pull is shown to the team.
+const TOOL_LABELS: Record<string, string> = {
+  get_impression_share: "impression share",
+  get_campaign_overview: "campaign structure",
+  get_search_terms: "search terms",
+  get_shopify_data: "Shopify orders",
+};
 
 // One-click follow-ups so the team can steer without typing.
 const PRESET_QUESTIONS = [
@@ -387,6 +396,13 @@ export default function DiagnosePage() {
           else if (s === "thinking") setInsightStatus("Thinking…");
           else setInsightStatus(s); // tool-use labels ("Checking impression share…")
         },
+        onTools: (t) => setThread(prev => {
+          const copy = prev.slice();
+          for (let i = copy.length - 1; i >= 0; i--) {
+            if (copy[i].role === "assistant") { copy[i] = { ...copy[i], tools: t }; break; }
+          }
+          return copy;
+        }),
         onError: (e) => setInsightErr(e),
       });
     } catch (e) {
@@ -816,6 +832,11 @@ export default function DiagnosePage() {
                         {m.content
                           ? renderMarkdown(m.content)
                           : <div style={{ fontSize: 12.5, color: "var(--text-3)", display: "flex", alignItems: "center", gap: 8 }}><Loader2 size={13} className="animate-spin" style={{ color: "var(--accent)" }} /> {insightStatus ?? "Reading…"}</div>}
+                        {m.tools && m.tools.length > 0 && (
+                          <div style={{ marginTop: 8, display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, color: "var(--accent)", background: "var(--accent-dim)", border: "1px solid color-mix(in srgb, var(--accent) 25%, var(--border))", borderRadius: 7, padding: "3px 9px" }} title="Live data this read actually pulled from Google Ads / Shopify">
+                            <CheckCircle2 size={12} /> Pulled live: {m.tools.map(t => TOOL_LABELS[t] ?? t).join(", ")}
+                          </div>
+                        )}
                       </div>
                     )
                   ))}
