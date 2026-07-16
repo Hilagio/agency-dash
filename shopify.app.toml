@@ -1,0 +1,34 @@
+# Shopify app configuration, kept in code so the technical setup isn't hand-clicked
+# in the dashboard. Push it with the Shopify CLI:
+#
+#   shopify app config link     # one-time: fills in client_id for THIS app
+#   shopify app deploy          # pushes this config as a new app version
+#
+# After deploy, the only things left in the Dev Dashboard are the App Store
+# LISTING content (introduction / details / features) and clicking Release —
+# those are marketing fields that only live in the dashboard.
+
+client_id = "REPLACE_VIA_shopify_app_config_link"
+name = "Ecomtrada Analytics"
+application_url = "https://agency-dash-production.up.railway.app"
+embedded = false
+
+[access_scopes]
+# Mirror this in the SHOPIFY_SCOPES env var on Railway so our OAuth request matches.
+scopes = "read_orders,read_products"
+use_legacy_install_flow = true
+
+[auth]
+redirect_urls = [
+  "https://agency-dash-production.up.railway.app/api/shopify/callback"
+]
+
+[webhooks]
+api_version = "2026-07"
+
+  # The three mandatory GDPR compliance webhooks — all handled by
+  # src/app/api/shopify/webhooks/route.ts (HMAC-verified).
+  [webhooks.privacy_compliance]
+  customer_data_request_url = "https://agency-dash-production.up.railway.app/api/shopify/webhooks"
+  customer_deletion_url     = "https://agency-dash-production.up.railway.app/api/shopify/webhooks"
+  shop_deletion_url         = "https://agency-dash-production.up.railway.app/api/shopify/webhooks"
