@@ -41,7 +41,9 @@ THE ONE UNBREAKABLE RULE — NEVER FABRICATE DATA. You have exactly two sources 
 - If a tool returns nothing, an error, or "not connected", say so plainly ("I couldn't pull the campaign data") and stop — never backfill with plausible-looking figures.
 - Name your source when it matters: "from the campaign data I just pulled…" vs "from the 30-day landing pages above…". A hedged "I don't have that yet" always beats a confident invented number.
 
-Before you ask a human about an off-platform event (a promo, a price or checkout change, a payment-provider switch, a stockout, a pause), CHECK get_slack_context first — the client or the team has often already said it in the channel. Only ask a human for what NO tool — including Slack — can reach: business context or a judgment call that needs their knowledge of the client. Call the tools you need BEFORE writing your answer, then answer once.`;
+Before you ask a human about an off-platform event (a promo, a price or checkout change, a payment-provider switch, a stockout, a pause), CHECK get_slack_context first — the client or the team has often already said it in the channel. Only ask a human for what NO tool — including Slack — can reach: business context or a judgment call that needs their knowledge of the client. Call the tools you need BEFORE writing your answer, then answer once.
+
+IF A "LIVE SNAPSHOT" BLOCK IS ALREADY IN THE CONTEXT, its campaign structure, impression share and change history were pulled seconds ago — use them directly and do NOT re-call get_campaign_overview / get_impression_share / get_change_history for the same window. Reach for a tool only for what the snapshot doesn't cover (search terms, Shopify, Slack) or a different look-back.`;
 
 const LEADGEN_NOTE = `
 
@@ -348,7 +350,33 @@ export async function POST(req: NextRequest, { params }: Params) {
           }).catch(() => null);
         }
 
-        const context = buildClientBlock(clientCtx) + buildContext(account.name, cur, diag, windows, pages, winners, changeRows);
+        // Ground the OPENER in live data BEFORE the model speaks: pull the
+        // essentials the nightly spine doesn't carry — current campaign
+        // structure & budgets, impression share (budget-limited?), and the
+        // dated change history (old→new diffs for correlation). This way the
+        // first message reasons from the account as it is right now, not just
+        // last night's aggregates. Chat follow-ups skip it (the model pulls on
+        // demand there); it's real data in context, so the no-fabrication rule
+        // is satisfied and we badge it as a genuine live pull.
+        const preToolsUsed: { name: string; ok: boolean }[] = [];
+        let liveSnapshot = "";
+        if (!isChat) {
+          send(controller, { status: "Pulling the latest from Google Ads…" });
+          const acc0 = { id: account.id, googleAdsId: account.googleAdsId, organizationId: account.organizationId, currency: account.currency };
+          const want = ["get_campaign_overview", "get_impression_share", "get_change_history"];
+          const pulls = await Promise.all(want.map(async name => {
+            try {
+              const out = await runAgentTool(name, { days: 30 }, acc0);
+              const ok = !/(not connected|^\s*no\b|error running|couldn'?t|no stored|no data)/i.test(out);
+              return { name, out, ok };
+            } catch { return null; }
+          }));
+          const good = (pulls.filter(Boolean) as { name: string; out: string; ok: boolean }[]).filter(p => p.ok);
+          for (const p of good) preToolsUsed.push({ name: p.name, ok: true });
+          if (good.length) liveSnapshot = `\n\nLIVE SNAPSHOT — pulled just now from Google Ads (treat as ground truth; cite these figures freely, they are real):\n${good.map(p => p.out).join("\n\n")}`;
+        }
+
+        const context = buildClientBlock(clientCtx) + buildContext(account.name, cur, diag, windows, pages, winners, changeRows) + liveSnapshot;
         const firstTurn = { role: "user" as const, content: `${context}\n\nGive the expert read.` };
         let messages: unknown[];
         let useChatSystem: boolean;
@@ -371,7 +399,9 @@ export async function POST(req: NextRequest, { params }: Params) {
         const loopMessages = messages.slice();
         const toolAcc = { id: account.id, googleAdsId: account.googleAdsId, organizationId: account.organizationId, currency: account.currency };
         let finalText = "";
-        const toolsUsed: { name: string; ok: boolean }[] = [];
+        // Seed with the up-front pulls so the opener's badge shows they were
+        // fetched live (the loop dedupes by name if the model pulls again).
+        const toolsUsed: { name: string; ok: boolean }[] = [...preToolsUsed];
         const MAX_STEPS = 6;
 
         for (let step = 0; step < MAX_STEPS; step++) {
