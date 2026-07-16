@@ -47,7 +47,7 @@ export async function GET(_req: Request, { params }: Params) {
   if (!ctx) return NextResponse.json({ error: "Not signed in." }, { status: 401 });
   const { id } = await params;
   try {
-    return await handle(id, ctx.orgId);
+    return await handle(id, ctx.orgId, ctx.userId);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error(`[diagnostics/account/${id}] failed:`, message, err);
@@ -56,7 +56,7 @@ export async function GET(_req: Request, { params }: Params) {
   }
 }
 
-async function handle(id: string, orgId: string) {
+async function handle(id: string, orgId: string, userId: string) {
   const account = await prisma.account.findFirst({
     where: { id, organizationId: orgId },
     select: {
@@ -211,6 +211,8 @@ async function handle(id: string, orgId: string) {
   // Slack: green = a channel is linked to this account; yellow = the org has a
   // Slack bot but no channel is linked here yet (linkable in one click);
   // red = no Slack bot connected for the org at all.
+  // Is this account on the current user's favourites (per-user "my accounts")?
+  const watched = !!(await prisma.accountWatch.findFirst({ where: { userId, accountId: id }, select: { id: true } }));
   const slackConfigured = !!(await prisma.slackConnection.findUnique({ where: { organizationId: orgId }, select: { id: true } }));
   const slackStatus = account.slackChannelId ? "green" : slackConfigured ? "yellow" : "red";
   // Shopify: green via a live connection, or yellow via a manual CSV upload
@@ -258,5 +260,5 @@ async function handle(id: string, orgId: string) {
     setBy: account.trackingSetBy ?? null,
   };
 
-  return NextResponse.json({ diagnosis, windows, trend, shopify, connections, products, productPages, wins, tracking, hasData: !!diag });
+  return NextResponse.json({ diagnosis, windows, trend, shopify, connections, products, productPages, wins, tracking, watched, hasData: !!diag });
 }
