@@ -20,7 +20,6 @@ import { ingestAccountOrders } from "@/lib/diagnostics/orders";
 import { computeAccountSignals } from "@/lib/diagnostics/run-signals";
 import { ppcOsMcp, PPC_OS_SYSTEM_NOTE } from "@/lib/integrations/ppc-os";
 import { AGENT_TOOLS, runAgentTool, toolStatusLabel } from "@/lib/diagnostics/agent-tools";
-import { AGENCY_PHILOSOPHY } from "@/lib/agencyPhilosophy";
 import type { Signal } from "@/lib/diagnostics/signals";
 
 export const dynamic = "force-dynamic";
@@ -395,12 +394,7 @@ export async function POST(req: NextRequest, { params }: Params) {
         // campaign structure, search terms, Shopify) — we execute them and feed
         // the results back until it produces its final answer. Pre-tool narration
         // ("let me check…") is reset away; only the final text is shown/persisted.
-        // The agency's own operating doctrine — how THIS team bids, structures,
-        // segments (ProductHero labels), finds the governing bottleneck, and
-        // reads signal combinations. This is what makes the agent reason like
-        // our team, not a generic Google Ads bot; the PPC OS note points at the
-        // external methodology, this is our house playbook.
-        const sysPrompt = (useChatSystem ? SYSTEM_CHAT : SYSTEM) + "\n\n" + AGENCY_PHILOSOPHY + PPC_OS_SYSTEM_NOTE + AGENT_TOOLS_NOTE + LEADGEN_NOTE + trackingDirective;
+        const sysPrompt = (useChatSystem ? SYSTEM_CHAT : SYSTEM) + PPC_OS_SYSTEM_NOTE + AGENT_TOOLS_NOTE + LEADGEN_NOTE + trackingDirective;
         const allTools = [...(ppc.tools ?? []), ...AGENT_TOOLS] as Parameters<typeof client.beta.messages.stream>[0]["tools"];
         const loopMessages = messages.slice();
         const toolAcc = { id: account.id, googleAdsId: account.googleAdsId, organizationId: account.organizationId, currency: account.currency };
