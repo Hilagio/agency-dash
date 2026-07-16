@@ -7,6 +7,7 @@
  * onto every account or pushing doctrine-driven conclusions the data doesn't back.
  */
 import { AGENCY_PHILOSOPHY } from "@/lib/agencyPhilosophy";
+import { ECOMTRADA_WAY_OF_WORK } from "@/lib/wayOfWork";
 
 interface Section { title: string; body: string }
 
@@ -26,7 +27,10 @@ function parseSections(doc: string): Section[] {
   return out;
 }
 
-const SECTIONS = parseSections(AGENCY_PHILOSOPHY);
+// The Ecomtrada Way of Work is our canonical, principle-first thinking; the
+// legacy AGENCY_PHILOSOPHY adds the granular pattern library. Index both so a
+// trigger can pull whichever section fits — Way of Work leads (listed first).
+const SECTIONS = [...parseSections(ECOMTRADA_WAY_OF_WORK), ...parseSections(AGENCY_PHILOSOPHY)];
 
 const STOP = new Set(["the", "and", "for", "with", "that", "this", "what", "when", "how", "why", "our", "are", "does", "did", "has", "have", "was", "were", "you", "your", "about", "into", "from", "not", "but", "should", "would", "could", "a", "an", "of", "to", "in", "is", "it", "on", "or", "be", "we", "i"]);
 const tokenize = (s: string) => s.toLowerCase().match(/[a-z][a-z0-9]{2,}/g)?.filter(w => !STOP.has(w)) ?? [];
