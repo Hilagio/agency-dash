@@ -41,6 +41,19 @@ THE ONE UNBREAKABLE RULE — NEVER FABRICATE DATA. You have exactly two sources 
 
 Only ask a human for what NO tool can reach: off-platform events (payments, site, stock, promos), business context, or a judgment call. Call the tools you need BEFORE writing your answer, then answer once.`;
 
+const LEADGEN_NOTE = `
+
+LEAD-GEN / CPA ACCOUNTS — if the account's goal is LEADS (a cost-per-lead / CPA target, not ecommerce ROAS), diagnose a too-high CPA with this exact tree. It runs on your live tools (get_impression_share, get_search_terms, get_campaign_overview) — CALL them, don't guess:
+1. IMPRESSION SHARE. Under ~80% → visibility problem, you're not showing on enough of the searches you bid on → go to 2. 80%+ → go to 4.
+2. IS LOST (BUDGET) vs IS LOST (RANK). Budget bigger → the budget runs out before the day ends: raise the daily budget by the % you're losing, or cut the target CPA so the same money buys more clicks (30% lost → cut tCPA 20-30%; 50% → 40-50%). Rank bigger → go to 3.
+3. QUALITY SCORE (expected CTR, ad relevance, landing-page experience). All three Below Average → Ad Rank is too low to enter the auction: rewrite 2-3 RSAs per ad group and fix landing-page relevance. Average or better → nothing is broken; you're just bidding into keywords further from core intent (what rank loss looks like when you scale) — tighten match types + negatives for efficiency, but leave it for volume.
+4. CTR vs that campaign's OWN normal. Below normal → engagement problem (they see the ad, don't click) → go to 5. At or above → go to 7.
+5. ABSOLUTE TOP IS. Low → you're sitting at the bottom of the page: raise bids on the terms that convert. Healthy → go to 6.
+6. SEARCH TERM REPORT (get_search_terms). Wrong queries → build negatives in three tiers (universal blockers, campaign filters, ad-group sculpting) — on a takeover this cut CPA 40% in 15 days, the fastest win. Right queries but nobody clicks → the ad is the problem: rewrite the RSAs, stop pinning headlines, build out the ad assets (there are 11, most accounts run 4).
+7. CONVERSION RATE. Holding steady while CPA is high anyway → go to 8. Dropped → go to 9.
+8. IS LOST (BUDGET), AGAIN — in audits this is where a "conversion problem" turns out to be a budget problem; THE MOST-MISSED cause. Above 0% on tCPA/tROAS → budget loss is inflating CPCs: $5,000 at a $5 CPC buys 1,000 clicks → at 10% CVR, 100 conversions at $50 CPA; halve the target CPA and the same $5,000 buys 2,000 clicks at $2.50 → 200 conversions at $25 CPA, at the SAME conversion rate. At 0% → go to 9.
+9. LANDING PAGE RATE, THEN LEAD QUALITY. Landing-page rate fell → get a page test running and keep one running. Held but the leads are junk → you're feeding Google the wrong signal: move the primary conversion down the funnel (qualified lead or booked call), pass it back with the GCLID, and retract spam within 24 hours.`;
+
 type Params = { params: Promise<{ id: string }> };
 const client = new Anthropic();
 
@@ -350,7 +363,7 @@ export async function POST(req: NextRequest, { params }: Params) {
         // campaign structure, search terms, Shopify) — we execute them and feed
         // the results back until it produces its final answer. Pre-tool narration
         // ("let me check…") is reset away; only the final text is shown/persisted.
-        const sysPrompt = (useChatSystem ? SYSTEM_CHAT : SYSTEM) + PPC_OS_SYSTEM_NOTE + AGENT_TOOLS_NOTE + trackingDirective;
+        const sysPrompt = (useChatSystem ? SYSTEM_CHAT : SYSTEM) + PPC_OS_SYSTEM_NOTE + AGENT_TOOLS_NOTE + LEADGEN_NOTE + trackingDirective;
         const allTools = [...(ppc.tools ?? []), ...AGENT_TOOLS] as Parameters<typeof client.beta.messages.stream>[0]["tools"];
         const loopMessages = messages.slice();
         const toolAcc = { id: account.id, googleAdsId: account.googleAdsId, organizationId: account.organizationId, currency: account.currency };
