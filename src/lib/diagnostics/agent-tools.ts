@@ -5,10 +5,12 @@
  * asks a human when the data genuinely isn't reachable through these tools.
  */
 import { prisma } from "@/lib/db";
-import { fetchImpressionShare, fetchCampaignOverview, fetchChangeHistory } from "@/lib/integrations/google-ads";
+import { fetchImpressionShare, fetchCampaignOverview, fetchChangeHistory, fetchDemographics } from "@/lib/integrations/google-ads";
 import { fetchSlackMessages, formatSlackForContext } from "@/lib/integrations/slack";
-import { getMerchantCenterIds, fetchMerchantCenterHealth } from "@/lib/integrations/merchant-center";
+import { getMerchantCenterIds, fetchMerchantCenterHealth, fetchPriceCompetitiveness } from "@/lib/integrations/merchant-center";
 import { lookupPlaybook } from "@/lib/diagnostics/agency-playbook";
+
+const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
 
 export interface AgentAccount { id: string; googleAdsId: string; organizationId: string; currency: string; merchantCenterId?: string | null }
 
@@ -32,6 +34,16 @@ export const AGENT_TOOLS = [
     name: "get_campaign_overview",
     description: "Live from Google Ads: each campaign's type (Search/Shopping/Performance Max/…), status, daily budget, spend, conversions and value over the last N days. Use to see the account structure — e.g. whether there's a feed-only Performance Max, which campaigns carry the spend, and whether budgets are the constraint.",
     input_schema: { type: "object", properties: { days: { type: "number", description: "Look-back window in days (default 30)." } } },
+  },
+  {
+    name: "get_segments",
+    description: "Segment the account so you're not reading a blended average (our doctrine: NEVER trust a blended number). Returns DEVICE split (spend / CVR / ROAS per device — a mobile CVR far below desktop is a mobile-UX/checkout tell) and BRAND vs NON-BRAND split (brand traffic inflates ROAS; growth performance is the non-brand number). Use whenever a blended metric looks fine but you suspect it's hiding a problem, or before judging real performance / scaling. Brand split comes from Search terms, so it's directional on PMax/Shopping-led accounts.",
+    input_schema: { type: "object", properties: { days: { type: "number", description: "Look-back for the brand split (default 30). Device is a fixed 30d." } } },
+  },
+  {
+    name: "get_price_competitiveness",
+    description: "Live from Merchant Center: each product's price vs the market BENCHMARK (how far above/below competitors). This is the key check when clicks are healthy but conversions are weak — if the products taking the clicks are priced well above market, PRICING is the constraint, not the ads, and it's a client conversation, not a bid change. Needs a linked Merchant Center account and the 'content' scope.",
+    input_schema: { type: "object", properties: {} },
   },
   {
     name: "get_search_terms",
@@ -69,6 +81,8 @@ const LABELS: Record<string, string> = {
   run_healthcheck: "Running the fundamentals check…",
   get_impression_share: "Checking impression share in Google Ads…",
   get_campaign_overview: "Pulling the campaign structure from Google Ads…",
+  get_segments: "Segmenting by device and brand vs non-brand…",
+  get_price_competitiveness: "Checking product prices vs the market…",
   get_search_terms: "Reading the search terms…",
   get_shopify_data: "Checking the Shopify orders…",
   get_change_history: "Pulling the account change history from Google Ads…",
@@ -317,6 +331,63 @@ export async function runAgentTool(name: string, input: Record<string, unknown>,
     const recent = msgs.slice(-60);
     const block = formatSlackForContext(recent, acct.slackChannelName ?? "channel");
     return block.length > 6000 ? block.slice(block.length - 6000) : block;
+  }
+
+  if (name === "get_segments") {
+    const acct = await prisma.account.findUnique({ where: { id: acc.id }, select: { name: true } });
+    const out: string[] = [];
+    // Device split (30d, from Google Ads demographics).
+    try {
+      const demo = await fetchDemographics(acc.googleAdsId, acc.organizationId);
+      const dev = demo.filter(d => d.dimension === "device" && (d.clicks > 0 || d.costMicros > 0));
+      if (dev.length) {
+        const lines = dev.sort((a, b) => b.costMicros - a.costMicros).map(d => {
+          const cost = d.costMicros / 1_000_000;
+          const cvr = d.clicks > 0 ? (d.conversions / d.clicks) * 100 : 0;
+          const roas = cost > 0 ? d.convValue / cost : 0;
+          return `- ${d.label}: spend ${money(cost)}, CVR ${cvr.toFixed(2)}%, ROAS ${roas.toFixed(2)}, ${Math.round(d.conversions)} conv`;
+        });
+        out.push(`Device (30d) — a mobile CVR far below desktop points at mobile UX/checkout, not the ads:\n${lines.join("\n")}`);
+      }
+    } catch { /* device best-effort */ }
+    // Brand vs non-brand (from stored search terms).
+    try {
+      const token = norm(acct?.name ?? "");
+      if (token.length >= 4) {
+        const start = new Date(); start.setUTCDate(start.getUTCDate() - days);
+        const rows = await prisma.searchTermDaily.findMany({
+          where: { accountId: acc.id, date: { gte: start.toISOString().slice(0, 10) } },
+          select: { searchTerm: true, clicks: true, cost: true, conversions: true, conversionValue: true },
+        });
+        if (rows.length) {
+          const b = { clicks: 0, cost: 0, conv: 0, val: 0 }, nb = { clicks: 0, cost: 0, conv: 0, val: 0 };
+          for (const r of rows) {
+            const t = norm(r.searchTerm).includes(token) ? b : nb;
+            t.clicks += r.clicks; t.cost += r.cost; t.conv += r.conversions; t.val += r.conversionValue;
+          }
+          const fmt = (x: typeof b) => `spend ${money(x.cost)}, CVR ${x.clicks > 0 ? ((x.conv / x.clicks) * 100).toFixed(2) : "—"}%, ROAS ${x.cost > 0 ? (x.val / x.cost).toFixed(2) : "—"}`;
+          out.push(`Brand vs non-brand (search terms, ${days}d — brand inflates blended ROAS; the non-brand number is your real growth performance):\n- Brand: ${fmt(b)}\n- Non-brand: ${fmt(nb)}\n(Only Search queries; PMax/Shopping are limited by Google, so treat as directional.)`);
+        }
+      }
+    } catch { /* brand split best-effort */ }
+    if (!out.length) return "No segment data available — no device rows returned and no stored search terms to split brand vs non-brand for this account.";
+    return out.join("\n\n");
+  }
+
+  if (name === "get_price_competitiveness") {
+    const ids = await getMerchantCenterIds(acc.googleAdsId, acc.organizationId, acc.merchantCenterId ?? null);
+    if (!ids.length) return "No Merchant Center account is linked, so there's no market price benchmark to compare against.";
+    const res = await fetchPriceCompetitiveness(ids[0], acc.organizationId);
+    if (res.scopeMissing) return "Couldn't read price competitiveness — the Google login is missing the 'content' scope. Reconnect Google to grant it.";
+    if (res.gcpNotRegistered) return `Price competitiveness needs the Merchant API project registered${res.gcpProjectId ? ` (GCP ${res.gcpProjectId})` : ""}; until then it can't be pulled.`;
+    const rows = res.products;
+    if (!rows.length) return "No price-benchmark data returned for this account's products (Merchant Center may not have competitor benchmarks for them yet).";
+    const wellAbove = rows.filter(p => p.status === "well_above").length;
+    const above = rows.filter(p => p.status === "above").length;
+    const belowOrOk = rows.filter(p => p.status === "below" || p.status === "competitive").length;
+    const worst = rows.filter(p => p.status === "above" || p.status === "well_above").sort((a, b) => b.priceDiffPercent - a.priceDiffPercent).slice(0, 15);
+    const lines = worst.map(p => `- ${p.title || p.itemId}: ${p.priceDiffPercent > 0 ? "+" : ""}${p.priceDiffPercent}% vs market (${p.status.replace("_", " ")})`);
+    return `Price vs market (${rows.length} products with benchmarks): ${wellAbove} well above, ${above} above, ${belowOrOk} competitive/below.\n${worst.length ? `Most overpriced — if these are the products taking the clicks, PRICING is the constraint (a client conversation, not a bid change):\n${lines.join("\n")}` : "Nothing priced materially above market — pricing isn't the drag here."}`;
   }
 
   if (name === "get_search_terms") {
