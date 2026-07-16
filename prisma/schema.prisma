@@ -199,6 +199,7 @@ model Account {
   shopify          ShopifyConnection?
   ordersDaily      OrderDaily[]
   shopifyUploads   ShopifyUpload[]
+  pageAudits       PageAudit[]
 
   // Product-level (ad performance vs real sales, + catalog)
   productAdsDaily   ProductAdsDaily[]
@@ -396,6 +397,30 @@ model ShopifyUpload {
   @@unique([accountId, kind])
   @@index([accountId])
 }
+// Pre-flight page audit: 12 personas judge the landing/product page (via a real
+// browser render) before spend starts — did they understand the offer, would
+// they buy/submit — plus a ranked list of fixes. The report renders in house style.
+model PageAudit {
+  id         String   @id @default(cuid())
+  accountId  String
+  account    Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  url        String
+  pageType   String   // "ecom" | "leadgen"
+  renderMode String   @default("fetch") // "browser" | "fetch" (fidelity of the render)
+  score      Int      @default(0)        // conversion confidence /100
+  understand Int      @default(0)        // personas who grasped the offer
+  submit     Int      @default(0)        // personas who would buy / submit
+  total      Int      @default(0)        // personas run
+  summary    String   @default("")
+  personas   String   @default("[]")     // JSON: per-persona verdicts
+  fixes      String   @default("[]")     // JSON: ranked fixes
+  html       String   @default("")       // rendered house-style report
+  createdBy  String?
+  createdAt  DateTime @default(now())
+
+  @@index([accountId, createdAt])
+}
+
 model OrderDaily {
   id        String @id @default(cuid())
   accountId String

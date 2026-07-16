@@ -14,7 +14,7 @@ import Link from "next/link";
 import {
   ArrowLeft, ArrowUpRight, Loader2, CheckCircle2, AlertTriangle, HelpCircle,
   ShieldCheck, Sprout, XCircle, MinusCircle, TrendingUp, ShoppingBag, RefreshCw, ChevronRight, Sparkles,
-  Paperclip, X, FileText, Download, Trash2, Plug, Star,
+  Paperclip, X, FileText, Download, Trash2, Plug, Star, Gauge,
 } from "lucide-react";
 
 interface Attachment { name: string; mediaType: string; data: string; kind: "image" | "document" | "text" }
@@ -374,6 +374,15 @@ export default function DiagnosePage() {
   const [error, setError] = useState<string | null>(null);
   const [watched, setWatched] = useState(false);
   const [watchBusy, setWatchBusy] = useState(false);
+  // Pre-flight page audit (12 personas).
+  const [auditOpen, setAuditOpen] = useState(false);
+  const [auditUrl, setAuditUrl] = useState("");
+  const [auditType, setAuditType] = useState<"auto" | "ecom" | "leadgen">("auto");
+  const [auditRunning, setAuditRunning] = useState(false);
+  const [auditStatus, setAuditStatus] = useState<string[]>([]);
+  const [auditHtml, setAuditHtml] = useState<string | null>(null);
+  const [auditErr, setAuditErr] = useState<string | null>(null);
+  const [auditList, setAuditList] = useState<{ id: string; url: string; score: number; total: number; submit: number; createdAt: string; renderMode: string }[]>([]);
   const [shopDomain, setShopDomain] = useState("");
   const [syncing, setSyncing] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -685,6 +694,42 @@ export default function DiagnosePage() {
     finally { setCsvBusy(false); if (csvInputRef.current) csvInputRef.current.value = ""; }
   }
 
+  async function loadAudits() {
+    try { const r = await fetch(`/api/diagnostics/account/${id}/audit-page`, { credentials: "include" }); if (r.ok) { const j = await r.json(); setAuditList(j.audits ?? []); } } catch { /* ignore */ }
+  }
+  async function openPastAudit(auditId: string) {
+    const a = await fetch(`/api/diagnostics/account/${id}/audit-page?auditId=${auditId}`, { credentials: "include" }).then(r => r.ok ? r.json() : null).catch(() => null);
+    if (a?.audit?.html) { setAuditHtml(a.audit.html); setAuditErr(null); }
+  }
+  async function runAudit() {
+    setAuditRunning(true); setAuditStatus([]); setAuditHtml(null); setAuditErr(null);
+    try {
+      const r = await fetch(`/api/diagnostics/account/${id}/audit-page`, {
+        method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: auditUrl.trim() || undefined, pageType: auditType === "auto" ? undefined : auditType }),
+      });
+      if (!r.ok || !r.body) { const j = await r.json().catch(() => ({})); setAuditErr(j.error ?? "Couldn't start the audit."); setAuditRunning(false); return; }
+      const reader = r.body.getReader(); const dec = new TextDecoder(); let buf = "";
+      for (;;) {
+        const { value, done } = await reader.read(); if (done) break;
+        buf += dec.decode(value, { stream: true }); const parts = buf.split("\n\n"); buf = parts.pop() ?? "";
+        for (const part of parts) {
+          const line = part.trim(); if (!line.startsWith("data:")) continue;
+          let ev: { status?: string; error?: string; done?: boolean; auditId?: string; renderError?: string };
+          try { ev = JSON.parse(line.slice(5).trim()); } catch { continue; }
+          if (ev.error) setAuditErr(ev.error);
+          else if (ev.status) setAuditStatus(s => [...s.slice(-6), ev.status!]);
+          else if (ev.done) {
+            if (ev.renderError) setAuditErr(`Rendered with reduced fidelity: ${ev.renderError}`);
+            if (ev.auditId) { const a = await fetch(`/api/diagnostics/account/${id}/audit-page?auditId=${ev.auditId}`, { credentials: "include" }).then(r => r.ok ? r.json() : null).catch(() => null); if (a?.audit?.html) setAuditHtml(a.audit.html); }
+            loadAudits();
+          }
+        }
+      }
+    } catch { setAuditErr("Audit failed."); }
+    finally { setAuditRunning(false); }
+  }
+
   function scrollToConn() { connRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }); }
   // Turn a "No data — not connected" tool result into a one-click connect action
   // right inside the conversation, so a missing source is fixable on the spot.
@@ -810,6 +855,13 @@ export default function DiagnosePage() {
           }}>
             <Sparkles size={13} /> 90-day plan
           </Link>
+          <button onClick={() => { setAuditOpen(o => !o); if (!auditOpen) loadAudits(); }} title="Test the landing/product page with 12 personas before spending" style={{
+            display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, cursor: "pointer",
+            color: auditOpen ? "var(--accent)" : "var(--text-3)", border: `1px solid ${auditOpen ? "color-mix(in srgb, var(--accent) 35%, var(--border))" : "var(--border-2)"}`,
+            background: auditOpen ? "var(--accent-dim)" : "var(--surface)", padding: "7px 13px", borderRadius: 8,
+          }}>
+            <Gauge size={13} /> Audit page
+          </button>
         </div>
       </nav>
       {refreshMsg && (
@@ -1029,6 +1081,46 @@ export default function DiagnosePage() {
                         </div>
                       </>
                     )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Page audit — 12 personas judge the page before spend */}
+            {auditOpen && (
+              <div style={{ ...card, padding: "15px 17px", marginTop: 14 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 4 }}>
+                  <Gauge size={16} style={{ color: "var(--accent)" }} />
+                  <span style={{ fontSize: 13.5, fontWeight: 700 }}>Page audit</span>
+                  <span style={{ fontSize: 11, color: "var(--text-muted)" }}>12 personas, before you spend</span>
+                </div>
+                <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12 }}>Twelve visitors judge the landing/product page on their own — did they understand the offer, would they buy/submit — then a ranked list of fixes. Uses the client context + the account&rsquo;s search-term intent.</div>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginBottom: 11 }}>
+                  <input value={auditUrl} onChange={e => setAuditUrl(e.target.value)} placeholder="Page URL (blank = the account's landing page)" style={{ flex: 1, minWidth: 220, fontSize: 12.5, color: "var(--text)", background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 8, padding: "8px 11px", fontFamily: "inherit" }} />
+                  <select value={auditType} onChange={e => setAuditType(e.target.value as "auto" | "ecom" | "leadgen")} style={{ fontSize: 12.5, color: "var(--text)", background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 8, padding: "8px 10px" }}>
+                    <option value="auto">Auto</option><option value="ecom">Product page</option><option value="leadgen">Landing page</option>
+                  </select>
+                  <button onClick={runAudit} disabled={auditRunning} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: "#fff", background: "var(--btn-primary, var(--accent))", border: "none", borderRadius: 8, padding: "8px 15px", cursor: auditRunning ? "default" : "pointer" }}>
+                    {auditRunning ? <Loader2 size={13} className="animate-spin" /> : <Gauge size={13} />} {auditRunning ? "Running…" : "Run audit"}
+                  </button>
+                </div>
+                {auditRunning && auditStatus.length > 0 && (
+                  <div style={{ fontSize: 12, color: "var(--text-3)", background: "var(--surface-2)", borderRadius: 8, padding: "9px 11px", marginBottom: 11, display: "flex", flexDirection: "column", gap: 3 }}>
+                    {auditStatus.map((s, i) => <span key={i} style={{ opacity: i === auditStatus.length - 1 ? 1 : 0.55 }}>{s}</span>)}
+                  </div>
+                )}
+                {auditErr && <div style={{ fontSize: 12, color: "var(--warn, #d98a00)", marginBottom: 11 }}>{auditErr}</div>}
+                {auditHtml && (
+                  <iframe title="Page audit report" srcDoc={auditHtml} style={{ width: "100%", height: "72vh", border: "1px solid var(--border-2)", borderRadius: 10, background: "#f4f6f8" }} />
+                )}
+                {!auditRunning && auditList.length > 0 && (
+                  <div style={{ marginTop: 12, display: "flex", flexWrap: "wrap", gap: 7 }}>
+                    <span style={{ fontSize: 11, color: "var(--text-muted)", alignSelf: "center" }}>Past audits:</span>
+                    {auditList.map(a => (
+                      <button key={a.id} onClick={() => openPastAudit(a.id)} style={{ fontSize: 11.5, fontWeight: 600, color: "var(--text-2)", background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 999, padding: "4px 11px", cursor: "pointer" }}>
+                        {a.score}/100 · {a.submit}/{a.total} · {new Date(a.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                      </button>
+                    ))}
                   </div>
                 )}
               </div>
