@@ -198,6 +198,7 @@ model Account {
   // Commerce (Shopify order feed — §4.3 reconciliation, POAS)
   shopify          ShopifyConnection?
   ordersDaily      OrderDaily[]
+  shopifyUploads   ShopifyUpload[]
 
   // Product-level (ad performance vs real sales, + catalog)
   productAdsDaily   ProductAdsDaily[]
@@ -376,6 +377,25 @@ model ShopifyConnection {
   updatedAt   DateTime  @updatedAt
 }
 
+// Freshness mark for MANUALLY uploaded Shopify data (CSV exports), per account
+// per kind. The data itself lives in OrderDaily / ProductSalesDaily; this records
+// WHEN it was uploaded and the date range it covers, so the agent keeps using it
+// until it's stale — and always states how old it is instead of implying it's live.
+model ShopifyUpload {
+  id         String   @id @default(cuid())
+  accountId  String
+  account    Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  kind       String   // "daily_sales" | "product_sales" | "inventory"
+  source     String   @default("csv")
+  uploadedAt DateTime @default(now())
+  uploadedBy String?  // email of the team member who uploaded
+  rows       Int      @default(0)
+  rangeStart String?  // earliest date present in the file (YYYY-MM-DD)
+  rangeEnd   String?  // latest date present in the file (YYYY-MM-DD)
+
+  @@unique([accountId, kind])
+  @@index([accountId])
+}
 model OrderDaily {
   id        String @id @default(cuid())
   accountId String

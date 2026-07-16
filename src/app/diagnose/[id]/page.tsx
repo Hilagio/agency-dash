@@ -14,12 +14,15 @@ import Link from "next/link";
 import {
   ArrowLeft, ArrowUpRight, Loader2, CheckCircle2, AlertTriangle, HelpCircle,
   ShieldCheck, Sprout, XCircle, MinusCircle, TrendingUp, ShoppingBag, RefreshCw, ChevronRight, Sparkles,
-  Paperclip, X, FileText, Download, Trash2,
+  Paperclip, X, FileText, Download, Trash2, Plug,
 } from "lucide-react";
 
 interface Attachment { name: string; mediaType: string; data: string; kind: "image" | "document" | "text" }
 interface DocMeta { id: string; title: string; docType: string; format: "doc" | "deck"; language: string; filename: string; createdBy: string | null; createdAt: string }
-interface Connections { googleAds: string; merchantCenter: string; shopify: string; context: string; contextFilled: number; contextTotal: number }
+interface Connections { googleAds: string; merchantCenter: string; shopify: string; shopifySource: string | null; shopifyUploadedAt: string | null; shopifyCsvRange: { start: string | null; end: string | null } | null; slack: string; slackConfigured: boolean; slackChannelName: string | null; context: string; contextFilled: number; contextTotal: number }
+interface SlackChannel { id: string; name: string; isPrivate: boolean; memberCount?: number }
+interface VitalCheck { key: string; label: string; status: "ok" | "warn" | "fail" | "na"; detail: string }
+interface Vitals { checks: VitalCheck[]; governing: string | null; summary: string }
 
 // The context we ask the team to fill so the agent knows the client — the things
 // the data can't tell it. Keys map to the ClientContext / Typeform fields.
@@ -66,12 +69,86 @@ function renderInline(text: string): React.ReactNode {
  * actually emits — `**The read**` / `**1. Likely why**` section headers, `---`
  * rules, `#` headings, `-`/`*`/`1.` bullets — instead of dumping raw asterisks.
  */
+// Pull the first number out of a cell ("€4,200" → 4200, "41%" → 41, "3.1 → 1.9"
+// → 3.1) so numeric columns can get a proportional trend bar. null = not numeric.
+function cellNum(s: string): number | null {
+  const m = s.replace(/,/g, "").match(/-?\d+(?:\.\d+)?/);
+  return m ? parseFloat(m[0]) : null;
+}
+// A table row just needs a pipe; detection is gated on the NEXT line being a
+// separator, so models that drop the outer pipes still render as a table.
+const isTableRow = (l: string) => l.includes("|");
+const isTableSep = (l: string) => { const t = l.trim(); return /^[|\s:-]+$/.test(t) && t.includes("-") && t.includes("|"); };
+const splitCells = (l: string) => l.trim().replace(/^\||\|$/g, "").split("|").map(c => c.trim());
+
+/** Render a GitHub-style markdown table with a proportional mini-bar behind each
+ * numeric column — the bar is scaled from the real cell values, so it can never
+ * show anything the numbers don't. */
+function renderTable(header: string[], rows: string[][], key: number): React.ReactNode {
+  const cols = header.length;
+  // A column is "numeric" (gets bars, right-aligned) if most of its cells parse.
+  const colMax: (number | null)[] = [];
+  const colNumeric: boolean[] = [];
+  for (let c = 0; c < cols; c++) {
+    const nums = rows.map(r => cellNum(r[c] ?? "")).filter((n): n is number => n != null);
+    colNumeric[c] = nums.length >= Math.max(1, Math.ceil(rows.length / 2));
+    colMax[c] = nums.length ? Math.max(...nums.map(Math.abs)) : null;
+  }
+  return (
+    <div key={key} style={{ overflowX: "auto", margin: "10px 0 12px" }}>
+      <table style={{ borderCollapse: "collapse", width: "100%", fontSize: 12.5 }}>
+        <thead>
+          <tr>
+            {header.map((h, c) => (
+              <th key={c} style={{ textAlign: colNumeric[c] ? "right" : "left", padding: "5px 10px", borderBottom: "1px solid var(--border-2)", color: "var(--text-2)", fontWeight: 600, whiteSpace: "nowrap" }}>{renderInline(h)}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, ri) => (
+            <tr key={ri}>
+              {Array.from({ length: cols }).map((_, c) => {
+                const cell = r[c] ?? "";
+                const val = colNumeric[c] ? cellNum(cell) : null;
+                const max = colMax[c];
+                const w = val != null && max && max > 0 ? Math.max(2, Math.round((Math.abs(val) / max) * 100)) : 0;
+                return (
+                  <td key={c} style={{ padding: "5px 10px", borderBottom: "1px solid var(--border-3, var(--border-2))", textAlign: colNumeric[c] ? "right" : "left", verticalAlign: "middle", color: "var(--text)", whiteSpace: "nowrap" }}>
+                    <span>{renderInline(cell)}</span>
+                    {w > 0 && (
+                      <span style={{ display: "block", height: 3, marginTop: 3, borderRadius: 2, background: "var(--accent)", opacity: 0.55, width: `${w}%`, marginLeft: "auto" }} />
+                    )}
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function renderMarkdown(md: string): React.ReactNode {
   const blocks: React.ReactNode[] = [];
   let k = 0;
-  for (const raw of md.split("\n")) {
+  const lines = md.split("\n");
+  for (let i = 0; i < lines.length; i++) {
+    const raw = lines[i];
     const line = raw.trim();
     if (!line) continue;
+    // Table: a header row, a |---|---| separator, then body rows.
+    if (isTableRow(line) && i + 1 < lines.length && isTableSep(lines[i + 1])) {
+      const header = splitCells(line);
+      const rows: string[][] = [];
+      let j = i + 2;
+      for (; j < lines.length && isTableRow(lines[j]) && !isTableSep(lines[j]); j++) {
+        rows.push(splitCells(lines[j]));
+      }
+      blocks.push(renderTable(header, rows, k++));
+      i = j - 1;
+      continue;
+    }
     // Horizontal rule (---, ***, ___, or a stray --).
     if (/^([-*_])\1+$/.test(line) || line === "--") {
       blocks.push(<hr key={k++} style={{ border: "none", borderTop: "1px solid var(--border-2)", margin: "13px 0" }} />);
@@ -143,11 +220,23 @@ async function consumeInsightStream(
 interface Msg { id?: string; role: "assistant" | "user"; content: string; kind?: string; tools?: { name: string; ok: boolean }[] }
 
 // Friendly labels for the live data tools, so a real pull is shown to the team.
+// "3d ago" / "today" — for showing how fresh an uploaded CSV is.
+function agoLabel(iso: string | null): string {
+  if (!iso) return "";
+  const d = Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
+  return d <= 0 ? "today" : d === 1 ? "1d ago" : `${d}d ago`;
+}
+
 const TOOL_LABELS: Record<string, string> = {
+  run_healthcheck: "fundamentals check",
   get_impression_share: "impression share",
   get_campaign_overview: "campaign structure",
+  get_change_history: "change history",
+  get_merchant_center_status: "Merchant Center feed health",
   get_search_terms: "search terms",
   get_shopify_data: "Shopify orders",
+  get_slack_context: "client Slack channel",
+  consult_playbook: "agency playbook",
 };
 
 // One-click follow-ups so the team can steer without typing.
@@ -222,10 +311,24 @@ export default function DiagnosePage() {
   const [trend, setTrend] = useState<Trend | null>(null);
   const [shopify, setShopify] = useState<ShopifyStatus | null>(null);
   const [connections, setConnections] = useState<Connections | null>(null);
+  const [vitals, setVitals] = useState<Vitals | null>(null);
+  const [vitalsLoading, setVitalsLoading] = useState(true);
+  const [vitalsOpen, setVitalsOpen] = useState<string | null>(null);
   const [ctxOpen, setCtxOpen] = useState(false);
   const [ctxValues, setCtxValues] = useState<Record<string, string>>({});
   const [ctxLoading, setCtxLoading] = useState(false);
   const [ctxSaving, setCtxSaving] = useState(false);
+  // Inline Slack-channel linking — connect the client's channel without leaving the chat.
+  const [slackOpen, setSlackOpen] = useState(false);
+  const [slackChannels, setSlackChannels] = useState<SlackChannel[]>([]);
+  const [slackLoading, setSlackLoading] = useState(false);
+  const [slackSaving, setSlackSaving] = useState<string | null>(null);
+  const [slackErr, setSlackErr] = useState<string | null>(null);
+  const [slackFilter, setSlackFilter] = useState("");
+  // Manual Shopify CSV upload (the no-API fallback).
+  const [csvBusy, setCsvBusy] = useState(false);
+  const [csvMsg, setCsvMsg] = useState<string | null>(null);
+  const csvInputRef = useRef<HTMLInputElement>(null);
   const [products, setProducts] = useState<ProductDiagnostic | null>(null);
   const [productPages, setProductPages] = useState<ProductPage[]>([]);
   const [wins, setWins] = useState<string[]>([]);
@@ -233,6 +336,7 @@ export default function DiagnosePage() {
   const [thread, setThread] = useState<Msg[]>([]);
   const [convoLoaded, setConvoLoaded] = useState(false);
   const threadRef = useRef<HTMLDivElement>(null);
+  const connRef = useRef<HTMLDivElement>(null);
   const [insightLoading, setInsightLoading] = useState(false);
   const [insightErr, setInsightErr] = useState<string | null>(null);
   const [insightStatus, setInsightStatus] = useState<string | null>(null);
@@ -364,6 +468,18 @@ export default function DiagnosePage() {
   }
   useEffect(() => { loadConversation(); }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // The fundamentals check — loaded on its own so the health strip shows the
+  // instant the page opens, without waiting for the full account payload.
+  async function loadHealth() {
+    setVitalsLoading(true);
+    try {
+      const r = await fetch(`/api/diagnostics/account/${id}/healthcheck`, { credentials: "include" });
+      if (r.ok) { const j = await r.json(); setVitals(j.vitals ?? null); }
+    } catch { /* strip just won't show */ }
+    finally { setVitalsLoading(false); }
+  }
+  useEffect(() => { loadHealth(); }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Stream one agent turn into the thread. Appends an assistant placeholder and
   // streams into it; the server persists both sides. Returns whether fresh data
   // was pulled (so we can refresh the cockpit numbers).
@@ -486,6 +602,69 @@ export default function DiagnosePage() {
       setCtxOpen(false);
       load(); // refresh the connections completeness
     } finally { setCtxSaving(false); }
+  }
+
+  // Link the client's Slack channel from inside the chat — the agent reads it
+  // for off-platform context (a promo, a checkout change, a payment switch).
+  async function openSlackLink() {
+    setSlackOpen(true); setSlackErr(null);
+    if (slackChannels.length) return; // already loaded
+    setSlackLoading(true);
+    try {
+      const r = await fetch(`/api/integrations/slack/channels`, { credentials: "include" });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) setSlackErr(j.error === "Slack not connected" ? "No Slack workspace is connected for your organisation yet — add the bot token in Settings → Slack, then link a channel here." : (j.error ?? "Couldn't load Slack channels."));
+      else setSlackChannels(j.channels ?? []);
+    } catch { setSlackErr("Couldn't reach Slack."); }
+    setSlackLoading(false);
+  }
+  async function linkSlackChannel(ch: SlackChannel | null) {
+    setSlackSaving(ch?.id ?? "unlink"); setSlackErr(null);
+    try {
+      const r = await fetch(`/api/accounts/${id}`, {
+        method: "PATCH", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slackChannelId: ch?.id ?? null, slackChannelName: ch?.name ?? null }),
+      });
+      if (!r.ok) { setSlackErr("Couldn't save the channel."); return; }
+      setSlackOpen(false);
+      load(); // refresh the connections strip
+    } catch { setSlackErr("Couldn't save the channel."); }
+    finally { setSlackSaving(null); }
+  }
+
+  // Upload a Shopify "Sales over time" CSV — the data is kept and reconciled
+  // against until it's replaced; the server stamps when it was uploaded.
+  async function uploadShopifyCsv(file: File) {
+    setCsvBusy(true); setCsvMsg(null);
+    try {
+      const csv = await file.text();
+      const r = await fetch(`/api/diagnostics/account/${id}/shopify-csv`, {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ kind: "daily_sales", csv }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) { setCsvMsg(j.error ?? "Upload failed."); return; }
+      setCsvMsg(`Loaded ${j.rows} days${j.rangeStart ? ` (${j.rangeStart} → ${j.rangeEnd})` : ""}.${j.skipped ? ` Skipped ${j.skipped} unreadable rows.` : ""}`);
+      load();
+    } catch { setCsvMsg("Couldn't read that file."); }
+    finally { setCsvBusy(false); if (csvInputRef.current) csvInputRef.current.value = ""; }
+  }
+
+  function scrollToConn() { connRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }); }
+  // Turn a "No data — not connected" tool result into a one-click connect action
+  // right inside the conversation, so a missing source is fixable on the spot.
+  function connectActions(tools: { name: string; ok: boolean }[]) {
+    const notOk = new Set(tools.filter(t => !t.ok).map(t => t.name));
+    const actions: { key: string; label: string; onClick: () => void }[] = [];
+    if (notOk.has("get_slack_context") && connections?.slack !== "green") {
+      actions.push({ key: "slack", label: connections?.slackConfigured ? "Link Slack channel" : "Connect Slack", onClick: () => { openSlackLink(); scrollToConn(); } });
+    }
+    if (notOk.has("get_shopify_data") && connections?.shopify !== "green") {
+      actions.push({ key: "shopify", label: "Connect Shopify", onClick: () => { setDetailsOpen(true); scrollToConn(); } });
+    }
+    return actions;
   }
 
   // Wipe the conversation and start over.
@@ -693,16 +872,98 @@ export default function DiagnosePage() {
               ]} />
             )}
 
+            {/* Fundamentals check — the vitals, visible the instant the page opens */}
+            {(vitalsLoading || vitals) && (
+              <div style={{ ...card, padding: "12px 15px", marginTop: 14, border: vitals?.governing ? "1px solid color-mix(in srgb, var(--danger, #d33) 40%, var(--border))" : "1px solid var(--border)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: vitals ? 10 : 0, flexWrap: "wrap" }}>
+                  <ShieldCheck size={14} style={{ color: "var(--accent)" }} />
+                  <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, color: "var(--text-muted)" }}>Fundamentals</span>
+                  {vitalsLoading && <span style={{ fontSize: 12, color: "var(--text-3)", display: "inline-flex", alignItems: "center", gap: 6 }}><Loader2 size={12} className="animate-spin" /> checking…</span>}
+                  {vitals?.governing && <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--danger, #d33)" }}>{vitals.governing} needs fixing first</span>}
+                  {vitals && !vitals.governing && <span style={{ fontSize: 11.5, fontWeight: 600, color: "var(--ok, #16a34a)" }}>foundation holds</span>}
+                </div>
+                {vitals && (
+                  <>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+                      {vitals.checks.map(c => {
+                        const col = c.status === "ok" ? "var(--ok, #16a34a)" : c.status === "warn" ? "var(--warn, #d98a00)" : c.status === "fail" ? "var(--danger, #d33)" : "var(--text-dim)";
+                        const glyph = c.status === "ok" ? "✓" : c.status === "warn" ? "⚠" : c.status === "fail" ? "✗" : "–";
+                        const open = vitalsOpen === c.key;
+                        return (
+                          <button key={c.key} onClick={() => setVitalsOpen(open ? null : c.key)} title={c.detail}
+                            style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600, color: "var(--text-2)", background: open ? "var(--surface-2)" : "transparent", border: `1px solid ${col === "var(--text-dim)" ? "var(--border-2)" : `color-mix(in srgb, ${col} 45%, var(--border))`}`, borderRadius: 999, padding: "4px 11px", cursor: "pointer" }}>
+                            <span style={{ color: col, fontWeight: 800 }}>{glyph}</span> {c.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {vitalsOpen && (
+                      <div style={{ marginTop: 9, fontSize: 12.5, color: "var(--text-2)", lineHeight: 1.5 }}>
+                        {vitals.checks.find(c => c.key === vitalsOpen)?.detail}
+                      </div>
+                    )}
+                    <div style={{ marginTop: 9, fontSize: 12, color: vitals.governing ? "var(--danger, #d33)" : "var(--text-muted)", lineHeight: 1.5 }}>{vitals.summary}</div>
+                  </>
+                )}
+              </div>
+            )}
+
             {/* Connections & context — what this account knows, at a glance */}
             {connections && (
-              <div style={{ ...card, padding: "12px 15px", marginTop: 14 }}>
+              <div ref={connRef} style={{ ...card, padding: "12px 15px", marginTop: 14 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                   <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, color: "var(--text-muted)", marginRight: 4 }}>Connected</span>
                   <ConnPill label="Google Ads" status={connections.googleAds} note="spend & performance" />
                   <ConnPill label="Merchant Center" status={connections.merchantCenter} note={connections.merchantCenter === "green" ? "feed & products" : "not detected"} />
-                  <ConnPill label="Shopify" status={connections.shopify} note={shopify?.connected ? (shopify.shopDomain ?? "orders") : "orders & POAS"} onClick={connections.shopify !== "green" ? () => setDetailsOpen(true) : undefined} />
+                  <ConnPill label="Shopify" status={connections.shopify} note={connections.shopifySource === "live" ? (shopify?.shopDomain ?? "live") : connections.shopifySource === "csv" ? `CSV · ${agoLabel(connections.shopifyUploadedAt)}` : "orders & POAS"} onClick={connections.shopifySource === "live" ? undefined : () => csvInputRef.current?.click()} />
+                  <ConnPill label="Slack" status={connections.slack} note={connections.slack === "green" ? `#${connections.slackChannelName}` : connections.slackConfigured ? "link a channel" : "not connected"} onClick={connections.slackConfigured ? () => (slackOpen ? setSlackOpen(false) : openSlackLink()) : undefined} />
                   <ConnPill label="Context" status={connections.context} note={`${connections.contextFilled}/${connections.contextTotal} answered`} onClick={openContextForm} />
                 </div>
+
+                {/* Manual Shopify CSV — the no-API fallback. Data is kept and used
+                    until replaced; we stamp when it was uploaded. */}
+                <input ref={csvInputRef} type="file" accept=".csv,text/csv" style={{ display: "none" }}
+                  onChange={e => { const f = e.target.files?.[0]; if (f) uploadShopifyCsv(f); }} />
+                {connections.shopifySource !== "live" && (
+                  <div style={{ marginTop: 9, display: "flex", alignItems: "center", gap: 9, flexWrap: "wrap", fontSize: 11.5, color: "var(--text-muted)" }}>
+                    <button onClick={() => csvInputRef.current?.click()} disabled={csvBusy} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11.5, fontWeight: 600, color: "var(--text-2)", background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 7, padding: "4px 10px", cursor: csvBusy ? "default" : "pointer" }}>
+                      {csvBusy ? <Loader2 size={12} className="animate-spin" /> : <FileText size={12} />} {connections.shopifySource === "csv" ? "Replace Shopify CSV" : "Upload Shopify sales CSV"}
+                    </button>
+                    {connections.shopifySource === "csv" && connections.shopifyCsvRange && (
+                      <span>Using {connections.shopifyCsvRange.start} → {connections.shopifyCsvRange.end}, uploaded {agoLabel(connections.shopifyUploadedAt)}{agoLabel(connections.shopifyUploadedAt) !== "today" && Math.floor((Date.now() - new Date(connections.shopifyUploadedAt ?? 0).getTime()) / 86_400_000) >= 14 ? " — may be stale, consider a fresh export" : ""}</span>
+                    )}
+                    {csvMsg && <span style={{ color: "var(--text-2)" }}>{csvMsg}</span>}
+                    <span style={{ opacity: 0.7 }}>Analytics → Reports → Sales over time (by Day) → Export</span>
+                  </div>
+                )}
+
+                {/* Inline Slack-channel picker — link the client's channel without leaving the chat */}
+                {slackOpen && (
+                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--border-2)" }}>
+                    <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 3 }}>Link this client&rsquo;s Slack channel</div>
+                    <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginBottom: 11 }}>The agent reads it for off-platform context — a promo, a checkout or price change, a payment switch, &ldquo;paused for the holidays.&rdquo; Invite the bot to the channel first if it&rsquo;s not listed.</div>
+                    {slackErr && <div style={{ fontSize: 12, color: "var(--danger, #d33)", marginBottom: 10 }}>{slackErr}</div>}
+                    {slackLoading ? (
+                      <div style={{ fontSize: 12.5, color: "var(--text-3)", display: "flex", alignItems: "center", gap: 8 }}><Loader2 size={13} className="animate-spin" /> Loading channels…</div>
+                    ) : slackChannels.length > 0 ? (
+                      <>
+                        <input value={slackFilter} onChange={e => setSlackFilter(e.target.value)} placeholder="Filter channels…" style={{ width: "100%", fontSize: 12.5, color: "var(--text)", background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 8, padding: "7px 10px", marginBottom: 8, fontFamily: "inherit" }} />
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, maxHeight: 180, overflowY: "auto" }}>
+                          {slackChannels.filter(c => c.name.toLowerCase().includes(slackFilter.toLowerCase())).slice(0, 60).map(ch => (
+                            <button key={ch.id} onClick={() => linkSlackChannel(ch)} disabled={!!slackSaving} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 600, color: "var(--text-2)", background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 999, padding: "5px 11px", cursor: slackSaving ? "default" : "pointer" }}>
+                              {slackSaving === ch.id ? <Loader2 size={11} className="animate-spin" /> : null}#{ch.name}{ch.isPrivate ? " 🔒" : ""}
+                            </button>
+                          ))}
+                        </div>
+                        {connections.slack === "green" && (
+                          <button onClick={() => linkSlackChannel(null)} disabled={!!slackSaving} style={{ marginTop: 10, fontSize: 12, fontWeight: 600, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>Unlink current channel</button>
+                        )}
+                      </>
+                    ) : !slackErr ? (
+                      <div style={{ fontSize: 12.5, color: "var(--text-3)" }}>No channels the bot can see. Invite it to the client&rsquo;s channel with <code>/invite</code>, then reopen this.</div>
+                    ) : null}
+                  </div>
+                )}
 
                 {/* Add-context form — the questions the data can't answer */}
                 {ctxOpen && (
@@ -847,6 +1108,12 @@ export default function DiagnosePage() {
                                 <MinusCircle size={12} /> No data: {m.tools.filter(t => !t.ok).map(t => TOOL_LABELS[t.name] ?? t.name).join(", ")}
                               </span>
                             )}
+                            {/* Connect it right here — turn a missing source into a one-click fix in the chat */}
+                            {connectActions(m.tools).map(a => (
+                              <button key={a.key} onClick={a.onClick} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, fontWeight: 600, color: "var(--accent)", background: "var(--accent-dim)", border: "1px solid color-mix(in srgb, var(--accent) 25%, var(--border))", borderRadius: 7, padding: "3px 9px", cursor: "pointer" }}>
+                                <Plug size={12} /> {a.label}
+                              </button>
+                            ))}
                           </div>
                         )}
                       </div>

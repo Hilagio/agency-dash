@@ -28,10 +28,15 @@ export const maxDuration = 300;
 const AGENT_TOOLS_NOTE = `
 
 YOUR DATA TOOLS — you can fetch live data yourself instead of asking the team to look it up:
+- run_healthcheck — the FUNDAMENTALS in order (tracking → feed/GMC → spend → sales → efficiency), each pass/⚠/fail. Run this FIRST on any "what's wrong / is it healthy / any risks / diagnose" question. The first ✗ is the governing constraint — fix that before touching anything downstream, and don't act on efficiency numbers sitting below a broken upstream check.
 - get_impression_share — budget-limited? headroom to scale? (search IS + share lost to budget/rank per campaign)
 - get_campaign_overview — account structure: campaign types, statuses, daily budgets, spend & return
+- get_change_history — who changed WHAT and WHEN (budget/bid/target edits, pauses, new campaigns). When a metric moved on a date, CHECK THIS FIRST — line the change dates up against the swing before you hypothesise an off-platform cause.
+- get_merchant_center_status — live feed health: account suspension / misrepresentation, product disapprovals by reason & count, which countries are serving. For ANY feed/GMC question — a Shopping/PMax campaign spending €0, a "is the feed disapproved / is the account suspended / is BE approved" question — CALL THIS instead of telling the team to open Merchant Center. Only ask a human if it returns an error or nothing.
 - get_search_terms — wasted spend (cost, zero conversions) and branded queries
 - get_shopify_data — real orders/revenue to reconcile against
+- get_slack_context — the client's Slack channel, where off-platform events get mentioned (promo, price/checkout change, payment-provider switch, stockout, "paused for the holidays"). Check this BEFORE asking the team an off-platform question — the answer is often already there.
+- consult_playbook — OUR agency's house doctrine on a specific situation (how we bid, structure, segment with ProductHero labels, when we scale, what a signal COMBINATION means). Pull it when you recognise a trigger and want our stance instead of generic advice — an IS/CTR/CVR/ROAS/budget/tracking/feed pattern, a bidding/structure/segmentation/scaling question, a lifecycle judgment. Recognise the trigger yourself; don't call it on every read. Apply what it returns ONLY where it fits this account's type and what the data shows — it's doctrine to reason with, never a script to force onto the numbers.
 
 THE ONE UNBREAKABLE RULE — NEVER FABRICATE DATA. You have exactly two sources of truth: (1) the account data written above in this conversation, and (2) the RESULT of a tool you actually called this turn. Nothing else exists.
 - You may state a specific number, campaign NAME, status, budget, or ROAS ONLY if it came from one of those two sources. If it didn't, you may not say it.
@@ -39,7 +44,9 @@ THE ONE UNBREAKABLE RULE — NEVER FABRICATE DATA. You have exactly two sources 
 - If a tool returns nothing, an error, or "not connected", say so plainly ("I couldn't pull the campaign data") and stop — never backfill with plausible-looking figures.
 - Name your source when it matters: "from the campaign data I just pulled…" vs "from the 30-day landing pages above…". A hedged "I don't have that yet" always beats a confident invented number.
 
-Only ask a human for what NO tool can reach: off-platform events (payments, site, stock, promos), business context, or a judgment call. Call the tools you need BEFORE writing your answer, then answer once.`;
+Before you ask a human about an off-platform event (a promo, a price or checkout change, a payment-provider switch, a stockout, a pause), CHECK get_slack_context first — the client or the team has often already said it in the channel. Only ask a human for what NO tool — including Slack — can reach: business context or a judgment call that needs their knowledge of the client. Call the tools you need BEFORE writing your answer, then answer once.
+
+IF A "LIVE SNAPSHOT" BLOCK IS ALREADY IN THE CONTEXT, its campaign structure, impression share and change history were pulled seconds ago — use them directly and do NOT re-call get_campaign_overview / get_impression_share / get_change_history for the same window. Reach for a tool only for what the snapshot doesn't cover (search terms, Shopify, Slack) or a different look-back.`;
 
 const LEADGEN_NOTE = `
 
@@ -104,6 +111,7 @@ Formatting rules: Write conversational prose — NO section-header labels like "
 - Use **bold** to make the pivotal figures and your core hypothesis jump out (e.g. "ROAS fell from **2.83 over 60d** to **0.06 over 14d**", "**my first instinct is off-platform, not in-account**"). Don't over-bold — a few key anchors per paragraph.
 - Put your closing question on its OWN short line at the end.
 - A short bullet list is fine only if you're genuinely listing options; default to prose.
+- SHOW DATA AS A TABLE, not prose. Whenever you're presenting more than ~2 rows of numbers — a per-campaign breakdown, change history, impression share, the multi-window trend (7/14/30/60/90) — render it as a compact GitHub-style markdown table (\`| Campaign | Spend | ROAS |\` with a \`|---|---|---|\` separator row) instead of listing it in sentences or bullets. Numeric columns automatically get a proportional bar, so the reader sees the shape at a glance. Keep the prose for the narrative — the read, the hypothesis, the question — and put the evidence in the table. Every number in the table must come from context or a tool result; never invent a row to fill the grid.
 
 OFF-PLATFORM FIRST (critical): If ROAS has COLLAPSED on an account that used to perform — recent windows far below the older ones (a cliff, e.g. 2.8 over 60d → 0.1 over 7–14d) — your FIRST hypothesis must be an OFF-PLATFORM cause, not an in-account one: a broken checkout or payment provider, a site outage, a stock-out on key products, a pricing/currency error, or a tracking break. These kill conversions across the board no matter how good the ads are, and a broad, sudden, sustained collapse is exactly their signature. Say this explicitly and ASK the team to confirm ("Did anything change on the site, payments, checkout, or stock in this window?") BEFORE concluding it's a feed/bidding/product problem. Only pin it on specific products if the decline is concentrated in those products while others hold.
 
@@ -117,7 +125,7 @@ const SYSTEM_CHAT = `You are the same senior Google Ads specialist (PPC OS metho
 
 The team may also ATTACH FILES — a screenshot of Merchant Center or the Google Ads UI, a checkout error, a client report, a spreadsheet. Read them as first-class evidence: pull the concrete detail out ("the feed shows 240 disapprovals for 'missing GTIN'") and factor it into your reasoning.
 
-Take that context as ground truth and UPDATE your thinking. Answer conversationally and concretely: confirm or revise your earlier hypothesis in light of what they told you, and give the sharpest next move now that you know more. Keep it scannable — short paragraphs, **bold** the pivotal figures and your conclusion, and if you're listing steps use a short bullet list.
+Take that context as ground truth and UPDATE your thinking. Answer conversationally and concretely: confirm or revise your earlier hypothesis in light of what they told you, and give the sharpest next move now that you know more. Keep it scannable — short paragraphs, **bold** the pivotal figures and your conclusion, and if you're listing steps use a short bullet list. When you present more than ~2 rows of numbers (a campaign breakdown, change history, impression share, the multi-window trend), render them as a compact GitHub-style markdown table (with a \`|---|---|\` separator row) rather than prose — numeric columns get a proportional bar automatically. Every number in the table must come from context or a tool result; never invent a row.
 
 ANSWER FROM THE DATA FIRST: read the numbers yourself and give the answer — never hand the team a step that says "check X" or "look at Y" when X/Y is data you already have. If asked for a plan (e.g. scaling), do the analysis on the data provided and state the conclusion; only flag a step as needing them when it depends on something outside the data (a business decision, an off-platform fact, or a metric that genuinely isn't in what you were given — say so plainly rather than assigning it). Do NOT re-print the rigid three-section read unless they ask for a full re-read — reply like a specialist talking to a colleague: a few tight sentences, real numbers, the one thing to do next. If their context resolves the mystery (e.g. payments were down during exactly the collapse window), say so plainly and stop hunting for an in-account cause. You may consult the PPC OS tools if genuinely needed; if you do, call them before replying and answer only once.`;
 
@@ -218,7 +226,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     select: {
       id: true, name: true, currency: true, googleAdsId: true, organizationId: true,
       grossMarginPercent: true, roasFloor: true, minSpendForEval: true, minConversionsForEval: true, dataVerified: true,
-      trackingStatus: true, trackingNote: true, trackingSetAt: true, trackingSetBy: true,
+      trackingStatus: true, trackingNote: true, trackingSetAt: true, trackingSetBy: true, merchantCenterId: true,
     },
   });
   if (!account) return forbidden();
@@ -345,7 +353,33 @@ export async function POST(req: NextRequest, { params }: Params) {
           }).catch(() => null);
         }
 
-        const context = buildClientBlock(clientCtx) + buildContext(account.name, cur, diag, windows, pages, winners, changeRows);
+        // Ground the OPENER in live data BEFORE the model speaks: pull the
+        // essentials the nightly spine doesn't carry — current campaign
+        // structure & budgets, impression share (budget-limited?), and the
+        // dated change history (old→new diffs for correlation). This way the
+        // first message reasons from the account as it is right now, not just
+        // last night's aggregates. Chat follow-ups skip it (the model pulls on
+        // demand there); it's real data in context, so the no-fabrication rule
+        // is satisfied and we badge it as a genuine live pull.
+        const preToolsUsed: { name: string; ok: boolean }[] = [];
+        let liveSnapshot = "";
+        if (!isChat) {
+          send(controller, { status: "Pulling the latest from Google Ads…" });
+          const acc0 = { id: account.id, googleAdsId: account.googleAdsId, organizationId: account.organizationId, currency: account.currency, merchantCenterId: account.merchantCenterId };
+          const want = ["run_healthcheck", "get_campaign_overview", "get_impression_share", "get_change_history"];
+          const pulls = await Promise.all(want.map(async name => {
+            try {
+              const out = await runAgentTool(name, { days: 30 }, acc0);
+              const ok = !/(not connected|^\s*no\b|error running|couldn'?t|no stored|no data)/i.test(out.split("\n")[0]);
+              return { name, out, ok };
+            } catch { return null; }
+          }));
+          const good = (pulls.filter(Boolean) as { name: string; out: string; ok: boolean }[]).filter(p => p.ok);
+          for (const p of good) preToolsUsed.push({ name: p.name, ok: true });
+          if (good.length) liveSnapshot = `\n\nLIVE SNAPSHOT — pulled just now from Google Ads (treat as ground truth; cite these figures freely, they are real):\n${good.map(p => p.out).join("\n\n")}`;
+        }
+
+        const context = buildClientBlock(clientCtx) + buildContext(account.name, cur, diag, windows, pages, winners, changeRows) + liveSnapshot;
         const firstTurn = { role: "user" as const, content: `${context}\n\nGive the expert read.` };
         let messages: unknown[];
         let useChatSystem: boolean;
@@ -366,15 +400,26 @@ export async function POST(req: NextRequest, { params }: Params) {
         const sysPrompt = (useChatSystem ? SYSTEM_CHAT : SYSTEM) + PPC_OS_SYSTEM_NOTE + AGENT_TOOLS_NOTE + LEADGEN_NOTE + trackingDirective;
         const allTools = [...(ppc.tools ?? []), ...AGENT_TOOLS] as Parameters<typeof client.beta.messages.stream>[0]["tools"];
         const loopMessages = messages.slice();
-        const toolAcc = { id: account.id, googleAdsId: account.googleAdsId, organizationId: account.organizationId, currency: account.currency };
+        const toolAcc = { id: account.id, googleAdsId: account.googleAdsId, organizationId: account.organizationId, currency: account.currency, merchantCenterId: account.merchantCenterId };
         let finalText = "";
-        const toolsUsed: { name: string; ok: boolean }[] = [];
+        // Seed with the up-front pulls so the opener's badge shows they were
+        // fetched live (the loop dedupes by name if the model pulls again).
+        const toolsUsed: { name: string; ok: boolean }[] = [...preToolsUsed];
         const MAX_STEPS = 6;
 
         for (let step = 0; step < MAX_STEPS; step++) {
           const anthropicStream = client.beta.messages.stream({
             model: "claude-opus-4-8",
-            max_tokens: 1500,
+            // Headroom for adaptive thinking: reasoning tokens are billed as
+            // output and count against max_tokens, so leave room above the
+            // ~1.5k the visible answer needs or the reply can truncate mid-think.
+            max_tokens: 6000,
+            // Extended reasoning: let the model actually think through the
+            // diagnosis (correlate the numbers, weigh hypotheses, decide which
+            // tool to pull) instead of answering off the top of its head. This
+            // is the single biggest quality lever for the read.
+            thinking: { type: "adaptive" },
+            output_config: { effort: "high" },
             betas: ppc.betas,
             mcp_servers: ppc.mcp_servers,
             tools: allTools,
@@ -386,6 +431,11 @@ export async function POST(req: NextRequest, { params }: Params) {
             if (ev.type === "content_block_start" && ev.content_block?.type === "text") {
               textBlocks++;
               if (textBlocks > 1) { send(controller, { reset: true }); finalText = ""; }
+            } else if (ev.type === "content_block_start" && ev.content_block?.type === "thinking") {
+              // Thinking deltas stream as a separate block type — they never
+              // reach finalText (we only capture text_delta), so surfacing a
+              // status here is safe and shows the agent is actually reasoning.
+              send(controller, { status: "Thinking it through…" });
             } else if (ev.type === "content_block_start" && ev.content_block?.type === "tool_use") {
               send(controller, { status: toolStatusLabel(ev.content_block.name) });
             } else if (ev.type === "content_block_delta" && ev.delta.type === "text_delta") {
@@ -408,7 +458,7 @@ export async function POST(req: NextRequest, { params }: Params) {
             catch (e) { out = `Error running ${tu.name}: ${e instanceof Error ? e.message : String(e)}. Tell the team you couldn't fetch this.`; }
             // "ok" = the source actually returned usable data (not "not connected",
             // empty, or an error) — drives whether the badge reads as data or a gap.
-            const ok = !/(not connected|^\s*no\b|error running|couldn'?t|no stored|no data)/i.test(out);
+            const ok = !/(not connected|^\s*no\b|error running|couldn'?t|no stored|no data)/i.test(out.split("\n")[0]);
             if (!toolsUsed.some(t => t.name === tu.name)) toolsUsed.push({ name: tu.name, ok });
             results.push({ type: "tool_result" as const, tool_use_id: tu.id, content: out });
           }
