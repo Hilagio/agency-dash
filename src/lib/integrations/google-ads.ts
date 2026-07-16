@@ -2300,17 +2300,19 @@ export async function fetchImpressionShare(customerId: string, orgId: string | u
 }
 
 export interface CampaignOverviewRow {
-  campaign: string; channel: string; status: string;
+  campaign: string; channel: string; status: string; biddingStrategy: string;
   dailyBudget: number | null; cost: number; conversions: number; value: number;
 }
-/** Campaign structure — types, statuses, daily budgets, spend & return.
- * Lets the agent see if there's a feed-only PMax, which campaigns carry spend. */
+/** Campaign structure — types, statuses, bidding strategy, daily budgets, spend
+ * & return. Lets the agent see if there's a feed-only PMax, which campaigns
+ * carry spend, and whether anything's on Target ROAS/CPA (the tROAS-choke check). */
 export async function fetchCampaignOverview(customerId: string, orgId: string | undefined, days: number): Promise<CampaignOverviewRow[]> {
   const client = getClient();
   const customer = await getCustomer(client, customerId, orgId);
   const { start, end } = nDayRange(days);
   const rows = await safeQuery(() => customer.query(`
     SELECT campaign.name, campaign.advertising_channel_type, campaign.status,
+           campaign.bidding_strategy_type,
            campaign_budget.amount_micros, metrics.cost_micros, metrics.conversions, metrics.conversions_value
     FROM campaign
     WHERE segments.date BETWEEN '${start}' AND '${end}' AND campaign.status != 'REMOVED'
@@ -2320,6 +2322,7 @@ export async function fetchCampaignOverview(customerId: string, orgId: string | 
     campaign: r.campaign?.name ?? "—",
     channel: String(r.campaign?.advertising_channel_type ?? ""),
     status: String(r.campaign?.status ?? ""),
+    biddingStrategy: String(r.campaign?.bidding_strategy_type ?? ""),
     dailyBudget: r.campaign_budget?.amount_micros != null ? Number(r.campaign_budget.amount_micros) / 1_000_000 : null,
     cost: Number(r.metrics?.cost_micros ?? 0) / 1_000_000,
     conversions: Number(r.metrics?.conversions ?? 0),

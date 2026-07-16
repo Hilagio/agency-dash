@@ -65,30 +65,45 @@ const LABELS: Record<string, string> = {
 };
 export const toolStatusLabel = (name: string) => LABELS[name] ?? `Checking ${name.replace(/_/g, " ")}…`;
 
-// Recognise the agency's own setup FROM THE DATA: campaign names carrying the
-// ProductHero / Flowboost label segments (Heroes/Sidekicks/Zombies/Villains,
-// or the HSZ/HS/H/S/Z/V shorthand the team uses) mean a Labelizer is running —
-// which is the trigger that makes the product-segmentation doctrine apply here.
-// The agent learns this by seeing it, rather than being told account by account.
-function detectLabelizer(names: string[]): string | null {
+// Recognise the agency's own setup FROM THE DATA — so the agent gathers context
+// by looking, not by asking the team basic things it can already see. Campaign
+// names carry the ProductHero label segments (Heroes/Sidekicks/Zombies/Villains,
+// or the HSZ/HS/H/S/Z/V shorthand); the channel tells us PMax feed-only; the
+// bidding strategy tells us if a tROAS could be choking delivery. Each detected
+// signal is a trigger that points at the matching house doctrine.
+const tokensOf = (s: string) => s.toUpperCase().split(/[^A-Z0-9]+/).filter(Boolean);
+
+function labelSegments(names: string[]): string[] {
   const found = new Set<string>();
-  let brand = false;
-  for (const n of names) {
-    for (const t of n.toUpperCase().split(/[^A-Z0-9]+/).filter(Boolean)) {
-      if (t === "HERO" || t === "HEROES") found.add("Heroes");
-      else if (t === "SIDEKICK" || t === "SIDEKICKS") found.add("Sidekicks");
-      else if (t === "ZOMBIE" || t === "ZOMBIES") found.add("Zombies");
-      else if (t === "VILLAIN" || t === "VILLAINS") found.add("Villains");
-      else if (t === "HSZV" || t === "HSZ" || t === "HS") found.add("H/S/Z groups");
-      else if (t === "H") found.add("Heroes");
-      else if (t === "S") found.add("Sidekicks");
-      else if (t === "Z") found.add("Zombies");
-      else if (t === "V") found.add("Villains");
-      else if (t === "BRAND") brand = true;
-    }
+  for (const n of names) for (const t of tokensOf(n)) {
+    if (t === "HERO" || t === "HEROES" || t === "H") found.add("Heroes");
+    else if (t === "SIDEKICK" || t === "SIDEKICKS" || t === "S") found.add("Sidekicks");
+    else if (t === "ZOMBIE" || t === "ZOMBIES" || t === "Z") found.add("Zombies");
+    else if (t === "VILLAIN" || t === "VILLAINS" || t === "V") found.add("Villains");
+    else if (t === "HSZV" || t === "HSZ" || t === "HS") { found.add("Heroes"); found.add("Sidekicks"); found.add("Zombies"); }
   }
-  if (!found.size) return null;
-  return `Detected setup: this account runs the ProductHero / Flowboost Labelizer — campaigns are named for the label segments (${[...found].join(", ")}${brand ? ", plus an isolated Brand campaign" : ""}). That means performance is controlled at PRODUCT level via custom_label_0, so the segmentation doctrine applies here: consult_playbook on "product segmentation" or "villain spend" if a segment's spend or ROAS looks off, before treating it as a generic campaign problem.`;
+  return [...found];
+}
+
+function detectSetup(rows: { campaign: string; channel: string; biddingStrategy: string }[]): string | null {
+  const names = rows.map(r => r.campaign);
+  const notes: string[] = [];
+
+  const seg = labelSegments(names);
+  if (seg.length) notes.push(`Runs the ProductHero / Flowboost Labelizer — campaigns named for label segments (${seg.join(", ")}). Performance is controlled at PRODUCT level via custom_label_0, so the segmentation doctrine applies: consult_playbook on "product segmentation" / "villain spend" if a segment's spend or ROAS looks off, before treating it as a generic campaign problem.`);
+
+  if (names.some(n => tokensOf(n).includes("BRAND"))) notes.push(`Brand is isolated in its own campaign — brand traffic inflates ROAS, so read brand vs non-brand separately; don't trust a blended ROAS.`);
+
+  const pmax = rows.filter(r => /PERFORMANCE_MAX/i.test(r.channel)).length;
+  if (pmax) notes.push(`Performance Max is running (${pmax}) — in our structure PMax feed-only is the main growth driver; if it underperforms the cause is almost always feed quality/structure, not "switch to Standard Shopping".`);
+
+  const troas = rows.filter(r => /TARGET_ROAS/i.test(r.biddingStrategy)).map(r => r.campaign);
+  if (troas.length) notes.push(`Bidding: ${troas.length} campaign(s) on Target ROAS. If their spend is flatlining or stuck under budget, a too-high tROAS choking delivery is the FIRST thing to check (the most common self-inflicted wound) — consult_playbook on "tROAS spend flatlines".`);
+  const tcpa = rows.filter(r => /TARGET_CPA/i.test(r.biddingStrategy)).length;
+  if (tcpa) notes.push(`Bidding: ${tcpa} campaign(s) on Target CPA.`);
+
+  if (!notes.length) return null;
+  return `DETECTED SETUP — recognised from the account itself (use this as context; don't ask the team what you can already see):\n${notes.map(n => `- ${n}`).join("\n")}`;
 }
 
 export async function runAgentTool(name: string, input: Record<string, unknown>, acc: AgentAccount): Promise<string> {
@@ -107,8 +122,8 @@ export async function runAgentTool(name: string, input: Record<string, unknown>,
     const rows = (await fetchCampaignOverview(acc.googleAdsId, acc.organizationId, days)).slice(0, 30);
     if (!rows.length) return `No active campaigns found in the last ${days} days.`;
     const lines = rows.map(r => `- ${r.campaign} [${r.channel}, ${r.status}]: daily budget ${r.dailyBudget != null ? money(r.dailyBudget) : "—"}, spend ${money(r.cost)}, conv ${r.conversions.toFixed(1)}, value ${money(r.value)}, ROAS ${r.cost > 0 ? (r.value / r.cost).toFixed(2) : "—"}`);
-    const labelizer = detectLabelizer(rows.map(r => r.campaign));
-    return `Campaign structure, last ${days}d:\n${lines.join("\n")}${labelizer ? `\n\n${labelizer}` : ""}`;
+    const setup = detectSetup(rows);
+    return `Campaign structure, last ${days}d:\n${lines.join("\n")}${setup ? `\n\n${setup}` : ""}`;
   }
 
   if (name === "get_change_history") {
