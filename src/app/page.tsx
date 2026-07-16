@@ -9,9 +9,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
-  ShieldCheck, Settings as SettingsIcon, Store, ListChecks, BookOpen,
+  ShieldCheck, Settings as SettingsIcon, ListChecks, BookOpen,
   Loader2, ArrowRight, Sprout, Activity, ShoppingBag, AlertTriangle, CheckCircle2, XCircle, Star, Sparkles,
-  ChevronDown, TrendingUp,
+  ChevronDown, TrendingUp, Plus,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
@@ -182,7 +182,6 @@ export default function PortfolioHome() {
         </div>
         <div style={{ display: "flex", gap: 2, marginLeft: 8 }}>
           <Link href="/" style={navLink(true)}>Cockpit</Link>
-          <Link href="/stores" style={navLink(false)}><Store size={13} /> Stores</Link>
           <Link href="/ownership" style={navLink(false)}><ShieldCheck size={13} /> Ownership</Link>
           <Link href="/actions" style={navLink(false)}><ListChecks size={13} /> Actions</Link>
           <Link href="/sops" style={navLink(false)}><BookOpen size={13} /> SOPs</Link>
@@ -209,6 +208,9 @@ export default function PortfolioHome() {
             <SummaryChip color={STATUS_COLOR.yellow} label="Action" value={c.yellow} />
             <SummaryChip color={STATUS_COLOR.green} label="Under control" value={c.green} />
             <HealthChip health={health} />
+            <Link href="/stores" title="Add or manage accounts" style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 10, fontSize: 12, fontWeight: 600, textDecoration: "none", color: "var(--text-3)", background: "var(--surface)", border: "1px solid var(--border)" }}>
+              <Plus size={12} /> Add accounts
+            </Link>
             {data && data.total > 0 && (
               <button onClick={backfillAll} disabled={backfill.running} title="Pull 90 days for every account"
                 style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 10, fontSize: 12, fontWeight: 600, cursor: backfill.running ? "default" : "pointer", color: backfill.running ? "var(--text-3)" : "var(--accent)", background: "var(--accent-dim)", border: "1px solid color-mix(in srgb, var(--accent) 30%, var(--border))" }}>
