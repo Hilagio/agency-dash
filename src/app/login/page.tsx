@@ -41,7 +41,7 @@ function LoginContent() {
             </svg>
           </div>
           <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", letterSpacing: "-0.5px", marginBottom: 6 }}>
-            Agency Dashboard
+            Ecomtrada AI
           </h1>
           <p style={{ fontSize: 13, color: "var(--text-dim)" }}>
             Constraint-based Google Ads optimization

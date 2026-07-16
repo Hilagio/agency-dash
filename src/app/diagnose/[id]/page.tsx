@@ -778,12 +778,6 @@ export default function DiagnosePage() {
           }}>
             <Sparkles size={13} /> 90-day plan
           </Link>
-          <Link href={`/accounts/${id}`} style={{
-            display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, textDecoration: "none",
-            color: "var(--text-3)", border: "1px solid var(--border-2)", background: "var(--surface)", padding: "7px 13px", borderRadius: 8,
-          }}>
-            Full analysis <ArrowUpRight size={13} />
-          </Link>
         </div>
       </nav>
       {refreshMsg && (
@@ -1012,7 +1006,7 @@ export default function DiagnosePage() {
             <div style={{ ...card, border: "1px solid color-mix(in srgb, var(--accent) 30%, var(--border))", padding: "15px 17px", marginTop: 14, background: "linear-gradient(160deg, var(--accent-dim), transparent), var(--surface)" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
                 <Sparkles size={16} style={{ color: "var(--accent)" }} />
-                <span style={{ fontSize: 13.5, fontWeight: 700 }}>Expert read</span>
+                <span style={{ fontSize: 13.5, fontWeight: 700 }}>Ecomtrada AI</span>
                 <span style={{ fontSize: 11, color: "var(--text-muted)" }}>PPC OS</span>
                 {thread.length === 0 ? (
                   <button onClick={getInsight} disabled={insightLoading} style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: "#fff", background: "var(--btn-primary, var(--accent))", border: "none", borderRadius: 8, padding: "7px 14px", cursor: insightLoading ? "default" : "pointer" }}>
