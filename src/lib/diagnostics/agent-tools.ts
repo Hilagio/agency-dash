@@ -172,11 +172,20 @@ export async function computeVitals(acc: AgentAccount): Promise<VitalsResult> {
   else add("tracking", "Tracking", "warn", `Not confirmed — verify the primary conversion is a real purchase.${reconNote}`);
 
   // 2. MERCHANT CENTER / FEED — is Google even allowed to serve the products?
+  // Bounded so a slow token-exchange / API call can't hang the whole check
+  // (this powers the visible health strip and the opener's up-front pull).
   try {
-    const ids = await getMerchantCenterIds(acc.googleAdsId, acc.organizationId, acc.merchantCenterId ?? null);
-    if (!ids.length) add("merchant_center", "Merchant Center", "na", "No Merchant Center account linked.");
+    const timeout = new Promise<"__timeout__">(res => setTimeout(() => res("__timeout__"), 6000));
+    const work = (async () => {
+      const ids = await getMerchantCenterIds(acc.googleAdsId, acc.organizationId, acc.merchantCenterId ?? null);
+      if (!ids.length) return null;
+      return { ids, h: await fetchMerchantCenterHealth(ids[0], acc.organizationId) };
+    })();
+    const res = await Promise.race([work, timeout]);
+    if (res === "__timeout__") add("merchant_center", "Merchant Center", "na", "Check timed out — open the account to see live feed status.");
+    else if (res === null) add("merchant_center", "Merchant Center", "na", "No Merchant Center account linked.");
     else {
-      const h = await fetchMerchantCenterHealth(ids[0], acc.organizationId);
+      const { h } = res;
       if (h.scopeOrAuthError) add("merchant_center", "Merchant Center", "warn", `Couldn't read it (${h.scopeOrAuthError.slice(0, 80)}).`);
       else if (h.accountIssues.length) add("merchant_center", "Merchant Center", "fail", `Account-level issue — ${h.accountIssues.map(i => i.title).join("; ")}. Can take the whole feed down.`);
       else {
