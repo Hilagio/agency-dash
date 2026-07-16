@@ -371,9 +371,16 @@ export async function POST(req: NextRequest, { params }: Params) {
           // break, a promo, a stockout) and never asks about something that's
           // already in the channel. Merchant Center rides run_healthcheck.
           const want = ["run_healthcheck", "get_campaign_overview", "get_impression_share", "get_change_history", "get_slack_context"];
+          // Bound each pull so one slow live call (Merchant Center token exchange,
+          // a sluggish Slack fetch) can't hold the whole opener on "Reading…".
+          // A tool that doesn't answer in time is dropped from the snapshot — the
+          // model can still pull it on demand later.
+          const withTimeout = <T,>(p: Promise<T>, ms: number): Promise<T | null> =>
+            Promise.race([p, new Promise<null>(res => setTimeout(() => res(null), ms))]);
           const pulls = await Promise.all(want.map(async name => {
             try {
-              const out = await runAgentTool(name, { days: name === "get_slack_context" ? 45 : 30 }, acc0);
+              const out = await withTimeout(runAgentTool(name, { days: name === "get_slack_context" ? 45 : 30 }, acc0), 9000);
+              if (out == null) return null;
               const ok = !/(not connected|^\s*no\b|error running|couldn'?t|no stored|no data)/i.test(out.split("\n")[0]);
               return { name, out, ok };
             } catch { return null; }
@@ -423,7 +430,9 @@ export async function POST(req: NextRequest, { params }: Params) {
             // tool to pull) instead of answering off the top of its head. This
             // is the single biggest quality lever for the read.
             thinking: { type: "adaptive" },
-            output_config: { effort: "high" },
+            // Medium effort keeps the reasoning sharp but gets to the first token
+            // much faster than "high" — the opener is conversational, not a proof.
+            output_config: { effort: "medium" },
             betas: ppc.betas,
             mcp_servers: ppc.mcp_servers,
             tools: allTools,
