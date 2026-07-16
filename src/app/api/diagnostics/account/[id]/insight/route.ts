@@ -83,7 +83,7 @@ This is a chat, not a report. Speak first, conversationally, in a few tight sent
 Your opening message must do three things, woven into natural prose (no section headers, no bold labels, no template):
 1. Lead with the ONE thing that matters most on this account right now — the issue you spotted (or, if the account is healthy, the biggest opportunity) — stated plainly with the actual numbers and the trend across windows ("conversions on Celiora fell from ~X/week to near zero over the last 10 days").
 2. Give your best hypothesis for WHY, as a hypothesis not a verdict ("I think it's most likely Y — or possibly Z"), reasoned through the protocol below (off-platform / tracking / Merchant Center first when the pattern fits).
-3. Invite them to work it out together — end with ONE sharp, specific question whose answer would move the diagnosis forward ("Do you know if anything changed with their checkout or payment provider in that window?"). Make it feel like "let's find out together," not "here is my report."
+3. Invite them to work it out together — end with ONE sharp, specific question whose answer would move the diagnosis forward. BUT only ask about something you genuinely could NOT find in the data or the Slack channel provided to you. If Slack already answers it — the team mentioned a checkout break, a promo, a paused campaign, a payment switch — acknowledge THAT ("I can see in Slack the checkout went down on the 8th — that lines up exactly") instead of asking a question you already have the answer to. Make it feel like "let's find out together," not "here is my report."
 
 Keep it short — this is the opener, not the whole investigation. You'll go deeper as they reply.
 
@@ -364,19 +364,23 @@ export async function POST(req: NextRequest, { params }: Params) {
         const preToolsUsed: { name: string; ok: boolean }[] = [];
         let liveSnapshot = "";
         if (!isChat) {
-          send(controller, { status: "Pulling the latest from Google Ads…" });
+          send(controller, { status: "Getting the full picture on this account…" });
           const acc0 = { id: account.id, googleAdsId: account.googleAdsId, organizationId: account.organizationId, currency: account.currency, merchantCenterId: account.merchantCenterId };
-          const want = ["run_healthcheck", "get_campaign_overview", "get_impression_share", "get_change_history"];
+          // Gather ALL the context up front — including Slack, so the opener
+          // already knows any off-platform event the team mentioned (a checkout
+          // break, a promo, a stockout) and never asks about something that's
+          // already in the channel. Merchant Center rides run_healthcheck.
+          const want = ["run_healthcheck", "get_campaign_overview", "get_impression_share", "get_change_history", "get_slack_context"];
           const pulls = await Promise.all(want.map(async name => {
             try {
-              const out = await runAgentTool(name, { days: 30 }, acc0);
+              const out = await runAgentTool(name, { days: name === "get_slack_context" ? 45 : 30 }, acc0);
               const ok = !/(not connected|^\s*no\b|error running|couldn'?t|no stored|no data)/i.test(out.split("\n")[0]);
               return { name, out, ok };
             } catch { return null; }
           }));
           const good = (pulls.filter(Boolean) as { name: string; out: string; ok: boolean }[]).filter(p => p.ok);
           for (const p of good) preToolsUsed.push({ name: p.name, ok: true });
-          if (good.length) liveSnapshot = `\n\nLIVE SNAPSHOT — pulled just now from Google Ads (treat as ground truth; cite these figures freely, they are real):\n${good.map(p => p.out).join("\n\n")}`;
+          if (good.length) liveSnapshot = `\n\nLIVE SNAPSHOT — pulled just now (treat as ground truth; cite freely, it's real). Read ALL of it, INCLUDING the Slack channel, BEFORE you write — if the answer to an off-platform question (checkout, payments, promo, stock) is already here, use it and don't ask the team again:\n${good.map(p => p.out).join("\n\n")}`;
         }
 
         const context = buildClientBlock(clientCtx) + buildContext(account.name, cur, diag, windows, pages, winners, changeRows) + liveSnapshot;
