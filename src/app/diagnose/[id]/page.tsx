@@ -14,7 +14,7 @@ import Link from "next/link";
 import {
   ArrowLeft, ArrowUpRight, Loader2, CheckCircle2, AlertTriangle, HelpCircle,
   ShieldCheck, Sprout, XCircle, MinusCircle, TrendingUp, ShoppingBag, RefreshCw, ChevronRight, Sparkles,
-  Paperclip, X, FileText, Download, Trash2, Plug,
+  Paperclip, X, FileText, Download, Trash2, Plug, Star,
 } from "lucide-react";
 
 interface Attachment { name: string; mediaType: string; data: string; kind: "image" | "document" | "text" }
@@ -366,6 +366,8 @@ export default function DiagnosePage() {
   const [trackingSaving, setTrackingSaving] = useState<"verified" | "broken" | "clear" | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [watched, setWatched] = useState(false);
+  const [watchBusy, setWatchBusy] = useState(false);
   const [shopDomain, setShopDomain] = useState("");
   const [syncing, setSyncing] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -392,8 +394,25 @@ export default function DiagnosePage() {
       setProductPages(j.productPages ?? []);
       setWins(j.wins ?? []);
       setTracking(j.tracking ?? null);
+      setWatched(!!j.watched);
     } catch (e) { setError(e instanceof Error ? e.message : "Network error"); }
     setLoading(false);
+  }
+
+  // Favourite / unfavourite this account for the current user (their "my
+  // accounts" on the cockpit). Optimistic — reverts if the save fails.
+  async function toggleFavorite() {
+    const next = !watched;
+    setWatched(next); setWatchBusy(true);
+    try {
+      const r = await fetch("/api/me/watch", {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accountId: id, watch: next }),
+      });
+      if (!r.ok) throw new Error();
+    } catch { setWatched(!next); }
+    finally { setWatchBusy(false); }
   }
 
   useEffect(() => { load(); }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -766,6 +785,13 @@ export default function DiagnosePage() {
           <ArrowLeft size={15} /> Portfolio
         </Link>
         <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>
+          <button onClick={toggleFavorite} disabled={watchBusy} title={watched ? "Remove from your favourites" : "Add to your favourites (My accounts)"} style={{
+            display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, cursor: watchBusy ? "default" : "pointer",
+            color: watched ? "#e0a92e" : "var(--text-3)", border: `1px solid ${watched ? "color-mix(in srgb, #e0a92e 45%, var(--border))" : "var(--border-2)"}`,
+            background: watched ? "color-mix(in srgb, #e0a92e 12%, transparent)" : "var(--surface)", padding: "7px 12px", borderRadius: 8,
+          }}>
+            <Star size={13} style={{ fill: watched ? "currentColor" : "none" }} /> {watched ? "Favourited" : "Favourite"}
+          </button>
           <button onClick={refreshData} disabled={refreshing} style={{
             display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600,
             color: "#fff", border: "none", background: "var(--btn-primary, var(--accent))", padding: "7px 14px", borderRadius: 8, cursor: refreshing ? "default" : "pointer",
