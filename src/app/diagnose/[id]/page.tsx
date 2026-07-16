@@ -21,6 +21,8 @@ interface Attachment { name: string; mediaType: string; data: string; kind: "ima
 interface DocMeta { id: string; title: string; docType: string; format: "doc" | "deck"; language: string; filename: string; createdBy: string | null; createdAt: string }
 interface Connections { googleAds: string; merchantCenter: string; shopify: string; shopifySource: string | null; shopifyUploadedAt: string | null; shopifyCsvRange: { start: string | null; end: string | null } | null; slack: string; slackConfigured: boolean; slackChannelName: string | null; context: string; contextFilled: number; contextTotal: number }
 interface SlackChannel { id: string; name: string; isPrivate: boolean; memberCount?: number }
+interface VitalCheck { key: string; label: string; status: "ok" | "warn" | "fail" | "na"; detail: string }
+interface Vitals { checks: VitalCheck[]; governing: string | null; summary: string }
 
 // The context we ask the team to fill so the agent knows the client — the things
 // the data can't tell it. Keys map to the ClientContext / Typeform fields.
@@ -307,6 +309,9 @@ export default function DiagnosePage() {
   const [trend, setTrend] = useState<Trend | null>(null);
   const [shopify, setShopify] = useState<ShopifyStatus | null>(null);
   const [connections, setConnections] = useState<Connections | null>(null);
+  const [vitals, setVitals] = useState<Vitals | null>(null);
+  const [vitalsLoading, setVitalsLoading] = useState(true);
+  const [vitalsOpen, setVitalsOpen] = useState<string | null>(null);
   const [ctxOpen, setCtxOpen] = useState(false);
   const [ctxValues, setCtxValues] = useState<Record<string, string>>({});
   const [ctxLoading, setCtxLoading] = useState(false);
@@ -460,6 +465,18 @@ export default function DiagnosePage() {
     setConvoLoaded(true);
   }
   useEffect(() => { loadConversation(); }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // The fundamentals check — loaded on its own so the health strip shows the
+  // instant the page opens, without waiting for the full account payload.
+  async function loadHealth() {
+    setVitalsLoading(true);
+    try {
+      const r = await fetch(`/api/diagnostics/account/${id}/healthcheck`, { credentials: "include" });
+      if (r.ok) { const j = await r.json(); setVitals(j.vitals ?? null); }
+    } catch { /* strip just won't show */ }
+    finally { setVitalsLoading(false); }
+  }
+  useEffect(() => { loadHealth(); }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Stream one agent turn into the thread. Appends an assistant placeholder and
   // streams into it; the server persists both sides. Returns whether fresh data
@@ -851,6 +868,42 @@ export default function DiagnosePage() {
                 ...((diag.observations.length || diag.checksRun.length || diag.questions.length) ? [{ id: "diagnosis", label: "Diagnosis" }] : []),
                 ...(shopify ? [{ id: "data", label: "Data & connections" }] : []),
               ]} />
+            )}
+
+            {/* Fundamentals check — the vitals, visible the instant the page opens */}
+            {(vitalsLoading || vitals) && (
+              <div style={{ ...card, padding: "12px 15px", marginTop: 14, border: vitals?.governing ? "1px solid color-mix(in srgb, var(--danger, #d33) 40%, var(--border))" : "1px solid var(--border)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: vitals ? 10 : 0, flexWrap: "wrap" }}>
+                  <ShieldCheck size={14} style={{ color: "var(--accent)" }} />
+                  <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, color: "var(--text-muted)" }}>Fundamentals</span>
+                  {vitalsLoading && <span style={{ fontSize: 12, color: "var(--text-3)", display: "inline-flex", alignItems: "center", gap: 6 }}><Loader2 size={12} className="animate-spin" /> checking…</span>}
+                  {vitals?.governing && <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--danger, #d33)" }}>{vitals.governing} needs fixing first</span>}
+                  {vitals && !vitals.governing && <span style={{ fontSize: 11.5, fontWeight: 600, color: "var(--ok, #16a34a)" }}>foundation holds</span>}
+                </div>
+                {vitals && (
+                  <>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+                      {vitals.checks.map(c => {
+                        const col = c.status === "ok" ? "var(--ok, #16a34a)" : c.status === "warn" ? "var(--warn, #d98a00)" : c.status === "fail" ? "var(--danger, #d33)" : "var(--text-dim)";
+                        const glyph = c.status === "ok" ? "✓" : c.status === "warn" ? "⚠" : c.status === "fail" ? "✗" : "–";
+                        const open = vitalsOpen === c.key;
+                        return (
+                          <button key={c.key} onClick={() => setVitalsOpen(open ? null : c.key)} title={c.detail}
+                            style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600, color: "var(--text-2)", background: open ? "var(--surface-2)" : "transparent", border: `1px solid ${col === "var(--text-dim)" ? "var(--border-2)" : `color-mix(in srgb, ${col} 45%, var(--border))`}`, borderRadius: 999, padding: "4px 11px", cursor: "pointer" }}>
+                            <span style={{ color: col, fontWeight: 800 }}>{glyph}</span> {c.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {vitalsOpen && (
+                      <div style={{ marginTop: 9, fontSize: 12.5, color: "var(--text-2)", lineHeight: 1.5 }}>
+                        {vitals.checks.find(c => c.key === vitalsOpen)?.detail}
+                      </div>
+                    )}
+                    <div style={{ marginTop: 9, fontSize: 12, color: vitals.governing ? "var(--danger, #d33)" : "var(--text-muted)", lineHeight: 1.5 }}>{vitals.summary}</div>
+                  </>
+                )}
+              </div>
             )}
 
             {/* Connections & context — what this account knows, at a glance */}

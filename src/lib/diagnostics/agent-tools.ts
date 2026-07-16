@@ -123,8 +123,13 @@ function detectSetup(rows: { campaign: string; channel: string; biddingStrategy:
 // sequence, upstream first. Confirms the important things are actually working
 // (tracking → feed → spend → sales → efficiency) so the read starts from what's
 // real, and the first ✗ is the governing constraint. Everything here is derived
-// from real data; nothing is asserted that a check didn't return.
-async function runVitals(acc: AgentAccount): Promise<string> {
+// from real data; nothing is asserted that a check didn't return. Returned as
+// structured checks so both the agent and the visible health panel use it.
+export type VitalStatus = "ok" | "warn" | "fail" | "na";
+export interface VitalCheck { key: string; label: string; status: VitalStatus; detail: string }
+export interface VitalsResult { checks: VitalCheck[]; governing: string | null; summary: string }
+
+export async function computeVitals(acc: AgentAccount): Promise<VitalsResult> {
   const cur = CUR[acc.currency] ?? `${acc.currency} `;
   const money = (n: number) => `${cur}${Math.round(n).toLocaleString("en-GB")}`;
   const day = (n: number) => { const d = new Date(); d.setUTCDate(d.getUTCDate() - n); return d.toISOString().slice(0, 10); };
@@ -145,63 +150,69 @@ async function runVitals(acc: AgentAccount): Promise<string> {
   const hasOrderData = orderRows > 0;
   const orders30 = o30._sum.orders ?? 0, orders7 = o7._sum.orders ?? 0, rev7 = o7._sum.revenue ?? 0;
 
-  const L: string[] = ["FUNDAMENTALS CHECK (upstream first — the first ✗ is the governing constraint):"];
+  const checks: VitalCheck[] = [];
   const fails: string[] = [];
-  const mark = (icon: string, label: string, detail: string) => L.push(`${icon} ${label}: ${detail}`);
+  const add = (key: string, label: string, status: VitalStatus, detail: string) => { checks.push({ key, label, status, detail }); if (status === "fail") fails.push(label); };
 
   // 1. TRACKING — can we trust the numbers at all?
-  if (account?.trackingStatus === "broken") { mark("✗", "Tracking", "flagged BROKEN — fix before trusting any number here; every downstream read is unreliable until it's fixed."); fails.push("tracking"); }
-  else if (account?.trackingStatus === "verified") mark("✓", "Tracking", "confirmed working.");
-  else mark("⚠", "Tracking", "not confirmed — verify the primary conversion is a real purchase and reconciles to orders.");
-  // Reconciliation sanity (only if we have real orders to compare)
-  if (hasOrderData && orders30 > 0 && conv30 > orders30 * 1.5) {
-    mark("⚠", "Reconciliation", `Google shows ${conv30.toFixed(0)} conversions/30d but only ${orders30} real orders — possible over-counting (non-purchase goals?).`);
-  }
+  const reconNote = hasOrderData && orders30 > 0 && conv30 > orders30 * 1.5
+    ? ` Reconciliation: Google shows ${conv30.toFixed(0)} conv/30d vs ${orders30} real orders — possible over-counting.` : "";
+  if (account?.trackingStatus === "broken") add("tracking", "Tracking", "fail", "Flagged BROKEN — fix before trusting any number; every downstream read is unreliable until it is.");
+  else if (account?.trackingStatus === "verified") add("tracking", "Tracking", "ok", `Confirmed working.${reconNote}`);
+  else add("tracking", "Tracking", "warn", `Not confirmed — verify the primary conversion is a real purchase.${reconNote}`);
 
   // 2. MERCHANT CENTER / FEED — is Google even allowed to serve the products?
   try {
     const ids = await getMerchantCenterIds(acc.googleAdsId, acc.organizationId, acc.merchantCenterId ?? null);
-    if (ids.length) {
+    if (!ids.length) add("merchant_center", "Merchant Center", "na", "No Merchant Center account linked.");
+    else {
       const h = await fetchMerchantCenterHealth(ids[0], acc.organizationId);
-      if (h.scopeOrAuthError) mark("⚠", "Merchant Center", `couldn't read it (${h.scopeOrAuthError.slice(0, 80)}).`);
-      else if (h.accountIssues.length) { mark("✗", "Merchant Center", `account-level issue — ${h.accountIssues.map(i => i.title).join("; ")}. This can take the whole feed down.`); fails.push("merchant center"); }
+      if (h.scopeOrAuthError) add("merchant_center", "Merchant Center", "warn", `Couldn't read it (${h.scopeOrAuthError.slice(0, 80)}).`);
+      else if (h.accountIssues.length) add("merchant_center", "Merchant Center", "fail", `Account-level issue — ${h.accountIssues.map(i => i.title).join("; ")}. Can take the whole feed down.`);
       else {
         const tot = h.totals.active + h.totals.disapproved;
         const disPct = tot > 0 ? Math.round((h.totals.disapproved / tot) * 100) : 0;
-        if (disPct >= 20) mark("⚠", "Merchant Center", `no suspension, but ${h.totals.disapproved}/${tot} products disapproved (${disPct}%).`);
-        else mark("✓", "Merchant Center", `no account-level issues; ${h.totals.active} products serving${h.totals.disapproved ? `, ${h.totals.disapproved} disapproved` : ""}.`);
+        if (disPct >= 20) add("merchant_center", "Merchant Center", "warn", `No suspension, but ${h.totals.disapproved}/${tot} products disapproved (${disPct}%).`);
+        else add("merchant_center", "Merchant Center", "ok", `No account-level issues; ${h.totals.active} products serving${h.totals.disapproved ? `, ${h.totals.disapproved} disapproved` : ""}.`);
       }
     }
-  } catch { /* MC is best-effort — a failure here shouldn't sink the whole check */ }
+  } catch { add("merchant_center", "Merchant Center", "na", "Couldn't reach Merchant Center."); }
 
   // 3. SPEND — is the account actually delivering?
-  if (spend30 <= 0) { mark("✗", "Spend", "€0 in 30d — not delivering (paused, or blocked by billing/policy)."); fails.push("spend"); }
-  else if (spend7 <= spend30 / 30 * 0.2) mark("⚠", "Spend", `spending ${money(spend30)}/30d but the last 7d (${money(spend7)}) has collapsed — check serving/feed/budget.`);
-  else mark("✓", "Spend", `delivering — ${money(spend30)}/30d, ${money(spend7)}/7d.`);
+  if (spend30 <= 0) add("spend", "Spend", "fail", "€0 in 30d — not delivering (paused, or blocked by billing/policy).");
+  else if (spend7 <= spend30 / 30 * 0.2) add("spend", "Spend", "warn", `Spending ${money(spend30)}/30d but the last 7d (${money(spend7)}) has collapsed — check serving/feed/budget.`);
+  else add("spend", "Spend", "ok", `Delivering — ${money(spend30)}/30d, ${money(spend7)}/7d.`);
 
   // 4. SALES — is the money turning into orders?
   if (hasOrderData) {
-    if (orders7 === 0 && spend7 > 0) { mark("✗", "Sales", `spending but ZERO real orders in 7d — the classic checkout/site/stock break (clicks arriving, till closed).`); fails.push("sales"); }
-    else mark("✓", "Sales", `${orders7} real orders/7d (${money(rev7)}); ${orders30} over 30d.`);
+    if (orders7 === 0 && spend7 > 0) add("sales", "Sales", "fail", "Spending but ZERO real orders in 7d — the classic checkout/site/stock break (clicks arriving, till closed).");
+    else add("sales", "Sales", "ok", `${orders7} real orders/7d (${money(rev7)}); ${orders30} over 30d.`);
   } else {
-    if (conv7 === 0 && spend7 > 0) { mark("✗", "Sales", `spending but ZERO conversions in 7d (Google's count — no Shopify to confirm real orders).`); fails.push("sales"); }
-    else mark("✓", "Sales", `${conv7.toFixed(0)} conversions/7d (Google's attribution).`);
-    mark("⚠", "Order data", "no Shopify orders connected — flying on Google's attribution; connect Shopify or upload a CSV to confirm real sales.");
+    if (conv7 === 0 && spend7 > 0) add("sales", "Sales", "fail", "Spending but ZERO conversions in 7d (Google's count — no Shopify to confirm real orders).");
+    else add("sales", "Sales", "warn", `${conv7.toFixed(0)} conversions/7d (Google's attribution) — no Shopify connected, so real orders aren't confirmed.`);
   }
 
-  // 5. EFFICIENCY — profitable? (lagging, so last; may be contaminated by an upstream break)
+  // 5. EFFICIENCY — profitable? (lagging; may be contaminated by an upstream break)
   const roas30 = spend30 > 0 ? val30 / spend30 : 0;
   const floor = account?.roasFloor ?? (account?.grossMarginPercent ? 1 / account.grossMarginPercent : null);
   if (spend30 > 0) {
     const floorTxt = floor != null ? ` (break-even ${floor.toFixed(2)})` : "";
-    if (floor != null && roas30 < floor) mark(fails.length ? "⚠" : "✗", "Efficiency", `ROAS ${roas30.toFixed(2)} over 30d, BELOW break-even${floorTxt}${fails.length ? " — but likely contaminated by the upstream ✗ above; don't act on it until that's fixed." : "."}`);
-    else mark("✓", "Efficiency", `ROAS ${roas30.toFixed(2)} over 30d${floorTxt}.`);
-  }
+    if (floor != null && roas30 < floor) add("efficiency", "Efficiency", fails.length ? "warn" : "fail", `ROAS ${roas30.toFixed(2)}/30d, below break-even${floorTxt}${fails.length ? " — likely contaminated by the upstream ✗; don't act on it yet." : "."}`);
+    else add("efficiency", "Efficiency", "ok", `ROAS ${roas30.toFixed(2)}/30d${floorTxt}.`);
+  } else add("efficiency", "Efficiency", "na", "No spend to judge efficiency on.");
 
-  L.push(fails.length
-    ? `→ Governing constraint: ${fails[0].toUpperCase()} is broken — fix that first; everything downstream (including efficiency) is unreliable until it is.`
-    : `→ Fundamentals hold. No hard failure — if performance is off, it's a tuning/optimisation question, not a broken foundation.`);
-  return L.join("\n");
+  const governing = fails[0] ?? null;
+  const summary = governing
+    ? `${governing} is the governing constraint — fix that first; everything downstream (incl. efficiency) is unreliable until it is.`
+    : "Fundamentals hold — no broken foundation. If performance is off, it's a tuning question, not a broken vital.";
+  return { checks, governing, summary };
+}
+
+async function runVitals(acc: AgentAccount): Promise<string> {
+  const v = await computeVitals(acc);
+  const icon: Record<VitalStatus, string> = { ok: "✓", warn: "⚠", fail: "✗", na: "–" };
+  const lines = v.checks.map(c => `${icon[c.status]} ${c.label}: ${c.detail}`);
+  return `FUNDAMENTALS CHECK (upstream first — the first ✗ is the governing constraint):\n${lines.join("\n")}\n→ ${v.summary}`;
 }
 
 export async function runAgentTool(name: string, input: Record<string, unknown>, acc: AgentAccount): Promise<string> {
