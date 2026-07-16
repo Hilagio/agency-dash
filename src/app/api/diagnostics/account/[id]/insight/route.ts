@@ -374,7 +374,16 @@ export async function POST(req: NextRequest, { params }: Params) {
         for (let step = 0; step < MAX_STEPS; step++) {
           const anthropicStream = client.beta.messages.stream({
             model: "claude-opus-4-8",
-            max_tokens: 1500,
+            // Headroom for adaptive thinking: reasoning tokens are billed as
+            // output and count against max_tokens, so leave room above the
+            // ~1.5k the visible answer needs or the reply can truncate mid-think.
+            max_tokens: 6000,
+            // Extended reasoning: let the model actually think through the
+            // diagnosis (correlate the numbers, weigh hypotheses, decide which
+            // tool to pull) instead of answering off the top of its head. This
+            // is the single biggest quality lever for the read.
+            thinking: { type: "adaptive" },
+            output_config: { effort: "high" },
             betas: ppc.betas,
             mcp_servers: ppc.mcp_servers,
             tools: allTools,
@@ -386,6 +395,11 @@ export async function POST(req: NextRequest, { params }: Params) {
             if (ev.type === "content_block_start" && ev.content_block?.type === "text") {
               textBlocks++;
               if (textBlocks > 1) { send(controller, { reset: true }); finalText = ""; }
+            } else if (ev.type === "content_block_start" && ev.content_block?.type === "thinking") {
+              // Thinking deltas stream as a separate block type — they never
+              // reach finalText (we only capture text_delta), so surfacing a
+              // status here is safe and shows the agent is actually reasoning.
+              send(controller, { status: "Thinking it through…" });
             } else if (ev.type === "content_block_start" && ev.content_block?.type === "tool_use") {
               send(controller, { status: toolStatusLabel(ev.content_block.name) });
             } else if (ev.type === "content_block_delta" && ev.delta.type === "text_delta") {
