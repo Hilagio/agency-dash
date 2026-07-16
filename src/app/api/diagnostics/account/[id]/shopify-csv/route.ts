@@ -50,6 +50,12 @@ export async function POST(req: Request, { params }: Params) {
     return NextResponse.json({ error: `Upload kind "${kind}" isn't supported yet — only daily_sales.` }, { status: 400 });
   }
 
+  // Don't let a manual CSV overwrite live-synced order data.
+  const live = await prisma.shopifyConnection.findUnique({ where: { accountId: id }, select: { shopDomain: true } });
+  if (live) {
+    return NextResponse.json({ error: `This account has a live Shopify connection (${live.shopDomain}) — its orders sync automatically, so a CSV isn't needed and won't be imported.` }, { status: 409 });
+  }
+
   const parsed = parseDailySales(csv);
   if (!parsed.rows.length) {
     return NextResponse.json({

@@ -29,13 +29,28 @@ export function parseCsv(text: string): string[][] {
   return rows.filter(r => r.some(x => x.trim() !== ""));
 }
 
-// "€1,234.56" / "1,234" / "1234.5" → number. Assumes English number format
-// (comma thousands, dot decimal), which is how Shopify analytics CSVs export.
+// Parse a money/number cell in EITHER English ("1,234.56") or European
+// ("1.234,56") format — the client is Dutch, so a Shopify export may come in
+// either. Rule: strip currency/spaces; if both separators appear, the RIGHTMOST
+// is the decimal and the other is thousands; if only one appears, decide by the
+// trailing group (a 1–2 digit tail = decimal, a 3-digit tail = thousands).
 function num(s: string | undefined): number | null {
   if (s == null) return null;
-  const m = s.replace(/[^0-9.\-]/g, "");
-  if (!m || m === "-" || m === ".") return null;
-  const n = Number(m);
+  let t = s.replace(/[^0-9.,\-]/g, "").trim();
+  if (!t || t === "-" || t === "." || t === ",") return null;
+  const lastComma = t.lastIndexOf(","), lastDot = t.lastIndexOf(".");
+  if (lastComma > -1 && lastDot > -1) {
+    if (lastComma > lastDot) t = t.replace(/\./g, "").replace(",", "."); // EU: 1.234,56
+    else t = t.replace(/,/g, "");                                        // US: 1,234.56
+  } else if (lastComma > -1) {
+    const tail = t.length - lastComma - 1;
+    t = (t.indexOf(",") === lastComma && tail <= 2) ? t.replace(",", ".") : t.replace(/,/g, "");
+  } else if (lastDot > -1) {
+    const tail = t.length - lastDot - 1;
+    // Multiple dots, or a single dot with a 3-digit tail (e.g. "1.234"), = thousands.
+    if (t.indexOf(".") !== lastDot || tail === 3) t = t.replace(/\./g, "");
+  }
+  const n = Number(t);
   return Number.isFinite(n) ? n : null;
 }
 
@@ -74,7 +89,10 @@ export function parseDailySales(csv: string): DailySalesParse {
     return { rows: [], rangeStart: null, rangeEnd: null, skipped: rows.length - 1 };
   }
 
-  const out: DailySalesRow[] = [];
+  // Collapse to one row per date (summing) — a report grouped by Day plus a
+  // second dimension (channel, etc.) yields several rows per date; the unique
+  // (accountId, date) constraint would otherwise reject the upload.
+  const byDate = new Map<string, DailySalesRow>();
   let skipped = 0;
   for (let r = 1; r < rows.length; r++) {
     const cells = rows[r];
@@ -83,9 +101,11 @@ export function parseDailySales(csv: string): DailySalesParse {
     const revenue = num(cells[iNet]) ?? num(cells[iTotal]) ?? num(cells[iGross]);
     if (revenue == null) { skipped++; continue; }
     const orders = iOrders >= 0 ? (num(cells[iOrders]) ?? 0) : 0;
-    out.push({ date, orders: Math.round(orders), revenue });
+    const e = byDate.get(date) ?? { date, orders: 0, revenue: 0 };
+    e.orders += Math.round(orders); e.revenue += revenue;
+    byDate.set(date, e);
   }
-  out.sort((a, b) => a.date.localeCompare(b.date));
+  const out = [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
   return {
     rows: out,
     rangeStart: out.length ? out[0].date : null,

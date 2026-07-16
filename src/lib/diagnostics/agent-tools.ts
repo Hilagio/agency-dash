@@ -87,15 +87,25 @@ export const toolStatusLabel = (name: string) => LABELS[name] ?? `Checking ${nam
 const tokensOf = (s: string) => s.toUpperCase().split(/[^A-Z0-9]+/).filter(Boolean);
 
 function labelSegments(names: string[]): string[] {
-  const found = new Set<string>();
+  // Full words and combined tokens (HSZ/HS) are STRONG signals — a single one is
+  // enough. Bare single letters (H/S/Z/V) are WEAK — a stray "Campaign V" would
+  // false-trigger — so only trust them when at least two distinct ones co-occur
+  // or a strong signal is already present (i.e. it really is the label scheme).
+  const strong = new Set<string>();
+  const weak = new Set<string>();
   for (const n of names) for (const t of tokensOf(n)) {
-    if (t === "HERO" || t === "HEROES" || t === "H") found.add("Heroes");
-    else if (t === "SIDEKICK" || t === "SIDEKICKS" || t === "S") found.add("Sidekicks");
-    else if (t === "ZOMBIE" || t === "ZOMBIES" || t === "Z") found.add("Zombies");
-    else if (t === "VILLAIN" || t === "VILLAINS" || t === "V") found.add("Villains");
-    else if (t === "HSZV" || t === "HSZ" || t === "HS") { found.add("Heroes"); found.add("Sidekicks"); found.add("Zombies"); }
+    if (t === "HERO" || t === "HEROES") strong.add("Heroes");
+    else if (t === "SIDEKICK" || t === "SIDEKICKS") strong.add("Sidekicks");
+    else if (t === "ZOMBIE" || t === "ZOMBIES") strong.add("Zombies");
+    else if (t === "VILLAIN" || t === "VILLAINS") strong.add("Villains");
+    else if (t === "HSZV" || t === "HSZ" || t === "HS") { strong.add("Heroes"); strong.add("Sidekicks"); strong.add("Zombies"); }
+    else if (t === "H") weak.add("Heroes");
+    else if (t === "S") weak.add("Sidekicks");
+    else if (t === "Z") weak.add("Zombies");
+    else if (t === "V") weak.add("Villains");
   }
-  return [...found];
+  if (strong.size || weak.size >= 2) return [...new Set([...strong, ...weak])];
+  return [...strong];
 }
 
 function detectSetup(rows: { campaign: string; channel: string; biddingStrategy: string }[]): string | null {
@@ -180,7 +190,9 @@ export async function computeVitals(acc: AgentAccount): Promise<VitalsResult> {
 
   // 3. SPEND — is the account actually delivering?
   if (spend30 <= 0) add("spend", "Spend", "fail", "€0 in 30d — not delivering (paused, or blocked by billing/policy).");
-  else if (spend7 <= spend30 / 30 * 0.2) add("spend", "Spend", "warn", `Spending ${money(spend30)}/30d but the last 7d (${money(spend7)}) has collapsed — check serving/feed/budget.`);
+  // Compare DAILY rates: last-7d/day vs 30d/day. Fires on a real partial collapse,
+  // not only a total stoppage (spend7 is a 7-day total, spend30/30 is one day).
+  else if (spend7 / 7 <= (spend30 / 30) * 0.2) add("spend", "Spend", "warn", `Spending ${money(spend30)}/30d but the last 7d (${money(spend7)}) has collapsed to a fraction of the run-rate — check serving/feed/budget.`);
   else add("spend", "Spend", "ok", `Delivering — ${money(spend30)}/30d, ${money(spend7)}/7d.`);
 
   // 4. SALES — is the money turning into orders?
@@ -328,7 +340,7 @@ export async function runAgentTool(name: string, input: Record<string, unknown>,
       prisma.productSalesDaily.findMany({ where: { accountId: acc.id, date: { gte: ymd } }, select: { title: true, units: true, revenue: true } }),
     ]);
     if (!conn && !upload && !orders.length) {
-      return "Shopify is NOT connected for this account, and no Shopify CSV has been uploaded — there's no real order data to reconcile against. (Connect the store with a custom-app token, or upload the 'Sales over time' CSV export.)";
+      return "Shopify is NOT connected and no CSV has been uploaded yet — no real order data to reconcile against. Ask the account manager for the Shopify 'Sales over time' CSV export (Analytics → Reports) and upload it; that's how we get order data for this account for now.";
     }
 
     // Freshness: uploaded CSV data is a snapshot, not live — always say how old

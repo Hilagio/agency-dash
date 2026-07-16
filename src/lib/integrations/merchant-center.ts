@@ -455,10 +455,18 @@ export async function fetchMerchantCenterHealth(merchantId: string, orgId?: stri
 
   const n = (v: string | number | undefined) => Number(v ?? 0) || 0;
   const accountIssues = (json.accountLevelIssues ?? []).map(i => ({ title: i.title ?? "issue", severity: i.severity ?? "", country: i.country }));
-  const destinations = (json.products ?? []).map(p => ({
-    country: p.country ?? "", destination: p.destination ?? "",
-    active: n(p.statistics?.active), pending: n(p.statistics?.pending), disapproved: n(p.statistics?.disapproved),
-  }));
+  // accountstatuses.products is keyed per (channel, destination, country), so the
+  // same product is listed under several destinations. Collapse to ONE entry per
+  // country (the primary destination = the one with the most active products) so
+  // totals and the per-country view aren't multiplied across destinations.
+  const perCountry = new Map<string, { country: string; destination: string; active: number; pending: number; disapproved: number }>();
+  for (const p of json.products ?? []) {
+    const country = p.country ?? "";
+    const row = { country, destination: p.destination ?? "", active: n(p.statistics?.active), pending: n(p.statistics?.pending), disapproved: n(p.statistics?.disapproved) };
+    const cur = perCountry.get(country);
+    if (!cur || row.active > cur.active) perCountry.set(country, row);
+  }
+  const destinations = [...perCountry.values()];
   const issueAgg = new Map<string, { description: string; servability: string; numItems: number; country?: string }>();
   for (const p of json.products ?? []) {
     for (const it of p.itemLevelIssues ?? []) {

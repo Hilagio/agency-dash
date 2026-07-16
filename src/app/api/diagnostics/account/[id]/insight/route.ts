@@ -370,7 +370,7 @@ export async function POST(req: NextRequest, { params }: Params) {
           const pulls = await Promise.all(want.map(async name => {
             try {
               const out = await runAgentTool(name, { days: 30 }, acc0);
-              const ok = !/(not connected|^\s*no\b|error running|couldn'?t|no stored|no data)/i.test(out);
+              const ok = !/(not connected|^\s*no\b|error running|couldn'?t|no stored|no data)/i.test(out.split("\n")[0]);
               return { name, out, ok };
             } catch { return null; }
           }));
@@ -458,7 +458,7 @@ export async function POST(req: NextRequest, { params }: Params) {
             catch (e) { out = `Error running ${tu.name}: ${e instanceof Error ? e.message : String(e)}. Tell the team you couldn't fetch this.`; }
             // "ok" = the source actually returned usable data (not "not connected",
             // empty, or an error) — drives whether the badge reads as data or a gap.
-            const ok = !/(not connected|^\s*no\b|error running|couldn'?t|no stored|no data)/i.test(out);
+            const ok = !/(not connected|^\s*no\b|error running|couldn'?t|no stored|no data)/i.test(out.split("\n")[0]);
             if (!toolsUsed.some(t => t.name === tu.name)) toolsUsed.push({ name: tu.name, ok });
             results.push({ type: "tool_result" as const, tool_use_id: tu.id, content: out });
           }

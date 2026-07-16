@@ -75,7 +75,9 @@ function cellNum(s: string): number | null {
   const m = s.replace(/,/g, "").match(/-?\d+(?:\.\d+)?/);
   return m ? parseFloat(m[0]) : null;
 }
-const isTableRow = (l: string) => /^\|.*\|.*$/.test(l.trim());
+// A table row just needs a pipe; detection is gated on the NEXT line being a
+// separator, so models that drop the outer pipes still render as a table.
+const isTableRow = (l: string) => l.includes("|");
 const isTableSep = (l: string) => { const t = l.trim(); return /^[|\s:-]+$/.test(t) && t.includes("-") && t.includes("|"); };
 const splitCells = (l: string) => l.trim().replace(/^\||\|$/g, "").split("|").map(c => c.trim());
 
@@ -89,7 +91,7 @@ function renderTable(header: string[], rows: string[][], key: number): React.Rea
   const colNumeric: boolean[] = [];
   for (let c = 0; c < cols; c++) {
     const nums = rows.map(r => cellNum(r[c] ?? "")).filter((n): n is number => n != null);
-    colNumeric[c] = nums.length >= Math.max(2, Math.ceil(rows.length / 2));
+    colNumeric[c] = nums.length >= Math.max(1, Math.ceil(rows.length / 2));
     colMax[c] = nums.length ? Math.max(...nums.map(Math.abs)) : null;
   }
   return (
