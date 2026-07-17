@@ -51,8 +51,23 @@ async function renderWithBrowser(url: string): Promise<PageDossier> {
   const req = eval("require") as NodeRequire;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const chromium = req("playwright-core").chromium as any;
-  const execPath = process.env.PLAYWRIGHT_CHROMIUM_PATH || (process.env.PLAYWRIGHT_BROWSERS_PATH ? `${process.env.PLAYWRIGHT_BROWSERS_PATH}/chromium` : undefined);
-  const browser = await chromium.launch({ headless: true, ...(execPath ? { executablePath: execPath } : {}), args: ["--no-sandbox", "--disable-dev-shm-usage"] });
+  // Resolve a Chromium binary. Priority: explicit env override → the bundled
+  // serverless build from @sparticuz/chromium (works on Railway with no system
+  // install) → Playwright's own lookup. On any failure renderPage falls back to
+  // a plain fetch, so a missing browser degrades cleanly rather than erroring.
+  let execPath = process.env.PLAYWRIGHT_CHROMIUM_PATH
+    || (process.env.PLAYWRIGHT_BROWSERS_PATH ? `${process.env.PLAYWRIGHT_BROWSERS_PATH}/chromium` : undefined);
+  let extraArgs: string[] = ["--no-sandbox", "--disable-dev-shm-usage"];
+  if (!execPath) {
+    try {
+      const spart = req("@sparticuz/chromium");
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mod = (spart.default ?? spart) as { executablePath: () => Promise<string>; args: string[] };
+      execPath = await mod.executablePath();
+      extraArgs = [...new Set([...(mod.args ?? []), ...extraArgs])];
+    } catch { /* no serverless chromium — let Playwright resolve its own */ }
+  }
+  const browser = await chromium.launch({ headless: true, ...(execPath ? { executablePath: execPath } : {}), args: extraArgs });
   try {
     const ctx = await browser.newContext({ viewport: MOBILE, isMobile: true, userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1" });
     const page = await ctx.newPage();
