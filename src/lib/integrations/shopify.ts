@@ -96,20 +96,59 @@ export function verifyShopifyWebhook(rawBody: string, hmacHeader: string | null,
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 
-export interface TokenResult { accessToken: string; scope: string; }
+export interface TokenResult {
+  accessToken: string;
+  scope: string;
+  /** Present for expiring offline tokens (the only kind Shopify now issues). */
+  refreshToken?: string;
+  expiresIn?: number;            // access-token lifetime, seconds (~3600)
+  refreshTokenExpiresIn?: number; // refresh-token lifetime, seconds (~7776000 = 90d)
+}
 
-/** Exchange the OAuth code for a permanent Admin API access token. */
+function parseToken(j: Record<string, unknown>): TokenResult {
+  return {
+    accessToken: String(j.access_token),
+    scope: typeof j.scope === "string" ? j.scope : "",
+    refreshToken: typeof j.refresh_token === "string" ? j.refresh_token : undefined,
+    expiresIn: Number.isFinite(Number(j.expires_in)) ? Number(j.expires_in) : undefined,
+    refreshTokenExpiresIn: Number.isFinite(Number(j.refresh_token_expires_in)) ? Number(j.refresh_token_expires_in) : undefined,
+  };
+}
+
+/**
+ * Exchange the OAuth code for an EXPIRING offline Admin API token. Shopify no
+ * longer accepts non-expiring tokens (403), so we pass `expiring: 1` and get back
+ * a short-lived access token plus a single-use refresh token.
+ */
 export async function exchangeCodeForToken(shop: string, code: string, cfg: ShopifyAppConfig): Promise<TokenResult> {
   if (!isValidShopDomain(shop)) throw new Error(`refusing token exchange for invalid shop: ${shop}`);
   const res = await fetch(`https://${shop}/admin/oauth/access_token`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Accept: "application/json" },
-    body: JSON.stringify({ client_id: cfg.apiKey, client_secret: cfg.apiSecret, code }),
+    body: JSON.stringify({ client_id: cfg.apiKey, client_secret: cfg.apiSecret, code, expiring: 1 }),
   });
   if (!res.ok) throw new Error(`Shopify token exchange failed (${res.status}): ${await res.text().catch(() => "")}`);
-  const j = await res.json() as { access_token?: string; scope?: string };
+  const j = await res.json() as Record<string, unknown>;
   if (!j.access_token) throw new Error("Shopify token exchange returned no access_token");
-  return { accessToken: j.access_token, scope: j.scope ?? "" };
+  return parseToken(j);
+}
+
+/**
+ * Refresh an expiring offline token. The refresh token is single-use — Shopify
+ * returns a NEW access token AND a NEW refresh token; the caller must persist
+ * both immediately (the old refresh token is now invalid).
+ */
+export async function refreshAccessToken(shop: string, refreshToken: string, cfg: ShopifyAppConfig): Promise<TokenResult> {
+  if (!isValidShopDomain(shop)) throw new Error(`refusing token refresh for invalid shop: ${shop}`);
+  const res = await fetch(`https://${shop}/admin/oauth/access_token`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({ client_id: cfg.apiKey, client_secret: cfg.apiSecret, grant_type: "refresh_token", refresh_token: refreshToken }),
+  });
+  if (!res.ok) throw new Error(`Shopify token refresh failed (${res.status}): ${await res.text().catch(() => "")}`);
+  const j = await res.json() as Record<string, unknown>;
+  if (!j.access_token) throw new Error("Shopify token refresh returned no access_token");
+  return parseToken(j);
 }
 
 // ─── Orders → daily series ─────────────────────────────────────────────────────
