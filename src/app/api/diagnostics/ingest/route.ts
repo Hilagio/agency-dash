@@ -17,7 +17,7 @@ import { ingestOrgSpine } from "@/lib/diagnostics/ingest";
 import { ingestOrgOrders } from "@/lib/diagnostics/orders";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 300;
+export const maxDuration = 800;
 
 function isCronRequest(req: NextRequest): boolean {
   const secret = process.env.CRON_SECRET;
