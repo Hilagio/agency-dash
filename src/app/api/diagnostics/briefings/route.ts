@@ -5,8 +5,9 @@
  * already-stored data and persist it on the account. Runs AFTER run-signals in
  * the nightly refresh. Session (caller's org) or CRON_SECRET (all orgs).
  *
- * Sequential on purpose: one cheap model call per flagged account, no fan-out —
- * this is a nightly job, not a latency-sensitive path, and it keeps memory flat.
+ * Bounded fan-out: one cheap model call per flagged account, a few at a time —
+ * enough to finish a large portfolio inside the request timeout without a
+ * thundering herd of model calls.
  */
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
@@ -45,7 +46,7 @@ async function postRedAlert(organizationId: string): Promise<void> {
 }
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 300;
+export const maxDuration = 800;
 
 function isCron(req: NextRequest): boolean {
   const s = process.env.CRON_SECRET;
@@ -58,12 +59,18 @@ async function run(where: { organizationId?: string }) {
     select: { id: true },
   });
   let generated = 0, cleared = 0, failed = 0;
-  for (const a of accounts) {
-    try {
-      const r = await generateAccountBriefing(a.id);
-      if (r?.text) generated++; else cleared++;
-    } catch { failed++; }
+  let cursor = 0;
+  const concurrency = 4;
+  async function worker() {
+    while (cursor < accounts.length) {
+      const a = accounts[cursor++];
+      try {
+        const r = await generateAccountBriefing(a.id);
+        if (r?.text) generated++; else cleared++;
+      } catch { failed++; }
+    }
   }
+  await Promise.all(Array.from({ length: Math.min(concurrency, accounts.length) || 1 }, () => worker()));
   // Ping the team on Slack about the reds (best-effort, internal channel only).
   if (where.organizationId) await postRedAlert(where.organizationId).catch(() => null);
   return { accounts: accounts.length, generated, cleared, failed };

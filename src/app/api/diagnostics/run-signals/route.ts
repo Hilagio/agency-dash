@@ -9,7 +9,7 @@ import { getAuthContext, unauthorized } from "@/lib/auth";
 import { computeOrgSignals } from "@/lib/diagnostics/run-signals";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 300;
+export const maxDuration = 800;
 
 function isCron(req: NextRequest): boolean {
   const s = process.env.CRON_SECRET;

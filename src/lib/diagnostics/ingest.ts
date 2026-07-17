@@ -128,13 +128,29 @@ export async function ingestAccountSpine(
   }
 }
 
-/** Ingest every active account for an organization. Sequential (OOM caution). */
-export async function ingestOrgSpine(organizationId: string, days = 14): Promise<IngestResult[]> {
+/**
+ * Ingest every active account for an organization with bounded concurrency.
+ *
+ * Sequential ingestion of a large portfolio (~79 accounts) ran past the request
+ * timeout → 502. A small pool finishes it in a fraction of the wall time while
+ * keeping only `concurrency` accounts' raw data in memory at once (the original
+ * OOM caution), and each account still catches its own errors so one bad account
+ * can't sink the run. Order is preserved.
+ */
+export async function ingestOrgSpine(organizationId: string, days = 14, concurrency = 5): Promise<IngestResult[]> {
   const accounts = await prisma.account.findMany({
     where: { organizationId, active: true, archived: false },
     select: { id: true, googleAdsId: true, organizationId: true },
   });
-  const out: IngestResult[] = [];
-  for (const a of accounts) out.push(await ingestAccountSpine(a, days));
+  const out: IngestResult[] = new Array(accounts.length);
+  let cursor = 0;
+  async function worker() {
+    while (cursor < accounts.length) {
+      const i = cursor++;
+      try { out[i] = await ingestAccountSpine(accounts[i], days); }
+      catch (err) { out[i] = { accountId: accounts[i].id, metrics: 0, products: 0, productAds: 0, searchTerms: 0, changeEvents: 0, error: describeGoogleAdsError(err) }; }
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(concurrency, accounts.length) || 1 }, () => worker()));
   return out;
 }

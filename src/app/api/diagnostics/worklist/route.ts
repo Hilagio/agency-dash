@@ -12,7 +12,7 @@ import { getAuthContext, unauthorized } from "@/lib/auth";
 import { generateOrgWorklist } from "@/lib/diagnostics/worklist";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 300;
+export const maxDuration = 800;
 
 function isCron(req: NextRequest): boolean {
   const s = process.env.CRON_SECRET;

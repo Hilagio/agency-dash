@@ -245,8 +245,18 @@ export async function computeOrgSignals(organizationId: string, now: Date = new 
       minSpendForEval: true, minConversionsForEval: true, dataVerified: true,
     },
   });
-  const out: AccountSignals[] = [];
   // Nightly run includes the live Merchant Center check (feed suspension/blocks).
-  for (const a of accounts) out.push(await computeAccountSignals(a, now, { checkMerchantCenter: true }));
+  // Bounded concurrency so a large portfolio finishes inside the request timeout;
+  // each account persists its own status independently, order preserved.
+  const out: AccountSignals[] = new Array(accounts.length);
+  let cursor = 0;
+  const concurrency = 5;
+  async function worker() {
+    while (cursor < accounts.length) {
+      const i = cursor++;
+      out[i] = await computeAccountSignals(accounts[i], now, { checkMerchantCenter: true });
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(concurrency, accounts.length) || 1 }, () => worker()));
   return out;
 }
