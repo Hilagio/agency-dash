@@ -13,8 +13,10 @@ import { getAuthContext } from "@/lib/auth";
 import {
   shopifyAppConfig, isValidShopDomain, verifyShopifyHmac, exchangeCodeForToken,
 } from "@/lib/integrations/shopify";
+import { ingestAccountOrders } from "@/lib/diagnostics/orders";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 function baseUrl(req: NextRequest): string {
   const domain = process.env.RAILWAY_PUBLIC_DOMAIN;
@@ -80,6 +82,11 @@ export async function GET(req: NextRequest) {
     create: { accountId: account.id, shopDomain: shop, accessToken: token.accessToken, scope: token.scope },
     update: { shopDomain: shop, accessToken: token.accessToken, scope: token.scope },
   });
+
+  // Pull the last 60 days of orders right away, so the account isn't left
+  // "synced never" and nobody has to click Sync. Best-effort — a slow or failed
+  // pull must not break the redirect back into the app.
+  await ingestAccountOrders(account.id, 60).catch(() => null);
 
   const res = redirectTo(req, `/diagnose/${account.id}?shopify=connected`);
   res.cookies.delete("shopify_oauth_nonce");
