@@ -352,6 +352,11 @@ export default function DiagnosePage() {
   const [mcValue, setMcValue] = useState("");
   const [mcSaving, setMcSaving] = useState(false);
   const [mcMsg, setMcMsg] = useState<string | null>(null);
+  // Inline Shopify Flow setup — the free, no-app, no-review order webhook.
+  const [flowOpen, setFlowOpen] = useState(false);
+  const [flowData, setFlowData] = useState<{ url: string; bodyTemplate: string; ordersReceived: number; connected: boolean; lastReceivedAt: string | null } | null>(null);
+  const [flowLoading, setFlowLoading] = useState(false);
+  const [flowCopied, setFlowCopied] = useState<string | null>(null);
   // Manual Shopify CSV upload (the no-API fallback).
   const [csvBusy, setCsvBusy] = useState(false);
   const [csvMsg, setCsvMsg] = useState<string | null>(null);
@@ -705,6 +710,23 @@ export default function DiagnosePage() {
       load(); // refresh connections + re-run vitals against the linked feed
     } catch { setMcMsg("Couldn't save that ID."); }
     finally { setMcSaving(false); }
+  }
+
+  // Shopify Flow setup — fetch (and lazily mint) this account's webhook URL.
+  async function openFlowSetup() {
+    const next = !flowOpen; setFlowOpen(next);
+    if (!next || flowData) return;
+    setFlowLoading(true);
+    try { const r = await fetch(`/api/diagnostics/account/${id}/flow`, { credentials: "include" }); if (r.ok) setFlowData(await r.json()); }
+    catch { /* ignore */ } finally { setFlowLoading(false); }
+  }
+  async function regenerateFlow() {
+    setFlowLoading(true);
+    try { const r = await fetch(`/api/diagnostics/account/${id}/flow`, { method: "POST", credentials: "include" }); if (r.ok) setFlowData(await r.json()); }
+    catch { /* ignore */ } finally { setFlowLoading(false); }
+  }
+  function copyFlow(text: string, which: string) {
+    navigator.clipboard?.writeText(text).then(() => { setFlowCopied(which); setTimeout(() => setFlowCopied(null), 1500); }).catch(() => {});
   }
 
   // Upload a Shopify "Sales over time" CSV — the data is kept and reconciled
@@ -1082,6 +1104,52 @@ export default function DiagnosePage() {
                     )}
                     {csvMsg && <span style={{ color: "var(--text-2)" }}>{csvMsg}</span>}
                     <span style={{ opacity: 0.7 }}>Analytics → Reports → Sales over time (by Day) → Export</span>
+                    <button onClick={openFlowSetup} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11.5, fontWeight: 600, color: "var(--accent)", background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 7, padding: "4px 10px", cursor: "pointer" }}>
+                      <ShoppingBag size={12} /> Or connect free via Shopify Flow
+                    </button>
+                  </div>
+                )}
+
+                {/* Shopify Flow — the free, no-app, no-review order webhook. We hand the
+                    merchant a ready URL + body + steps; any staff builds it in ~4 clicks. */}
+                {flowOpen && (
+                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--border-2)" }}>
+                    <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 3 }}>Connect Shopify — free, via Flow (no app, no approval)</div>
+                    <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginBottom: 11 }}>A one-time automation in the client&rsquo;s Shopify that sends each new order here. Any staff can set it up — no owner-only app, no App Store review.</div>
+                    {flowLoading || !flowData ? (
+                      <div style={{ fontSize: 12.5, color: "var(--text-3)", display: "flex", alignItems: "center", gap: 8 }}><Loader2 size={13} className="animate-spin" /> Preparing the link…</div>
+                    ) : (
+                      <>
+                        {flowData.connected && (
+                          <div style={{ fontSize: 12, color: "var(--accent)", marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
+                            <ShieldCheck size={13} /> Receiving orders — {flowData.ordersReceived} in so far{flowData.lastReceivedAt ? ` · last ${agoLabel(flowData.lastReceivedAt)}` : ""}.
+                          </div>
+                        )}
+                        <ol style={{ margin: 0, paddingLeft: 18, fontSize: 12.5, color: "var(--text-2)", lineHeight: 1.7 }}>
+                          <li>In the client&rsquo;s Shopify admin, open <strong>Flow</strong> (install the free <em>Shopify Flow</em> app first if it&rsquo;s not there) → <strong>Create workflow</strong>.</li>
+                          <li>Trigger: <strong>Order created</strong>.</li>
+                          <li>Add an action → <strong>Send HTTP request</strong>. Method <strong>POST</strong>, and paste this URL:</li>
+                        </ol>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "8px 0 10px", paddingLeft: 18 }}>
+                          <code style={{ flex: 1, minWidth: 0, fontSize: 11.5, color: "var(--text)", background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 7, padding: "7px 9px", overflowX: "auto", whiteSpace: "nowrap" }}>{flowData.url}</code>
+                          <button onClick={() => copyFlow(flowData.url, "url")} style={{ fontSize: 11.5, fontWeight: 700, color: "var(--text-2)", background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 7, padding: "7px 11px", cursor: "pointer", flexShrink: 0 }}>{flowCopied === "url" ? "Copied ✓" : "Copy"}</button>
+                        </div>
+                        <ol start={4} style={{ margin: 0, paddingLeft: 18, fontSize: 12.5, color: "var(--text-2)", lineHeight: 1.7 }}>
+                          <li>Set the request <strong>Body</strong> to this (JSON):</li>
+                        </ol>
+                        <div style={{ display: "flex", alignItems: "flex-start", gap: 8, margin: "8px 0 10px", paddingLeft: 18 }}>
+                          <pre style={{ flex: 1, minWidth: 0, fontSize: 11, color: "var(--text)", background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 7, padding: "8px 10px", overflowX: "auto", margin: 0 }}>{flowData.bodyTemplate}</pre>
+                          <button onClick={() => copyFlow(flowData.bodyTemplate, "body")} style={{ fontSize: 11.5, fontWeight: 700, color: "var(--text-2)", background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 7, padding: "7px 11px", cursor: "pointer", flexShrink: 0 }}>{flowCopied === "body" ? "Copied ✓" : "Copy"}</button>
+                        </div>
+                        <ol start={5} style={{ margin: 0, paddingLeft: 18, fontSize: 12.5, color: "var(--text-2)", lineHeight: 1.7 }}>
+                          <li>Turn the workflow <strong>On</strong>. New orders now flow in automatically — the &ldquo;Receiving orders&rdquo; note above confirms it.</li>
+                        </ol>
+                        <div style={{ marginTop: 11, fontSize: 11, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", paddingLeft: 18 }}>
+                          <span>Keep this URL private — it&rsquo;s this account&rsquo;s key.</span>
+                          <button onClick={regenerateFlow} disabled={flowLoading} style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", padding: 0, textDecoration: "underline" }}>Regenerate link</button>
+                        </div>
+                      </>
+                    )}
                   </div>
                 )}
 
