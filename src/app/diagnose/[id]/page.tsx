@@ -339,6 +339,12 @@ export default function DiagnosePage() {
   const [slackSaving, setSlackSaving] = useState<string | null>(null);
   const [slackErr, setSlackErr] = useState<string | null>(null);
   const [slackFilter, setSlackFilter] = useState("");
+  // Inline Merchant Center ID entry — the manual fallback when auto-detection
+  // (via the Ads↔Merchant Center link) doesn't resolve an account.
+  const [mcOpen, setMcOpen] = useState(false);
+  const [mcValue, setMcValue] = useState("");
+  const [mcSaving, setMcSaving] = useState(false);
+  const [mcMsg, setMcMsg] = useState<string | null>(null);
   // Manual Shopify CSV upload (the no-API fallback).
   const [csvBusy, setCsvBusy] = useState(false);
   const [csvMsg, setCsvMsg] = useState<string | null>(null);
@@ -675,6 +681,24 @@ export default function DiagnosePage() {
     finally { setSlackSaving(null); }
   }
 
+  // Save a Merchant Center account ID by hand — only needed when auto-detection
+  // via the Ads↔Merchant Center link doesn't resolve one (rare).
+  async function saveMerchantCenterId() {
+    const v = mcValue.trim().replace(/[^0-9]/g, "");
+    setMcSaving(true); setMcMsg(null);
+    try {
+      const r = await fetch(`/api/accounts/${id}`, {
+        method: "PATCH", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ merchantCenterId: v || null }),
+      });
+      if (!r.ok) { setMcMsg("Couldn't save that ID."); return; }
+      setMcOpen(false); setMcMsg(null);
+      load(); // refresh connections + re-run vitals against the linked feed
+    } catch { setMcMsg("Couldn't save that ID."); }
+    finally { setMcSaving(false); }
+  }
+
   // Upload a Shopify "Sales over time" CSV — the data is kept and reconciled
   // against until it's replaced; the server stamps when it was uploaded.
   async function uploadShopifyCsv(file: File) {
@@ -1000,7 +1024,15 @@ export default function DiagnosePage() {
                 <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                   <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, color: "var(--text-muted)", marginRight: 4 }}>Connected</span>
                   <ConnPill label="Google Ads" status={connections.googleAds} note="spend & performance" />
-                  <ConnPill label="Merchant Center" status={connections.merchantCenter} note={connections.merchantCenter === "green" ? "feed & products" : "not detected"} />
+                  {(() => {
+                    // The pill mirrors the live Fundamentals check (auto-detected via the
+                    // Ads↔Merchant Center link), so "Connected" and "Fundamentals" never disagree.
+                    const mc = vitals?.checks.find(c => c.key === "merchant_center");
+                    const live = mc && mc.status !== "na" ? mc.status : null;
+                    const mcStatus = live ? (live === "ok" ? "green" : live === "fail" ? "red" : "yellow") : connections.merchantCenter;
+                    const mcNote = live === "ok" ? "feed serving" : live === "warn" ? "minor issue" : live === "fail" ? "feed issue" : connections.merchantCenter === "green" ? "feed & products" : "not detected";
+                    return <ConnPill label="Merchant Center" status={mcStatus} note={mcNote} onClick={() => { setMcOpen(o => !o); setMcMsg(null); }} />;
+                  })()}
                   <ConnPill label="Shopify" status={connections.shopify} note={connections.shopifySource === "live" ? (shopify?.shopDomain ?? "live") : connections.shopifySource === "csv" ? `CSV · ${agoLabel(connections.shopifyUploadedAt)}` : "orders & POAS"} onClick={connections.shopifySource === "live" ? undefined : () => csvInputRef.current?.click()} />
                   <ConnPill label="Slack" status={connections.slack} note={connections.slack === "green" ? `#${connections.slackChannelName}` : connections.slackConfigured ? "link a channel" : "not connected"} onClick={connections.slackConfigured ? () => (slackOpen ? setSlackOpen(false) : openSlackLink()) : undefined} />
                   <ConnPill label="Context" status={connections.context} note={`${connections.contextFilled}/${connections.contextTotal} answered`} onClick={openContextForm} />
@@ -1048,6 +1080,28 @@ export default function DiagnosePage() {
                     ) : !slackErr ? (
                       <div style={{ fontSize: 12.5, color: "var(--text-3)" }}>No channels the bot can see. Invite it to the client&rsquo;s channel with <code>/invite</code>, then reopen this.</div>
                     ) : null}
+                  </div>
+                )}
+
+                {/* Inline Merchant Center connect — it's auto-detected from the
+                    Ads↔Merchant Center link, so this is only for the rare case
+                    where that link is missing and you enter the ID by hand. */}
+                {mcOpen && (
+                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--border-2)" }}>
+                    <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 3 }}>Merchant Center</div>
+                    <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginBottom: 11 }}>
+                      Detected automatically from the Google&nbsp;Ads&nbsp;↔&nbsp;Merchant&nbsp;Center link — no OAuth needed. If it shows &ldquo;not detected,&rdquo; that link is missing: link the accounts in Merchant Center (Settings → Linked accounts → Google Ads), or paste the Merchant Center ID here to force it.
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                      <input value={mcValue} onChange={e => setMcValue(e.target.value)} placeholder="Merchant Center ID — e.g. 123456789"
+                        onKeyDown={e => { if (e.key === "Enter" && !mcSaving) saveMerchantCenterId(); }}
+                        style={{ flex: "1 1 220px", fontSize: 12.5, color: "var(--text)", background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 8, padding: "7px 10px", fontFamily: "inherit" }} />
+                      <button onClick={saveMerchantCenterId} disabled={mcSaving || !mcValue.trim()}
+                        style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 700, color: "#fff", background: "var(--accent)", border: "none", borderRadius: 8, padding: "7px 14px", cursor: mcSaving || !mcValue.trim() ? "default" : "pointer", opacity: mcSaving || !mcValue.trim() ? 0.6 : 1 }}>
+                        {mcSaving ? <Loader2 size={12} className="animate-spin" /> : null} Save
+                      </button>
+                    </div>
+                    {mcMsg && <div style={{ fontSize: 12, color: "var(--danger, #d33)", marginTop: 8 }}>{mcMsg}</div>}
                   </div>
                 )}
 
