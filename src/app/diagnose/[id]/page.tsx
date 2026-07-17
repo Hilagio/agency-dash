@@ -280,6 +280,12 @@ interface WindowRow {
   spend: number; conversions: number; roas: number | null;
   orders: number | null; revenue: number | null; poas: number | null;
 }
+interface Briefing {
+  text: string;
+  at: string | null;
+  worklist: { headline?: string; action: string; minutes: number; skill: string; confidence: string; category?: string } | null;
+  worklistAt: string | null;
+}
 interface Trend { acuteDrop: boolean; spendSpike: boolean; note: string | null; }
 interface ShopifyStatus { appConfigured: boolean; connected: boolean; shopDomain: string | null; lastSyncAt: string | null; }
 interface TrackingStatus { status: "verified" | "broken" | null; note: string | null; setAt: string | null; setBy: string | null; }
@@ -321,6 +327,7 @@ export default function DiagnosePage() {
   const { id } = useParams<{ id: string }>();
   const search = useSearchParams();
   const [diag, setDiag] = useState<Diagnosis | null>(null);
+  const [briefing, setBriefing] = useState<Briefing | null>(null);
   const [windows, setWindows] = useState<WindowRow[]>([]);
   const [trend, setTrend] = useState<Trend | null>(null);
   const [shopify, setShopify] = useState<ShopifyStatus | null>(null);
@@ -407,6 +414,7 @@ export default function DiagnosePage() {
       const j = await r.json();
       setError(null);
       setDiag(j.diagnosis);
+      setBriefing(j.briefing ?? null);
       setWindows(j.windows ?? []);
       setTrend(j.trend ?? null);
       setShopify(j.shopify ?? null);
@@ -947,6 +955,28 @@ export default function DiagnosePage() {
                 <div style={{ fontSize: 17, fontWeight: 600, lineHeight: 1.4 }}>{diag.headline}</div>
               </div>
             </div>
+
+            {/* Overnight read — the same opener + next action the cockpit shows, so
+                the reasoning that flagged this account is visible in-account too. */}
+            {briefing?.text && diag.status !== "green" && (
+              <div style={{ ...card, padding: "16px 18px", marginTop: 12, border: "1px solid var(--border-2)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                  <Sparkles size={14} style={{ color: "var(--accent)" }} />
+                  <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, color: "var(--text-muted)" }}>Why this is flagged</span>
+                  {briefing.at && <span style={{ fontSize: 11, color: "var(--text-dim)" }}>· noticed {new Date(briefing.at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</span>}
+                </div>
+                <div style={{ fontSize: 13.5, lineHeight: 1.55, color: "var(--text-2)" }}>{briefing.text}</div>
+                {briefing.worklist && (
+                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--border-2)", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                    <span style={{ fontSize: 13, color: "var(--text)" }}><strong style={{ color: "var(--accent)" }}>Next:</strong> {briefing.worklist.action}</span>
+                    <span style={{ fontSize: 10.5, fontWeight: 700, color: "var(--text-2)", background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 6, padding: "2px 7px" }}>~{briefing.worklist.minutes} min</span>
+                    {briefing.worklist.skill && briefing.worklist.skill !== "none" && (
+                      <span style={{ fontSize: 10.5, fontWeight: 700, color: briefing.worklist.skill === "off-platform" ? "var(--danger, #dc2626)" : "var(--accent)", background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 6, padding: "2px 7px", fontFamily: briefing.worklist.skill.startsWith("/") ? "ui-monospace, monospace" : "inherit" }}>{briefing.worklist.skill === "off-platform" ? "off-platform (client)" : briefing.worklist.skill}</span>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* §4.9 unverified banner */}
             {diag.unverifiedNote && (

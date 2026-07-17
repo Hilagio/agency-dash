@@ -29,7 +29,7 @@ jobs:
       CRON_SECRET: ${{ secrets.CRON_SECRET }}
     steps:
       - name: Check out the repo (for .github/scripts/cron-call.sh)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Preflight — CRON_SECRET must be set
         run: |

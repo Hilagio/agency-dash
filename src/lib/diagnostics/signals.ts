@@ -137,17 +137,30 @@ export function budgetRoseNoNegatives(changeEvents: ChangeEventLite[]): Signal |
   };
 }
 
-/** A page with traffic but zero conversions for 3+ days — broken or unbuyable (§8). */
-export function pagesTrafficNoConversions(pages: PageAgg[], cfg: SignalConfig): Signal[] {
+/**
+ * A page with traffic but zero conversions for 3+ days — broken or unbuyable (§8).
+ *
+ * Severity is by MATERIALITY, not mere presence. Every ecom account has a few
+ * long-tail product/variant pages that take a handful of clicks and no sale in a
+ * given week — that's normal noise and belongs in yellow, not an "IMMEDIATE" red.
+ * It's only red when the page is burning real money: a meaningful slice of the
+ * account's spend, or high sustained click volume with nothing to show for it.
+ */
+export function pagesTrafficNoConversions(pages: PageAgg[], cfg: SignalConfig, totalSpend = 0): Signal[] {
   const minClicks = cfg.pageMinClicks ?? 20;
   return pages
     .filter(p => p.clicks >= minClicks && p.conversions === 0 && p.daysZeroConv >= 3)
-    .map(p => ({
-      key: "page_traffic_no_conversions", kind: "problem" as const, severity: "red" as const,
-      title: "Page taking traffic, converting nothing",
-      detail: `${p.landingPageUrl}: ${p.clicks} clicks, 0 conversions, ${p.daysZeroConv} days running.`,
-      evidence: { url: p.landingPageUrl, clicks: p.clicks, spend: p.spend, daysZeroConv: p.daysZeroConv },
-    }));
+    .map(p => {
+      const spendShare = totalSpend > 0 ? p.spend / totalSpend : 0;
+      const material = spendShare >= 0.08 || (p.clicks >= 100 && p.daysZeroConv >= 5);
+      return {
+        key: "page_traffic_no_conversions", kind: "problem" as const,
+        severity: material ? ("red" as const) : ("yellow" as const),
+        title: material ? "Page burning real spend, converting nothing" : "Page taking traffic, converting nothing",
+        detail: `${p.landingPageUrl}: ${p.clicks} clicks, 0 conversions, ${p.daysZeroConv} days running${spendShare > 0 ? ` (${pct(spendShare)} of account spend)` : ""}.`,
+        evidence: { url: p.landingPageUrl, clicks: p.clicks, spend: p.spend, daysZeroConv: p.daysZeroConv, spendShare },
+      };
+    });
 }
 
 /**
@@ -178,15 +191,21 @@ export function brandConversionRateDrop(before: BrandWindow, after: BrandWindow,
   };
 }
 
-/** Google Ads conversions ≠ actual orders (§4.3/§8). Steer on nothing until resolved. */
+/**
+ * Google Ads conversions ≠ actual orders (§4.3/§8). A modest gap is normal —
+ * attribution windows, view-through, cross-device — so that's yellow "worth
+ * reconciling". Only a large gap (≥35%) is too far apart to steer on: red.
+ */
 export function conversionsVsOrders(adsConversions: number, actualOrders: number, threshold = 0.15): Signal | null {
   if (actualOrders <= 0) return null;
   const delta = (adsConversions - actualOrders) / actualOrders;
   if (Math.abs(delta) < threshold) return null;
+  const severe = Math.abs(delta) >= 0.35;
   return {
-    key: "conversions_vs_orders", kind: "problem", severity: "red",
+    key: "conversions_vs_orders", kind: "problem",
+    severity: severe ? "red" : "yellow",
     title: "Google Ads conversions don't match orders",
-    detail: `Google Ads reports ${adsConversions.toFixed(1)} vs ${actualOrders.toFixed(1)} actual orders (${delta > 0 ? "+" : ""}${pct(delta)}). Steer on nothing until this is resolved.`,
+    detail: `Google Ads reports ${adsConversions.toFixed(1)} vs ${actualOrders.toFixed(1)} actual orders (${delta > 0 ? "+" : ""}${pct(delta)}).${severe ? " Too far apart to steer on — reconcile tracking before acting on ROAS." : " Within the range attribution differences can explain, but worth reconciling."}`,
     evidence: { adsConversions, actualOrders, delta },
   };
 }
@@ -239,7 +258,7 @@ export function runSignals(input: SignalInput): Signal[] {
   // Always-on (hygiene, buyability shape, canary, reconciliation, opportunity).
   out.push(budgetChangedFast(input.budget));
   out.push(budgetRoseNoNegatives(input.changeEvents));
-  out.push(...pagesTrafficNoConversions(input.pages, cfg));
+  out.push(...pagesTrafficNoConversions(input.pages, cfg, current.spend));
   if (input.brand) out.push(brandConversionRateDrop(input.brand.before, input.brand.after));
   if (input.reconciliation) out.push(conversionsVsOrders(input.reconciliation.adsConversions, input.reconciliation.actualOrders));
   out.push(...highRoasLowSpend(input.pages, cfg, current.spend));
