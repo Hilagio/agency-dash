@@ -43,6 +43,19 @@ export async function proxy(request: NextRequest) {
   // Always allow other public paths
   if (isPublic(pathname)) return NextResponse.next();
 
+  // Allow server-to-server cron calls that carry the shared secret. Without this
+  // the proxy redirects them to /login (they have no session cookie), so the API
+  // routes' own isCron checks never run — which is why the nightly refresh has
+  // silently done nothing. Scoped to /api/ and gated on the secret matching.
+  const cronSecret = process.env.CRON_SECRET;
+  if (cronSecret && pathname.startsWith("/api/")) {
+    const authz = request.headers.get("authorization");
+    const xcron = request.headers.get("x-cron-secret");
+    if (authz === `Bearer ${cronSecret}` || xcron === cronSecret) {
+      return NextResponse.next();
+    }
+  }
+
   // Read session token from cookie
   const token = request.cookies.get("agency-session")?.value;
 
