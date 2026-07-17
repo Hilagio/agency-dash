@@ -28,6 +28,9 @@ jobs:
       APP_URL: ${{ secrets.APP_URL || 'https://agency-dash-production.up.railway.app' }}
       CRON_SECRET: ${{ secrets.CRON_SECRET }}
     steps:
+      - name: Check out the repo (for .github/scripts/cron-call.sh)
+        uses: actions/checkout@v4
+
       - name: Preflight — CRON_SECRET must be set
         run: |
           if [ -z "$CRON_SECRET" ]; then
