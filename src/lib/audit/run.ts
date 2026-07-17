@@ -149,6 +149,19 @@ export async function runPageAudit(
   onProgress("Rendering the page (mobile)…");
   const dossier = await renderPage(opts.url);
 
+  // If we were blocked or the page didn't load, DON'T run 12 personas over a
+  // block page and call the page broken — say plainly that we couldn't see it.
+  if (dossier.blocked || (dossier.error && !dossier.bodyText && !dossier.title)) {
+    onProgress("Couldn't load the page.");
+    return {
+      url: opts.url, finalUrl: dossier.finalUrl, pageType: opts.pageType, renderMode: dossier.renderMode,
+      score: 0, grade: "—", label: "Couldn't load the page",
+      understand: 0, convert: 0, total: 0,
+      summary: dossier.error ?? "The page couldn't be loaded, so no audit was run.",
+      personas: [], fixes: [], renderError: dossier.error,
+    };
+  }
+
   const archetypes = fixedArchetypes(opts.pageType);
   onProgress("Building the intent personas from the offer and keywords…");
   const intent = await buildIntentPersonas(opts.pageType, opts.offer, opts.intentSource, 12 - archetypes.length);

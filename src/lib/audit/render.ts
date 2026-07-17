@@ -17,6 +17,7 @@ export interface PageDossier {
   formFields: string[];  // input labels / placeholders (lead-gen forms)
   priceHints: string[];  // strings that look like prices
   bodyText: string;      // cleaned visible text, truncated
+  blocked?: boolean;     // the site refused us (WAF/403/challenge) — not a page fault
   error?: string;
 }
 
@@ -70,8 +71,31 @@ async function renderWithBrowser(url: string): Promise<PageDossier> {
 }
 
 async function renderWithFetch(url: string): Promise<PageDossier> {
-  const res = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile Safari/604.1" }, redirect: "follow" });
+  const res = await fetch(url, {
+    headers: {
+      "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
+      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+      "Accept-Language": "en-US,en;q=0.9",
+      "Upgrade-Insecure-Requests": "1",
+    },
+    redirect: "follow",
+  });
   const html = await res.text();
+
+  // Detect a block / challenge page: a bad status, or a body that's clearly a
+  // WAF / captcha wall rather than the real page. Auditing this would produce a
+  // false "your page is broken" verdict, so flag it and let the runner stop.
+  const rawTitle = (html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] ?? "").toLowerCase();
+  const badStatus = res.status === 401 || res.status === 403 || res.status === 429 || res.status >= 500;
+  const wallTitle = /access denied|forbidden|attention required|just a moment|are you human|verify you are (a )?human|captcha|request blocked|blocked/i.test(rawTitle);
+  if (badStatus || wallTitle || html.length < 500) {
+    return {
+      url, finalUrl: res.url || url, renderMode: "fetch",
+      title: "", metaDescription: "", headings: [], ctas: [], formFields: [], priceHints: [], bodyText: "",
+      blocked: true,
+      error: `The site refused our request (HTTP ${res.status}${rawTitle ? `, "${rawTitle.slice(0, 40)}"` : ""}). It's behind bot protection that blocks automated/server requests, so we can't see the real page from here — this is an access issue, not a fault in the page.`,
+    };
+  }
   const pick = (re: RegExp, all = false): string[] => {
     const out: string[] = []; let m: RegExpExecArray | null;
     const r = new RegExp(re, re.flags.includes("g") ? re.flags : re.flags + "g");

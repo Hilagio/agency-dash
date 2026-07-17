@@ -718,6 +718,21 @@ export default function DiagnosePage() {
     finally { setMcSaving(false); }
   }
 
+  // Re-run OAuth for the already-known store (e.g. to swap an old permanent
+  // token for an expiring one) — no need to disconnect first.
+  function reconnectShopify() {
+    if (!shopify?.shopDomain) return;
+    window.location.href = `/api/shopify/install?accountId=${encodeURIComponent(id)}&shop=${encodeURIComponent(shopify.shopDomain)}`;
+  }
+  async function disconnectShopify() {
+    if (!window.confirm("Disconnect this Shopify store? You can reconnect any time; order history is kept.")) return;
+    setSyncMsg(null);
+    try {
+      await fetch(`/api/shopify/disconnect`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ accountId: id }) });
+      await load();
+    } catch { /* ignore */ }
+  }
+
   // Shopify Flow setup — fetch (and lazily mint) this account's webhook URL.
   async function openFlowSetup() {
     const next = !flowOpen; setFlowOpen(next);
@@ -1878,6 +1893,12 @@ export default function DiagnosePage() {
                         {shopify.shopDomain} · synced {shopify.lastSyncAt ? new Date(shopify.lastSyncAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "never"}
                         <button onClick={syncNow} disabled={syncing} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 600, color: "var(--text-2)", background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 7, padding: "5px 10px", cursor: syncing ? "default" : "pointer" }}>
                           {syncing ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />} Sync orders
+                        </button>
+                        <button onClick={reconnectShopify} title="Re-run the Shopify login (fixes an expired or outdated token)" style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 600, color: "var(--text-2)", background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 7, padding: "5px 10px", cursor: "pointer" }}>
+                          <RefreshCw size={12} /> Reconnect
+                        </button>
+                        <button onClick={disconnectShopify} title="Remove this Shopify connection" style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 600, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer" }}>
+                          <XCircle size={12} /> Disconnect
                         </button>
                       </span>
                     )}
