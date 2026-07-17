@@ -6,9 +6,14 @@
 # The one-time 90-day history load is done from the portfolio "Backfill all"
 # button.
 #
-# Setup (once): add repository secrets
+# Setup (once): add repository secrets under
+#   Settings → Secrets and variables → Actions
 #   - CRON_SECRET : the SAME value you set as CRON_SECRET on Railway
 #   - APP_URL     : optional; defaults to the production URL below
+#
+# NOTE: these endpoints require the CRON_SECRET bearer token. Without it they
+# redirect to /login. The steps below FAIL LOUDLY on that (assert HTTP 200 and
+# reject a login redirect) so a misconfigured secret can't look like success.
 name: Nightly data refresh
 
 on:
@@ -19,40 +24,29 @@ on:
 jobs:
   refresh:
     runs-on: ubuntu-latest
+    env:
+      APP_URL: ${{ secrets.APP_URL || 'https://agency-dash-production.up.railway.app' }}
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
     steps:
-      - name: Ingest Google Ads spine + Shopify orders (last 14 days)
-        env:
-          APP_URL: ${{ secrets.APP_URL || 'https://agency-dash-production.up.railway.app' }}
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+      - name: Preflight — CRON_SECRET must be set
         run: |
-          curl -fsS -X POST "$APP_URL/api/diagnostics/ingest" \
-            -H "Authorization: Bearer $CRON_SECRET" \
-            -H "Content-Type: application/json" \
-            -d '{"days":14}' --max-time 600
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::error::CRON_SECRET repository secret is empty. Add it under Settings → Secrets and variables → Actions with the SAME value as Railway's CRON_SECRET, or the nightly refresh does nothing."
+            exit 1
+          fi
+
+      - name: Ingest Google Ads spine + Shopify orders (last 14 days)
+        run: |
+          bash .github/scripts/cron-call.sh "$APP_URL/api/diagnostics/ingest" '{"days":14}' 600
 
       - name: Recompute signals (fills the portfolio red/yellow/green + numbers)
-        env:
-          APP_URL: ${{ secrets.APP_URL || 'https://agency-dash-production.up.railway.app' }}
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
-          curl -fsS -X POST "$APP_URL/api/diagnostics/run-signals" \
-            -H "Authorization: Bearer $CRON_SECRET" \
-            -H "Content-Type: application/json" --max-time 600
+          bash .github/scripts/cron-call.sh "$APP_URL/api/diagnostics/run-signals" '' 600
 
       - name: Generate morning briefings (one-line agent openers per flagged account)
-        env:
-          APP_URL: ${{ secrets.APP_URL || 'https://agency-dash-production.up.railway.app' }}
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
-          curl -fsS -X POST "$APP_URL/api/diagnostics/briefings" \
-            -H "Authorization: Bearer $CRON_SECRET" \
-            -H "Content-Type: application/json" --max-time 600
+          bash .github/scripts/cron-call.sh "$APP_URL/api/diagnostics/briefings" '' 600
 
       - name: Build the worklist (agent investigates each flagged account → ranked next action)
-        env:
-          APP_URL: ${{ secrets.APP_URL || 'https://agency-dash-production.up.railway.app' }}
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
-          curl -fsS -X POST "$APP_URL/api/diagnostics/worklist" \
-            -H "Authorization: Bearer $CRON_SECRET" \
-            -H "Content-Type: application/json" --max-time 900
+          bash .github/scripts/cron-call.sh "$APP_URL/api/diagnostics/worklist" '' 900
