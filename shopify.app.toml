@@ -1,20 +1,19 @@
-# Shopify app configuration, kept in code so the technical setup isn't hand-clicked
-# in the dashboard. Push it with the Shopify CLI:
+# Shopify app configuration for "Ecomtrada Analytics".
 #
-#   shopify app config link     # one-time: fills in client_id for THIS app
-#   shopify app deploy          # pushes this config as a new app version
+# You do NOT have to use the CLI. This file just mirrors the boxes on the
+# dashboard "Create version" page, so it's a reference for the exact values.
+# (If you ever DO want to push it automatically: `shopify app config link`
+# then `shopify app deploy`.)
 #
-# After deploy, the only things left in the Dev Dashboard are the App Store
-# LISTING content (introduction / details / features) and clicking Release —
-# those are marketing fields that only live in the dashboard.
+# Read-only analytics connection: minimal scopes, no customer PII, never writes.
 
-client_id = "REPLACE_VIA_shopify_app_config_link"
+client_id = "06a4ee083d2602675e9f9a457936deb9"
 name = "Ecomtrada Analytics"
 application_url = "https://agency-dash-production.up.railway.app"
 embedded = false
 
 [access_scopes]
-# Mirror this in the SHOPIFY_SCOPES env var on Railway so our OAuth request matches.
+# Everything the tool uses — nothing more. Mirror in Railway's SHOPIFY_SCOPES.
 scopes = "read_orders,read_products"
 use_legacy_install_flow = true
 
@@ -26,9 +25,9 @@ redirect_urls = [
 [webhooks]
 api_version = "2026-07"
 
-  # The three mandatory GDPR compliance webhooks — all handled by
-  # src/app/api/shopify/webhooks/route.ts (HMAC-verified).
-  [webhooks.privacy_compliance]
-  customer_data_request_url = "https://agency-dash-production.up.railway.app/api/shopify/webhooks"
-  customer_deletion_url     = "https://agency-dash-production.up.railway.app/api/shopify/webhooks"
-  shop_deletion_url         = "https://agency-dash-production.up.railway.app/api/shopify/webhooks"
+# The three mandatory GDPR compliance webhooks — all handled by
+# src/app/api/shopify/webhooks/route.ts (HMAC-verified). We hold no per-customer
+# data, so they just acknowledge 200.
+[[webhooks.subscriptions]]
+compliance_topics = [ "customers/data_request", "customers/redact", "shop/redact" ]
+uri = "https://agency-dash-production.up.railway.app/api/shopify/webhooks"
