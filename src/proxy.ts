@@ -18,6 +18,7 @@ const PUBLIC_PREFIXES = [
   "/api/auth/callback",
   "/api/auth/signout",
   "/api/invite",
+  "/privacy", // public privacy policy — required + linked from the Shopify app listing
   // Server-to-server Shopify endpoints — no session cookie; they authenticate
   // themselves (HMAC for webhooks, a per-account secret key for Flow), so the
   // proxy must not redirect them to /login.
