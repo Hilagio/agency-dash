@@ -1,11 +1,16 @@
 /**
  * Merchant Center integration
  *
- * Uses the Merchant Center Reports API (Content API for Shopping) to fetch
- * price competitiveness data for products linked to a Google Ads account.
+ * Talks to Google's **Merchant API** (merchantapi.googleapis.com) for feed
+ * health (suspension / disapprovals), price competitiveness, and the product
+ * catalogue. The legacy Content API for Shopping v2.1 is being sunset on
+ * 2026-08-18 (calls return HTTP 410 after), so these have been migrated to the
+ * Merchant API equivalents. Merchant Center IDs are still discovered from the
+ * Google Ads `product_link` resource.
  *
- * Requires the `content` OAuth scope — users may need to reconnect Google if
- * they authenticated before this scope was added.
+ * Requires the `content` OAuth scope — the SAME scope the Merchant API uses, so
+ * no new connection is needed. Users who authenticated before this scope was
+ * added may need to reconnect Google once.
  */
 
 import { prisma } from "@/lib/db";
@@ -347,12 +352,13 @@ export interface MerchantProductItem {
 }
 
 /**
- * Lists all products in the Merchant Center feed via Content API v2.1.
- * Used as a fallback when shopping_performance_view returns no rows
- * (PMax campaigns serving on non-Shopping surfaces).
+ * Lists all products in the Merchant Center feed via the **Merchant API**
+ * Products sub-API. Used as a fallback when shopping_performance_view returns
+ * no rows (PMax campaigns serving on non-Shopping surfaces).
  *
- * Despite the "sunset" announcement, this endpoint still works for accounts
- * that have the content scope. We cap at 1000 products to stay fast.
+ * Migrated off Content API v2.1 `products.list` (sunset 2026-08-18). The
+ * Merchant API returns a clean `offerId` (no "online:en:GB:" prefix to strip)
+ * and product fields under `productAttributes`. We cap at 1000 to stay fast.
  */
 export async function fetchMerchantCenterProductList(
   merchantId: string,
@@ -371,8 +377,8 @@ export async function fetchMerchantCenterProductList(
 
   try {
     do {
-      const url = new URL(`https://shoppingcontent.googleapis.com/content/v2.1/${merchantId}/products`);
-      url.searchParams.set("maxResults", "250");
+      const url = new URL(`https://merchantapi.googleapis.com/products/v1/accounts/${merchantId}/products`);
+      url.searchParams.set("pageSize", "250");
       if (pageToken) url.searchParams.set("pageToken", pageToken);
 
       const res = await fetch(url.toString(), {
@@ -386,15 +392,13 @@ export async function fetchMerchantCenterProductList(
       }
 
       const json = await res.json() as {
-        resources?: Array<{ id?: string; title?: string; brand?: string }>;
+        products?: Array<{ offerId?: string; productAttributes?: { title?: string; brand?: string } }>;
         nextPageToken?: string;
       };
 
-      for (const p of json.resources ?? []) {
-        // Content API product ID: "online:en:GB:ITEM123" — extract last segment
-        const parts  = (p.id ?? "").split(":");
-        const itemId = parts[parts.length - 1] ?? "";
-        if (itemId) products.push({ itemId, title: p.title ?? "", brand: p.brand ?? "" });
+      for (const p of json.products ?? []) {
+        const itemId = p.offerId ?? "";
+        if (itemId) products.push({ itemId, title: p.productAttributes?.title ?? "", brand: p.productAttributes?.brand ?? "" });
       }
 
       pageToken = json.nextPageToken;
@@ -421,61 +425,102 @@ export interface MerchantHealth {
 }
 
 /**
- * Live Merchant Center feed health via the Content API v2.1 `accountstatuses`
- * endpoint — one call returns account-level issues (suspension, misrepresentation,
- * policy) AND per-country serving stats + aggregated item-level disapproval reasons
- * with product counts. This is what lets the agent answer "is the feed suspended /
- * are products disapproved / is BE approved?" itself instead of sending the team
- * into Merchant Center. Uses the `content` scope (no GCP registration needed).
+ * Live Merchant Center feed health via the **Merchant API** — account-level
+ * issues (suspension, misrepresentation, policy) from the accounts sub-API,
+ * plus per-country serving stats + aggregated item-level disapproval reasons
+ * from the issueresolution sub-API's `aggregateProductStatuses`. This is what
+ * lets the agent answer "is the feed suspended / are products disapproved / is
+ * BE approved?" itself instead of sending the team into Merchant Center.
+ *
+ * Migrated off Content API v2.1 `accountstatuses`, which Google sunsets on
+ * 2026-08-18 (returns HTTP 410 after). Same `content` OAuth scope — no new
+ * connection, no GCP registration needed.
  */
 export async function fetchMerchantCenterHealth(merchantId: string, orgId?: string): Promise<MerchantHealth> {
   const empty: MerchantHealth = { linked: true, accountIssues: [], destinations: [], itemIssues: [], totals: { active: 0, pending: 0, disapproved: 0 } };
   let accessToken: string;
   try { accessToken = await getAccessToken(await getRefreshToken(orgId)); }
   catch (e) { return { ...empty, scopeOrAuthError: e instanceof Error ? e.message : String(e) }; }
+  const auth = { Authorization: `Bearer ${accessToken}` };
+  const n = (v: string | number | undefined | null) => Number(v ?? 0) || 0;
 
-  const res = await fetch(
-    `https://shoppingcontent.googleapis.com/content/v2.1/${merchantId}/accountstatuses/${merchantId}`,
-    { headers: { Authorization: `Bearer ${accessToken}` } },
-  ).catch((e: unknown) => { throw e; });
-
-  if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    return { ...empty, scopeOrAuthError: `accountstatuses ${res.status}: ${body.slice(0, 200)}` };
+  // ── Account-level issues (suspension / policy / misrepresentation) ──────────
+  // Merchant API accounts sub-API → replaces accountstatuses.accountLevelIssues.
+  let accountIssues: MerchantHealth["accountIssues"] = [];
+  {
+    const res = await fetch(
+      `https://merchantapi.googleapis.com/accounts/v1/accounts/${merchantId}/issues?languageCode=en-US&pageSize=100`,
+      { headers: auth },
+    ).catch(() => null);
+    if (!res) return { ...empty, scopeOrAuthError: "accounts.issues: network error" };
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      return { ...empty, scopeOrAuthError: `accounts.issues ${res.status}: ${body.slice(0, 200)}` };
+    }
+    const json = await res.json().catch(() => ({})) as {
+      accountIssues?: Array<{
+        title?: string; severity?: string; detail?: string;
+        impactedDestinations?: Array<{ impacts?: Array<{ regionCode?: string }> }>;
+      }>;
+    };
+    accountIssues = (json.accountIssues ?? [])
+      // CRITICAL = account suspension, ERROR = will block serving soon. SUGGESTION
+      // is an optimisation, not a feed problem — drop it so it can't raise a flag.
+      .filter(i => /critical|error/i.test(i.severity ?? ""))
+      .map(i => ({
+        title: i.title ?? i.detail ?? "issue",
+        severity: (i.severity ?? "").toLowerCase(),
+        country: i.impactedDestinations?.[0]?.impacts?.[0]?.regionCode,
+      }));
   }
 
-  const json = await res.json() as {
-    accountLevelIssues?: Array<{ title?: string; severity?: string; country?: string }>;
-    products?: Array<{
-      country?: string; destination?: string;
-      statistics?: { active?: string | number; pending?: string | number; disapproved?: string | number };
-      itemLevelIssues?: Array<{ description?: string; servability?: string; numItems?: string | number; country?: string }>;
-    }>;
-  };
-
-  const n = (v: string | number | undefined) => Number(v ?? 0) || 0;
-  const accountIssues = (json.accountLevelIssues ?? []).map(i => ({ title: i.title ?? "issue", severity: i.severity ?? "", country: i.country }));
-  // accountstatuses.products is keyed per (channel, destination, country), so the
-  // same product is listed under several destinations. Collapse to ONE entry per
-  // country (the primary destination = the one with the most active products) so
-  // totals and the per-country view aren't multiplied across destinations.
+  // ── Per-country serving stats + item-level disapprovals ─────────────────────
+  // Merchant API issueresolution sub-API → replaces accountstatuses.products.
+  // Best-effort: account-level result is already captured above, so a failure
+  // here degrades to "no product stats" rather than sinking the whole read.
   const perCountry = new Map<string, { country: string; destination: string; active: number; pending: number; disapproved: number }>();
-  for (const p of json.products ?? []) {
-    const country = p.country ?? "";
-    const row = { country, destination: p.destination ?? "", active: n(p.statistics?.active), pending: n(p.statistics?.pending), disapproved: n(p.statistics?.disapproved) };
-    const cur = perCountry.get(country);
-    if (!cur || row.active > cur.active) perCountry.set(country, row);
+  const issueAgg = new Map<string, { description: string; servability: string; numItems: number; country?: string }>();
+  {
+    let pageToken: string | undefined;
+    do {
+      const url = new URL(`https://merchantapi.googleapis.com/issueresolution/v1/accounts/${merchantId}/aggregateProductStatuses`);
+      url.searchParams.set("pageSize", "100");
+      if (pageToken) url.searchParams.set("pageToken", pageToken);
+      // eslint-disable-next-line no-await-in-loop
+      const res = await fetch(url.toString(), { headers: auth }).catch(() => null);
+      if (!res || !res.ok) {
+        // eslint-disable-next-line no-await-in-loop
+        if (res) { const b = await res.text().catch(() => ""); console.warn(`[merchant-center] aggregateProductStatuses ${res.status}:`, b.slice(0, 200)); }
+        break;
+      }
+      // eslint-disable-next-line no-await-in-loop
+      const json = await res.json().catch(() => ({})) as {
+        aggregateProductStatuses?: Array<{
+          reportingContext?: string; country?: string;
+          stats?: { activeCount?: string | number; pendingCount?: string | number; disapprovedCount?: string | number; expiringCount?: string | number };
+          itemLevelIssues?: Array<{ code?: string; description?: string; severity?: string; resolution?: string; productCount?: string | number; attribute?: string }>;
+        }>;
+        nextPageToken?: string;
+      };
+      for (const a of json.aggregateProductStatuses ?? []) {
+        const country = a.country ?? "";
+        // One product is reported under several reporting contexts (Shopping Ads,
+        // Free listings, …). Collapse to ONE row per country — the context with the
+        // most active items — so totals aren't multiplied across contexts.
+        const row = { country, destination: a.reportingContext ?? "", active: n(a.stats?.activeCount), pending: n(a.stats?.pendingCount), disapproved: n(a.stats?.disapprovedCount) };
+        const cur = perCountry.get(country);
+        if (!cur || row.active > cur.active) perCountry.set(country, row);
+        for (const it of a.itemLevelIssues ?? []) {
+          const key = `${it.description ?? it.code ?? ""}|${country}`;
+          const e = issueAgg.get(key) ?? { description: it.description ?? it.code ?? "issue", servability: (it.severity ?? "").toLowerCase(), numItems: 0, country };
+          e.numItems += n(it.productCount);
+          issueAgg.set(key, e);
+        }
+      }
+      pageToken = json.nextPageToken;
+    } while (pageToken);
   }
   const destinations = [...perCountry.values()];
-  const issueAgg = new Map<string, { description: string; servability: string; numItems: number; country?: string }>();
-  for (const p of json.products ?? []) {
-    for (const it of p.itemLevelIssues ?? []) {
-      const key = `${it.description ?? ""}|${it.country ?? p.country ?? ""}`;
-      const e = issueAgg.get(key) ?? { description: it.description ?? "issue", servability: it.servability ?? "", numItems: 0, country: it.country ?? p.country };
-      e.numItems += n(it.numItems);
-      issueAgg.set(key, e);
-    }
-  }
   const itemIssues = [...issueAgg.values()].sort((a, b) => b.numItems - a.numItems).slice(0, 15);
   const totals = destinations.reduce((t, d) => ({ active: t.active + d.active, pending: t.pending + d.pending, disapproved: t.disapproved + d.disapproved }), { active: 0, pending: 0, disapproved: 0 });
   return { linked: true, accountIssues, destinations, itemIssues, totals };
