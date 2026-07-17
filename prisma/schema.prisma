@@ -207,6 +207,8 @@ model Account {
   shopify          ShopifyConnection?
   ordersDaily      OrderDaily[]
   shopifyUploads   ShopifyUpload[]
+  flowToken        String?             @unique // secret in the per-account Shopify Flow webhook URL
+  flowEvents       ShopifyFlowEvent[]
   pageAudits       PageAudit[]
 
   // Product-level (ad performance vs real sales, + catalog)
@@ -404,6 +406,24 @@ model ShopifyUpload {
 
   @@unique([accountId, kind])
   @@index([accountId])
+}
+
+// One row per order pushed in by Shopify Flow ("when order created → send HTTP
+// request to our webhook"). The unique (accountId, orderId) makes ingestion
+// idempotent so a retried Flow run can't double-count. Aggregates roll up into
+// OrderDaily for reconciliation, exactly like the CSV/OAuth paths.
+model ShopifyFlowEvent {
+  id         String   @id @default(cuid())
+  accountId  String
+  account    Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  orderId    String   // Shopify order id or name — the dedup key
+  date       String   // YYYY-MM-DD
+  amount     Float
+  currency   String   @default("EUR")
+  receivedAt DateTime @default(now())
+
+  @@unique([accountId, orderId])
+  @@index([accountId, date])
 }
 // Pre-flight page audit: 12 personas judge the landing/product page (via a real
 // browser render) before spend starts — did they understand the offer, would
