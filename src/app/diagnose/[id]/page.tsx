@@ -403,6 +403,7 @@ export default function DiagnosePage() {
   const [auditList, setAuditList] = useState<{ id: string; url: string; score: number; total: number; submit: number; createdAt: string; renderMode: string }[]>([]);
   const [shopDomain, setShopDomain] = useState("");
   const [syncing, setSyncing] = useState(false);
+  const [syncMsg, setSyncMsg] = useState<string | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const toggle = (k: string) => setExpanded(prev => { const n = new Set(prev); if (n.has(k)) n.delete(k); else n.add(k); return n; });
@@ -472,15 +473,20 @@ export default function DiagnosePage() {
     window.location.href = `/api/shopify/install?accountId=${encodeURIComponent(id)}&shop=${encodeURIComponent(shop)}`;
   }
   async function syncNow() {
-    setSyncing(true);
+    setSyncing(true); setSyncMsg(null);
     try {
-      await fetch(`/api/shopify/sync`, {
+      const r = await fetch(`/api/shopify/sync`, {
         method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ accountId: id, days: 60 }),
       });
+      const j = await r.json().catch(() => ({} as Record<string, unknown>));
+      if (!r.ok || j.error) setSyncMsg(`Sync failed: ${String(j.error ?? r.status)}`);
+      else if (Number(j.orderDays ?? 0) === 0) setSyncMsg("Connected fine, but found 0 real orders in the last 60 days. Note: Shopify test-mode orders are skipped by design — place a live (non-test) order to see it flow through.");
+      else setSyncMsg(`Synced ${j.orderDays} day(s) of orders${j.productSaleRows ? `, ${j.productSaleRows} product line(s)` : ""}.`);
       await load();
-    } finally { setSyncing(false); }
+    } catch (e) { setSyncMsg(`Sync failed: ${e instanceof Error ? e.message : String(e)}`); }
+    finally { setSyncing(false); }
   }
 
   const [refreshing, setRefreshing] = useState(false);
@@ -1876,6 +1882,9 @@ export default function DiagnosePage() {
                       </span>
                     )}
                   </div>
+                  {syncMsg && (
+                    <div style={{ fontSize: 12, color: syncMsg.startsWith("Sync failed") ? "var(--danger, #d33)" : "var(--text-2)", marginTop: 4, lineHeight: 1.5 }}>{syncMsg}</div>
+                  )}
                   {!shopify.connected && (
                     shopify.appConfigured ? (
                       <>
