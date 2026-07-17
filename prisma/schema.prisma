@@ -381,8 +381,14 @@ model ShopifyConnection {
   accountId   String    @id
   account     Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
   shopDomain  String    @unique // e.g. "acme.myshopify.com"
-  accessToken String    // OAuth (or custom-app) Admin API token — secret
-  scope       String    @default("")
+  accessToken String    // OAuth Admin API token — secret. Now an EXPIRING offline
+  scope       String    @default("") // token (~1h); refreshed via refreshToken.
+  // Shopify deprecated non-expiring tokens: offline tokens now expire (~1h) and
+  // are rotated with a single-use refresh token (~90d). Null on legacy rows →
+  // treated as "needs reconnect".
+  refreshToken          String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
   installedAt DateTime  @default(now())
   lastSyncAt  DateTime?
   updatedAt   DateTime  @updatedAt

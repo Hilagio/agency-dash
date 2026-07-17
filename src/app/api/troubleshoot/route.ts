@@ -10,6 +10,7 @@ import { prisma } from "@/lib/db";
 import { getAuthContext, unauthorized } from "@/lib/auth";
 import { pingGoogleAds } from "@/lib/integrations/google-ads";
 import { pingShopify, shopifyAppConfig } from "@/lib/integrations/shopify";
+import { freshShopifyToken } from "@/lib/integrations/shopify-token";
 import { pingNotion } from "@/lib/integrations/notion";
 import { testSlackConnection } from "@/lib/integrations/slack";
 
@@ -47,7 +48,7 @@ async function checkShopify(orgId: string, now: Date): Promise<Check> {
   const app = shopifyAppConfig();
   const conns = await prisma.shopifyConnection.findMany({
     where: { account: { organizationId: orgId } },
-    select: { shopDomain: true, accessToken: true, lastSyncAt: true, account: { select: { name: true } } },
+    select: { accountId: true, shopDomain: true, accessToken: true, refreshToken: true, accessTokenExpiresAt: true, lastSyncAt: true, account: { select: { name: true } } },
     take: 20,
   });
   if (conns.length === 0) {
@@ -60,8 +61,14 @@ async function checkShopify(orgId: string, now: Date): Promise<Check> {
   }
   const apiVersion = app?.apiVersion;
   const items = await Promise.all(conns.map(async (c) => {
-    const p = await pingShopify(c.shopDomain, c.accessToken, apiVersion);
     const stale = !c.lastSyncAt || (now.getTime() - c.lastSyncAt.getTime()) > 48 * HOURS;
+    let p: { ok: boolean; error?: string };
+    try {
+      const token = await freshShopifyToken(c); // refreshes the expiring token if needed
+      p = await pingShopify(c.shopDomain, token, apiVersion);
+    } catch (e) {
+      p = { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
     return {
       name: `${c.account?.name ?? c.shopDomain}`,
       ok: p.ok,

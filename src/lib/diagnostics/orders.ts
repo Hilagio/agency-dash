@@ -9,6 +9,7 @@ import { prisma } from "@/lib/db";
 import {
   fetchOrdersByDay, fetchProductSalesByDay, fetchProductCatalog, shopifyAppConfig,
 } from "@/lib/integrations/shopify";
+import { freshShopifyToken } from "@/lib/integrations/shopify-token";
 
 function daysAgo(n: number): string {
   const d = new Date();
@@ -36,10 +37,13 @@ export async function ingestAccountOrders(accountId: string, days = 14): Promise
   const apiVersion = shopifyAppConfig()?.apiVersion;
 
   try {
+    // Refresh the expiring offline token ONCE, then reuse it across the parallel
+    // calls (the refresh token is single-use — refreshing per-call would race).
+    const accessToken = await freshShopifyToken(conn);
     const [series, productSales, catalog] = await Promise.all([
-      fetchOrdersByDay(conn.shopDomain, conn.accessToken, start, end, apiVersion),
-      fetchProductSalesByDay(conn.shopDomain, conn.accessToken, start, end, apiVersion),
-      fetchProductCatalog(conn.shopDomain, conn.accessToken, apiVersion).catch(() => []),
+      fetchOrdersByDay(conn.shopDomain, accessToken, start, end, apiVersion),
+      fetchProductSalesByDay(conn.shopDomain, accessToken, start, end, apiVersion),
+      fetchProductCatalog(conn.shopDomain, accessToken, apiVersion).catch(() => []),
     ]);
     const inWindow = { accountId, date: { gte: start, lte: end } };
 

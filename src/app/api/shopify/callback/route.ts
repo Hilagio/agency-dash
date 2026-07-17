@@ -77,10 +77,18 @@ export async function GET(req: NextRequest) {
     return bail(err instanceof Error ? err.message : "token exchange failed");
   }
 
+  const now = Date.now();
+  const tokenData = {
+    accessToken: token.accessToken,
+    scope: token.scope,
+    refreshToken: token.refreshToken ?? null,
+    accessTokenExpiresAt: token.expiresIn ? new Date(now + token.expiresIn * 1000) : null,
+    refreshTokenExpiresAt: token.refreshTokenExpiresIn ? new Date(now + token.refreshTokenExpiresIn * 1000) : null,
+  };
   await prisma.shopifyConnection.upsert({
     where: { accountId: account.id },
-    create: { accountId: account.id, shopDomain: shop, accessToken: token.accessToken, scope: token.scope },
-    update: { shopDomain: shop, accessToken: token.accessToken, scope: token.scope },
+    create: { accountId: account.id, shopDomain: shop, ...tokenData },
+    update: { shopDomain: shop, ...tokenData },
   });
 
   // Pull the last 60 days of orders right away, so the account isn't left
