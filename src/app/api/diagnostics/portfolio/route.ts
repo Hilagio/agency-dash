@@ -84,6 +84,7 @@ export async function GET() {
       orders: diag?.commerce?.orders ?? null,
       revenue,
       dataVerified: diag?.dataVerified ?? false,
+      hasOrderData: !!diag?.commerce,
       shopifyConnected: !!a.shopify,
       reconciliationMismatch,
       worstSignal: worst ? { title: worst.title, severity: worst.severity } : null,
@@ -103,6 +104,8 @@ export async function GET() {
     counts: { red: counts.red ?? 0, yellow: counts.yellow ?? 0, green: counts.green ?? 0, unknown: counts.unknown ?? 0 },
     total: rows.length,
     unverified: rows.filter(r => r.hasData && !r.dataVerified).length,
+    verified: rows.filter(r => r.dataVerified).length,
+    noOrderData: rows.filter(r => r.hasData && !r.hasOrderData).length,
     withData: rows.filter(r => r.hasData).length,
     watchedCount: watched.size,
   });

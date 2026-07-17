@@ -20,7 +20,7 @@ interface Row {
   id: string; name: string; clientName: string | null; ownerName: string | null;
   status: Colour; hasData: boolean; watched: boolean; computedAt: string | null;
   spend: number; roas: number | null; poas: number | null; orders: number | null;
-  revenue: number | null; dataVerified: boolean; shopifyConnected: boolean;
+  revenue: number | null; dataVerified: boolean; hasOrderData: boolean; shopifyConnected: boolean;
   reconciliationMismatch: boolean;
   worstSignal: { title: string; severity: string } | null;
   problemCount: number; opportunityCount: number;
@@ -31,7 +31,7 @@ interface WorklistItem { headline: string; action: string; minutes: number; skil
 interface Portfolio {
   accounts: Row[];
   counts: Record<Colour, number>;
-  total: number; unverified: number; withData: number; watchedCount: number;
+  total: number; unverified: number; verified: number; noOrderData: number; withData: number; watchedCount: number;
 }
 interface Health { ok: boolean; accountCount?: number; error?: string; hint?: string }
 
@@ -361,7 +361,7 @@ export default function PortfolioHome() {
                                   <span style={{ fontWeight: 700, display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 220 }}>{a.name}</span>
                                   {a.clientName && <span style={{ fontSize: 11.5, color: "var(--text-muted)" }}>{a.clientName}</span>}
                                 </span>
-                                {!a.dataVerified && a.hasData && <span title="not reconciled against real orders yet" style={{ fontSize: 10, color: "var(--text-dim)", border: "1px solid var(--border-2)", borderRadius: 5, padding: "1px 5px" }}>unverified</span>}
+                                {a.dataVerified && <span title="conversions reconcile with real orders" style={{ fontSize: 10, color: "var(--accent)", border: "1px solid color-mix(in srgb, var(--accent) 35%, var(--border-2))", borderRadius: 5, padding: "1px 5px" }}>verified</span>}
                               </Link>
                             </td>
                             <td style={{ padding: "11px 10px", textAlign: "right", fontVariantNumeric: "tabular-nums", color: "var(--text-2)" }}>{a.hasData ? money(a.spend) : "—"}</td>
@@ -397,9 +397,17 @@ export default function PortfolioHome() {
             </>
             )}
 
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11.5, color: "var(--text-muted)", margin: "16px 4px 0", flexWrap: "wrap", gap: 8 }}>
-              <span>{view === "mine" ? `${visible.length} pinned` : `${data.total} accounts`} · {data.withData} with data{data.unverified ? ` · ${data.unverified} unverified` : ""}</span>
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><ShoppingBag size={12} /> {data.accounts.filter(a => a.shopifyConnected).length} Shopify connected</span>
+            <div style={{ margin: "16px 4px 0" }}>
+              {view !== "mine" && data.noOrderData > 0 && (
+                <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--text-muted)", marginBottom: 10, padding: "9px 13px", background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 10 }}>
+                  <ShieldCheck size={14} style={{ color: "var(--text-dim)", flexShrink: 0 }} />
+                  <span>{data.noOrderData} account{data.noOrderData === 1 ? "" : "s"} have no order data — connect Shopify or upload a sales CSV to verify their conversions against real orders.</span>
+                </div>
+              )}
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11.5, color: "var(--text-muted)", flexWrap: "wrap", gap: 8 }}>
+                <span>{view === "mine" ? `${visible.length} pinned` : `${data.total} accounts`} · {data.withData} with data{data.verified ? ` · ${data.verified} verified` : ""}</span>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><ShoppingBag size={12} /> {data.accounts.filter(a => a.shopifyConnected).length} Shopify connected</span>
+              </div>
             </div>
           </>
         )}

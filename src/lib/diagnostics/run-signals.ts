@@ -210,6 +210,13 @@ export async function computeAccountSignals(account: AccountRow, now: Date = new
     problems.some(s => s.severity === "red") ? "red"
     : problems.some(s => s.severity === "yellow") ? "yellow" : "green";
 
+  // Verified = the Ads conversions actually reconcile with real orders (within
+  // tolerance). No order source (no Shopify/CSV) → not verifiable; that's shown
+  // in aggregate as "no order data", not as a per-account warning.
+  const recon = input.reconciliation;
+  const dataVerified = !!recon && recon.actualOrders > 0
+    && Math.abs((recon.adsConversions - recon.actualOrders) / recon.actualOrders) < 0.35;
+
   await prisma.accountStatus.create({
     data: {
       accountId: account.id,
@@ -218,7 +225,7 @@ export async function computeAccountSignals(account: AccountRow, now: Date = new
       reasons: JSON.stringify(problems.map(s => ({ rule: s.key, severity: s.severity, message: s.detail }))),
       metrics: JSON.stringify({
         source: "diagnostics",
-        dataVerified: account.dataVerified,
+        dataVerified,
         window: {
           spend: input.current.spend,
           conversions: input.current.conversions,
@@ -233,7 +240,7 @@ export async function computeAccountSignals(account: AccountRow, now: Date = new
     },
   });
 
-  return { accountId: account.id, name: account.name, status, dataVerified: account.dataVerified, signals };
+  return { accountId: account.id, name: account.name, status, dataVerified, signals };
 }
 
 /** Run signals for every active account in an org. */
