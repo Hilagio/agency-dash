@@ -14,8 +14,9 @@ import Link from "next/link";
 import {
   ArrowLeft, ArrowUpRight, Loader2, CheckCircle2, AlertTriangle, HelpCircle,
   ShieldCheck, Sprout, XCircle, MinusCircle, TrendingUp, ShoppingBag, RefreshCw, ChevronRight, Sparkles,
-  Paperclip, X, FileText, Download, Trash2, Plug, Star, Gauge,
+  Paperclip, X, FileText, Download, Trash2, Plug, Star, Gauge, Search,
 } from "lucide-react";
+import { ProductShoppingScan } from "@/components/ProductShoppingScan";
 
 interface Attachment { name: string; mediaType: string; data: string; kind: "image" | "document" | "text" }
 interface DocMeta { id: string; title: string; docType: string; format: "doc" | "deck"; language: string; filename: string; createdBy: string | null; createdAt: string }
@@ -363,6 +364,7 @@ export default function DiagnosePage() {
   const csvInputRef = useRef<HTMLInputElement>(null);
   const [products, setProducts] = useState<ProductDiagnostic | null>(null);
   const [productPages, setProductPages] = useState<ProductPage[]>([]);
+  const [scanQuery, setScanQuery] = useState<string | null>(null); // product to compare on Google Shopping
   const [wins, setWins] = useState<string[]>([]);
   // The persisted agent conversation (§agent memory): one ongoing thread.
   const [thread, setThread] = useState<Msg[]>([]);
@@ -1646,12 +1648,12 @@ export default function DiagnosePage() {
             {/* Product performance — winners & losers, by spend (Google Ads) */}
             {productPages.length > 0 && (
               <>
-                <SectionTitle>Product performance — where the spend goes (last 30 days)</SectionTitle>
+                <SectionTitle>Landing pages — where the spend goes (last 30 days)</SectionTitle>
                 <div style={{ ...card, overflowX: "auto" }}>
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5, minWidth: 520 }}>
                     <thead>
                       <tr style={{ color: "var(--text-muted)", textAlign: "right" }}>
-                        <th style={{ textAlign: "left", padding: "10px 14px", fontWeight: 600 }}>Product</th>
+                        <th style={{ textAlign: "left", padding: "10px 14px", fontWeight: 600 }}>Landing page</th>
                         <th style={{ padding: "10px 8px", fontWeight: 600 }}>Spend</th>
                         <th style={{ padding: "10px 8px", fontWeight: 600 }}>Clicks</th>
                         <th style={{ padding: "10px 8px", fontWeight: 600 }}>Conv.</th>
@@ -1662,11 +1664,17 @@ export default function DiagnosePage() {
                       {productPages.slice(0, 12).map(p => {
                         const bad = p.roas == null || p.roas < 1;
                         const good = p.roas != null && p.roas >= 2;
+                        const isHome = /^https?:\/\/[^/]+\/?(\?|#|$)/.test(p.url) || /^home\s*page$/i.test(p.name);
                         return (
                           <tr key={p.url} style={{ borderTop: "1px solid var(--border)", textAlign: "right", color: "var(--text-2)" }}>
                             <td style={{ textAlign: "left", padding: "9px 14px", fontWeight: 600, color: "var(--text)", maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                               <span title={p.roas == null || p.roas < 1 ? "spend, no return" : "converting"} style={{ color: bad ? "var(--danger)" : good ? "var(--accent)" : "var(--text-dim)", marginRight: 7 }}>●</span>
-                              {p.name}
+                              {isHome
+                                ? p.name
+                                : <button onClick={() => setScanQuery(p.name)} title="Compare on Google Shopping — who else ranks for this product, and at what price?"
+                                    style={{ font: "inherit", color: "inherit", fontWeight: 600, background: "none", border: "none", padding: 0, cursor: "pointer", textUnderlineOffset: 3, textDecoration: "underline dotted color-mix(in srgb, var(--text-dim) 60%, transparent)" }}>
+                                    {p.name}
+                                  </button>}
                             </td>
                             <td style={{ padding: "9px 8px", fontVariantNumeric: "tabular-nums" }}>{fmtMoney(p.spend)}</td>
                             <td style={{ padding: "9px 8px", fontVariantNumeric: "tabular-nums" }}>{p.clicks || "—"}</td>
@@ -1679,7 +1687,7 @@ export default function DiagnosePage() {
                   </table>
                 </div>
                 <div style={{ fontSize: 11.5, color: "var(--text-muted)", margin: "8px 4px 0" }}>
-                  Green = converting (ROAS ≥ 2), red = spend with little/no return. From Google Ads landing pages; connect Shopify to add real units &amp; revenue.
+                  The page each click landed on (from Google Ads) — for Shopping/PMax these are product pages, so “Homepage” just means spend that went to the site root. Green = converting (ROAS ≥ 2), red = little/no return. Click a product to compare it on Google Shopping.
                 </div>
               </>
             )}
@@ -1785,7 +1793,10 @@ export default function DiagnosePage() {
                                   ? <ChevronRight size={13} style={{ verticalAlign: -2, marginRight: 5, color: "var(--text-dim)", transform: open ? "rotate(90deg)" : "none", transition: "transform .12s" }} />
                                   : <span style={{ display: "inline-block", width: 18 }} />}
                                 {p.excludeCandidate && <span title="spend, no conversions" style={{ color: "var(--danger)", marginRight: 6 }}>●</span>}
-                                {p.title}
+                                <button onClick={e => { e.stopPropagation(); setScanQuery(p.title); }} title="Compare on Google Shopping — who else ranks for this product, and at what price?"
+                                  style={{ font: "inherit", color: "inherit", fontWeight: 600, background: "none", border: "none", padding: 0, cursor: "pointer", textUnderlineOffset: 3, textDecoration: "underline dotted color-mix(in srgb, var(--text-dim) 60%, transparent)" }}>
+                                  {p.title}
+                                </button>
                                 {p.variantCount > 1 && <span style={{ fontSize: 11, color: "var(--text-dim)", marginLeft: 7 }}>{p.variantCount} variants{p.thinVariantCount ? `, ${p.thinVariantCount} thin` : ""}</span>}
                               </td>
                               <td style={{ padding: "9px 8px", fontVariantNumeric: "tabular-nums" }}>{p.spend > 0 ? fmtMoney(p.spend) : "—"}</td>
@@ -1947,6 +1958,10 @@ export default function DiagnosePage() {
           </>
         )}
       </main>
+
+      {scanQuery !== null && (
+        <ProductShoppingScan initialQuery={scanQuery} onClose={() => setScanQuery(null)} />
+      )}
     </div>
   );
 }
