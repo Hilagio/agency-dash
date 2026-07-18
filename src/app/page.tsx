@@ -10,7 +10,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   ShieldCheck, Settings as SettingsIcon, ListChecks, BookOpen,
-  Loader2, ArrowRight, Sprout, Activity, ShoppingBag, AlertTriangle, CheckCircle2, XCircle, Star, Sparkles,
+  Loader2, ArrowRight, Sprout, Activity, ShoppingBag, AlertTriangle, CheckCircle2, XCircle, Star, Sparkles, RefreshCw,
   ChevronDown, TrendingUp, Plus,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -217,17 +217,30 @@ export default function PortfolioHome() {
             </h1>
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-            <SummaryChip color={STATUS_COLOR.red} label="Immediate" value={c.red} />
-            <SummaryChip color={STATUS_COLOR.yellow} label="Action" value={c.yellow} />
-            <SummaryChip color={STATUS_COLOR.green} label="Under control" value={c.green} muted />
+            {/* One combined triage bar — the three counts in a single element so
+                the red/amber lead the eye instead of three competing boxes. */}
+            <div style={{ display: "inline-flex", alignItems: "stretch", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
+              {[
+                { color: STATUS_COLOR.red, value: c.red, label: "immediate", strong: true },
+                { color: STATUS_COLOR.yellow, value: c.yellow, label: "action", strong: true },
+                { color: "var(--text-dim)", value: c.green, label: "ok", strong: false },
+              ].map((s, i) => (
+                <div key={s.label} title={`${s.value} ${s.label}`} style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "7px 13px", borderLeft: i ? "1px solid var(--border)" : "none" }}>
+                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: s.color, flexShrink: 0 }} />
+                  <span style={{ fontSize: 15, fontWeight: 800, letterSpacing: "-0.4px", color: s.strong ? "var(--text)" : "var(--text-3)" }}>{s.value}</span>
+                  <span style={{ fontSize: 11.5, color: "var(--text-muted)" }}>{s.label}</span>
+                </div>
+              ))}
+            </div>
             <HealthChip health={health} />
-            <Link href="/stores" title="Add or manage accounts" style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 10, fontSize: 12, fontWeight: 600, textDecoration: "none", color: "var(--text-3)", background: "var(--surface)", border: "1px solid var(--border)" }}>
-              <Plus size={12} /> Add accounts
+            {/* Utility actions — quiet, icon-only so they don't compete with triage. */}
+            <Link href="/stores" title="Add or manage accounts" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 34, height: 34, borderRadius: 10, textDecoration: "none", color: "var(--text-3)", background: "var(--surface)", border: "1px solid var(--border)" }}>
+              <Plus size={15} />
             </Link>
             {data && data.total > 0 && (
-              <button onClick={backfillAll} disabled={backfill.running} title="Pull 90 days for every account"
-                style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 10, fontSize: 12, fontWeight: 600, cursor: backfill.running ? "default" : "pointer", color: backfill.running ? "var(--text-3)" : "var(--accent)", background: "var(--accent-dim)", border: "1px solid color-mix(in srgb, var(--accent) 30%, var(--border))" }}>
-                {backfill.running ? <><Loader2 size={12} className="animate-spin" /> Backfilling {backfill.done}/{backfill.total}…</> : <><Activity size={12} /> Refresh all</>}
+              <button onClick={backfillAll} disabled={backfill.running} title="Refresh all — pull 90 days for every account"
+                style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, height: 34, width: backfill.running ? "auto" : 34, padding: backfill.running ? "0 12px" : 0, borderRadius: 10, fontSize: 12, fontWeight: 600, cursor: backfill.running ? "default" : "pointer", color: backfill.running ? "var(--text-3)" : "var(--text-3)", background: "var(--surface)", border: "1px solid var(--border)" }}>
+                {backfill.running ? <><Loader2 size={13} className="animate-spin" /> {backfill.done}/{backfill.total}</> : <RefreshCw size={15} />}
               </button>
             )}
           </div>
@@ -499,17 +512,6 @@ function Stat({ label, value, danger }: { label: string; value: string; danger?:
   );
 }
 
-function SummaryChip({ color, label, value, muted }: { color: string; label: string; value: number; muted?: boolean }) {
-  // Quiet by default: the "all fine" bucket gets a neutral grey dot so the
-  // red/amber counts are what draw the eye.
-  return (
-    <div style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "6px 12px", borderRadius: 10, background: "var(--surface)", border: "1px solid var(--border)" }}>
-      <span style={{ width: 8, height: 8, borderRadius: "50%", background: muted ? "var(--text-dim)" : color }} />
-      <span style={{ fontSize: 15, fontWeight: 800, letterSpacing: "-0.4px", color: muted ? "var(--text-3)" : "var(--text)" }}>{value}</span>
-      <span style={{ fontSize: 11.5, color: "var(--text-muted)" }}>{label}</span>
-    </div>
-  );
-}
 
 function HealthChip({ health }: { health: Health | null }) {
   if (!health) return (
