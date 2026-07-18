@@ -81,7 +81,16 @@ export function ProductShoppingScan({
           </p>
           {err && <div style={{ marginTop: 12, fontSize: 12.5, color: "#f87171" }}>{err}</div>}
 
-          {scan && (
+          {scan && scan.rows.length === 0 && (
+            <div style={{ marginTop: 18, textAlign: "center", padding: "26px 18px", border: "1px dashed var(--border-2)", borderRadius: 12 }}>
+              <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--text-2)", marginBottom: 5 }}>No Google Shopping results for “{scan.query}”.</div>
+              <div style={{ fontSize: 12.5, color: "var(--text-muted)", lineHeight: 1.6, maxWidth: 420, margin: "0 auto" }}>
+                The term is likely too specific, or this isn’t a product listed on Google Shopping. Try a shorter, more generic query above — drop the colour/variant (e.g. just the brand + model) — or switch the market (google.{scan.tld}).
+              </div>
+            </div>
+          )}
+
+          {scan && scan.rows.length > 0 && (
             <div style={{ marginTop: 18 }}>
               <div style={{ display: "flex", gap: 18, flexWrap: "wrap", marginBottom: 12 }}>
                 <Stat label="Sellers" value={String(scan.stats.sellers)} />
@@ -124,7 +133,7 @@ export function ProductShoppingScan({
                   </tbody>
                 </table>
               </div>
-              <p style={{ fontSize: 11, color: "var(--text-dim)", marginTop: 9 }}>Live Google Shopping · google.{scan.tld}. Prijzen zoals getoond op het moment van scannen.</p>
+              <p style={{ fontSize: 11, color: "var(--text-dim)", marginTop: 9 }}>Live Google Shopping · google.{scan.tld}. Prices as shown at scan time.</p>
             </div>
           )}
         </div>

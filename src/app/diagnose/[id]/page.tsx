@@ -355,14 +355,16 @@ export default function DiagnosePage() {
   const [mcValue, setMcValue] = useState("");
   const [mcSaving, setMcSaving] = useState(false);
   const [mcMsg, setMcMsg] = useState<string | null>(null);
-  // Inline Shopify Flow setup — the free, no-app, no-review order webhook.
-  const [flowOpen, setFlowOpen] = useState(false);
+  // Shopify Flow setup — the free, no-app, no-review order webhook.
   const [flowData, setFlowData] = useState<{ url: string; bodyTemplate: string; ordersReceived: number; connected: boolean; lastReceivedAt: string | null } | null>(null);
   const [flowLoading, setFlowLoading] = useState(false);
   const [flowCopied, setFlowCopied] = useState<string | null>(null);
   // Manual Shopify CSV upload (the no-API fallback).
   const [csvBusy, setCsvBusy] = useState(false);
   const [csvMsg, setCsvMsg] = useState<string | null>(null);
+  const [shopifyModal, setShopifyModal] = useState(false);            // the Connect-Shopify method picker
+  const [shopifyMethod, setShopifyMethod] = useState<"csv" | "flow" | "app">("csv");
+  const [sidekickCopied, setSidekickCopied] = useState(false);
   const csvInputRef = useRef<HTMLInputElement>(null);
   const [products, setProducts] = useState<ProductDiagnostic | null>(null);
   const [productPages, setProductPages] = useState<ProductPage[]>([]);
@@ -738,9 +740,8 @@ export default function DiagnosePage() {
   }
 
   // Shopify Flow setup — fetch (and lazily mint) this account's webhook URL.
-  async function openFlowSetup() {
-    const next = !flowOpen; setFlowOpen(next);
-    if (!next || flowData) return;
+  async function loadFlowData() {
+    if (flowData || flowLoading) return;
     setFlowLoading(true);
     try { const r = await fetch(`/api/diagnostics/account/${id}/flow`, { credentials: "include" }); if (r.ok) setFlowData(await r.json()); }
     catch { /* ignore */ } finally { setFlowLoading(false); }
@@ -1149,7 +1150,7 @@ export default function DiagnosePage() {
                   const items: { key: string; status: string; el: React.ReactNode }[] = [
                     { key: "ga", status: connections.googleAds, el: <ConnPill key="ga" label="Google Ads" status={connections.googleAds} note="spend & performance" muted={connections.googleAds === "green"} /> },
                     { key: "mc", status: mcStatus, el: <ConnPill key="mc" label="Merchant Center" status={mcStatus} note={mcNote} muted={mcStatus === "green"} onClick={() => { setMcOpen(o => !o); setMcMsg(null); }} /> },
-                    { key: "sh", status: connections.shopify, el: <ConnPill key="sh" label="Shopify" status={connections.shopify} note={connections.shopifySource === "live" ? (shopify?.shopDomain ?? "live") : connections.shopifySource === "csv" ? `CSV · ${agoLabel(connections.shopifyUploadedAt)}` : "orders & POAS"} muted={connections.shopify === "green"} onClick={connections.shopifySource === "live" ? undefined : () => csvInputRef.current?.click()} /> },
+                    { key: "sh", status: connections.shopify, el: <ConnPill key="sh" label="Shopify" status={connections.shopify} note={connections.shopifySource === "live" ? (shopify?.shopDomain ?? "live") : connections.shopifySource === "csv" ? `CSV · ${agoLabel(connections.shopifyUploadedAt)}` : "orders & POAS"} muted={connections.shopify === "green"} onClick={connections.shopifySource === "live" ? undefined : () => { setShopifyMethod("csv"); setShopifyModal(true); }} /> },
                     { key: "sl", status: connections.slack, el: <ConnPill key="sl" label="Slack" status={connections.slack} note={connections.slack === "green" ? `#${connections.slackChannelName}` : connections.slackConfigured ? "link a channel" : "not connected"} muted={connections.slack === "green"} onClick={connections.slackConfigured ? () => (slackOpen ? setSlackOpen(false) : openSlackLink()) : undefined} /> },
                     { key: "cx", status: connections.context, el: <ConnPill key="cx" label="Context" status={connections.context} note={`${connections.contextFilled}/${connections.contextTotal} answered`} muted={connections.context === "green"} onClick={openContextForm} /> },
                   ];
@@ -1171,68 +1172,9 @@ export default function DiagnosePage() {
                   );
                 })()}
 
-                {/* Manual Shopify CSV — the no-API fallback. Data is kept and used
-                    until replaced; we stamp when it was uploaded. */}
+                {/* Hidden file input — driven by the Upload button inside the Connect-Shopify modal. */}
                 <input ref={csvInputRef} type="file" accept=".csv,text/csv" style={{ display: "none" }}
                   onChange={e => { const f = e.target.files?.[0]; if (f) uploadShopifyCsv(f); }} />
-                {connections.shopifySource !== "live" && (
-                  <div style={{ marginTop: 9, display: "flex", alignItems: "center", gap: 9, flexWrap: "wrap", fontSize: 11.5, color: "var(--text-muted)" }}>
-                    <button onClick={() => csvInputRef.current?.click()} disabled={csvBusy} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11.5, fontWeight: 600, color: "var(--text-2)", background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 7, padding: "4px 10px", cursor: csvBusy ? "default" : "pointer" }}>
-                      {csvBusy ? <Loader2 size={12} className="animate-spin" /> : <FileText size={12} />} {connections.shopifySource === "csv" ? "Replace Shopify CSV" : "Upload Shopify sales CSV"}
-                    </button>
-                    {connections.shopifySource === "csv" && connections.shopifyCsvRange && (
-                      <span>Using {connections.shopifyCsvRange.start} → {connections.shopifyCsvRange.end}, uploaded {agoLabel(connections.shopifyUploadedAt)}{agoLabel(connections.shopifyUploadedAt) !== "today" && Math.floor((Date.now() - new Date(connections.shopifyUploadedAt ?? 0).getTime()) / 86_400_000) >= 14 ? " — may be stale, consider a fresh export" : ""}</span>
-                    )}
-                    {csvMsg && <span style={{ color: "var(--text-2)" }}>{csvMsg}</span>}
-                    <span style={{ opacity: 0.7 }}>Analytics → Reports → Sales over time (by Day) → Export</span>
-                    <button onClick={openFlowSetup} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11.5, fontWeight: 600, color: "var(--accent)", background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 7, padding: "4px 10px", cursor: "pointer" }}>
-                      <ShoppingBag size={12} /> Or connect free via Shopify Flow
-                    </button>
-                  </div>
-                )}
-
-                {/* Shopify Flow — the free, no-app, no-review order webhook. We hand the
-                    merchant a ready URL + body + steps; any staff builds it in ~4 clicks. */}
-                {flowOpen && (
-                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--border-2)" }}>
-                    <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 3 }}>Connect Shopify — free, via Flow (no app, no approval)</div>
-                    <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginBottom: 11 }}>A one-time automation in the client&rsquo;s Shopify that sends each new order here. Any staff can set it up — no owner-only app, no App Store review.</div>
-                    {flowLoading || !flowData ? (
-                      <div style={{ fontSize: 12.5, color: "var(--text-3)", display: "flex", alignItems: "center", gap: 8 }}><Loader2 size={13} className="animate-spin" /> Preparing the link…</div>
-                    ) : (
-                      <>
-                        {flowData.connected && (
-                          <div style={{ fontSize: 12, color: "var(--accent)", marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
-                            <ShieldCheck size={13} /> Receiving orders — {flowData.ordersReceived} in so far{flowData.lastReceivedAt ? ` · last ${agoLabel(flowData.lastReceivedAt)}` : ""}.
-                          </div>
-                        )}
-                        <ol style={{ margin: 0, paddingLeft: 18, fontSize: 12.5, color: "var(--text-2)", lineHeight: 1.7 }}>
-                          <li>In the client&rsquo;s Shopify admin, open <strong>Flow</strong> (install the free <em>Shopify Flow</em> app first if it&rsquo;s not there) → <strong>Create workflow</strong>.</li>
-                          <li>Trigger: <strong>Order created</strong>.</li>
-                          <li>Add an action → <strong>Send HTTP request</strong>. Method <strong>POST</strong>, and paste this URL:</li>
-                        </ol>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "8px 0 10px", paddingLeft: 18 }}>
-                          <code style={{ flex: 1, minWidth: 0, fontSize: 11.5, color: "var(--text)", background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 7, padding: "7px 9px", overflowX: "auto", whiteSpace: "nowrap" }}>{flowData.url}</code>
-                          <button onClick={() => copyFlow(flowData.url, "url")} style={{ fontSize: 11.5, fontWeight: 700, color: "var(--text-2)", background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 7, padding: "7px 11px", cursor: "pointer", flexShrink: 0 }}>{flowCopied === "url" ? "Copied ✓" : "Copy"}</button>
-                        </div>
-                        <ol start={4} style={{ margin: 0, paddingLeft: 18, fontSize: 12.5, color: "var(--text-2)", lineHeight: 1.7 }}>
-                          <li>Set the request <strong>Body</strong> to this (JSON):</li>
-                        </ol>
-                        <div style={{ display: "flex", alignItems: "flex-start", gap: 8, margin: "8px 0 10px", paddingLeft: 18 }}>
-                          <pre style={{ flex: 1, minWidth: 0, fontSize: 11, color: "var(--text)", background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 7, padding: "8px 10px", overflowX: "auto", margin: 0 }}>{flowData.bodyTemplate}</pre>
-                          <button onClick={() => copyFlow(flowData.bodyTemplate, "body")} style={{ fontSize: 11.5, fontWeight: 700, color: "var(--text-2)", background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 7, padding: "7px 11px", cursor: "pointer", flexShrink: 0 }}>{flowCopied === "body" ? "Copied ✓" : "Copy"}</button>
-                        </div>
-                        <ol start={5} style={{ margin: 0, paddingLeft: 18, fontSize: 12.5, color: "var(--text-2)", lineHeight: 1.7 }}>
-                          <li>Turn the workflow <strong>On</strong>. New orders now flow in automatically — the &ldquo;Receiving orders&rdquo; note above confirms it.</li>
-                        </ol>
-                        <div style={{ marginTop: 11, fontSize: 11, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", paddingLeft: 18 }}>
-                          <span>Keep this URL private — it&rsquo;s this account&rsquo;s key.</span>
-                          <button onClick={regenerateFlow} disabled={flowLoading} style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", padding: 0, textDecoration: "underline" }}>Regenerate link</button>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                )}
 
                 {/* Inline Slack-channel picker — link the client's channel without leaving the chat */}
                 {slackOpen && (
@@ -2022,6 +1964,130 @@ export default function DiagnosePage() {
       {scanQuery !== null && (
         <ProductShoppingScan initialQuery={scanQuery} onClose={() => setScanQuery(null)} />
       )}
+
+      {shopifyModal && (() => {
+        const SIDEKICK_PROMPT = `Export a "Sales over time" report for the last 90 days, grouped by day, as a CSV file.`;
+        const methods = [
+          { key: "csv" as const, label: "CSV upload", note: "Recommended", enabled: true },
+          { key: "flow" as const, label: "Shopify Flow", note: "Free, no app", enabled: true },
+          { key: "app" as const, label: "One-click app", note: "Coming soon", enabled: false },
+        ];
+        const copySidekick = () => navigator.clipboard?.writeText(SIDEKICK_PROMPT).then(() => { setSidekickCopied(true); setTimeout(() => setSidekickCopied(false), 1500); }).catch(() => {});
+        return (
+          <div onClick={() => setShopifyModal(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 1000, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "6vh 16px 40px", overflowY: "auto" }}>
+            <div onClick={e => e.stopPropagation()} style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 16, width: "100%", maxWidth: 620, boxShadow: "0 20px 60px rgba(0,0,0,0.4)" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "16px 20px", borderBottom: "1px solid var(--border)" }}>
+                <div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text)" }}>Connect Shopify</div>
+                  <div style={{ fontSize: 12, color: "var(--text-faint)", marginTop: 2 }}>Bring in real orders & revenue to reconcile against Google Ads.</div>
+                </div>
+                <button onClick={() => setShopifyModal(false)} style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", padding: 4 }}><X size={18} /></button>
+              </div>
+
+              <div style={{ padding: "16px 20px" }}>
+                {/* Method picker */}
+                <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
+                  {methods.map(m => {
+                    const active = shopifyMethod === m.key;
+                    return (
+                      <button key={m.key} disabled={!m.enabled}
+                        onClick={() => { if (!m.enabled) return; setShopifyMethod(m.key); if (m.key === "flow") loadFlowData(); }}
+                        style={{ flex: "1 1 150px", textAlign: "left", padding: "11px 13px", borderRadius: 10, cursor: m.enabled ? "pointer" : "not-allowed",
+                          border: `1px solid ${active ? "color-mix(in srgb, var(--accent) 55%, var(--border))" : "var(--border-2)"}`,
+                          background: active ? "var(--accent-dim)" : "var(--surface)", opacity: m.enabled ? 1 : 0.55 }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: active ? "var(--accent)" : "var(--text)" }}>{m.label}</div>
+                        <div style={{ fontSize: 11, color: m.key === "csv" ? "var(--accent)" : "var(--text-muted)", marginTop: 2, fontWeight: m.key === "csv" ? 700 : 500 }}>{m.note}</div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* CSV panel */}
+                {shopifyMethod === "csv" && (
+                  <div>
+                    <p style={{ fontSize: 12.5, color: "var(--text-2)", lineHeight: 1.6, margin: "0 0 12px" }}>
+                      The fastest way — export a “Sales over time” CSV from Shopify and upload it here. No app install, no review.
+                    </p>
+                    <div style={{ background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 10, padding: "12px 14px", marginBottom: 14 }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text)", marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}><Sparkles size={13} style={{ color: "var(--accent)" }} /> Easiest: ask Shopify Sidekick</div>
+                      <div style={{ fontSize: 11.5, color: "var(--text-muted)", lineHeight: 1.6, marginBottom: 8 }}>In the client’s Shopify admin, open <strong>Sidekick</strong> (the ✦ button, top-right) and paste this:</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <code style={{ flex: 1, minWidth: 0, fontSize: 11.5, color: "var(--text)", background: "var(--bg)", border: "1px solid var(--border-2)", borderRadius: 7, padding: "8px 10px", lineHeight: 1.5 }}>{SIDEKICK_PROMPT}</code>
+                        <button onClick={copySidekick} style={{ fontSize: 11.5, fontWeight: 700, color: "var(--text-2)", background: "var(--bg)", border: "1px solid var(--border-2)", borderRadius: 7, padding: "8px 12px", cursor: "pointer", flexShrink: 0 }}>{sidekickCopied ? "Copied ✓" : "Copy"}</button>
+                      </div>
+                      <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 8 }}>Sidekick generates the CSV — download it, then upload it below. Or do it manually: <strong>Analytics → Reports → “Sales over time” → group by Day → last 90 days → Export</strong>.</div>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                      <button onClick={() => csvInputRef.current?.click()} disabled={csvBusy}
+                        style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 700, color: "#fff", background: "var(--btn-primary, var(--accent))", border: "none", borderRadius: 9, padding: "9px 16px", cursor: csvBusy ? "default" : "pointer" }}>
+                        {csvBusy ? <Loader2 size={14} className="animate-spin" /> : <FileText size={14} />} {connections?.shopifySource === "csv" ? "Replace CSV" : "Upload CSV"}
+                      </button>
+                      {connections?.shopifySource === "csv" && connections.shopifyCsvRange && (
+                        <span style={{ fontSize: 11.5, color: "var(--text-muted)" }}>Using {connections.shopifyCsvRange.start} → {connections.shopifyCsvRange.end}, uploaded {agoLabel(connections.shopifyUploadedAt)}.</span>
+                      )}
+                      {csvMsg && <span style={{ fontSize: 11.5, color: "var(--text-2)" }}>{csvMsg}</span>}
+                    </div>
+                  </div>
+                )}
+
+                {/* Flow panel */}
+                {shopifyMethod === "flow" && (
+                  <div>
+                    <p style={{ fontSize: 12.5, color: "var(--text-2)", lineHeight: 1.6, margin: "0 0 12px" }}>
+                      A one-time automation in the client’s Shopify that sends each new order here automatically. Free, no owner-only app, no App Store review.
+                    </p>
+                    {flowLoading || !flowData ? (
+                      <div style={{ fontSize: 12.5, color: "var(--text-3)", display: "flex", alignItems: "center", gap: 8 }}><Loader2 size={13} className="animate-spin" /> Preparing the link…</div>
+                    ) : (
+                      <>
+                        {flowData.connected && (
+                          <div style={{ fontSize: 12, color: "var(--accent)", marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
+                            <ShieldCheck size={13} /> Receiving orders — {flowData.ordersReceived} in so far{flowData.lastReceivedAt ? ` · last ${agoLabel(flowData.lastReceivedAt)}` : ""}.
+                          </div>
+                        )}
+                        <ol style={{ margin: 0, paddingLeft: 18, fontSize: 12.5, color: "var(--text-2)", lineHeight: 1.7 }}>
+                          <li>In the client’s Shopify admin, open <strong>Flow</strong> (install the free <em>Shopify Flow</em> app first if needed) → <strong>Create workflow</strong>.</li>
+                          <li>Trigger: <strong>Order created</strong>.</li>
+                          <li>Add action → <strong>Send HTTP request</strong>, method <strong>POST</strong>, and paste this URL:</li>
+                        </ol>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "8px 0 10px", paddingLeft: 18 }}>
+                          <code style={{ flex: 1, minWidth: 0, fontSize: 11.5, color: "var(--text)", background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 7, padding: "7px 9px", overflowX: "auto", whiteSpace: "nowrap" }}>{flowData.url}</code>
+                          <button onClick={() => copyFlow(flowData.url, "url")} style={{ fontSize: 11.5, fontWeight: 700, color: "var(--text-2)", background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 7, padding: "7px 11px", cursor: "pointer", flexShrink: 0 }}>{flowCopied === "url" ? "Copied ✓" : "Copy"}</button>
+                        </div>
+                        <ol start={4} style={{ margin: 0, paddingLeft: 18, fontSize: 12.5, color: "var(--text-2)", lineHeight: 1.7 }}>
+                          <li>Set the request <strong>Body</strong> (JSON):</li>
+                        </ol>
+                        <div style={{ display: "flex", alignItems: "flex-start", gap: 8, margin: "8px 0 10px", paddingLeft: 18 }}>
+                          <pre style={{ flex: 1, minWidth: 0, fontSize: 11, color: "var(--text)", background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 7, padding: "8px 10px", overflowX: "auto", margin: 0 }}>{flowData.bodyTemplate}</pre>
+                          <button onClick={() => copyFlow(flowData.bodyTemplate, "body")} style={{ fontSize: 11.5, fontWeight: 700, color: "var(--text-2)", background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 7, padding: "7px 11px", cursor: "pointer", flexShrink: 0 }}>{flowCopied === "body" ? "Copied ✓" : "Copy"}</button>
+                        </div>
+                        <ol start={5} style={{ margin: 0, paddingLeft: 18, fontSize: 12.5, color: "var(--text-2)", lineHeight: 1.7 }}>
+                          <li>Turn the workflow <strong>On</strong>. New orders flow in automatically.</li>
+                        </ol>
+                        <div style={{ marginTop: 11, fontSize: 11, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", paddingLeft: 18 }}>
+                          <span>Keep this URL private — it’s this account’s key.</span>
+                          <button onClick={regenerateFlow} disabled={flowLoading} style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", padding: 0, textDecoration: "underline" }}>Regenerate link</button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+
+                {/* App panel — not available yet */}
+                {shopifyMethod === "app" && (
+                  <div style={{ textAlign: "center", padding: "24px 18px", border: "1px dashed var(--border-2)", borderRadius: 12 }}>
+                    <ShoppingBag size={22} style={{ color: "var(--text-faint)", marginBottom: 10 }} />
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-2)", marginBottom: 5 }}>The one-click app isn’t available yet</div>
+                    <div style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.6, maxWidth: 380, margin: "0 auto" }}>
+                      It’s pending Shopify App Store review. Until it’s approved, use <strong>CSV upload</strong> (recommended) or <strong>Shopify Flow</strong> — both give the same order data.
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

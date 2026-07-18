@@ -34,7 +34,13 @@ export async function fetchGoogleShopping(query: string, tld = "nl", highlight =
 
   const res = await fetch(api.toString(), { signal: AbortSignal.timeout(70_000) });
   if (!res.ok) throw new Error(`Google Shopping fetch failed (${res.status}). Try again, or a different term.`);
-  const j = await res.json() as { shopping_results?: Array<Record<string, unknown>> };
+  const j = await res.json() as { shopping_results?: Array<Record<string, unknown>>; message?: string };
+  // ScraperAPI occasionally returns just a { message } (busy/soft rate-limit)
+  // with no shopping_results key — that's transient, not "no results". Surface
+  // it as a retryable error rather than silently reporting zero sellers.
+  if (!Array.isArray(j.shopping_results) && j.message) {
+    throw new Error(`Google Shopping is busy right now (${String(j.message).slice(0, 80)}). Try again in a moment.`);
+  }
 
   const hl = highlight.trim().toLowerCase();
   const rows: ShoppingRow[] = (j.shopping_results ?? [])
