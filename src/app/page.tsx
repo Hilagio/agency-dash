@@ -196,6 +196,7 @@ export default function PortfolioHome() {
           <Link href="/ownership" style={navLink(false)}><ShieldCheck size={13} /> Ownership</Link>
           <Link href="/actions" style={navLink(false)}><ListChecks size={13} /> Actions</Link>
           <Link href="/audit" style={navLink(false)}><Sparkles size={13} /> Quick audit</Link>
+          <Link href="/shopping" style={navLink(false)}><ShoppingBag size={13} /> Shopping</Link>
           <Link href="/sops" style={navLink(false)}><BookOpen size={13} /> SOPs</Link>
         </div>
         <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
