@@ -141,14 +141,32 @@ function dossierFromHtml(url: string, finalUrl: string, html: string, status: nu
 async function renderViaScraperApi(url: string): Promise<PageDossier> {
   const key = process.env.SCRAPERAPI_KEY;
   if (!key) throw new Error("SCRAPERAPI_KEY not set");
-  const api = new URL("https://api.scraperapi.com/");
-  api.searchParams.set("api_key", key);
-  api.searchParams.set("url", url);
-  api.searchParams.set("render", "true");                             // execute JS
-  if (process.env.SCRAPERAPI_PREMIUM !== "false") api.searchParams.set("premium", "true"); // residential IPs
-  const res = await fetch(api.toString(), { signal: AbortSignal.timeout(75_000) });
-  if (!res.ok) throw new Error(`ScraperAPI ${res.status}: ${(await res.text().catch(() => "")).slice(0, 120)}`);
-  return dossierFromHtml(url, url, await res.text(), 200, "browser");
+  const call = async (extra?: string): Promise<Response> => {
+    const api = new URL("https://api.scraperapi.com/");
+    api.searchParams.set("api_key", key);
+    api.searchParams.set("url", url);
+    api.searchParams.set("render", "true"); // execute JS
+    if (extra) api.searchParams.set(extra, "true");
+    return fetch(api.toString(), { signal: AbortSignal.timeout(75_000) });
+  };
+  // Cheapest first: plain render (10 credits). Testing showed it already gets
+  // past a lot — and premium sometimes 500s where plain render succeeds. Escalate
+  // to ultra_premium (residential + harder anti-bot, ~30 credits) only if plain
+  // render fails outright or comes back as a block/challenge page.
+  let res = await call();
+  let dossier = res.ok ? dossierFromHtml(url, url, await res.text(), 200, "browser") : null;
+  if (!res.ok || dossier?.blocked) {
+    const up = await call("ultra_premium");
+    if (up.ok) {
+      const d2 = dossierFromHtml(url, url, await up.text(), 200, "browser");
+      if (!d2.blocked) return d2;
+      dossier = dossier ?? d2;
+    } else if (!dossier) {
+      throw new Error(`ScraperAPI ${res.status}/${up.status}: ${(await up.text().catch(() => "")).slice(0, 120)}`);
+    }
+  }
+  if (!dossier) throw new Error(`ScraperAPI ${res.status}`);
+  return dossier;
 }
 
 export async function renderPage(url: string): Promise<PageDossier> {
