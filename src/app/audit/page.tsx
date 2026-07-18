@@ -3,9 +3,9 @@
  * Standalone "Quick audit" tool — paste ANY url and run the 12-persona page
  * audit, no account needed. For sizing up a prospect's or competitor's page.
  */
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Link from "next/link";
-import { Loader2, ArrowLeft, Sparkles, ExternalLink } from "lucide-react";
+import { Loader2, ArrowLeft, Sparkles, ExternalLink, Download } from "lucide-react";
 
 type Result = { html: string; score: number; grade: string; label: string; renderMode: string };
 
@@ -18,6 +18,16 @@ export default function QuickAuditPage() {
   const [status, setStatus] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [result, setResult] = useState<Result | null>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  // Print the report iframe → the browser's print dialog, where "Save as PDF"
+  // gives a clean, self-contained PDF of exactly what's on screen.
+  function downloadPdf() {
+    const win = iframeRef.current?.contentWindow;
+    if (!win) return;
+    win.focus();
+    win.print();
+  }
 
   async function run() {
     const u = url.trim();
@@ -111,8 +121,12 @@ export default function QuickAuditPage() {
               {url} <ExternalLink size={12} />
             </a>
             {result.renderMode === "fetch" && <span style={{ fontSize: 11.5, color: "var(--accent-2)" }}>· rendered without a browser — result may be partial</span>}
+            <button onClick={downloadPdf}
+              style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 700, color: "var(--text)", background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 8, padding: "7px 13px", cursor: "pointer" }}>
+              <Download size={13} /> Download PDF
+            </button>
           </div>
-          <iframe title="Audit report" srcDoc={result.html}
+          <iframe title="Audit report" srcDoc={result.html} ref={iframeRef}
             style={{ width: "100%", height: "78vh", border: "1px solid var(--border)", borderRadius: 14, background: "#fff" }} />
         </div>
       )}

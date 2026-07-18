@@ -14,8 +14,9 @@ import Link from "next/link";
 import {
   ArrowLeft, ArrowUpRight, Loader2, CheckCircle2, AlertTriangle, HelpCircle,
   ShieldCheck, Sprout, XCircle, MinusCircle, TrendingUp, ShoppingBag, RefreshCw, ChevronRight, Sparkles,
-  Paperclip, X, FileText, Download, Trash2, Plug, Star, Gauge,
+  Paperclip, X, FileText, Download, Trash2, Plug, Star, Gauge, Search,
 } from "lucide-react";
+import { ProductShoppingScan } from "@/components/ProductShoppingScan";
 
 interface Attachment { name: string; mediaType: string; data: string; kind: "image" | "document" | "text" }
 interface DocMeta { id: string; title: string; docType: string; format: "doc" | "deck"; language: string; filename: string; createdBy: string | null; createdAt: string }
@@ -335,6 +336,8 @@ export default function DiagnosePage() {
   const [vitals, setVitals] = useState<Vitals | null>(null);
   const [vitalsLoading, setVitalsLoading] = useState(true);
   const [vitalsOpen, setVitalsOpen] = useState<string | null>(null);
+  const [showAllVitals, setShowAllVitals] = useState(false); // reveal the healthy fundamentals (collapsed by default)
+  const [showAllConns, setShowAllConns] = useState(false);   // reveal the connected sources (collapsed by default)
   const [ctxOpen, setCtxOpen] = useState(false);
   const [ctxValues, setCtxValues] = useState<Record<string, string>>({});
   const [ctxLoading, setCtxLoading] = useState(false);
@@ -363,6 +366,7 @@ export default function DiagnosePage() {
   const csvInputRef = useRef<HTMLInputElement>(null);
   const [products, setProducts] = useState<ProductDiagnostic | null>(null);
   const [productPages, setProductPages] = useState<ProductPage[]>([]);
+  const [scanQuery, setScanQuery] = useState<string | null>(null); // product to compare on Google Shopping
   const [wins, setWins] = useState<string[]>([]);
   // The persisted agent conversation (§agent memory): one ongoing thread.
   const [thread, setThread] = useState<Msg[]>([]);
@@ -911,32 +915,34 @@ export default function DiagnosePage() {
           <ArrowLeft size={15} /> Portfolio
         </Link>
         <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>
-          <button onClick={toggleFavorite} disabled={watchBusy} title={watched ? "Remove from your favourites" : "Add to your favourites (My accounts)"} style={{
-            display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, cursor: watchBusy ? "default" : "pointer",
+          {/* Secondary/utility actions — quiet, so the primary stands out (Von Restorff). */}
+          <button onClick={toggleFavorite} disabled={watchBusy} title={watched ? "Remove from your favourites (My accounts)" : "Add to your favourites (My accounts)"} style={{
+            display: "inline-flex", alignItems: "center", justifyContent: "center", width: 34, height: 34, cursor: watchBusy ? "default" : "pointer",
             color: watched ? "#e0a92e" : "var(--text-3)", border: `1px solid ${watched ? "color-mix(in srgb, #e0a92e 45%, var(--border))" : "var(--border-2)"}`,
-            background: watched ? "color-mix(in srgb, #e0a92e 12%, transparent)" : "var(--surface)", padding: "7px 12px", borderRadius: 8,
+            background: watched ? "color-mix(in srgb, #e0a92e 12%, transparent)" : "var(--surface)", borderRadius: 8,
           }}>
-            <Star size={13} style={{ fill: watched ? "currentColor" : "none" }} /> {watched ? "Favourited" : "Favourite"}
+            <Star size={14} style={{ fill: watched ? "currentColor" : "none" }} />
           </button>
-          <button onClick={refreshData} disabled={refreshing} style={{
-            display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600,
-            color: "#fff", border: "none", background: "var(--btn-primary, var(--accent))", padding: "7px 14px", borderRadius: 8, cursor: refreshing ? "default" : "pointer",
+          <button onClick={() => { setAuditOpen(o => !o); if (!auditOpen) loadAudits(); }} title="Audit the landing/product page with 12 personas before spending" style={{
+            display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, cursor: "pointer",
+            color: auditOpen ? "var(--accent)" : "var(--text-3)", border: `1px solid ${auditOpen ? "color-mix(in srgb, var(--accent) 35%, var(--border))" : "var(--border-2)"}`,
+            background: auditOpen ? "var(--accent-dim)" : "var(--surface)", padding: "7px 12px", borderRadius: 8,
           }}>
-            {refreshing ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />} {refreshing ? "Pulling…" : "Refresh data"}
+            <Gauge size={13} /> Audit
           </button>
+          <button onClick={refreshData} disabled={refreshing} title="Pull the latest numbers for this account" style={{
+            display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, cursor: refreshing ? "default" : "pointer",
+            color: "var(--text-3)", border: "1px solid var(--border-2)", background: "var(--surface)", padding: "7px 12px", borderRadius: 8,
+          }}>
+            {refreshing ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />} {refreshing ? "Pulling…" : "Refresh"}
+          </button>
+          {/* Primary action — the forward step after a diagnosis. */}
           <Link href={`/plan/${id}`} style={{
-            display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, textDecoration: "none",
-            color: "var(--accent)", border: "1px solid color-mix(in srgb, var(--accent) 35%, var(--border))", background: "var(--accent-dim)", padding: "7px 13px", borderRadius: 8,
+            display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 700, textDecoration: "none",
+            color: "#fff", border: "none", background: "var(--btn-primary, var(--accent))", padding: "8px 15px", borderRadius: 8,
           }}>
             <Sparkles size={13} /> 90-day plan
           </Link>
-          <button onClick={() => { setAuditOpen(o => !o); if (!auditOpen) loadAudits(); }} title="Test the landing/product page with 12 personas before spending" style={{
-            display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, cursor: "pointer",
-            color: auditOpen ? "var(--accent)" : "var(--text-3)", border: `1px solid ${auditOpen ? "color-mix(in srgb, var(--accent) 35%, var(--border))" : "var(--border-2)"}`,
-            background: auditOpen ? "var(--accent-dim)" : "var(--surface)", padding: "7px 13px", borderRadius: 8,
-          }}>
-            <Gauge size={13} /> Audit page
-          </button>
         </div>
       </nav>
       {refreshMsg && (
@@ -947,8 +953,29 @@ export default function DiagnosePage() {
 
       <main style={{ maxWidth: 900, margin: "0 auto", padding: "26px 26px 90px" }}>
         {loading ? (
-          <div style={{ display: "flex", justifyContent: "center", padding: 80 }}>
-            <Loader2 size={22} className="animate-spin" style={{ color: "var(--text-dim)" }} />
+          <div>
+            {/* Headline banner */}
+            <div style={{ ...card, padding: "18px 20px", marginBottom: 14 }}>
+              <span className="skeleton" style={{ display: "block", width: "70%", height: 16, marginBottom: 9 }} />
+              <span className="skeleton" style={{ display: "block", width: "45%", height: 12 }} />
+            </div>
+            {/* Fundamentals + connected rows */}
+            {[0, 1].map(i => (
+              <div key={i} style={{ ...card, padding: "12px 15px", marginBottom: 14, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {Array.from({ length: 4 }).map((_, j) => (
+                  <span key={j} className="skeleton" style={{ width: 92 + (j % 3) * 18, height: 26, borderRadius: 999 }} />
+                ))}
+              </div>
+            ))}
+            {/* A data table */}
+            <div style={{ ...card, padding: "14px 16px" }}>
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} style={{ display: "flex", justifyContent: "space-between", gap: 14, padding: "9px 0", borderTop: i ? "1px solid var(--border)" : "none" }}>
+                  <span className="skeleton" style={{ width: `${40 - i * 3}%`, height: 12 }} />
+                  <span className="skeleton" style={{ width: 48, height: 12 }} />
+                </div>
+              ))}
+            </div>
           </div>
         ) : error || !diag ? (
           <div style={{ ...card, padding: "40px 28px", textAlign: "center", color: "var(--text-muted)" }}>
@@ -1059,57 +1086,90 @@ export default function DiagnosePage() {
             {(vitalsLoading || vitals) && (
               <div style={{ ...card, padding: "12px 15px", marginTop: 14, border: vitals?.governing ? "1px solid color-mix(in srgb, var(--danger, #d33) 40%, var(--border))" : "1px solid var(--border)" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: vitals ? 10 : 0, flexWrap: "wrap" }}>
-                  <ShieldCheck size={14} style={{ color: "var(--accent)" }} />
+                  <ShieldCheck size={14} style={{ color: vitals?.governing ? "var(--danger, #d33)" : "var(--text-dim)" }} />
                   <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, color: "var(--text-muted)" }}>Fundamentals</span>
                   {vitalsLoading && <span style={{ fontSize: 12, color: "var(--text-3)", display: "inline-flex", alignItems: "center", gap: 6 }}><Loader2 size={12} className="animate-spin" /> checking…</span>}
                   {vitals?.governing && <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--danger, #d33)" }}>{vitals.governing} needs fixing first</span>}
-                  {vitals && !vitals.governing && <span style={{ fontSize: 11.5, fontWeight: 600, color: "var(--ok, #16a34a)" }}>foundation holds</span>}
+                  {vitals && !vitals.governing && <span style={{ fontSize: 11.5, fontWeight: 600, color: "var(--text-muted)" }}>foundation holds</span>}
                 </div>
-                {vitals && (
-                  <>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
-                      {vitals.checks.map(c => {
-                        const col = c.status === "ok" ? "var(--ok, #16a34a)" : c.status === "warn" ? "var(--warn, #d98a00)" : c.status === "fail" ? "var(--danger, #d33)" : "var(--text-dim)";
-                        const glyph = c.status === "ok" ? "✓" : c.status === "warn" ? "⚠" : c.status === "fail" ? "✗" : "–";
-                        const open = vitalsOpen === c.key;
-                        return (
-                          <button key={c.key} onClick={() => setVitalsOpen(open ? null : c.key)} title={c.detail}
-                            style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600, color: "var(--text-2)", background: open ? "var(--surface-2)" : "transparent", border: `1px solid ${col === "var(--text-dim)" ? "var(--border-2)" : `color-mix(in srgb, ${col} 45%, var(--border))`}`, borderRadius: 999, padding: "4px 11px", cursor: "pointer" }}>
-                            <span style={{ color: col, fontWeight: 800 }}>{glyph}</span> {c.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                    {vitalsOpen && (
-                      <div style={{ marginTop: 9, fontSize: 12.5, color: "var(--text-2)", lineHeight: 1.5 }}>
-                        {vitals.checks.find(c => c.key === vitalsOpen)?.detail}
-                      </div>
-                    )}
-                    <div style={{ marginTop: 9, fontSize: 12, color: vitals.governing ? "var(--danger, #d33)" : "var(--text-muted)", lineHeight: 1.5 }}>{vitals.summary}</div>
-                  </>
-                )}
+                {vitals && (() => {
+                  // Quiet by default: only checks that need attention show as chips.
+                  // Healthy ones collapse into one muted "N healthy" toggle.
+                  const problems = vitals.checks.filter(c => c.status === "warn" || c.status === "fail");
+                  const healthy = vitals.checks.filter(c => c.status === "ok" || c.status === "na");
+                  const chipFor = (c: VitalCheck) => {
+                    const col = c.status === "ok" ? "var(--text-dim)" : c.status === "warn" ? "var(--warn, #d98a00)" : c.status === "fail" ? "var(--danger, #d33)" : "var(--text-dim)";
+                    const glyph = c.status === "ok" ? "✓" : c.status === "warn" ? "⚠" : c.status === "fail" ? "✗" : "–";
+                    const muted = c.status === "ok" || c.status === "na";
+                    const open = vitalsOpen === c.key;
+                    return (
+                      <button key={c.key} onClick={() => setVitalsOpen(open ? null : c.key)} title={c.detail}
+                        style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600, color: muted ? "var(--text-3)" : "var(--text-2)", background: open ? "var(--surface-2)" : "transparent", border: `1px solid ${muted ? "var(--border)" : `color-mix(in srgb, ${col} 45%, var(--border))`}`, borderRadius: 999, padding: "4px 11px", cursor: "pointer" }}>
+                        <span style={{ color: col, fontWeight: 800 }}>{glyph}</span> {c.label}
+                      </button>
+                    );
+                  };
+                  return (
+                    <>
+                      {(problems.length > 0 || showAllVitals) && (
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+                          {problems.map(chipFor)}
+                          {showAllVitals && healthy.map(chipFor)}
+                          {healthy.length > 0 && (
+                            <button onClick={() => setShowAllVitals(v => !v)}
+                              style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 600, color: "var(--text-3)", background: "transparent", border: "1px dashed var(--border-2)", borderRadius: 999, padding: "4px 11px", cursor: "pointer" }}>
+                              {showAllVitals ? "Hide healthy" : `${healthy.length} healthy`}
+                              <ChevronRight size={12} style={{ transform: showAllVitals ? "rotate(90deg)" : "none", transition: "transform .12s" }} />
+                            </button>
+                          )}
+                        </div>
+                      )}
+                      {vitalsOpen && (
+                        <div style={{ marginTop: 9, fontSize: 12.5, color: "var(--text-2)", lineHeight: 1.5 }}>
+                          {vitals.checks.find(c => c.key === vitalsOpen)?.detail}
+                        </div>
+                      )}
+                      <div style={{ marginTop: problems.length || showAllVitals ? 9 : 0, fontSize: 12, color: vitals.governing ? "var(--danger, #d33)" : "var(--text-muted)", lineHeight: 1.5 }}>{vitals.summary}</div>
+                    </>
+                  );
+                })()}
               </div>
             )}
 
             {/* Connections & context — what this account knows, at a glance */}
             {connections && (
               <div ref={connRef} style={{ ...card, padding: "12px 15px", marginTop: 14 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, color: "var(--text-muted)", marginRight: 4 }}>Connected</span>
-                  <ConnPill label="Google Ads" status={connections.googleAds} note="spend & performance" />
-                  {(() => {
-                    // The pill mirrors the live Fundamentals check (auto-detected via the
-                    // Ads↔Merchant Center link), so "Connected" and "Fundamentals" never disagree.
-                    const mc = vitals?.checks.find(c => c.key === "merchant_center");
-                    const live = mc && mc.status !== "na" ? mc.status : null;
-                    const mcStatus = live ? (live === "ok" ? "green" : live === "fail" ? "red" : "yellow") : connections.merchantCenter;
-                    const mcNote = live === "ok" ? "feed serving" : live === "warn" ? "minor issue" : live === "fail" ? "feed issue" : connections.merchantCenter === "green" ? "feed & products" : "not detected";
-                    return <ConnPill label="Merchant Center" status={mcStatus} note={mcNote} onClick={() => { setMcOpen(o => !o); setMcMsg(null); }} />;
-                  })()}
-                  <ConnPill label="Shopify" status={connections.shopify} note={connections.shopifySource === "live" ? (shopify?.shopDomain ?? "live") : connections.shopifySource === "csv" ? `CSV · ${agoLabel(connections.shopifyUploadedAt)}` : "orders & POAS"} onClick={connections.shopifySource === "live" ? undefined : () => csvInputRef.current?.click()} />
-                  <ConnPill label="Slack" status={connections.slack} note={connections.slack === "green" ? `#${connections.slackChannelName}` : connections.slackConfigured ? "link a channel" : "not connected"} onClick={connections.slackConfigured ? () => (slackOpen ? setSlackOpen(false) : openSlackLink()) : undefined} />
-                  <ConnPill label="Context" status={connections.context} note={`${connections.contextFilled}/${connections.contextTotal} answered`} onClick={openContextForm} />
-                </div>
+                {(() => {
+                  // The MC pill mirrors the live Fundamentals check (auto-detected via
+                  // the Ads↔Merchant Center link), so the two never disagree.
+                  const mc = vitals?.checks.find(c => c.key === "merchant_center");
+                  const live = mc && mc.status !== "na" ? mc.status : null;
+                  const mcStatus = live ? (live === "ok" ? "green" : live === "fail" ? "red" : "yellow") : connections.merchantCenter;
+                  const mcNote = live === "ok" ? "feed serving" : live === "warn" ? "minor issue" : live === "fail" ? "feed issue" : connections.merchantCenter === "green" ? "feed & products" : "not detected";
+                  const items: { key: string; status: string; el: React.ReactNode }[] = [
+                    { key: "ga", status: connections.googleAds, el: <ConnPill key="ga" label="Google Ads" status={connections.googleAds} note="spend & performance" muted={connections.googleAds === "green"} /> },
+                    { key: "mc", status: mcStatus, el: <ConnPill key="mc" label="Merchant Center" status={mcStatus} note={mcNote} muted={mcStatus === "green"} onClick={() => { setMcOpen(o => !o); setMcMsg(null); }} /> },
+                    { key: "sh", status: connections.shopify, el: <ConnPill key="sh" label="Shopify" status={connections.shopify} note={connections.shopifySource === "live" ? (shopify?.shopDomain ?? "live") : connections.shopifySource === "csv" ? `CSV · ${agoLabel(connections.shopifyUploadedAt)}` : "orders & POAS"} muted={connections.shopify === "green"} onClick={connections.shopifySource === "live" ? undefined : () => csvInputRef.current?.click()} /> },
+                    { key: "sl", status: connections.slack, el: <ConnPill key="sl" label="Slack" status={connections.slack} note={connections.slack === "green" ? `#${connections.slackChannelName}` : connections.slackConfigured ? "link a channel" : "not connected"} muted={connections.slack === "green"} onClick={connections.slackConfigured ? () => (slackOpen ? setSlackOpen(false) : openSlackLink()) : undefined} /> },
+                    { key: "cx", status: connections.context, el: <ConnPill key="cx" label="Context" status={connections.context} note={`${connections.contextFilled}/${connections.contextTotal} answered`} muted={connections.context === "green"} onClick={openContextForm} /> },
+                  ];
+                  const attention = items.filter(i => i.status !== "green");
+                  const ok = items.filter(i => i.status === "green");
+                  return (
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, color: "var(--text-muted)", marginRight: 4 }}>Connected</span>
+                      {attention.map(i => i.el)}
+                      {showAllConns && ok.map(i => i.el)}
+                      {ok.length > 0 && (
+                        <button onClick={() => setShowAllConns(v => !v)}
+                          style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 600, color: "var(--text-3)", background: "transparent", border: "1px dashed var(--border-2)", borderRadius: 999, padding: "5px 12px", cursor: "pointer" }}>
+                          {showAllConns ? "Hide connected" : `${ok.length} connected`}
+                          <ChevronRight size={12} style={{ transform: showAllConns ? "rotate(90deg)" : "none", transition: "transform .12s" }} />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 {/* Manual Shopify CSV — the no-API fallback. Data is kept and used
                     until replaced; we stamp when it was uploaded. */}
@@ -1646,12 +1706,12 @@ export default function DiagnosePage() {
             {/* Product performance — winners & losers, by spend (Google Ads) */}
             {productPages.length > 0 && (
               <>
-                <SectionTitle>Product performance — where the spend goes (last 30 days)</SectionTitle>
+                <SectionTitle>Landing pages — where the spend goes (last 30 days)</SectionTitle>
                 <div style={{ ...card, overflowX: "auto" }}>
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5, minWidth: 520 }}>
                     <thead>
                       <tr style={{ color: "var(--text-muted)", textAlign: "right" }}>
-                        <th style={{ textAlign: "left", padding: "10px 14px", fontWeight: 600 }}>Product</th>
+                        <th style={{ textAlign: "left", padding: "10px 14px", fontWeight: 600 }}>Landing page</th>
                         <th style={{ padding: "10px 8px", fontWeight: 600 }}>Spend</th>
                         <th style={{ padding: "10px 8px", fontWeight: 600 }}>Clicks</th>
                         <th style={{ padding: "10px 8px", fontWeight: 600 }}>Conv.</th>
@@ -1662,11 +1722,17 @@ export default function DiagnosePage() {
                       {productPages.slice(0, 12).map(p => {
                         const bad = p.roas == null || p.roas < 1;
                         const good = p.roas != null && p.roas >= 2;
+                        const isHome = /^https?:\/\/[^/]+\/?(\?|#|$)/.test(p.url) || /^home\s*page$/i.test(p.name);
                         return (
                           <tr key={p.url} style={{ borderTop: "1px solid var(--border)", textAlign: "right", color: "var(--text-2)" }}>
                             <td style={{ textAlign: "left", padding: "9px 14px", fontWeight: 600, color: "var(--text)", maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                               <span title={p.roas == null || p.roas < 1 ? "spend, no return" : "converting"} style={{ color: bad ? "var(--danger)" : good ? "var(--accent)" : "var(--text-dim)", marginRight: 7 }}>●</span>
-                              {p.name}
+                              {isHome
+                                ? p.name
+                                : <button onClick={() => setScanQuery(p.name)} title="Compare on Google Shopping — who else ranks for this product, and at what price?"
+                                    style={{ font: "inherit", color: "inherit", fontWeight: 600, background: "none", border: "none", padding: 0, cursor: "pointer", textUnderlineOffset: 3, textDecoration: "underline dotted color-mix(in srgb, var(--text-dim) 60%, transparent)" }}>
+                                    {p.name}
+                                  </button>}
                             </td>
                             <td style={{ padding: "9px 8px", fontVariantNumeric: "tabular-nums" }}>{fmtMoney(p.spend)}</td>
                             <td style={{ padding: "9px 8px", fontVariantNumeric: "tabular-nums" }}>{p.clicks || "—"}</td>
@@ -1679,7 +1745,7 @@ export default function DiagnosePage() {
                   </table>
                 </div>
                 <div style={{ fontSize: 11.5, color: "var(--text-muted)", margin: "8px 4px 0" }}>
-                  Green = converting (ROAS ≥ 2), red = spend with little/no return. From Google Ads landing pages; connect Shopify to add real units &amp; revenue.
+                  The page each click landed on (from Google Ads) — for Shopping/PMax these are product pages, so “Homepage” just means spend that went to the site root. Green = converting (ROAS ≥ 2), red = little/no return. Click a product to compare it on Google Shopping.
                 </div>
               </>
             )}
@@ -1785,7 +1851,10 @@ export default function DiagnosePage() {
                                   ? <ChevronRight size={13} style={{ verticalAlign: -2, marginRight: 5, color: "var(--text-dim)", transform: open ? "rotate(90deg)" : "none", transition: "transform .12s" }} />
                                   : <span style={{ display: "inline-block", width: 18 }} />}
                                 {p.excludeCandidate && <span title="spend, no conversions" style={{ color: "var(--danger)", marginRight: 6 }}>●</span>}
-                                {p.title}
+                                <button onClick={e => { e.stopPropagation(); setScanQuery(p.title); }} title="Compare on Google Shopping — who else ranks for this product, and at what price?"
+                                  style={{ font: "inherit", color: "inherit", fontWeight: 600, background: "none", border: "none", padding: 0, cursor: "pointer", textUnderlineOffset: 3, textDecoration: "underline dotted color-mix(in srgb, var(--text-dim) 60%, transparent)" }}>
+                                  {p.title}
+                                </button>
                                 {p.variantCount > 1 && <span style={{ fontSize: 11, color: "var(--text-dim)", marginLeft: 7 }}>{p.variantCount} variants{p.thinVariantCount ? `, ${p.thinVariantCount} thin` : ""}</span>}
                               </td>
                               <td style={{ padding: "9px 8px", fontVariantNumeric: "tabular-nums" }}>{p.spend > 0 ? fmtMoney(p.spend) : "—"}</td>
@@ -1947,6 +2016,10 @@ export default function DiagnosePage() {
           </>
         )}
       </main>
+
+      {scanQuery !== null && (
+        <ProductShoppingScan initialQuery={scanQuery} onClose={() => setScanQuery(null)} />
+      )}
     </div>
   );
 }
@@ -1987,13 +2060,15 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
   return <h2 style={{ fontSize: 13, fontWeight: 700, color: "var(--text-2)", margin: "26px 4px 11px", letterSpacing: "-0.2px" }}>{children}</h2>;
 }
 
-function ConnPill({ label, status, note, onClick }: { label: string; status: string; note: string; onClick?: () => void }) {
-  const color = status === "green" ? "var(--accent)" : status === "yellow" ? "var(--accent-2)" : "var(--danger)";
+function ConnPill({ label, status, note, onClick, muted }: { label: string; status: string; note: string; onClick?: () => void; muted?: boolean }) {
+  // Quiet by default: a healthy (green) connection shows a neutral grey dot;
+  // colour is reserved for connections that need attention.
+  const color = muted ? "var(--text-dim)" : status === "green" ? "var(--accent)" : status === "yellow" ? "var(--accent-2)" : "var(--danger)";
   return (
     <div onClick={onClick} role={onClick ? "button" : undefined} title={note}
       style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 12, background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 999, padding: "5px 12px", cursor: onClick ? "pointer" : "default" }}>
       <span style={{ width: 8, height: 8, borderRadius: "50%", background: color, flexShrink: 0 }} />
-      <span style={{ fontWeight: 600, color: "var(--text-2)" }}>{label}</span>
+      <span style={{ fontWeight: 600, color: muted ? "var(--text-3)" : "var(--text-2)" }}>{label}</span>
       <span style={{ color: "var(--text-muted)", fontSize: 11 }}>{note}</span>
       {onClick && <ChevronRight size={12} style={{ color: "var(--text-dim)" }} />}
     </div>

@@ -22,7 +22,7 @@ export default function ShoppingPage() {
 
   async function run() {
     const q = query.trim();
-    if (!q) { setErr("Vul een product of zoekterm in."); return; }
+    if (!q) { setErr("Enter a product or search term."); return; }
     setRunning(true); setErr(null); setScan(null);
     try {
       const res = await fetch("/api/shopping", {
@@ -31,9 +31,9 @@ export default function ShoppingPage() {
         body: JSON.stringify({ query: q, tld, highlight: highlight.trim() }),
       });
       const j = await res.json();
-      if (!res.ok) { setErr(j.error ?? "Scan mislukt."); return; }
+      if (!res.ok) { setErr(j.error ?? "Scan failed."); return; }
       setScan(j);
-    } catch (e) { setErr(e instanceof Error ? e.message : "Scan mislukt."); }
+    } catch (e) { setErr(e instanceof Error ? e.message : "Scan failed."); }
     finally { setRunning(false); }
   }
 
@@ -45,26 +45,26 @@ export default function ShoppingPage() {
       <Link href="/" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--text-muted)", textDecoration: "none", marginBottom: 18 }}>
         <ArrowLeft size={14} /> Cockpit
       </Link>
-      <h1 style={{ fontSize: 26, fontWeight: 800, letterSpacing: "-0.6px", margin: "0 0 4px" }}>Shopping-vergelijking</h1>
+      <h1 style={{ fontSize: 26, fontWeight: 800, letterSpacing: "-0.6px", margin: "0 0 4px" }}>Shopping comparison</h1>
       <p style={{ fontSize: 14, color: "var(--text-muted)", margin: "0 0 22px", lineHeight: 1.5 }}>
-        Typ een product of zoekterm en zie de echte Google Shopping-resultaten — welke winkels ranken, tegen welke prijs, op welke positie. Vul optioneel je eigen winkel/merk in om te zien waar jij staat.
+        Type a product or search term and see the real Google Shopping results — which shops rank, at what price, in what position. Optionally enter your own shop/brand to see where you stand.
       </p>
 
       <div style={{ ...card, padding: "18px 20px" }}>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <input value={query} onChange={e => setQuery(e.target.value)} disabled={running}
             onKeyDown={e => e.key === "Enter" && !running && run()}
-            placeholder="bijv. nike air max 90 heren" style={{ ...input, flex: "1 1 300px" }} />
+            placeholder="e.g. nike air max 90 men" style={{ ...input, flex: "1 1 300px" }} />
           <select value={tld} onChange={e => setTld(e.target.value)} disabled={running} style={{ ...input, cursor: "pointer" }}>
             {["nl", "be", "de", "fr", "com", "co.uk"].map(t => <option key={t} value={t}>google.{t}</option>)}
           </select>
           <button onClick={run} disabled={running}
             style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 14, fontWeight: 700, color: "#fff", background: "var(--accent)", border: "none", borderRadius: 9, padding: "11px 20px", cursor: running ? "default" : "pointer", opacity: running ? 0.7 : 1 }}>
-            {running ? <Loader2 size={15} className="animate-spin" /> : <Search size={15} />} {running ? "Scannen…" : "Scan"}
+            {running ? <Loader2 size={15} className="animate-spin" /> : <Search size={15} />} {running ? "Scanning…" : "Scan"}
           </button>
         </div>
         <input value={highlight} onChange={e => setHighlight(e.target.value)} disabled={running}
-          placeholder="Optioneel: jouw winkel of merk (bv. 'Footlocker') — markeert waar jij staat"
+          placeholder="Optional: your shop or brand (e.g. 'Footlocker') — highlights where you stand"
           style={{ ...input, width: "100%", marginTop: 10 }} />
         {err && <div style={{ marginTop: 12, fontSize: 13, color: "var(--danger, #d33)" }}>{err}</div>}
       </div>

@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, TrendingUp, TrendingDown, AlertTriangle, Package, ShoppingBag } from "lucide-react";
+import { Loader2, TrendingUp, TrendingDown, AlertTriangle, Package, ShoppingBag, Search } from "lucide-react";
+import { ProductShoppingScan } from "./ProductShoppingScan";
 
 interface ProductRow {
   itemId:      string;
@@ -80,6 +81,7 @@ export function ProductPerformance({ accountId, currency }: { accountId: string;
   const [priceDataUnavailable, setPriceDataUnavailable] = useState(false);
   const [gcpNotRegistered, setGcpNotRegistered]     = useState<{ projectId?: string; projectNumber?: string; merchantId?: string } | null>(null);
   const [priceMap, setPriceMap]                     = useState<Map<string, PriceCompRow>>(new Map());
+  const [scanQuery, setScanQuery]                   = useState<string | null>(null); // product being compared on Shopping
 
   const currSym = currency === "EUR" ? "€" : currency === "GBP" ? "£" : "$";
 
@@ -199,8 +201,8 @@ export function ProductPerformance({ accountId, currency }: { accountId: string;
   const overpriced    = data.products.filter(p => p.priceStatus === "above" || p.priceStatus === "well_above").length;
 
   const cols = hasPriceData
-    ? "1fr 70px 80px 80px 70px 80px"
-    : "1fr 70px 80px 80px 70px";
+    ? "1fr 70px 80px 80px 70px 80px 40px"
+    : "1fr 70px 80px 80px 70px 40px";
 
   return (
     <div>
@@ -321,6 +323,7 @@ export function ProductPerformance({ accountId, currency }: { accountId: string;
               { key: "cost",             label: "Cost" },
               { key: null,               label: "CTR" },
               ...(hasPriceData ? [{ key: "priceDiffPercent", label: "vs Market" }] : []),
+              { key: null,               label: "" },
             ].map(({ key, label }, i) => (
               <span
                 key={i}
@@ -376,6 +379,20 @@ export function ProductPerformance({ accountId, currency }: { accountId: string;
                     bold={!!priceInfo}
                   />
                 )}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
+                  <button
+                    onClick={() => setScanQuery(p.title || p.brand || "")}
+                    title="Vergelijk op Google Shopping — welke producten ranken hiervoor en tegen welke prijs?"
+                    style={{
+                      display: "inline-flex", alignItems: "center", justifyContent: "center",
+                      width: 26, height: 26, borderRadius: 6,
+                      border: "1px solid var(--border-2)", background: "transparent",
+                      color: "var(--text-faint)", cursor: "pointer",
+                    }}
+                  >
+                    <Search size={13} />
+                  </button>
+                </div>
               </div>
             );
           })}
@@ -415,6 +432,10 @@ export function ProductPerformance({ accountId, currency }: { accountId: string;
           </div>
         ))}
       </div>
+
+      {scanQuery !== null && (
+        <ProductShoppingScan initialQuery={scanQuery} onClose={() => setScanQuery(null)} />
+      )}
     </div>
   );
 }
