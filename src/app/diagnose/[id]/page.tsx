@@ -368,7 +368,9 @@ export default function DiagnosePage() {
   const csvInputRef = useRef<HTMLInputElement>(null);
   const [products, setProducts] = useState<ProductDiagnostic | null>(null);
   const [productPages, setProductPages] = useState<ProductPage[]>([]);
-  const [scanQuery, setScanQuery] = useState<string | null>(null); // product to compare on Google Shopping
+  // Product to compare on Google Shopping, with our own context (name/price/id/url) so
+  // the scan always shows "your product" even when our listing isn't in the results.
+  const [scanCtx, setScanCtx] = useState<{ query: string; productName?: string; price?: number | null; id?: string | null; url?: string | null } | null>(null);
   const [showAllPages, setShowAllPages] = useState(false); // landing-pages table: show all vs top 12
   const [wins, setWins] = useState<string[]>([]);
   // The persisted agent conversation (§agent memory): one ongoing thread.
@@ -1696,7 +1698,7 @@ export default function DiagnosePage() {
                                 ? <a href={p.url} target="_blank" rel="noreferrer" title={`Open the page — ${p.url}`} style={{ color: "inherit", textDecoration: "none", borderBottom: "1px solid transparent" }} onMouseEnter={e => (e.currentTarget.style.borderBottomColor = "var(--border-3)")} onMouseLeave={e => (e.currentTarget.style.borderBottomColor = "transparent")}>{p.name} <ExternalLink size={11} style={{ verticalAlign: -1, opacity: 0.5 }} /></a>
                                 : p.name}
                               {!isHome && (
-                                <button onClick={() => setScanQuery(p.name)} title="Compare on Google Shopping — competitors & pricing"
+                                <button onClick={() => setScanCtx({ query: p.name, productName: p.name, url: p.url })} title="Compare on Google Shopping — competitors & pricing"
                                   style={{ marginLeft: 7, verticalAlign: -2, display: "inline-flex", background: "none", border: "none", padding: 2, cursor: "pointer", color: "var(--text-dim)" }}>
                                   <ShoppingBag size={13} />
                                 </button>
@@ -1827,7 +1829,7 @@ export default function DiagnosePage() {
                                   : <span style={{ display: "inline-block", width: 18 }} />}
                                 {p.excludeCandidate && <span title="spend, no conversions" style={{ color: "var(--danger)", marginRight: 6 }}>●</span>}
                                 {p.title}
-                                <button onClick={e => { e.stopPropagation(); setScanQuery(p.title); }} title="Compare on Google Shopping — competitors & pricing"
+                                <button onClick={e => { e.stopPropagation(); setScanCtx({ query: p.title, productName: p.title, price: p.units > 0 ? p.revenue / p.units : null, id: p.productKey }); }} title="Compare on Google Shopping — competitors & pricing"
                                   style={{ marginLeft: 7, verticalAlign: -2, display: "inline-flex", background: "none", border: "none", padding: 2, cursor: "pointer", color: "var(--text-dim)" }}>
                                   <ShoppingBag size={13} />
                                 </button>
@@ -1993,8 +1995,8 @@ export default function DiagnosePage() {
         )}
       </main>
 
-      {scanQuery !== null && (
-        <ProductShoppingScan initialQuery={scanQuery} onClose={() => setScanQuery(null)} />
+      {scanCtx !== null && (
+        <ProductShoppingScan initialQuery={scanCtx.query} productName={scanCtx.productName} ourPrice={scanCtx.price ?? null} ourId={scanCtx.id ?? null} ourUrl={scanCtx.url ?? null} onClose={() => setScanCtx(null)} />
       )}
 
       {shopifyModal && (() => {

@@ -434,7 +434,7 @@ export function ProductPerformance({ accountId, currency }: { accountId: string;
       </div>
 
       {scanQuery !== null && (
-        <ProductShoppingScan initialQuery={scanQuery} onClose={() => setScanQuery(null)} />
+        <ProductShoppingScan initialQuery={scanQuery} productName={scanQuery} onClose={() => setScanQuery(null)} />
       )}
     </div>
   );

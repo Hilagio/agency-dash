@@ -16,7 +16,14 @@ const money = (n: number | null) => (n == null ? "—" : `€${n.toFixed(2)}`);
 
 export function ProductShoppingScan({
   initialQuery, defaultTld = "nl", onClose,
-}: { initialQuery: string; defaultTld?: string; onClose: () => void }) {
+  productName, ourPrice = null, ourId, ourUrl,
+}: {
+  initialQuery: string; defaultTld?: string; onClose: () => void;
+  productName?: string;        // our product's own name (what we're comparing)
+  ourPrice?: number | null;    // our own selling price, if we have it
+  ourId?: string | null;       // our product/item id
+  ourUrl?: string | null;      // link to our own product/landing page
+}) {
   const [query, setQuery] = useState(initialQuery);
   const [tld, setTld] = useState(defaultTld);
   const [highlight, setHighlight] = useState("");
@@ -79,6 +86,28 @@ export function ProductShoppingScan({
           <p style={{ fontSize: 11, color: "var(--text-faint)", margin: "8px 2px 0", lineHeight: 1.5 }}>
             The search term comes from the product title — feel free to trim it (feed titles are often too specific for Shopping).
           </p>
+
+          {/* Your product — from our own data, so you always see what you're comparing,
+              even when your listing isn't in the scraped results. */}
+          {productName && (() => {
+            const median = scan?.stats.median ?? null;
+            const vs = ourPrice != null && median != null && median > 0 ? Math.round(((ourPrice - median) / median) * 100) : null;
+            return (
+              <div style={{ marginTop: 12, border: "1px solid color-mix(in srgb, var(--accent) 40%, var(--border))", borderRadius: 10, padding: "11px 14px", background: "color-mix(in srgb, var(--accent) 6%, transparent)" }}>
+                <div style={{ fontSize: 10.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.4, color: "var(--accent)", marginBottom: 4 }}>Your product</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>
+                  {ourUrl ? <a href={ourUrl} target="_blank" rel="noreferrer" style={{ color: "inherit", display: "inline-flex", alignItems: "center", gap: 5 }}>{productName} <ExternalLink size={11} style={{ opacity: 0.5 }} /></a> : productName}
+                </div>
+                <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 3, display: "flex", gap: 12, flexWrap: "wrap" }}>
+                  <span>{ourPrice != null ? <>Your price: <strong style={{ color: "var(--text-2)" }}>{money(ourPrice)}</strong>{ourPrice != null && median == null ? " (avg sold)" : ""}</> : "Your price: not in our data"}</span>
+                  {ourId && <span>ID: {ourId}</span>}
+                  {vs != null && <span style={{ color: vs > 0 ? "#f87171" : "#4ade80", fontWeight: 600 }}>{vs > 0 ? `${vs}% above` : `${Math.abs(vs)}% below`} the market median</span>}
+                </div>
+                {ourPrice == null && <div style={{ fontSize: 10.5, color: "var(--text-faint)", marginTop: 5 }}>Connect Shopify (or Merchant Center price data) to show your own price and where it sits vs the market.</div>}
+              </div>
+            );
+          })()}
+
           {err && <div style={{ marginTop: 12, fontSize: 12.5, color: "#f87171" }}>{err}</div>}
 
           {scan && scan.rows.length === 0 && (
