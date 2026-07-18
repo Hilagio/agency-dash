@@ -234,7 +234,28 @@ export default function PortfolioHome() {
         </div>
 
         {loading ? (
-          <div style={{ display: "flex", justifyContent: "center", padding: 64 }}><Loader2 size={22} className="animate-spin" style={{ color: "var(--text-dim)" }} /></div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
+              <span className="skeleton" style={{ width: 16, height: 16, borderRadius: 4 }} />
+              <span className="skeleton" style={{ width: 130, height: 13 }} />
+              <span className="skeleton" style={{ width: 200, height: 11 }} />
+            </div>
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} style={{ ...card, padding: "16px 18px", opacity: 1 - i * 0.16 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 11 }}>
+                  <span className="skeleton" style={{ width: 9, height: 9, borderRadius: "50%" }} />
+                  <span className="skeleton" style={{ width: 130, height: 14 }} />
+                  <span className="skeleton" style={{ width: 74, height: 11, borderRadius: 999 }} />
+                </div>
+                <span className="skeleton" style={{ display: "block", width: "92%", height: 11, marginBottom: 6 }} />
+                <span className="skeleton" style={{ display: "block", width: "78%", height: 11, marginBottom: 14 }} />
+                <div style={{ display: "flex", gap: 22 }}>
+                  <span className="skeleton" style={{ width: 60, height: 20 }} />
+                  <span className="skeleton" style={{ width: 44, height: 20 }} />
+                </div>
+              </div>
+            ))}
+          </div>
         ) : !data || data.total === 0 ? (
           <div style={{ ...card, padding: "44px 20px", textAlign: "center", color: "var(--text-muted)" }}>
             <Sprout size={26} style={{ color: "var(--accent)", marginBottom: 8 }} />

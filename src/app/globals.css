@@ -100,3 +100,23 @@ button, [role="button"] {
   0%, 100% { opacity: 1; }
   50%       { opacity: 0; }
 }
+
+/* ─── Skeleton loading (perceived performance) ───────────────────────────────
+   A content-shaped placeholder that shimmers while data loads — feels faster
+   than a lone spinner and avoids layout shift when the real content lands. */
+@keyframes skeleton-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+.skeleton {
+  border-radius: 7px;
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--text-dim) 12%, transparent) 25%,
+    color-mix(in srgb, var(--text-dim) 22%, transparent) 37%,
+    color-mix(in srgb, var(--text-dim) 12%, transparent) 63%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton { animation: none; }
+}

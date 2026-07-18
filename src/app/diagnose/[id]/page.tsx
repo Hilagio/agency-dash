@@ -915,32 +915,34 @@ export default function DiagnosePage() {
           <ArrowLeft size={15} /> Portfolio
         </Link>
         <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>
-          <button onClick={toggleFavorite} disabled={watchBusy} title={watched ? "Remove from your favourites" : "Add to your favourites (My accounts)"} style={{
-            display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, cursor: watchBusy ? "default" : "pointer",
+          {/* Secondary/utility actions — quiet, so the primary stands out (Von Restorff). */}
+          <button onClick={toggleFavorite} disabled={watchBusy} title={watched ? "Remove from your favourites (My accounts)" : "Add to your favourites (My accounts)"} style={{
+            display: "inline-flex", alignItems: "center", justifyContent: "center", width: 34, height: 34, cursor: watchBusy ? "default" : "pointer",
             color: watched ? "#e0a92e" : "var(--text-3)", border: `1px solid ${watched ? "color-mix(in srgb, #e0a92e 45%, var(--border))" : "var(--border-2)"}`,
-            background: watched ? "color-mix(in srgb, #e0a92e 12%, transparent)" : "var(--surface)", padding: "7px 12px", borderRadius: 8,
+            background: watched ? "color-mix(in srgb, #e0a92e 12%, transparent)" : "var(--surface)", borderRadius: 8,
           }}>
-            <Star size={13} style={{ fill: watched ? "currentColor" : "none" }} /> {watched ? "Favourited" : "Favourite"}
+            <Star size={14} style={{ fill: watched ? "currentColor" : "none" }} />
           </button>
-          <button onClick={refreshData} disabled={refreshing} style={{
-            display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600,
-            color: "#fff", border: "none", background: "var(--btn-primary, var(--accent))", padding: "7px 14px", borderRadius: 8, cursor: refreshing ? "default" : "pointer",
+          <button onClick={() => { setAuditOpen(o => !o); if (!auditOpen) loadAudits(); }} title="Audit the landing/product page with 12 personas before spending" style={{
+            display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, cursor: "pointer",
+            color: auditOpen ? "var(--accent)" : "var(--text-3)", border: `1px solid ${auditOpen ? "color-mix(in srgb, var(--accent) 35%, var(--border))" : "var(--border-2)"}`,
+            background: auditOpen ? "var(--accent-dim)" : "var(--surface)", padding: "7px 12px", borderRadius: 8,
           }}>
-            {refreshing ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />} {refreshing ? "Pulling…" : "Refresh data"}
+            <Gauge size={13} /> Audit
           </button>
+          <button onClick={refreshData} disabled={refreshing} title="Pull the latest numbers for this account" style={{
+            display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, cursor: refreshing ? "default" : "pointer",
+            color: "var(--text-3)", border: "1px solid var(--border-2)", background: "var(--surface)", padding: "7px 12px", borderRadius: 8,
+          }}>
+            {refreshing ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />} {refreshing ? "Pulling…" : "Refresh"}
+          </button>
+          {/* Primary action — the forward step after a diagnosis. */}
           <Link href={`/plan/${id}`} style={{
-            display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, textDecoration: "none",
-            color: "var(--accent)", border: "1px solid color-mix(in srgb, var(--accent) 35%, var(--border))", background: "var(--accent-dim)", padding: "7px 13px", borderRadius: 8,
+            display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 700, textDecoration: "none",
+            color: "#fff", border: "none", background: "var(--btn-primary, var(--accent))", padding: "8px 15px", borderRadius: 8,
           }}>
             <Sparkles size={13} /> 90-day plan
           </Link>
-          <button onClick={() => { setAuditOpen(o => !o); if (!auditOpen) loadAudits(); }} title="Test the landing/product page with 12 personas before spending" style={{
-            display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, cursor: "pointer",
-            color: auditOpen ? "var(--accent)" : "var(--text-3)", border: `1px solid ${auditOpen ? "color-mix(in srgb, var(--accent) 35%, var(--border))" : "var(--border-2)"}`,
-            background: auditOpen ? "var(--accent-dim)" : "var(--surface)", padding: "7px 13px", borderRadius: 8,
-          }}>
-            <Gauge size={13} /> Audit page
-          </button>
         </div>
       </nav>
       {refreshMsg && (
@@ -951,8 +953,29 @@ export default function DiagnosePage() {
 
       <main style={{ maxWidth: 900, margin: "0 auto", padding: "26px 26px 90px" }}>
         {loading ? (
-          <div style={{ display: "flex", justifyContent: "center", padding: 80 }}>
-            <Loader2 size={22} className="animate-spin" style={{ color: "var(--text-dim)" }} />
+          <div>
+            {/* Headline banner */}
+            <div style={{ ...card, padding: "18px 20px", marginBottom: 14 }}>
+              <span className="skeleton" style={{ display: "block", width: "70%", height: 16, marginBottom: 9 }} />
+              <span className="skeleton" style={{ display: "block", width: "45%", height: 12 }} />
+            </div>
+            {/* Fundamentals + connected rows */}
+            {[0, 1].map(i => (
+              <div key={i} style={{ ...card, padding: "12px 15px", marginBottom: 14, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {Array.from({ length: 4 }).map((_, j) => (
+                  <span key={j} className="skeleton" style={{ width: 92 + (j % 3) * 18, height: 26, borderRadius: 999 }} />
+                ))}
+              </div>
+            ))}
+            {/* A data table */}
+            <div style={{ ...card, padding: "14px 16px" }}>
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} style={{ display: "flex", justifyContent: "space-between", gap: 14, padding: "9px 0", borderTop: i ? "1px solid var(--border)" : "none" }}>
+                  <span className="skeleton" style={{ width: `${40 - i * 3}%`, height: 12 }} />
+                  <span className="skeleton" style={{ width: 48, height: 12 }} />
+                </div>
+              ))}
+            </div>
           </div>
         ) : error || !diag ? (
           <div style={{ ...card, padding: "40px 28px", textAlign: "center", color: "var(--text-muted)" }}>
