@@ -25,8 +25,14 @@ export interface WorklistItem {
   category: string;
 }
 
-const PPC_OS = `PPC OS skills to hand off to — name the ONE that fits (with the leading slash), or "off-platform" / "none":
-/search-term-optimizer (negatives, promote terms, n-grams), /keyword-optimizer, /bidding-optimizer (tCPA/tROAS targets), /budget-optimizer (raise/reduce/reallocate/pacing), /placement-optimizer, /pmax-optimizer, /feed-optimizer (Merchant Center feed fixes), /geo-schedule-optimizer, /lp-optimizer (landing page), /quality-score-auditor, /tracking-audit, /account-audit.
+const PPC_OS = `PPC OS skills to hand off to — name the ONE that fits (exact slash name), or "off-platform" / "none". Prefer the EXECUTE skill when the fix is clear; use an AUDIT skill when the issue needs a deeper read first.
+
+EXECUTE (modifies the account, dry-run gated): /search-term-optimizer (negatives, promote terms, n-grams), /keyword-optimizer (match types, negatives), /bidding-optimizer (tCPA/tROAS targets, learning), /budget-optimizer (raise/reduce/reallocate/pacing), /pmax-optimizer, /feed-optimizer (Merchant Center feed fixes), /placement-optimize (exclusions, brand safety), /geo-schedule-optimize (geo/schedule/device/demographic modifiers), /lp-optimize (landing-page recommendations).
+
+DIAGNOSE (read-only audit, scores 0-100): /account-audit, /bidding-auditor, /budget-auditor, /keyword-auditor, /search-term-auditor, /pmax-auditor, /feed-auditor, /placement-audit, /geo-schedule-audit, /lp-audit, /quality-score-auditor, /tracking-audit, /strategy-audit, /offer-audit, /competitive-analyst.
+
+BUILD (creative/pages): /rsa-maker (responsive search ads), /offer-maker, /landing-page, /ecom-page.
+
 Use "off-platform" for a checkout/site/stock/pricing/promo issue (the client's job, not Google Ads). Use "none" if it only needs watching.`;
 
 const SYSTEM = `You are triaging ONE flagged Google Ads account for tomorrow's worklist. Investigate the flagged issue with your tools — call only what you need, you have a TIGHT budget (a couple of tool calls) — then output ONE worklist item: the single highest-leverage next action, how long it takes, and which PPC OS skill to run.

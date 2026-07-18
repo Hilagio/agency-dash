@@ -38,9 +38,11 @@ jobs:
             exit 1
           fi
 
-      - name: Ingest Google Ads spine + Shopify orders (last 14 days)
+      - name: Ingest Google Ads spine + Shopify orders (last 14 days, in batches)
         run: |
-          bash .github/scripts/cron-call.sh "$APP_URL/api/diagnostics/ingest" '{"days":14}' 600
+          # Batched: 10 accounts per request, looped until done — keeps each
+          # request small so a large portfolio can't OOM the container.
+          bash .github/scripts/cron-batch.sh "$APP_URL/api/diagnostics/ingest" 14 10 400
 
       - name: Recompute signals (fills the portfolio red/yellow/green + numbers)
         run: |
