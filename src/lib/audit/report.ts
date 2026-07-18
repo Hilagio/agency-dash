@@ -8,7 +8,7 @@ const convColor = (v: PersonaVerdict["wouldConvert"]) => (v === "yes" ? GREEN : 
 const badge = (label: string, val: string, color: string) =>
   `<span style="display:inline-block;font-size:10px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:${color};background:${color}14;border-radius:6px;padding:3px 8px;margin-right:6px">${esc(label)}: ${esc(val)}</span>`;
 
-function personaCard(p: PersonaVerdict): string {
+function personaCard(p: PersonaVerdict, action: string): string {
   const c = convColor(p.wouldConvert);
   return `<div style="border:1px solid #e6ebf0;border-left:4px solid ${c};border-radius:10px;padding:13px 15px;background:#fff">
     <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
@@ -16,7 +16,7 @@ function personaCard(p: PersonaVerdict): string {
       <span style="font-size:10.5px;color:#8a97a6;text-transform:uppercase;letter-spacing:.4px">${esc(p.device)}</span>
     </div>
     <div style="font-size:12px;color:#5a6b7b;margin:3px 0 9px">${esc(p.intent)} · from ${esc(p.arrivedFrom)}</div>
-    <div style="margin-bottom:8px">${badge("understood", p.understood, p.understood === "yes" ? GREEN : p.understood === "no" ? RED : AMBER)}${badge("would " + (p.wouldConvert === "yes" ? "convert" : p.wouldConvert), p.wouldConvert, c)}</div>
+    <div style="margin-bottom:8px">${badge("understood", p.understood, p.understood === "yes" ? GREEN : p.understood === "no" ? RED : AMBER)}${badge("would " + action, p.wouldConvert, c)}</div>
     ${p.hurdle ? `<div style="font-size:12.5px;color:${INK}"><strong>Hurdle:</strong> ${esc(p.hurdle)}</div>` : ""}
     ${p.quote ? `<div style="font-size:12.5px;color:#5a6b7b;font-style:italic;margin-top:6px">“${esc(p.quote)}”</div>` : ""}
   </div>`;
@@ -70,6 +70,6 @@ export function renderAuditHtml(r: AuditResult, date: string): string {
     <h3 style="font-size:16px;margin:0 4px 12px">The ${r.fixes.length} fixes that matter</h3>
     <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:22px">${r.fixes.map(fixCard).join("") || '<div style="color:#8a97a6;font-size:13px">No fixes generated.</div>'}</div>
     <h3 style="font-size:16px;margin:0 4px 12px">The ${r.personas.length} personas in detail</h3>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px">${r.personas.map(personaCard).join("")}</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px">${r.personas.map(p => personaCard(p, action)).join("")}</div>
   </div>`;
 }
