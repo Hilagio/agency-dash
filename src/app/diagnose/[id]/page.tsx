@@ -756,6 +756,27 @@ export default function DiagnosePage() {
     navigator.clipboard?.writeText(text).then(() => { setFlowCopied(which); setTimeout(() => setFlowCopied(null), 1500); }).catch(() => {});
   }
 
+  // Turn any known landing-page name inside a sentence (Issues / What's working)
+  // into a link to that page — so a name that's praised or flagged is one click
+  // from the actual page, no hunting in the table. Longest names first so
+  // "Flexiva Comfort" wins over a bare "Flexiva".
+  function linkifyProducts(text: string): React.ReactNode {
+    const named = productPages
+      .filter(p => /^https?:\/\//i.test(p.url) && p.name && p.name.length >= 4 && !/^home\s*page$/i.test(p.name))
+      .map(p => ({ name: p.name, url: p.url }))
+      .sort((a, b) => b.name.length - a.name.length);
+    const walk = (s: string): React.ReactNode => {
+      for (const { name, url } of named) {
+        const idx = s.indexOf(name);
+        if (idx >= 0) {
+          return <>{s.slice(0, idx)}<a href={url} target="_blank" rel="noreferrer" title={`Open the page — ${url}`} style={{ color: "var(--accent)", textDecoration: "none", borderBottom: "1px solid color-mix(in srgb, var(--accent) 40%, transparent)" }}>{name}</a>{walk(s.slice(idx + name.length))}</>;
+        }
+      }
+      return s;
+    };
+    return walk(text);
+  }
+
   // Upload a Shopify "Sales over time" CSV — the data is kept and reconciled
   // against until it's replaced; the server stamps when it was uploaded.
   async function uploadShopifyCsv(file: File) {
@@ -1584,7 +1605,7 @@ export default function DiagnosePage() {
                   {diag.observations.map((o, i) => (
                     <div key={i} style={{ display: "flex", gap: 11, padding: "11px 16px", borderBottom: i < diag.observations.length - 1 ? "1px solid var(--border)" : "none" }}>
                       <AlertTriangle size={15} style={{ color: diag.status === "red" ? "var(--danger)" : "var(--accent-2)", flexShrink: 0, marginTop: 2 }} />
-                      <span style={{ fontSize: 14, lineHeight: 1.5, color: "var(--text-2)" }}>{o.text}</span>
+                      <span style={{ fontSize: 14, lineHeight: 1.5, color: "var(--text-2)" }}>{linkifyProducts(o.text)}</span>
                     </div>
                   ))}
                 </div>
@@ -1599,7 +1620,7 @@ export default function DiagnosePage() {
                   {wins.map((w, i) => (
                     <div key={i} style={{ display: "flex", gap: 11, padding: "11px 16px", borderBottom: i < wins.length - 1 ? "1px solid var(--border)" : "none" }}>
                       <CheckCircle2 size={15} style={{ color: "var(--accent)", flexShrink: 0, marginTop: 2 }} />
-                      <span style={{ fontSize: 14, lineHeight: 1.5, color: "var(--text-2)" }}>{w}</span>
+                      <span style={{ fontSize: 14, lineHeight: 1.5, color: "var(--text-2)" }}>{linkifyProducts(w)}</span>
                     </div>
                   ))}
                 </div>
