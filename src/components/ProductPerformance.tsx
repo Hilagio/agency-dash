@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, TrendingUp, TrendingDown, AlertTriangle, Package, ShoppingBag, Search } from "lucide-react";
+import { Loader2, TrendingUp, AlertTriangle, Package, ShoppingBag } from "lucide-react";
 import { ProductShoppingScan } from "./ProductShoppingScan";
 
 interface ProductRow {
@@ -382,7 +382,7 @@ export function ProductPerformance({ accountId, currency }: { accountId: string;
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
                   <button
                     onClick={() => setScanQuery(p.title || p.brand || "")}
-                    title="Vergelijk op Google Shopping — welke producten ranken hiervoor en tegen welke prijs?"
+                    title="Compare on Google Shopping — competitors & pricing"
                     style={{
                       display: "inline-flex", alignItems: "center", justifyContent: "center",
                       width: 26, height: 26, borderRadius: 6,
@@ -390,7 +390,7 @@ export function ProductPerformance({ accountId, currency }: { accountId: string;
                       color: "var(--text-faint)", cursor: "pointer",
                     }}
                   >
-                    <Search size={13} />
+                    <ShoppingBag size={13} />
                   </button>
                 </div>
               </div>
