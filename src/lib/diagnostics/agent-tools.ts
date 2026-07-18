@@ -8,6 +8,7 @@ import { prisma } from "@/lib/db";
 import { fetchImpressionShare, fetchCampaignOverview, fetchChangeHistory, fetchDemographics, fetchQualityScore, fetchAdStrength, fetchGeoPerformance } from "@/lib/integrations/google-ads";
 import { fetchSlackMessages, formatSlackForContext } from "@/lib/integrations/slack";
 import { getMerchantCenterIds, fetchMerchantCenterHealth, fetchPriceCompetitiveness } from "@/lib/integrations/merchant-center";
+import { fetchGoogleShopping } from "@/lib/integrations/scraperapi-shopping";
 import { lookupPlaybook } from "@/lib/diagnostics/agency-playbook";
 
 const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -42,8 +43,17 @@ export const AGENT_TOOLS = [
   },
   {
     name: "get_price_competitiveness",
-    description: "Live from Merchant Center: each product's price vs the market BENCHMARK (how far above/below competitors). This is the key check when clicks are healthy but conversions are weak — if the products taking the clicks are priced well above market, PRICING is the constraint, not the ads, and it's a client conversation, not a bid change. Needs a linked Merchant Center account and the 'content' scope.",
+    description: "Merchant Center's account-wide price BENCHMARK (each product's price vs competitors, across the whole feed). Good for 'are we broadly over/under market?'. Needs a linked Merchant Center account, the 'content' scope, AND the Merchant API GCP project registered — if that's not set up it returns nothing, so for a SINGLE product's live competitor pricing prefer get_shopping_competitors (which needs none of that).",
     input_schema: { type: "object", properties: {} },
+  },
+  {
+    name: "get_shopping_competitors",
+    description: "Live Google Shopping scan for ONE product/search term — the real ranked listings a shopper sees: which shops rank, at what price, and the min/median/max across sellers. THIS is the tool for 'how does our price compare to competitors for [product]?', 'who else sells this and for how much?', 'are we the most expensive on this SKU?'. Works with no Google API and no Merchant Center registration (it reads Shopping directly), so use it instead of get_price_competitiveness for a specific product. Pass the product title as the query (trim overly-specific feed titles); optionally pass the client's shop/brand to locate where they rank.",
+    input_schema: { type: "object", properties: {
+      query: { type: "string", description: "The product or search term to scan on Google Shopping (usually the product title, trimmed if very specific)." },
+      tld: { type: "string", description: "Google country edition: nl, be, de, fr, com, co.uk. Defaults to the account's market." },
+      highlight: { type: "string", description: "Optional: the client's shop or brand name, to mark where they rank in the results." },
+    }, required: ["query"] },
   },
   {
     name: "get_products",
@@ -103,6 +113,7 @@ const LABELS: Record<string, string> = {
   get_campaign_overview: "Pulling the campaign structure from Google Ads…",
   get_segments: "Segmenting by device and brand vs non-brand…",
   get_price_competitiveness: "Checking product prices vs the market…",
+  get_shopping_competitors: "Scanning Google Shopping for competitors & pricing…",
   get_products: "Finding the underperforming products…",
   get_geo: "Breaking performance down by location…",
   get_quality_score: "Reading Quality Score components…",
@@ -466,6 +477,25 @@ export async function runAgentTool(name: string, input: Record<string, unknown>,
     const worst = rows.filter(p => p.status === "above" || p.status === "well_above").sort((a, b) => b.priceDiffPercent - a.priceDiffPercent).slice(0, 15);
     const lines = worst.map(p => `- ${p.title || p.itemId}: ${p.priceDiffPercent > 0 ? "+" : ""}${p.priceDiffPercent}% vs market (${p.status.replace("_", " ")})`);
     return `Price vs market (${rows.length} products with benchmarks): ${wellAbove} well above, ${above} above, ${belowOrOk} competitive/below.\n${worst.length ? `Most overpriced — if these are the products taking the clicks, PRICING is the constraint (a client conversation, not a bid change):\n${lines.join("\n")}` : "Nothing priced materially above market — pricing isn't the drag here."}`;
+  }
+
+  if (name === "get_shopping_competitors") {
+    const query = typeof input?.query === "string" ? input.query.trim() : "";
+    if (!query) return "Give me a product or search term to scan (usually the product title).";
+    const tldByCur: Record<string, string> = { EUR: "nl", GBP: "co.uk", USD: "com", CZK: "cz", PLN: "pl" };
+    const tld = (typeof input?.tld === "string" && input.tld.trim()) ? input.tld.trim().toLowerCase() : (tldByCur[acc.currency] ?? "nl");
+    const highlight = typeof input?.highlight === "string" ? input.highlight : "";
+    let scan;
+    try { scan = await fetchGoogleShopping(query, tld, highlight); }
+    catch (e) { return `Couldn't run the Google Shopping scan: ${e instanceof Error ? e.message : String(e)}.`; }
+    if (!scan.rows.length) return `No Google Shopping results for "${query}" on google.${tld}. Feed titles are often too specific — try a shorter, more generic term (e.g. drop the colour/size).`;
+    const s = scan.stats;
+    const range = s.min != null && s.max != null ? `${money(s.min)}–${money(s.max)}, median ${money(s.median ?? 0)}` : "n/a";
+    const listings = scan.rows.slice(0, 12).map(r => `- #${r.position} ${r.merchant || "?"}: ${r.price || (r.priceValue != null ? money(r.priceValue) : "—")}${r.isYou ? "  ← the client" : ""}`);
+    const youLine = scan.you
+      ? `\nThe client ranks #${scan.you.position}${scan.you.priceValue != null ? ` at ${money(scan.you.priceValue)}` : ""}${scan.you.vsMedianPct != null ? ` — ${scan.you.vsMedianPct > 0 ? `${scan.you.vsMedianPct}% ABOVE` : `${Math.abs(scan.you.vsMedianPct)}% below`} the median` : ""}.`
+      : (highlight ? `\nThe client's shop ("${highlight}") didn't appear in the listings — either not ranking for this term or listed under a different seller name.` : "");
+    return `Live Google Shopping for "${query}" (google.${tld}) — ${s.sellers} sellers, price range ${range}.${youLine}\nTop listings:\n${listings.join("\n")}\n\n(Real Shopping data, no Merchant API needed. Sellers are matched by name, so the client only shows as "← the client" if their shop is listed under a recognisable name — pass their shop name as highlight to locate them.)`;
   }
 
   if (name === "get_search_terms") {

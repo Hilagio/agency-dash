@@ -1727,12 +1727,13 @@ export default function DiagnosePage() {
                           <tr key={p.url} style={{ borderTop: "1px solid var(--border)", textAlign: "right", color: "var(--text-2)" }}>
                             <td style={{ textAlign: "left", padding: "9px 14px", fontWeight: 600, color: "var(--text)", maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                               <span title={p.roas == null || p.roas < 1 ? "spend, no return" : "converting"} style={{ color: bad ? "var(--danger)" : good ? "var(--accent)" : "var(--text-dim)", marginRight: 7 }}>●</span>
-                              {isHome
-                                ? p.name
-                                : <button onClick={() => setScanQuery(p.name)} title="Compare on Google Shopping — who else ranks for this product, and at what price?"
-                                    style={{ font: "inherit", color: "inherit", fontWeight: 600, background: "none", border: "none", padding: 0, cursor: "pointer", textUnderlineOffset: 3, textDecoration: "underline dotted color-mix(in srgb, var(--text-dim) 60%, transparent)" }}>
-                                    {p.name}
-                                  </button>}
+                              {p.name}
+                              {!isHome && (
+                                <button onClick={() => setScanQuery(p.name)} title="Compare on Google Shopping — competitors & pricing"
+                                  style={{ marginLeft: 7, verticalAlign: -2, display: "inline-flex", background: "none", border: "none", padding: 2, cursor: "pointer", color: "var(--text-dim)" }}>
+                                  <ShoppingBag size={13} />
+                                </button>
+                              )}
                             </td>
                             <td style={{ padding: "9px 8px", fontVariantNumeric: "tabular-nums" }}>{fmtMoney(p.spend)}</td>
                             <td style={{ padding: "9px 8px", fontVariantNumeric: "tabular-nums" }}>{p.clicks || "—"}</td>
@@ -1851,9 +1852,10 @@ export default function DiagnosePage() {
                                   ? <ChevronRight size={13} style={{ verticalAlign: -2, marginRight: 5, color: "var(--text-dim)", transform: open ? "rotate(90deg)" : "none", transition: "transform .12s" }} />
                                   : <span style={{ display: "inline-block", width: 18 }} />}
                                 {p.excludeCandidate && <span title="spend, no conversions" style={{ color: "var(--danger)", marginRight: 6 }}>●</span>}
-                                <button onClick={e => { e.stopPropagation(); setScanQuery(p.title); }} title="Compare on Google Shopping — who else ranks for this product, and at what price?"
-                                  style={{ font: "inherit", color: "inherit", fontWeight: 600, background: "none", border: "none", padding: 0, cursor: "pointer", textUnderlineOffset: 3, textDecoration: "underline dotted color-mix(in srgb, var(--text-dim) 60%, transparent)" }}>
-                                  {p.title}
+                                {p.title}
+                                <button onClick={e => { e.stopPropagation(); setScanQuery(p.title); }} title="Compare on Google Shopping — competitors & pricing"
+                                  style={{ marginLeft: 7, verticalAlign: -2, display: "inline-flex", background: "none", border: "none", padding: 2, cursor: "pointer", color: "var(--text-dim)" }}>
+                                  <ShoppingBag size={13} />
                                 </button>
                                 {p.variantCount > 1 && <span style={{ fontSize: 11, color: "var(--text-dim)", marginLeft: 7 }}>{p.variantCount} variants{p.thinVariantCount ? `, ${p.thinVariantCount} thin` : ""}</span>}
                               </td>
