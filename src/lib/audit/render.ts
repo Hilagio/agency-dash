@@ -96,19 +96,23 @@ async function renderWithFetch(url: string): Promise<PageDossier> {
     redirect: "follow",
   });
   const html = await res.text();
+  return dossierFromHtml(url, res.url || url, html, res.status, "fetch");
+}
 
-  // Detect a block / challenge page: a bad status, or a body that's clearly a
-  // WAF / captcha wall rather than the real page. Auditing this would produce a
-  // false "your page is broken" verdict, so flag it and let the runner stop.
+/**
+ * Shared HTML → dossier: block detection + light extraction. Used by both the
+ * plain fetch and the ScraperAPI paths so they produce comparable dossiers.
+ */
+function dossierFromHtml(url: string, finalUrl: string, html: string, status: number, renderMode: "browser" | "fetch"): PageDossier {
   const rawTitle = (html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] ?? "").toLowerCase();
-  const badStatus = res.status === 401 || res.status === 403 || res.status === 429 || res.status >= 500;
+  const badStatus = status === 401 || status === 403 || status === 429 || status >= 500;
   const wallTitle = /access denied|forbidden|attention required|just a moment|are you human|verify you are (a )?human|captcha|request blocked|blocked/i.test(rawTitle);
   if (badStatus || wallTitle || html.length < 500) {
     return {
-      url, finalUrl: res.url || url, renderMode: "fetch",
+      url, finalUrl, renderMode,
       title: "", metaDescription: "", headings: [], ctas: [], formFields: [], priceHints: [], bodyText: "",
       blocked: true,
-      error: `The site refused our request (HTTP ${res.status}${rawTitle ? `, "${rawTitle.slice(0, 40)}"` : ""}). It's behind bot protection that blocks automated/server requests, so we can't see the real page from here — this is an access issue, not a fault in the page.`,
+      error: `The site refused our request (HTTP ${status}${rawTitle ? `, "${rawTitle.slice(0, 40)}"` : ""}). It's behind bot protection that blocks automated requests${renderMode === "browser" ? " even through the render service" : ""} — this is an access issue, not a fault in the page.`,
     };
   }
   const pick = (re: RegExp, all = false): string[] => {
@@ -124,16 +128,42 @@ async function renderWithFetch(url: string): Promise<PageDossier> {
   const formFields = uniq((html.match(/<(?:input|textarea|select)[^>]*>/gi) ?? []).map(tag => (tag.match(/(?:aria-label|placeholder|name)=["']([^"']+)["']/i)?.[1] ?? "")).filter(Boolean)).slice(0, 40);
   const bodyText = clip(html.replace(/<script[\s\S]*?<\/script>/gi, " ").replace(/<style[\s\S]*?<\/style>/gi, " ").replace(/<[^>]+>/g, " ").replace(/&[a-z]+;/gi, " ").replace(/\s+/g, " ").trim(), 9000);
   const priceHints = uniq((bodyText.match(/(?:€|\$|£|EUR|USD)\s?\d[\d.,]*/g) ?? [])).slice(0, 20);
-  return { url, finalUrl: res.url || url, renderMode: "fetch", title, metaDescription, headings, ctas, formFields, priceHints, bodyText };
+  return { url, finalUrl, renderMode, title, metaDescription, headings, ctas, formFields, priceHints, bodyText };
+}
+
+/**
+ * Render via ScraperAPI — renders JS and (with premium) routes through
+ * residential IPs, so it gets past the bot protection / 429s that block a direct
+ * server request. The only reliable path for auditing arbitrary external sites.
+ * API key from the env (never hard-coded). Throws on a ScraperAPI-level failure
+ * so renderPage can fall back to a local render.
+ */
+async function renderViaScraperApi(url: string): Promise<PageDossier> {
+  const key = process.env.SCRAPERAPI_KEY;
+  if (!key) throw new Error("SCRAPERAPI_KEY not set");
+  const api = new URL("https://api.scraperapi.com/");
+  api.searchParams.set("api_key", key);
+  api.searchParams.set("url", url);
+  api.searchParams.set("render", "true");                             // execute JS
+  if (process.env.SCRAPERAPI_PREMIUM !== "false") api.searchParams.set("premium", "true"); // residential IPs
+  const res = await fetch(api.toString(), { signal: AbortSignal.timeout(75_000) });
+  if (!res.ok) throw new Error(`ScraperAPI ${res.status}: ${(await res.text().catch(() => "")).slice(0, 120)}`);
+  return dossierFromHtml(url, url, await res.text(), 200, "browser");
 }
 
 export async function renderPage(url: string): Promise<PageDossier> {
+  // Prefer ScraperAPI when configured — the only path that reliably renders JS
+  // AND gets past bot protection on arbitrary external sites. Falls back to a
+  // local browser, then a plain fetch (each with block detection).
+  if (process.env.SCRAPERAPI_KEY) {
+    try { return await renderViaScraperApi(url); }
+    catch { /* ScraperAPI unavailable (key/credits/transient) — try local render */ }
+  }
   try {
     return await renderWithBrowser(url);
   } catch (browserErr) {
     try {
-      const d = await renderWithFetch(url);
-      return d;
+      return await renderWithFetch(url);
     } catch (fetchErr) {
       return {
         url, finalUrl: url, renderMode: "fetch", title: "", metaDescription: "",
