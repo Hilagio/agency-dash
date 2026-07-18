@@ -37,19 +37,37 @@ export function fixedArchetypes(pageType: PageType): Persona[] {
   return common;
 }
 
-// The prompt for the model that turns the offer + intent source into the
-// remaining ~6 intent/client personas. Kept here so run.ts stays orchestration.
-export function personaBuilderPrompt(pageType: PageType, offer: string, intentSource: string, count: number): string {
+// The prompt for the model that turns the offer + intent source (and, when no
+// real traffic data exists, the page itself) into the remaining ~6 intent/client
+// personas. Kept here so run.ts stays orchestration.
+export function personaBuilderPrompt(pageType: PageType, offer: string, intentSource: string, count: number, pageSummary = ""): string {
   const action = pageType === "ecom" ? "buy the product / add to cart" : "submit the form / enquire";
+  const hasIntent = !!intentSource.trim();
+
+  // WHERE THE PERSONAS COME FROM:
+  //  • Real search terms provided  → build from them faithfully. A search that
+  //    doesn't match the page is a REAL traffic/targeting problem worth surfacing.
+  //  • No traffic data (standalone) → ground the personas in the ACTUAL page
+  //    below so they're realistic buyers for what this page really sells. Do NOT
+  //    invent a different product category — that manufactures a fake mismatch.
+  const sourcing = hasIntent
+    ? `WHERE THE TRAFFIC / INTENT COMES FROM (real search terms, keyword research, or ad/video hooks):
+${intentSource}
+
+Build the personas faithfully from these real sources. If a search term clearly doesn't match what the page sells, keep that persona anyway — that mismatch is a real targeting problem the audit should reveal.`
+    : `NO real traffic/keyword data was provided, so derive the personas from the ACTUAL PAGE below. They must be realistic people who would plausibly be shopping for THIS product / offer. Do NOT invent a different product category than what the page actually sells.
+
+THE ACTUAL PAGE (what it really sells — ground every persona in this):
+${pageSummary || "(page content unavailable — infer conservatively from the offer)"}`;
+
   return `You build realistic visitor personas for a conversion audit of a ${pageType === "ecom" ? "product/landing" : "lead-gen landing"} page. The conversion action is: ${action}.
 
 THE OFFER / BUSINESS CONTEXT:
 ${offer || "(not provided)"}
 
-WHERE THE TRAFFIC / INTENT COMES FROM (real search terms, keyword research, or ad/video hooks):
-${intentSource || "(not provided — infer plausible intent from the offer)"}
+${sourcing}
 
-Produce EXACTLY ${count} distinct personas that arrive with the REAL reasons people arrive with, derived from the intent source above (and the client's likely buyers). Vary device realistically (mostly mobile for ad traffic). Each must feel like a specific person, not a segment.
+Produce EXACTLY ${count} distinct personas that arrive with the REAL reasons people arrive with. Vary device realistically (mostly mobile for ad traffic). Each must feel like a specific person, not a segment.
 
 Return ONLY a JSON array, each item:
 {"name": "short label", "device": "mobile"|"desktop", "intent": "what they arrived wanting, first person-ish", "arrivedFrom": "the source", "brief": "one sentence on what would make them ${action} or bounce"}`;

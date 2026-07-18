@@ -47,13 +47,13 @@ function extractJson<T>(text: string, fallback: T): T {
   try { return JSON.parse(raw.slice(start, end + 1)) as T; } catch { return fallback; }
 }
 
-async function buildIntentPersonas(pageType: PageType, offer: string, intentSource: string, count: number): Promise<Persona[]> {
+async function buildIntentPersonas(pageType: PageType, offer: string, intentSource: string, count: number, pageSummary: string): Promise<Persona[]> {
   if (count <= 0) return [];
   try {
     const msg = await client.messages.create({
       model: "claude-sonnet-5", max_tokens: 1500,
       system: "You build realistic visitor personas for a conversion audit. Return only JSON.",
-      messages: [{ role: "user", content: personaBuilderPrompt(pageType, offer, intentSource, count) }],
+      messages: [{ role: "user", content: personaBuilderPrompt(pageType, offer, intentSource, count, pageSummary) }],
     });
     const text = msg.content.filter(b => b.type === "text").map(b => (b as { text: string }).text).join("");
     const arr = extractJson<Array<{ name: string; device: string; intent: string; arrivedFrom: string; brief: string }>>(text, []);
@@ -164,7 +164,17 @@ export async function runPageAudit(
 
   const archetypes = fixedArchetypes(opts.pageType);
   onProgress("Building the intent personas from the offer and keywords…");
-  const intent = await buildIntentPersonas(opts.pageType, opts.offer, opts.intentSource, 12 - archetypes.length);
+  // Ground the intent personas in what the page ACTUALLY sells (title, headings,
+  // prices, lead text). Without this, a no-context standalone audit lets the
+  // model guess the product category and invent mismatched personas.
+  const pageSummary = [
+    dossier.title && `Title: ${dossier.title}`,
+    dossier.metaDescription && `Description: ${dossier.metaDescription}`,
+    dossier.priceHints.length && `Prices: ${dossier.priceHints.slice(0, 8).join(", ")}`,
+    dossier.headings.length && `Headings: ${dossier.headings.slice(0, 15).join(" | ")}`,
+    dossier.bodyText && `Text: ${dossier.bodyText.slice(0, 1200)}`,
+  ].filter(Boolean).join("\n");
+  const intent = await buildIntentPersonas(opts.pageType, opts.offer, opts.intentSource, 12 - archetypes.length, pageSummary);
   const personas = [...archetypes, ...intent].slice(0, 12);
 
   // Judge concurrently, small pool, streaming progress as each lands.
