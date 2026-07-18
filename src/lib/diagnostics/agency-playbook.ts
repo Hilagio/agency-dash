@@ -8,6 +8,7 @@
  */
 import { AGENCY_PHILOSOPHY } from "@/lib/agencyPhilosophy";
 import { ECOMTRADA_WAY_OF_WORK } from "@/lib/wayOfWork";
+import { loadKnowledgeBase, knowledgeBaseSummary } from "./knowledge-base";
 
 interface Section { title: string; body: string }
 
@@ -45,31 +46,49 @@ export function playbookIndex(): string {
  * search over our own playbook. Empty/blank query returns the index so the
  * agent can pick a topic; no strong match returns the index too, never a guess.
  */
-export function lookupPlaybook(query: string, maxChars = 3200): string {
+interface Candidate { label: string; title: string; body: string; lc: string; }
+
+// The full searchable corpus: the hand-written doctrine (Way of Work +
+// Philosophy) PLUS every SOP / mental model / checklist / guideline in the
+// knowledge base. Doctrine is labelled "Playbook"; KB docs carry their category.
+function candidates(): Candidate[] {
+  const doctrine: Candidate[] = SECTIONS.map(s => ({ label: "Playbook", title: s.title, body: s.body, lc: s.body.toLowerCase() }));
+  const kb: Candidate[] = loadKnowledgeBase().map(d => ({ label: d.category, title: d.title, body: d.text, lc: d.lc }));
+  return [...doctrine, ...kb];
+}
+
+/**
+ * Return the doctrine section(s) and knowledge-base doc(s) most relevant to
+ * `query` — a keyword search over our whole corpus. Empty/blank or no-match
+ * returns what's available so the agent can pick a topic, never a guess. Each
+ * hit is excerpted so three long SOPs can't blow the context window.
+ */
+export function lookupPlaybook(query: string, maxChars = 4200): string {
   const q = tokenize(query);
-  if (!q.length) return `Our playbook covers these topics — call again naming the one that fits:\n${playbookIndex()}`;
-  const scored = SECTIONS.map(s => {
-    const titleToks = new Set(tokenize(s.title));
-    const bodyLc = s.body.toLowerCase();
+  const scope = `It covers our doctrine plus ${knowledgeBaseSummary()} — search by naming a task, pattern, or decision.`;
+  if (!q.length) return `Our playbook + knowledge base. ${scope}`;
+
+  const scored = candidates().map(c => {
+    const titleToks = new Set(tokenize(c.title));
     let score = 0;
     for (const w of q) {
-      if (titleToks.has(w)) score += 5;
-      const inBody = bodyLc.split(w).length - 1;
-      score += Math.min(inBody, 4); // cap so one word can't dominate
+      if (titleToks.has(w)) score += 6; // a title hit is a strong signal
+      score += Math.min(c.lc.split(w).length - 1, 4); // body occurrences, capped
     }
-    return { s, score };
+    return { c, score };
   }).filter(x => x.score > 0).sort((a, b) => b.score - a.score);
 
-  if (!scored.length) return `No section of our playbook clearly matches that. Available topics:\n${playbookIndex()}`;
+  if (!scored.length) return `Nothing in our playbook or knowledge base clearly matches that. ${scope}`;
 
+  const perDoc = 1600;
   const picked: string[] = [];
   let used = 0;
-  for (const { s } of scored.slice(0, 3)) {
-    const block = `### ${s.title}\n${s.body}`;
+  for (const { c } of scored.slice(0, 3)) {
+    const excerpt = c.body.length > perDoc ? `${c.body.slice(0, perDoc).trimEnd()} …[truncated]` : c.body;
+    const block = `### [${c.label}] ${c.title}\n${excerpt}`;
     if (used + block.length > maxChars && picked.length) break;
-    picked.push(block.length > maxChars ? block.slice(0, maxChars) : block);
+    picked.push(block);
     used += block.length;
-    if (used >= maxChars) break;
   }
-  return `From our agency playbook (apply only where it fits THIS account's type and what the data actually shows):\n\n${picked.join("\n\n")}`;
+  return `From our playbook + knowledge base (apply only where it fits THIS account's type and what the data actually shows — doctrine to reason with, not a script to force):\n\n${picked.join("\n\n")}`;
 }
