@@ -116,8 +116,18 @@ export async function generateOrgWorklist(organizationId: string): Promise<{ inv
       cleared++;
     }
   }
-  flagged.sort((x, y) => (x.red ? 0 : 1) - (y.red ? 0 : 1));
-  const targets = flagged.slice(0, 25); // cost cap
+  flagged.sort((x, y) => (x.red ? 0 : 1) - (y.red ? 0 : 1)); // red first
+  // Never lock a RED (serving-blocking / worst) account out of tomorrow's plan —
+  // investigate every one. Only the less-urgent yellows are capped, generously
+  // and configurably, and we log it so a growing portfolio is never silently
+  // truncated. (Cost scales with problems, not account count — by design.)
+  const reds = flagged.filter(f => f.red);
+  const yellows = flagged.filter(f => !f.red);
+  const maxYellow = Math.max(0, Math.floor(Number(process.env.WORKLIST_MAX_YELLOW) || 75));
+  const targets = [...reds, ...yellows.slice(0, maxYellow)];
+  if (yellows.length > maxYellow) {
+    console.warn(`[worklist] org ${organizationId}: all ${reds.length} red investigated; yellow capped at ${maxYellow}/${yellows.length} (raise WORKLIST_MAX_YELLOW to lift).`);
+  }
 
   let investigated = 0, cursor = 0;
   async function worker() {

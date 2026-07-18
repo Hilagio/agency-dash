@@ -41,7 +41,8 @@ async function postRedAlert(organizationId: string): Promise<void> {
 
   const base = process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : "";
   const lines = reds.slice(0, 25).map(r => `🔴 *${r.name}* — ${r.briefing ?? "flagged, needs a look"}`);
-  const text = `*Ecomtrada AI — overnight check*\n${reds.length} account${reds.length === 1 ? "" : "s"} in the red:\n${lines.join("\n")}${base ? `\n\nOpen the cockpit → ${base}/` : ""}`;
+  const more = reds.length > 25 ? `\n…and ${reds.length - 25} more in the cockpit` : "";
+  const text = `*Ecomtrada AI — overnight check*\n${reds.length} account${reds.length === 1 ? "" : "s"} in the red:\n${lines.join("\n")}${more}${base ? `\n\nOpen the cockpit → ${base}/` : ""}`;
   await postSlackMessage(conn.botToken, channel, text);
 }
 
