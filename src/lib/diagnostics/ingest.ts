@@ -137,7 +137,7 @@ export async function ingestAccountSpine(
  * OOM caution), and each account still catches its own errors so one bad account
  * can't sink the run. Order is preserved.
  */
-export async function ingestOrgSpine(organizationId: string, days = 14, concurrency = 5): Promise<IngestResult[]> {
+export async function ingestOrgSpine(organizationId: string, days = 14, concurrency = 3): Promise<IngestResult[]> {
   const accounts = await prisma.account.findMany({
     where: { organizationId, active: true, archived: false },
     select: { id: true, googleAdsId: true, organizationId: true },

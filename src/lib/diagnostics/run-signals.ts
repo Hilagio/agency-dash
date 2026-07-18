@@ -257,7 +257,7 @@ export async function computeOrgSignals(organizationId: string, now: Date = new 
   // each account persists its own status independently, order preserved.
   const out: AccountSignals[] = new Array(accounts.length);
   let cursor = 0;
-  const concurrency = 5;
+  const concurrency = 3; // bounded to keep the org-wide run inside Railway's memory ceiling
   async function worker() {
     while (cursor < accounts.length) {
       const i = cursor++;
