@@ -22,21 +22,30 @@ if [ -n "$BODY" ]; then
   args+=(-d "$BODY")
 fi
 
-resp="$(curl "${args[@]}")"
-code="$(printf '%s' "$resp" | tail -n1)"
-body="$(printf '%s' "$resp" | sed '$d')"
+# These jobs re-fetch the same trailing window (delete + re-insert), so re-running
+# is safe. A 5xx / timeout is usually transient (a brief Railway restart or an
+# OOM that frees on retry), so retry a couple of times with backoff before giving
+# up. Auth failures (/login) and 4xx are NOT retried — they won't fix themselves.
+code=""; body=""
+for attempt in 1 2 3; do
+  resp="$(curl "${args[@]}" || true)"
+  code="$(printf '%s' "$resp" | tail -n1)"
+  body="$(printf '%s' "$resp" | sed '$d')"
+  echo "HTTP ${code:-000} — $URL (attempt $attempt)"
+  printf '%s\n' "$body" | head -c 800
 
-echo "HTTP $code — $URL"
-printf '%s\n' "$body" | head -c 800
-
-if [ "$code" != "200" ]; then
-  echo "::error::$URL returned HTTP $code (expected 200)."
+  case "$body" in
+    *"/login"*)
+      echo "::error::$URL was redirected to /login — CRON_SECRET is missing or does not match Railway's value."
+      exit 1 ;;
+  esac
+  if [ "$code" = "200" ]; then echo "ok"; exit 0; fi
+  # Retry only transient failures (5xx or no/again empty code from a timeout).
+  case "${code:-000}" in
+    5*|000|"") if [ "$attempt" -lt 3 ]; then sleep $((attempt * 20)); continue; fi ;;
+  esac
+  echo "::error::$URL returned HTTP ${code:-000} (expected 200)."
   exit 1
-fi
-case "$body" in
-  *"/login"*)
-    echo "::error::$URL was redirected to /login — CRON_SECRET is missing or does not match Railway's value."
-    exit 1
-    ;;
-esac
-echo "ok"
+done
+echo "::error::$URL still failing after retries (last HTTP ${code:-000})."
+exit 1
