@@ -14,7 +14,7 @@ import Link from "next/link";
 import {
   ArrowLeft, ArrowUpRight, Loader2, CheckCircle2, AlertTriangle, HelpCircle,
   ShieldCheck, Sprout, XCircle, MinusCircle, TrendingUp, ShoppingBag, RefreshCw, ChevronRight, Sparkles,
-  Paperclip, X, FileText, Download, Trash2, Plug, Star, Gauge, Search,
+  Paperclip, X, FileText, Download, Trash2, Plug, Star, Gauge, Search, ExternalLink,
 } from "lucide-react";
 import { ProductShoppingScan } from "@/components/ProductShoppingScan";
 
@@ -369,6 +369,7 @@ export default function DiagnosePage() {
   const [products, setProducts] = useState<ProductDiagnostic | null>(null);
   const [productPages, setProductPages] = useState<ProductPage[]>([]);
   const [scanQuery, setScanQuery] = useState<string | null>(null); // product to compare on Google Shopping
+  const [showAllPages, setShowAllPages] = useState(false); // landing-pages table: show all vs top 12
   const [wins, setWins] = useState<string[]>([]);
   // The persisted agent conversation (§agent memory): one ongoing thread.
   const [thread, setThread] = useState<Msg[]>([]);
@@ -1661,15 +1662,18 @@ export default function DiagnosePage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {productPages.slice(0, 12).map(p => {
+                      {(showAllPages ? productPages : productPages.slice(0, 12)).map(p => {
                         const bad = p.roas == null || p.roas < 1;
                         const good = p.roas != null && p.roas >= 2;
                         const isHome = /^https?:\/\/[^/]+\/?(\?|#|$)/.test(p.url) || /^home\s*page$/i.test(p.name);
+                        const hasUrl = /^https?:\/\//i.test(p.url);
                         return (
                           <tr key={p.url} style={{ borderTop: "1px solid var(--border)", textAlign: "right", color: "var(--text-2)" }}>
                             <td style={{ textAlign: "left", padding: "9px 14px", fontWeight: 600, color: "var(--text)", maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                               <span title={p.roas == null || p.roas < 1 ? "spend, no return" : "converting"} style={{ color: bad ? "var(--danger)" : good ? "var(--accent)" : "var(--text-dim)", marginRight: 7 }}>●</span>
-                              {p.name}
+                              {hasUrl
+                                ? <a href={p.url} target="_blank" rel="noreferrer" title={`Open the page — ${p.url}`} style={{ color: "inherit", textDecoration: "none", borderBottom: "1px solid transparent" }} onMouseEnter={e => (e.currentTarget.style.borderBottomColor = "var(--border-3)")} onMouseLeave={e => (e.currentTarget.style.borderBottomColor = "transparent")}>{p.name} <ExternalLink size={11} style={{ verticalAlign: -1, opacity: 0.5 }} /></a>
+                                : p.name}
                               {!isHome && (
                                 <button onClick={() => setScanQuery(p.name)} title="Compare on Google Shopping — competitors & pricing"
                                   style={{ marginLeft: 7, verticalAlign: -2, display: "inline-flex", background: "none", border: "none", padding: 2, cursor: "pointer", color: "var(--text-dim)" }}>
@@ -1687,8 +1691,15 @@ export default function DiagnosePage() {
                     </tbody>
                   </table>
                 </div>
+                {productPages.length > 12 && (
+                  <button onClick={() => setShowAllPages(v => !v)}
+                    style={{ marginTop: 8, display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 600, color: "var(--text-3)", background: "transparent", border: "1px dashed var(--border-2)", borderRadius: 8, padding: "5px 11px", cursor: "pointer" }}>
+                    {showAllPages ? "Show top 12" : `Show all ${productPages.length}`}
+                    <ChevronRight size={12} style={{ transform: showAllPages ? "rotate(90deg)" : "none", transition: "transform .12s" }} />
+                  </button>
+                )}
                 <div style={{ fontSize: 11.5, color: "var(--text-muted)", margin: "8px 4px 0" }}>
-                  The page each click landed on (from Google Ads) — for Shopping/PMax these are product pages, so “Homepage” just means spend that went to the site root. Green = converting (ROAS ≥ 2), red = little/no return. Click a product to compare it on Google Shopping.
+                  The page each click landed on (from Google Ads) — for Shopping/PMax these are product pages, so “Homepage” just means spend that went to the site root. Click a name to open the page, or the 🛍 icon to compare it on Google Shopping. Green = converting (ROAS ≥ 2), red = little/no return.
                 </div>
               </>
             )}
