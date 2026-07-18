@@ -13,8 +13,8 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
 import { getAuthContext, unauthorized } from "@/lib/auth";
-import { ingestOrgSpine } from "@/lib/diagnostics/ingest";
-import { ingestOrgOrders } from "@/lib/diagnostics/orders";
+import { ingestOrgSpine, ingestAccountSpine } from "@/lib/diagnostics/ingest";
+import { ingestOrgOrders, ingestAccountOrders } from "@/lib/diagnostics/orders";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 800;
@@ -26,9 +26,8 @@ function isCronRequest(req: NextRequest): boolean {
       || req.headers.get("x-cron-secret") === secret;
 }
 
-async function readDays(req: NextRequest): Promise<number> {
-  const body = await req.json().catch(() => ({}));
-  const d = Number(body?.days);
+function clampDays(v: unknown): number {
+  const d = Number(v);
   return Number.isFinite(d) && d > 0 && d <= 365 ? Math.floor(d) : 14;
 }
 
@@ -57,16 +56,40 @@ function summarize(
 }
 
 export async function POST(req: NextRequest) {
-  const days = await readDays(req);
+  const body = await req.json().catch(() => ({} as Record<string, unknown>));
+  const days = clampDays((body as Record<string, unknown>)?.days);
 
   if (isCronRequest(req)) {
-    const orgs = await prisma.oAuthCredential.findMany({ select: { organizationId: true } });
-    const results = [];
-    for (const o of orgs) {
-      const [spine, orders] = [await ingestOrgSpine(o.organizationId, days), await ingestOrgOrders(o.organizationId, days)];
-      results.push({ organizationId: o.organizationId, ...summarize(spine, orders) });
+    // BATCHED: the caller (nightly script) loops offset until done:true. Each
+    // request ingests a small slice of accounts SEQUENTIALLY — one account's raw
+    // Google Ads data in memory at a time — so a large portfolio can't OOM the
+    // container (which is what crashed the single-big-request version).
+    const offset = Math.max(0, Math.floor(Number((body as Record<string, unknown>)?.offset) || 0));
+    const limit = Math.min(50, Math.max(1, Math.floor(Number((body as Record<string, unknown>)?.limit) || 10)));
+
+    const creds = await prisma.oAuthCredential.findMany({ select: { organizationId: true } });
+    const orgIds = creds.map(c => c.organizationId);
+    const accounts = await prisma.account.findMany({
+      where: { organizationId: { in: orgIds }, active: true, archived: false },
+      select: { id: true, googleAdsId: true, organizationId: true },
+      orderBy: { id: "asc" }, // stable order so paging is consistent across calls
+    });
+    const total = accounts.length;
+    const batch = accounts.slice(offset, offset + limit);
+
+    let metrics = 0, orderDays = 0, failed = 0;
+    for (const a of batch) {
+      try {
+        const r = await ingestAccountSpine({ id: a.id, googleAdsId: a.googleAdsId, organizationId: a.organizationId }, days);
+        metrics += r.metrics ?? 0;
+        if (r.error) failed++;
+      } catch { failed++; }
+      try { const o = await ingestAccountOrders(a.id, days); orderDays += o.orderDays ?? 0; } catch { /* best-effort */ }
     }
-    return NextResponse.json({ mode: "cron", days, orgs: results.length, results });
+
+    const nextOffset = offset + batch.length;
+    const done = nextOffset >= total;
+    return NextResponse.json({ mode: "cron", days, total, offset, processed: batch.length, nextOffset, done, metrics, orderDays, failed });
   }
 
   const ctx = await getAuthContext();
