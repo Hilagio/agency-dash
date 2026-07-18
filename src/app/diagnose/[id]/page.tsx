@@ -336,6 +336,8 @@ export default function DiagnosePage() {
   const [vitals, setVitals] = useState<Vitals | null>(null);
   const [vitalsLoading, setVitalsLoading] = useState(true);
   const [vitalsOpen, setVitalsOpen] = useState<string | null>(null);
+  const [showAllVitals, setShowAllVitals] = useState(false); // reveal the healthy fundamentals (collapsed by default)
+  const [showAllConns, setShowAllConns] = useState(false);   // reveal the connected sources (collapsed by default)
   const [ctxOpen, setCtxOpen] = useState(false);
   const [ctxValues, setCtxValues] = useState<Record<string, string>>({});
   const [ctxLoading, setCtxLoading] = useState(false);
@@ -1061,57 +1063,90 @@ export default function DiagnosePage() {
             {(vitalsLoading || vitals) && (
               <div style={{ ...card, padding: "12px 15px", marginTop: 14, border: vitals?.governing ? "1px solid color-mix(in srgb, var(--danger, #d33) 40%, var(--border))" : "1px solid var(--border)" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: vitals ? 10 : 0, flexWrap: "wrap" }}>
-                  <ShieldCheck size={14} style={{ color: "var(--accent)" }} />
+                  <ShieldCheck size={14} style={{ color: vitals?.governing ? "var(--danger, #d33)" : "var(--text-dim)" }} />
                   <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, color: "var(--text-muted)" }}>Fundamentals</span>
                   {vitalsLoading && <span style={{ fontSize: 12, color: "var(--text-3)", display: "inline-flex", alignItems: "center", gap: 6 }}><Loader2 size={12} className="animate-spin" /> checking…</span>}
                   {vitals?.governing && <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--danger, #d33)" }}>{vitals.governing} needs fixing first</span>}
-                  {vitals && !vitals.governing && <span style={{ fontSize: 11.5, fontWeight: 600, color: "var(--ok, #16a34a)" }}>foundation holds</span>}
+                  {vitals && !vitals.governing && <span style={{ fontSize: 11.5, fontWeight: 600, color: "var(--text-muted)" }}>foundation holds</span>}
                 </div>
-                {vitals && (
-                  <>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
-                      {vitals.checks.map(c => {
-                        const col = c.status === "ok" ? "var(--ok, #16a34a)" : c.status === "warn" ? "var(--warn, #d98a00)" : c.status === "fail" ? "var(--danger, #d33)" : "var(--text-dim)";
-                        const glyph = c.status === "ok" ? "✓" : c.status === "warn" ? "⚠" : c.status === "fail" ? "✗" : "–";
-                        const open = vitalsOpen === c.key;
-                        return (
-                          <button key={c.key} onClick={() => setVitalsOpen(open ? null : c.key)} title={c.detail}
-                            style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600, color: "var(--text-2)", background: open ? "var(--surface-2)" : "transparent", border: `1px solid ${col === "var(--text-dim)" ? "var(--border-2)" : `color-mix(in srgb, ${col} 45%, var(--border))`}`, borderRadius: 999, padding: "4px 11px", cursor: "pointer" }}>
-                            <span style={{ color: col, fontWeight: 800 }}>{glyph}</span> {c.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                    {vitalsOpen && (
-                      <div style={{ marginTop: 9, fontSize: 12.5, color: "var(--text-2)", lineHeight: 1.5 }}>
-                        {vitals.checks.find(c => c.key === vitalsOpen)?.detail}
-                      </div>
-                    )}
-                    <div style={{ marginTop: 9, fontSize: 12, color: vitals.governing ? "var(--danger, #d33)" : "var(--text-muted)", lineHeight: 1.5 }}>{vitals.summary}</div>
-                  </>
-                )}
+                {vitals && (() => {
+                  // Quiet by default: only checks that need attention show as chips.
+                  // Healthy ones collapse into one muted "N healthy" toggle.
+                  const problems = vitals.checks.filter(c => c.status === "warn" || c.status === "fail");
+                  const healthy = vitals.checks.filter(c => c.status === "ok" || c.status === "na");
+                  const chipFor = (c: VitalCheck) => {
+                    const col = c.status === "ok" ? "var(--text-dim)" : c.status === "warn" ? "var(--warn, #d98a00)" : c.status === "fail" ? "var(--danger, #d33)" : "var(--text-dim)";
+                    const glyph = c.status === "ok" ? "✓" : c.status === "warn" ? "⚠" : c.status === "fail" ? "✗" : "–";
+                    const muted = c.status === "ok" || c.status === "na";
+                    const open = vitalsOpen === c.key;
+                    return (
+                      <button key={c.key} onClick={() => setVitalsOpen(open ? null : c.key)} title={c.detail}
+                        style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600, color: muted ? "var(--text-3)" : "var(--text-2)", background: open ? "var(--surface-2)" : "transparent", border: `1px solid ${muted ? "var(--border)" : `color-mix(in srgb, ${col} 45%, var(--border))`}`, borderRadius: 999, padding: "4px 11px", cursor: "pointer" }}>
+                        <span style={{ color: col, fontWeight: 800 }}>{glyph}</span> {c.label}
+                      </button>
+                    );
+                  };
+                  return (
+                    <>
+                      {(problems.length > 0 || showAllVitals) && (
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+                          {problems.map(chipFor)}
+                          {showAllVitals && healthy.map(chipFor)}
+                          {healthy.length > 0 && (
+                            <button onClick={() => setShowAllVitals(v => !v)}
+                              style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 600, color: "var(--text-3)", background: "transparent", border: "1px dashed var(--border-2)", borderRadius: 999, padding: "4px 11px", cursor: "pointer" }}>
+                              {showAllVitals ? "Hide healthy" : `${healthy.length} healthy`}
+                              <ChevronRight size={12} style={{ transform: showAllVitals ? "rotate(90deg)" : "none", transition: "transform .12s" }} />
+                            </button>
+                          )}
+                        </div>
+                      )}
+                      {vitalsOpen && (
+                        <div style={{ marginTop: 9, fontSize: 12.5, color: "var(--text-2)", lineHeight: 1.5 }}>
+                          {vitals.checks.find(c => c.key === vitalsOpen)?.detail}
+                        </div>
+                      )}
+                      <div style={{ marginTop: problems.length || showAllVitals ? 9 : 0, fontSize: 12, color: vitals.governing ? "var(--danger, #d33)" : "var(--text-muted)", lineHeight: 1.5 }}>{vitals.summary}</div>
+                    </>
+                  );
+                })()}
               </div>
             )}
 
             {/* Connections & context — what this account knows, at a glance */}
             {connections && (
               <div ref={connRef} style={{ ...card, padding: "12px 15px", marginTop: 14 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, color: "var(--text-muted)", marginRight: 4 }}>Connected</span>
-                  <ConnPill label="Google Ads" status={connections.googleAds} note="spend & performance" />
-                  {(() => {
-                    // The pill mirrors the live Fundamentals check (auto-detected via the
-                    // Ads↔Merchant Center link), so "Connected" and "Fundamentals" never disagree.
-                    const mc = vitals?.checks.find(c => c.key === "merchant_center");
-                    const live = mc && mc.status !== "na" ? mc.status : null;
-                    const mcStatus = live ? (live === "ok" ? "green" : live === "fail" ? "red" : "yellow") : connections.merchantCenter;
-                    const mcNote = live === "ok" ? "feed serving" : live === "warn" ? "minor issue" : live === "fail" ? "feed issue" : connections.merchantCenter === "green" ? "feed & products" : "not detected";
-                    return <ConnPill label="Merchant Center" status={mcStatus} note={mcNote} onClick={() => { setMcOpen(o => !o); setMcMsg(null); }} />;
-                  })()}
-                  <ConnPill label="Shopify" status={connections.shopify} note={connections.shopifySource === "live" ? (shopify?.shopDomain ?? "live") : connections.shopifySource === "csv" ? `CSV · ${agoLabel(connections.shopifyUploadedAt)}` : "orders & POAS"} onClick={connections.shopifySource === "live" ? undefined : () => csvInputRef.current?.click()} />
-                  <ConnPill label="Slack" status={connections.slack} note={connections.slack === "green" ? `#${connections.slackChannelName}` : connections.slackConfigured ? "link a channel" : "not connected"} onClick={connections.slackConfigured ? () => (slackOpen ? setSlackOpen(false) : openSlackLink()) : undefined} />
-                  <ConnPill label="Context" status={connections.context} note={`${connections.contextFilled}/${connections.contextTotal} answered`} onClick={openContextForm} />
-                </div>
+                {(() => {
+                  // The MC pill mirrors the live Fundamentals check (auto-detected via
+                  // the Ads↔Merchant Center link), so the two never disagree.
+                  const mc = vitals?.checks.find(c => c.key === "merchant_center");
+                  const live = mc && mc.status !== "na" ? mc.status : null;
+                  const mcStatus = live ? (live === "ok" ? "green" : live === "fail" ? "red" : "yellow") : connections.merchantCenter;
+                  const mcNote = live === "ok" ? "feed serving" : live === "warn" ? "minor issue" : live === "fail" ? "feed issue" : connections.merchantCenter === "green" ? "feed & products" : "not detected";
+                  const items: { key: string; status: string; el: React.ReactNode }[] = [
+                    { key: "ga", status: connections.googleAds, el: <ConnPill key="ga" label="Google Ads" status={connections.googleAds} note="spend & performance" muted={connections.googleAds === "green"} /> },
+                    { key: "mc", status: mcStatus, el: <ConnPill key="mc" label="Merchant Center" status={mcStatus} note={mcNote} muted={mcStatus === "green"} onClick={() => { setMcOpen(o => !o); setMcMsg(null); }} /> },
+                    { key: "sh", status: connections.shopify, el: <ConnPill key="sh" label="Shopify" status={connections.shopify} note={connections.shopifySource === "live" ? (shopify?.shopDomain ?? "live") : connections.shopifySource === "csv" ? `CSV · ${agoLabel(connections.shopifyUploadedAt)}` : "orders & POAS"} muted={connections.shopify === "green"} onClick={connections.shopifySource === "live" ? undefined : () => csvInputRef.current?.click()} /> },
+                    { key: "sl", status: connections.slack, el: <ConnPill key="sl" label="Slack" status={connections.slack} note={connections.slack === "green" ? `#${connections.slackChannelName}` : connections.slackConfigured ? "link a channel" : "not connected"} muted={connections.slack === "green"} onClick={connections.slackConfigured ? () => (slackOpen ? setSlackOpen(false) : openSlackLink()) : undefined} /> },
+                    { key: "cx", status: connections.context, el: <ConnPill key="cx" label="Context" status={connections.context} note={`${connections.contextFilled}/${connections.contextTotal} answered`} muted={connections.context === "green"} onClick={openContextForm} /> },
+                  ];
+                  const attention = items.filter(i => i.status !== "green");
+                  const ok = items.filter(i => i.status === "green");
+                  return (
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, color: "var(--text-muted)", marginRight: 4 }}>Connected</span>
+                      {attention.map(i => i.el)}
+                      {showAllConns && ok.map(i => i.el)}
+                      {ok.length > 0 && (
+                        <button onClick={() => setShowAllConns(v => !v)}
+                          style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 600, color: "var(--text-3)", background: "transparent", border: "1px dashed var(--border-2)", borderRadius: 999, padding: "5px 12px", cursor: "pointer" }}>
+                          {showAllConns ? "Hide connected" : `${ok.length} connected`}
+                          <ChevronRight size={12} style={{ transform: showAllConns ? "rotate(90deg)" : "none", transition: "transform .12s" }} />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 {/* Manual Shopify CSV — the no-API fallback. Data is kept and used
                     until replaced; we stamp when it was uploaded. */}
@@ -2002,13 +2037,15 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
   return <h2 style={{ fontSize: 13, fontWeight: 700, color: "var(--text-2)", margin: "26px 4px 11px", letterSpacing: "-0.2px" }}>{children}</h2>;
 }
 
-function ConnPill({ label, status, note, onClick }: { label: string; status: string; note: string; onClick?: () => void }) {
-  const color = status === "green" ? "var(--accent)" : status === "yellow" ? "var(--accent-2)" : "var(--danger)";
+function ConnPill({ label, status, note, onClick, muted }: { label: string; status: string; note: string; onClick?: () => void; muted?: boolean }) {
+  // Quiet by default: a healthy (green) connection shows a neutral grey dot;
+  // colour is reserved for connections that need attention.
+  const color = muted ? "var(--text-dim)" : status === "green" ? "var(--accent)" : status === "yellow" ? "var(--accent-2)" : "var(--danger)";
   return (
     <div onClick={onClick} role={onClick ? "button" : undefined} title={note}
       style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 12, background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 999, padding: "5px 12px", cursor: onClick ? "pointer" : "default" }}>
       <span style={{ width: 8, height: 8, borderRadius: "50%", background: color, flexShrink: 0 }} />
-      <span style={{ fontWeight: 600, color: "var(--text-2)" }}>{label}</span>
+      <span style={{ fontWeight: 600, color: muted ? "var(--text-3)" : "var(--text-2)" }}>{label}</span>
       <span style={{ color: "var(--text-muted)", fontSize: 11 }}>{note}</span>
       {onClick && <ChevronRight size={12} style={{ color: "var(--text-dim)" }} />}
     </div>

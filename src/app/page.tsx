@@ -219,7 +219,7 @@ export default function PortfolioHome() {
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
             <SummaryChip color={STATUS_COLOR.red} label="Immediate" value={c.red} />
             <SummaryChip color={STATUS_COLOR.yellow} label="Action" value={c.yellow} />
-            <SummaryChip color={STATUS_COLOR.green} label="Under control" value={c.green} />
+            <SummaryChip color={STATUS_COLOR.green} label="Under control" value={c.green} muted />
             <HealthChip health={health} />
             <Link href="/stores" title="Add or manage accounts" style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 10, fontSize: 12, fontWeight: 600, textDecoration: "none", color: "var(--text-3)", background: "var(--surface)", border: "1px solid var(--border)" }}>
               <Plus size={12} /> Add accounts
@@ -478,11 +478,13 @@ function Stat({ label, value, danger }: { label: string; value: string; danger?:
   );
 }
 
-function SummaryChip({ color, label, value }: { color: string; label: string; value: number }) {
+function SummaryChip({ color, label, value, muted }: { color: string; label: string; value: number; muted?: boolean }) {
+  // Quiet by default: the "all fine" bucket gets a neutral grey dot so the
+  // red/amber counts are what draw the eye.
   return (
     <div style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "6px 12px", borderRadius: 10, background: "var(--surface)", border: "1px solid var(--border)" }}>
-      <span style={{ width: 8, height: 8, borderRadius: "50%", background: color }} />
-      <span style={{ fontSize: 15, fontWeight: 800, letterSpacing: "-0.4px" }}>{value}</span>
+      <span style={{ width: 8, height: 8, borderRadius: "50%", background: muted ? "var(--text-dim)" : color }} />
+      <span style={{ fontSize: 15, fontWeight: 800, letterSpacing: "-0.4px", color: muted ? "var(--text-3)" : "var(--text)" }}>{value}</span>
       <span style={{ fontSize: 11.5, color: "var(--text-muted)" }}>{label}</span>
     </div>
   );
@@ -495,13 +497,15 @@ function HealthChip({ health }: { health: Health | null }) {
     </div>
   );
   const ok = health.ok;
+  // Quiet when healthy: a neutral pill, not a filled green one. Colour (red) only
+  // appears when the Google Ads API is actually failing.
   return (
     <div title={ok ? `Live API OK · ${health.accountCount} accessible accounts` : (health.hint ?? health.error)}
       style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 10, fontSize: 12, fontWeight: 600,
-        color: ok ? "var(--accent)" : "var(--danger)",
-        background: ok ? "var(--accent-dim)" : "color-mix(in srgb, var(--danger) 10%, transparent)",
-        border: `1px solid ${ok ? "color-mix(in srgb, var(--accent) 30%, transparent)" : "color-mix(in srgb, var(--danger) 30%, transparent)"}` }}>
-      {ok ? <CheckCircle2 size={12} /> : <XCircle size={12} />} Google Ads{ok && health.accountCount != null ? ` · ${health.accountCount}` : ""}
+        color: ok ? "var(--text-muted)" : "var(--danger)",
+        background: ok ? "var(--surface)" : "color-mix(in srgb, var(--danger) 10%, transparent)",
+        border: `1px solid ${ok ? "var(--border)" : "color-mix(in srgb, var(--danger) 30%, transparent)"}` }}>
+      {ok ? <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--text-dim)", flexShrink: 0 }} /> : <XCircle size={12} />} Google Ads{ok && health.accountCount != null ? ` · ${health.accountCount}` : ""}
     </div>
   );
 }
