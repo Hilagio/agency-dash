@@ -12,7 +12,7 @@ import { getAuthContext } from "@/lib/auth";
 import { buildDiagnosis, cleanProductLabel } from "@/lib/diagnostics/engine";
 import { computeAccountSignals } from "@/lib/diagnostics/run-signals";
 import { computeWindows, detectTrend } from "@/lib/diagnostics/windows";
-import { buildProductGroups, type AdsVariantRow, type SalesVariantRow } from "@/lib/diagnostics/products";
+import { buildProductGroups, attachCatalog, type AdsVariantRow, type SalesVariantRow } from "@/lib/diagnostics/products";
 import { shopifyAppConfig } from "@/lib/integrations/shopify";
 import type { Signal } from "@/lib/diagnostics/signals";
 
@@ -152,6 +152,17 @@ async function handle(id: string, orgId: string, userId: string) {
     ? buildProductGroups([...adsAgg.values()], [...salesAgg.values()], { marginPct })
     : null;
 
+  // Enrich groups with the ingested Shopify catalog — the exact store price,
+  // GTIN, and product URL — so the Shopping compare shows the real listing
+  // instead of an average derived from revenue ÷ units.
+  if (products) {
+    const catalogRows = await prisma.product.findMany({
+      where: { accountId: id },
+      select: { externalId: true, title: true, price: true, barcode: true, url: true, vendor: true },
+    });
+    attachCatalog(products.groups, catalogRows);
+  }
+
   // Product performance from landing pages (§4.7) — the product data every
   // ecommerce account has from Google Ads, even without a feed or Shopify.
   const pageRows = await prisma.metricProductDaily.findMany({
@@ -199,6 +210,9 @@ async function handle(id: string, orgId: string, userId: string) {
     connected: !!conn,
     shopDomain: conn?.shopDomain ?? null,
     lastSyncAt: conn?.lastSyncAt ?? null,
+    // "acme.myshopify.com" → "acme": seeds the Shopping-scan highlight so the
+    // client's own listing is spotted in the results without typing anything.
+    shopName: conn?.shopDomain ? conn.shopDomain.replace(/\.myshopify\.com$/i, "").replace(/-/g, " ") : null,
   };
 
   // Connections & context — the visual "what does this account know" panel.

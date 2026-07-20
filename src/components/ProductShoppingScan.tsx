@@ -16,17 +16,20 @@ const money = (n: number | null) => (n == null ? "—" : `€${n.toFixed(2)}`);
 
 export function ProductShoppingScan({
   initialQuery, defaultTld = "nl", onClose,
-  productName, ourPrice = null, ourId, ourUrl,
+  productName, ourPrice = null, ourId, ourUrl, ourGtin, priceSource, defaultHighlight,
 }: {
   initialQuery: string; defaultTld?: string; onClose: () => void;
   productName?: string;        // our product's own name (what we're comparing)
   ourPrice?: number | null;    // our own selling price, if we have it
   ourId?: string | null;       // our product/item id
   ourUrl?: string | null;      // link to our own product/landing page
+  ourGtin?: string | null;     // GTIN/EAN from the Shopify catalog
+  priceSource?: "store" | "avg" | null; // where ourPrice came from
+  defaultHighlight?: string | null;     // pre-seeded "your shop" (e.g. from the Shopify domain)
 }) {
   const [query, setQuery] = useState(initialQuery);
   const [tld, setTld] = useState(defaultTld);
-  const [highlight, setHighlight] = useState("");
+  const [highlight, setHighlight] = useState(defaultHighlight ?? "");
   const [running, setRunning] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [scan, setScan] = useState<Scan | null>(null);
@@ -99,8 +102,8 @@ export function ProductShoppingScan({
                   {ourUrl ? <a href={ourUrl} target="_blank" rel="noreferrer" style={{ color: "inherit", display: "inline-flex", alignItems: "center", gap: 5 }}>{productName} <ExternalLink size={11} style={{ opacity: 0.5 }} /></a> : productName}
                 </div>
                 <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 3, display: "flex", gap: 12, flexWrap: "wrap" }}>
-                  <span>{ourPrice != null ? <>Your price: <strong style={{ color: "var(--text-2)" }}>{money(ourPrice)}</strong>{ourPrice != null && median == null ? " (avg sold)" : ""}</> : "Your price: not in our data"}</span>
-                  {ourId && <span>ID: {ourId}</span>}
+                  <span>{ourPrice != null ? <>Your price: <strong style={{ color: "var(--text-2)" }}>{money(ourPrice)}</strong>{priceSource === "store" ? " (store price)" : priceSource === "avg" ? " (avg sold)" : ""}</> : "Your price: not in our data"}</span>
+                  {ourGtin ? <span>GTIN: {ourGtin}</span> : ourId ? <span>ID: {ourId}</span> : null}
                   {vs != null && <span style={{ color: vs > 0 ? "#f87171" : "#4ade80", fontWeight: 600 }}>{vs > 0 ? `${vs}% above` : `${Math.abs(vs)}% below`} the market median</span>}
                 </div>
                 {ourPrice == null && <div style={{ fontSize: 10.5, color: "var(--text-faint)", marginTop: 5 }}>Connect Shopify (or Merchant Center price data) to show your own price and where it sits vs the market.</div>}

@@ -42,14 +42,17 @@ export async function fetchGoogleShopping(query: string, tld = "nl", highlight =
     throw new Error(`Google Shopping is busy right now (${String(j.message).slice(0, 80)}). Try again in a moment.`);
   }
 
-  const hl = highlight.trim().toLowerCase();
+  // Match on alphanumerics only, so "Cherie Boutique", "cherie-boutique" and
+  // "cherieboutique.nl" all count as the same shop.
+  const alnum = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const hl = alnum(highlight);
   const rows: ShoppingRow[] = (j.shopping_results ?? [])
     .map((r): ShoppingRow => {
       const merchant = String(r.source ?? "");
       const title = String(r.title ?? "");
       const priceValue = typeof r.extracted_price === "number" ? r.extracted_price : (Number(r.extracted_price) || null);
       const link = typeof r.product_link === "string" ? r.product_link : (typeof r.link === "string" && !String(r.link).includes("api.scraperapi.com") ? String(r.link) : null);
-      const isYou = !!hl && (merchant.toLowerCase().includes(hl) || title.toLowerCase().includes(hl));
+      const isYou = !!hl && (alnum(merchant).includes(hl) || alnum(title).includes(hl));
       return { position: Number(r.position) || 0, title, merchant, price: String(r.price ?? ""), priceValue, link, isYou };
     })
     .filter(r => r.title);

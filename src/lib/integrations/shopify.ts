@@ -338,15 +338,21 @@ export async function pingShopify(shop: string, accessToken: string, apiVersion 
 
 // ─── Catalog ───────────────────────────────────────────────────────────────────
 
-export interface CatalogProduct { externalId: string; title: string; productType: string | null; status: string | null; price: number | null; sku: string | null; }
+export interface CatalogProduct {
+  externalId: string; title: string; productType: string | null; status: string | null;
+  price: number | null; sku: string | null;
+  barcode: string | null;  // GTIN/EAN — identifies the product on Google Shopping
+  vendor: string | null;
+  url: string | null;      // public product page
+}
 
 const CATALOG_QUERY = `
 query($cursor: String) {
   products(first: 100, after: $cursor) {
     pageInfo { hasNextPage endCursor }
     nodes {
-      id title productType status
-      variants(first: 1) { nodes { price sku } }
+      id title productType status handle vendor onlineStoreUrl
+      variants(first: 1) { nodes { price sku barcode } }
     }
   }
 }`;
@@ -370,7 +376,8 @@ export async function fetchProductCatalog(
     const body = await res.json() as {
       data?: { products?: { pageInfo: { hasNextPage: boolean; endCursor: string | null }; nodes: Array<{
         id: string; title?: string; productType?: string; status?: string;
-        variants?: { nodes: Array<{ price?: string; sku?: string }> };
+        handle?: string; vendor?: string; onlineStoreUrl?: string | null;
+        variants?: { nodes: Array<{ price?: string; sku?: string; barcode?: string | null }> };
       }> } };
       errors?: unknown;
     };
@@ -379,9 +386,13 @@ export async function fetchProductCatalog(
     if (!products) break;
     for (const p of products.nodes) {
       const v = p.variants?.nodes?.[0];
+      // onlineStoreUrl is the canonical public URL (respects custom domains); a
+      // handle-built myshopify URL is the fallback (it redirects to the storefront).
+      const url = p.onlineStoreUrl || (p.handle ? `https://${shop}/products/${p.handle}` : null);
       out.push({
         externalId: p.id, title: p.title ?? "", productType: p.productType ?? null, status: p.status ?? null,
         price: v?.price != null ? Number(v.price) : null, sku: v?.sku ?? null,
+        barcode: v?.barcode || null, vendor: p.vendor || null, url,
       });
     }
     if (!products.pageInfo.hasNextPage) break;

@@ -127,6 +127,16 @@ export interface ProductGroup {
   wastedSpend: number;
   /** Why it's underperforming (null if it isn't). */
   underperformReason: string | null;
+  /** Exact store data from the ingested Shopify catalog (null when not matched). */
+  catalog?: CatalogMatch | null;
+}
+
+/** What the Shopify catalog knows about a product — the exact listing, not an average. */
+export interface CatalogMatch {
+  price: number | null;   // current store price (first variant)
+  gtin: string | null;    // barcode/EAN — identifies the listing on Google Shopping
+  url: string | null;     // the client's own product page
+  vendor: string | null;
 }
 export interface ProductGroupResult {
   groups: ProductGroup[];
@@ -264,3 +274,37 @@ export function buildProductGroups(
 
 function sum<T>(rows: T[], f: keyof T): number { return rows.reduce((s, r) => s + (r[f] as unknown as number), 0); }
 function money(n: number): string { return `€${Math.round(n).toLocaleString("en-GB")}`; }
+
+// ─── Catalog join: exact store price/GTIN/URL onto each product group ─────────
+
+export interface CatalogRow {
+  externalId: string;      // Shopify product gid
+  title: string;
+  price: number | null;
+  barcode: string | null;
+  url: string | null;
+  vendor: string | null;
+}
+
+/**
+ * Attach the ingested Shopify catalog to product groups, in place. Matching
+ * prefers the real id (group key `pid:<n>` ↔ catalog gid numeric), falling back
+ * to exact normalised title — same keys buildProductGroups itself uses. Pure;
+ * groups without a match keep `catalog: null` so the UI can fall back honestly.
+ */
+export function attachCatalog(groups: ProductGroup[], catalog: CatalogRow[]): void {
+  if (!catalog.length) { for (const g of groups) g.catalog = null; return; }
+  const byId = new Map<string, CatalogRow>();
+  const byTitle = new Map<string, CatalogRow>();
+  for (const c of catalog) {
+    const n = gidNumeric(c.externalId);
+    if (n) byId.set(n, c);
+    const t = norm(c.title);
+    if (t && !byTitle.has(t)) byTitle.set(t, c);
+  }
+  for (const g of groups) {
+    const c = (g.productKey.startsWith("pid:") ? byId.get(g.productKey.slice(4)) : undefined)
+      ?? byTitle.get(norm(g.title));
+    g.catalog = c ? { price: c.price, gtin: c.barcode, url: c.url, vendor: c.vendor } : null;
+  }
+}
