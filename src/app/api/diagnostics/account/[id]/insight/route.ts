@@ -19,6 +19,7 @@ import { ingestAccountSpine } from "@/lib/diagnostics/ingest";
 import { ingestAccountOrders } from "@/lib/diagnostics/orders";
 import { computeAccountSignals } from "@/lib/diagnostics/run-signals";
 import { ppcOsMcp, PPC_OS_SYSTEM_NOTE } from "@/lib/integrations/ppc-os";
+import { fetchConversionFunnel } from "@/lib/integrations/google-ads";
 import { AGENT_TOOLS, runAgentTool, toolStatusLabel } from "@/lib/diagnostics/agent-tools";
 import type { Signal } from "@/lib/diagnostics/signals";
 
@@ -395,7 +396,24 @@ export async function POST(req: NextRequest, { params }: Params) {
           }));
           const good = (pulls.filter(Boolean) as { name: string; out: string; ok: boolean }[]).filter(p => p.ok);
           for (const p of good) preToolsUsed.push({ name: p.name, ok: true });
-          if (good.length) liveSnapshot = `\n\nLIVE SNAPSHOT — pulled just now (treat as ground truth; cite freely, it's real). Read ALL of it, INCLUDING the Slack channel, BEFORE you write — if the answer to an off-platform question (checkout, payments, promo, stock) is already here, use it and don't ask the team again:\n${good.map(p => p.out).join("\n\n")}`;
+
+          // Widen the account's live pull with the conversion funnel, so where paid
+          // traffic drops off (cart → checkout → purchase) is simply part of the
+          // data in front of the agent — reasoned over like everything else, not a
+          // tool it has to know to call. Best-effort; dropped silently if slow or
+          // if the account only has a purchase action configured.
+          const funnelBlock = await withTimeout((async () => {
+            const steps = await fetchConversionFunnel(account.googleAdsId, account.organizationId, 30);
+            const live = steps.filter(s => s.recent + s.prior > 0);
+            if (!live.length) return "";
+            const order = ["PAGE_VIEW", "ADD_TO_CART", "BEGIN_CHECKOUT", "SUBMIT_LEAD_FORM", "PURCHASE", "SIGNUP", "SUBSCRIBE_PAID"];
+            const rank = (c: string) => { const i = order.indexOf(c); return i < 0 ? 50 : i; };
+            const lines = live.sort((a, b) => rank(a.category) - rank(b.category))
+              .map(s => `  - ${s.category.replace(/_/g, " ").toLowerCase()}: ${Math.round(s.recent)} recent 15d vs ${Math.round(s.prior)} prior 15d`);
+            return `\n\nConversion funnel (all_conversions by action category, last 15d vs prior 15d — the account's configured conversion actions; micro-conversions like add-to-cart / begin-checkout appear here when set up, so you can see where paid traffic falls off before purchase):\n${lines.join("\n")}`;
+          })(), 9000).catch(() => "");
+
+          if (good.length) liveSnapshot = `\n\nLIVE SNAPSHOT — pulled just now (treat as ground truth; cite freely, it's real). Read ALL of it, INCLUDING the Slack channel, BEFORE you write — if the answer to an off-platform question (checkout, payments, promo, stock) is already here, use it and don't ask the team again:\n${good.map(p => p.out).join("\n\n")}${funnelBlock ?? ""}`;
         }
 
         const context = buildClientBlock(clientCtx) + buildContext(account.name, cur, diag, windows, pages, winners, changeRows) + liveSnapshot;

@@ -3,6 +3,30 @@
 A running record of what changed, where, and why — judged against the prime
 directive: **clean UI + seamless UX, everything simpler.** Newest first.
 
+## 2026-07-20 — Funnel is data, not a tool; tools state numbers, agent reasons
+
+Two changes aligning with the app's design: the agent is an autonomous analyst,
+so tools should surface neutral data and the *analysis* is the reasoning.
+
+- **`get_shopify_data` — stripped the interpretive verdicts.** It no longer says
+  "basket size is shrinking, look at discounting" or "suspect a tracking break";
+  it returns the numbers and deltas only ("AOV €45 vs €60 (down 25%)", "Ads 33%
+  below orders"). The agent interprets. Deterministic aggregation stays in the
+  tool (LLMs miscount rows); the conclusions move to the model.
+- **Conversion funnel is now part of the account data the agent reads — not a
+  tool it must call.** `fetchConversionFunnel` (`google-ads.ts`) pulls the
+  account's conversion actions segmented by category (PURCHASE plus
+  micro-conversions like ADD_TO_CART / BEGIN_CHECKOUT where configured),
+  recent-15d vs prior-15d, via `all_conversions`. The insight route injects it
+  into the LIVE SNAPSHOT block, so "where paid traffic drops off between cart and
+  checkout" is simply in front of the agent to reason over. Best-effort
+  (9s timeout, dropped silently if slow or if only a purchase action exists) — it
+  never blocks the read. No bespoke funnel tool.
+
+Note: the live Google Ads query couldn't be exercised in the dev sandbox (no Ads
+credentials there); it typechecks, builds, and is fully guarded, but the GAQL
+should be watched on its first real run.
+
 ## 2026-07-20 — Shopify context: AOV-drop + per-product movement
 
 Extends `get_shopify_data` (`src/lib/diagnostics/agent-tools.ts`) beyond

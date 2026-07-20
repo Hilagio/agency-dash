@@ -82,7 +82,7 @@ export const AGENT_TOOLS = [
   },
   {
     name: "get_shopify_data",
-    description: "The account's real Shopify orders as ground truth: order count, revenue, and AOV for the window; a recent-vs-prior TREND (orders, revenue, and AOV — so you can see a basket-size drop even when order count holds); a direct reconciliation of real orders against Google-Ads-attributed conversions (the 'tracking break vs real demand drop' signal); and, where per-product data exists, the top sellers plus which products are FALLING, RISING, or newly emerging. Use it for 'are real sales dropping?', 'is it tracking or demand?', 'is AOV falling?', and 'which products carry the store / which are sliding?'. Per-product movement needs a live Shopify connection — a 'Sales over time' CSV gives order totals only, and the tool says so.",
+    description: "The account's real Shopify orders as ground truth: order count, revenue, and AOV for the window; a recent-vs-prior TREND for each (orders, revenue, AOV); a reconciliation of real orders against Google-Ads-attributed conversions for the same window; and, where per-product data exists, the top sellers plus which products are falling, rising, or newly emerging. Returns the numbers and deltas — you interpret them. Use it for 'are real sales dropping?', 'is it tracking or demand?', 'is AOV falling?', and 'which products carry the store / which are sliding?'. Per-product movement needs a live Shopify connection — a 'Sales over time' CSV gives order totals only, and the tool says so.",
     input_schema: { type: "object", properties: { days: { type: "number", description: "Look-back window in days (default 30)." } } },
   },
   {
@@ -598,16 +598,18 @@ export async function runAgentTool(name: string, input: Record<string, unknown>,
     // cheaper items) hurts even when order COUNT holds, so call it out separately.
     const rAov = rOrders > 0 ? rRev / rOrders : 0, pAov = pOrders > 0 ? pRev / pOrders : 0;
     const aovChg = pctChg(rAov, pAov);
+    // Neutral numbers only — the deltas are the tool's job; the interpretation
+    // (why AOV fell, what to do) is the agent's reasoning, not baked in here.
     const trendLine = prior.length
-      ? `\nReal order trend — last ${half}d vs the prior ${half}d: ${rOrders} vs ${pOrders} orders (${arrow(ordChg) || "—"}), revenue ${money(rRev)} vs ${money(pRev)} (${arrow(revChg) || "—"}), AOV ${money(rAov)} vs ${money(pAov)} (${arrow(aovChg) || "—"})${aovChg != null && aovChg <= -10 ? " — basket size is shrinking, look at discounting / product mix" : ""}.`
+      ? `\nReal order trend — last ${half}d vs the prior ${half}d: ${rOrders} vs ${pOrders} orders (${arrow(ordChg) || "—"}), revenue ${money(rRev)} vs ${money(pRev)} (${arrow(revChg) || "—"}), AOV ${money(rAov)} vs ${money(pAov)} (${arrow(aovChg) || "—"}).`
       : "";
 
-    // Reconcile real orders against Ads-attributed conversions for the SAME
-    // window — the direct "tracking break vs real drop" signal in one line.
+    // State the reconciliation as a fact for the same window; the agent decides
+    // what a gap means (tracking, attribution, demand).
     const adsConv = Math.round(adsAgg._sum.conversions ?? 0);
     const gapPct = totOrders > 0 ? Math.round(((adsConv - totOrders) / totOrders) * 100) : null;
     const reconLine = gapPct != null
-      ? `\nReconciliation (${days}d): Google Ads counted ${adsConv} conversions vs ${totOrders} real Shopify orders${Math.abs(gapPct) >= 25 ? ` — a ${Math.abs(gapPct)}% ${gapPct < 0 ? "SHORTFALL (Ads under-counting → suspect a tracking break, not a demand drop, especially if the order trend above is steady)" : "over-count (Ads over-attributing — check double-counting or view-through)"}` : ` — within ~${Math.abs(gapPct)}%, so tracking looks intact and any drop is real`}.`
+      ? `\nReconciliation (${days}d): Google Ads counted ${adsConv} conversions vs ${totOrders} real Shopify orders (${gapPct === 0 ? "matched" : gapPct < 0 ? `Ads ${Math.abs(gapPct)}% below orders` : `Ads ${gapPct}% above orders`}).`
       : "";
 
     // Per-product sales, split recent vs prior so we can name what's carrying the

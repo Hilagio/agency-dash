@@ -2270,6 +2270,44 @@ const nDayRange = (days: number) => {
   return { start: fmt(start), end: fmt(end) };
 };
 
+// ── Conversion funnel by action category ────────────────────────────────────
+// The account's own conversion actions, segmented by category (PURCHASE and
+// micro-conversions like ADD_TO_CART / BEGIN_CHECKOUT where they're configured),
+// counted for the recent half of the window vs the prior half. This is raw data
+// for the agent to reason over — it can see whether paid traffic is dropping off
+// between cart and checkout, without a bespoke funnel tool. all_conversions is
+// used (not `conversions`) because micro-conversions are usually secondary.
+export interface FunnelStep { category: string; recent: number; prior: number; }
+const CONV_CATEGORY_NAME: Record<number, string> = Object.entries(enums.ConversionActionCategory)
+  .reduce((m, [name, val]) => (typeof val === "number" ? { ...m, [val]: name } : m), {} as Record<number, string>);
+
+export async function fetchConversionFunnel(customerId: string, orgId: string | undefined, days: number): Promise<FunnelStep[]> {
+  const client = getClient();
+  const customer = await getCustomer(client, customerId, orgId);
+  const { start, end } = nDayRange(days);
+  const rows = await safeQuery(() => customer.query(`
+    SELECT segments.conversion_action_category, segments.date, metrics.all_conversions
+    FROM customer
+    WHERE segments.date BETWEEN '${start}' AND '${end}'
+  `), "conversion funnel", 30_000);
+  // Split the window in half — recent vs prior — so a step's decline is visible.
+  const boundary = new Date(); boundary.setUTCDate(boundary.getUTCDate() - Math.floor(Math.max(2, days) / 2));
+  const recentYmd = boundary.toISOString().slice(0, 10);
+  const agg = new Map<string, { recent: number; prior: number }>();
+  for (const r of rows) {
+    const raw = r.segments?.conversion_action_category;
+    if (raw == null) continue;
+    const category = CONV_CATEGORY_NAME[Number(raw)] ?? String(raw);
+    if (/^(UNSPECIFIED|UNKNOWN)$/.test(category)) continue;
+    const date = String(r.segments?.date ?? "");
+    const v = Number(r.metrics?.all_conversions ?? 0);
+    const e = agg.get(category) ?? { recent: 0, prior: 0 };
+    if (date >= recentYmd) e.recent += v; else e.prior += v;
+    agg.set(category, e);
+  }
+  return [...agg.entries()].map(([category, x]) => ({ category, recent: x.recent, prior: x.prior }));
+}
+
 export interface ImpressionShareRow {
   campaign: string; channel: string; cost: number;
   searchIS: number | null; budgetLostIS: number | null; rankLostIS: number | null;
