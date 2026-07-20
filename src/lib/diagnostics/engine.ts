@@ -252,17 +252,25 @@ function buildChecks(input: DiagnosisInput): CheckRun[] {
   const checks: CheckRun[] = [];
   const s = input.signals;
 
-  // Tracking / reconciliation.
+  // Tracking / reconciliation. Judge from the actual delta, not just from
+  // whether an upstream detector fired — otherwise the page can claim "tracking
+  // looks intact" while showing a large Ads-vs-orders gap right above it.
   const mismatch = find(s, "conversions_vs_orders");
-  if (mismatch) {
+  const recon = input.reconciliation;
+  const reconGap = recon && recon.actualOrders > 0
+    ? Math.abs(recon.adsConversions - recon.actualOrders) / recon.actualOrders
+    : null;
+  if (mismatch || (reconGap != null && reconGap >= 0.35)) {
     checks.push({
       label: "Tracking vs real orders", result: "flagged",
-      detail: "Ads conversions don't match orders. Steer on nothing else until this is resolved.",
+      detail: recon
+        ? `Ads counted ${Math.round(recon.adsConversions)} conversions against ${recon.actualOrders} real orders (${Math.round((reconGap ?? 0) * 100)}% gap) — steer on nothing else until this is resolved.`
+        : "Ads conversions don't match orders. Steer on nothing else until this is resolved.",
     });
-  } else if (input.reconciliation) {
+  } else if (reconGap != null) {
     checks.push({
       label: "Tracking vs real orders", result: "ruled_out",
-      detail: "Ads conversions reconcile with orders within tolerance — tracking looks intact.",
+      detail: `Ads conversions reconcile with real orders (within ${Math.round(reconGap * 100)}%) — tracking looks intact.`,
     });
   } else {
     checks.push({

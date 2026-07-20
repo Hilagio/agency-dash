@@ -1990,7 +1990,7 @@ export default function DiagnosePage() {
                       </>
                     ) : (
                       <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>
-                        The Shopify app isn&rsquo;t set up yet. Add <code>SHOPIFY_API_KEY</code> and <code>SHOPIFY_API_SECRET</code> on Railway, then the connect button appears here.
+                        Live Shopify connect isn&rsquo;t available for this workspace yet. In the meantime, use <button onClick={() => { setShopifyMethod("csv"); setShopifyModal(true); }} style={{ display: "inline", background: "none", border: "none", padding: 0, color: "var(--accent)", cursor: "pointer", textDecoration: "underline", font: "inherit" }}>Connect Shopify</button> to upload a &ldquo;Sales over time&rdquo; CSV — you&rsquo;ll get the same real orders &amp; POAS.
                       </div>
                     )
                   )}

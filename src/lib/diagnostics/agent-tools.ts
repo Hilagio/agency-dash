@@ -541,9 +541,17 @@ export async function runAgentTool(name: string, input: Record<string, unknown>,
     ]);
     const start = new Date(); start.setUTCDate(start.getUTCDate() - days);
     const ymd = start.toISOString().slice(0, 10);
-    const [orders, products] = await Promise.all([
-      prisma.orderDaily.findMany({ where: { accountId: acc.id, date: { gte: ymd } }, select: { orders: true, revenue: true } }),
+    // Split the window in half (capped at 7d each side) so we can say whether
+    // real orders are actually moving — the decisive fact for "did sales drop,
+    // or is only Ads-attributed tracking broken?". Also pull the same window's
+    // Ads conversions so the tool can reconcile the two sides directly.
+    const half = Math.min(Math.floor(days / 2), 7);
+    const recentStart = new Date(); recentStart.setUTCDate(recentStart.getUTCDate() - half);
+    const recentYmd = recentStart.toISOString().slice(0, 10);
+    const [orders, products, adsAgg] = await Promise.all([
+      prisma.orderDaily.findMany({ where: { accountId: acc.id, date: { gte: ymd } }, select: { date: true, orders: true, revenue: true, currency: true } }),
       prisma.productSalesDaily.findMany({ where: { accountId: acc.id, date: { gte: ymd } }, select: { title: true, units: true, revenue: true } }),
+      prisma.metricDaily.aggregate({ where: { accountId: acc.id, date: { gte: ymd } }, _sum: { conversions: true } }),
     ]);
     if (!conn && !upload && !orders.length) {
       return "Shopify is NOT connected and no CSV has been uploaded yet — no real order data to reconcile against. Ask the account manager for the Shopify 'Sales over time' CSV export (Analytics → Reports) and upload it; that's how we get order data for this account for now.";
@@ -574,6 +582,30 @@ export async function runAgentTool(name: string, input: Record<string, unknown>,
     }
     const totOrders = orders.reduce((s, o) => s + o.orders, 0);
     const totRev = orders.reduce((s, o) => s + o.revenue, 0);
+    const aov = totOrders > 0 ? totRev / totOrders : 0;
+
+    // Recent half vs the prior half — is the real order flow actually moving?
+    const recent = orders.filter(o => o.date >= recentYmd);
+    const prior = orders.filter(o => o.date < recentYmd);
+    const rOrders = recent.reduce((s, o) => s + o.orders, 0);
+    const pOrders = prior.reduce((s, o) => s + o.orders, 0);
+    const rRev = recent.reduce((s, o) => s + o.revenue, 0);
+    const pRev = prior.reduce((s, o) => s + o.revenue, 0);
+    const pctChg = (now: number, was: number) => was > 0 ? Math.round(((now - was) / was) * 100) : null;
+    const ordChg = pctChg(rOrders, pOrders), revChg = pctChg(rRev, pRev);
+    const arrow = (n: number | null) => n == null ? "" : n > 0 ? `up ${n}%` : n < 0 ? `down ${Math.abs(n)}%` : "flat";
+    const trendLine = prior.length
+      ? `\nReal order trend — last ${half}d vs the prior ${half}d: ${rOrders} vs ${pOrders} orders (${arrow(ordChg) || "—"}), revenue ${money(rRev)} vs ${money(pRev)} (${arrow(revChg) || "—"}).`
+      : "";
+
+    // Reconcile real orders against Ads-attributed conversions for the SAME
+    // window — the direct "tracking break vs real drop" signal in one line.
+    const adsConv = Math.round(adsAgg._sum.conversions ?? 0);
+    const gapPct = totOrders > 0 ? Math.round(((adsConv - totOrders) / totOrders) * 100) : null;
+    const reconLine = gapPct != null
+      ? `\nReconciliation (${days}d): Google Ads counted ${adsConv} conversions vs ${totOrders} real Shopify orders${Math.abs(gapPct) >= 25 ? ` — a ${Math.abs(gapPct)}% ${gapPct < 0 ? "SHORTFALL (Ads under-counting → suspect a tracking break, not a demand drop, especially if the order trend above is steady)" : "over-count (Ads over-attributing — check double-counting or view-through)"}` : ` — within ~${Math.abs(gapPct)}%, so tracking looks intact and any drop is real`}.`
+      : "";
+
     const pAgg = new Map<string, { title: string; units: number; revenue: number }>();
     for (const p of products) {
       const e = pAgg.get(p.title) ?? { title: p.title, units: 0, revenue: 0 };
@@ -581,8 +613,11 @@ export async function runAgentTool(name: string, input: Record<string, unknown>,
     }
     const top = [...pAgg.values()].sort((a, b) => b.revenue - a.revenue).slice(0, 10);
     const topLines = top.length ? `\nTop sellers:\n${top.map(p => `- ${p.title}: ${p.units} units, ${money(p.revenue)}`).join("\n")}` : "";
+    // Shop currency can differ from the Ads account currency — flag it so figures aren't misread.
+    const orderCur = orders.find(o => o.currency)?.currency;
+    const curNote = orderCur && orderCur !== acc.currency ? ` (orders reported in ${orderCur}, not the account's ${acc.currency})` : "";
     const label = conn ? `Shopify (${conn.shopDomain})` : "Shopify";
-    return `${label} — last ${days}d: ${totOrders} orders, ${money(totRev)} revenue.${topLines}\n${sourceNote}`;
+    return `${label} — last ${days}d: ${totOrders} orders, ${money(totRev)} revenue, AOV ${money(aov)}${curNote}.${trendLine}${reconLine}${topLines}\n${sourceNote}`;
   }
 
   return `Unknown tool: ${name}`;
