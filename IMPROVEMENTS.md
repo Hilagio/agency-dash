@@ -3,6 +3,21 @@
 A running record of what changed, where, and why — judged against the prime
 directive: **clean UI + seamless UX, everything simpler.** Newest first.
 
+## 2026-07-20 — One-tap "Ask AI" on the evidence sections
+
+**What:** On `/diagnose/[id]`, the four data-heavy evidence sections
+(across-windows trend, underperforming products, landing pages, by-product
+breakdown) now carry a quiet "Ask AI" chip next to their titles. One tap
+scrolls to the Ecomtrada AI conversation and sends a targeted question about
+that section ("where is spend going to pages that don't convert?"), reusing
+the existing chat stream — no new surface, no typing.
+
+Also fixed: the attachment-size error said "max 8 MB" while the actual cap is
+5 MB, and a stale comment claimed a 6-file cap (it's 4).
+
+**Why simpler:** asking the AI becomes the fastest path through every table —
+the assistant is the front door, not a side panel (master-prompt objective 3).
+
 ## 2026-07-20 — Shopping compare grounded in the real Shopify catalog
 
 **What:** The ingested Shopify product catalog (previously write-only — synced
