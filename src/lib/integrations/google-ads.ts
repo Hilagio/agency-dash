@@ -2561,7 +2561,8 @@ export async function fetchSpineData(
   })).filter(p => p.date && p.landingPageUrl);
 
   // Product (shopping item) × day — what the ads DID per product (§4/§8).
-  // Omitting campaign fields lets GAQL auto-aggregate across Shopping + PMax.
+  // shopping_performance_view is per-day but only covers standard SHOPPING
+  // campaigns — a Performance Max-led account (very common) returns nothing here.
   const productAdsRows = await safeQuery(() => customer.query(`
     SELECT segments.date, segments.product_item_id, segments.product_title,
            metrics.cost_micros, metrics.clicks, metrics.impressions,
@@ -2570,7 +2571,7 @@ export async function fetchSpineData(
     WHERE segments.date BETWEEN '${heavyStart}' AND '${end}'
       AND (metrics.impressions > 0 OR metrics.cost_micros > 0)
   `), "spine product_ads_daily", 60_000).catch(() => []);
-  const productAds: ProductAdsDailyRow[] = productAdsRows.map(r => ({
+  let productAds: ProductAdsDailyRow[] = productAdsRows.map(r => ({
     date: String(r.segments?.date ?? ""),
     itemId: String(r.segments?.product_item_id ?? ""),
     title: String(r.segments?.product_title ?? ""),
@@ -2580,6 +2581,32 @@ export async function fetchSpineData(
     conversions: Number(r.metrics?.conversions ?? 0),
     conversionValue: Number(r.metrics?.conversions_value ?? 0),
   })).filter(p => p.date && p.itemId);
+
+  // Fallback for Performance Max-led accounts: shopping_performance_view came
+  // back empty, so pull product performance from `shopping_product` (covers ALL
+  // campaign types incl. PMax). It can't segment by date, so it returns a single
+  // window aggregate per item; we stamp it on `end` (yesterday) so the window
+  // views still pick it up. Better a real window total than an empty tab.
+  if (productAds.length === 0) {
+    const spRows = await safeQuery(() => customer.query(`
+      SELECT shopping_product.item_id, shopping_product.title,
+             metrics.cost_micros, metrics.clicks, metrics.impressions,
+             metrics.conversions, metrics.conversions_value
+      FROM shopping_product
+      WHERE segments.date BETWEEN '${heavyStart}' AND '${end}'
+        AND (metrics.impressions > 0 OR metrics.cost_micros > 0)
+    `), "spine shopping_product_pmax", 60_000).catch(() => []);
+    productAds = spRows.map(r => ({
+      date: end,
+      itemId: String(r.shopping_product?.item_id ?? ""),
+      title: String(r.shopping_product?.title ?? ""),
+      spend: Number(r.metrics?.cost_micros ?? 0) / 1_000_000,
+      clicks: Number(r.metrics?.clicks ?? 0),
+      impressions: Number(r.metrics?.impressions ?? 0),
+      conversions: Number(r.metrics?.conversions ?? 0),
+      conversionValue: Number(r.metrics?.conversions_value ?? 0),
+    })).filter(p => p.itemId);
+  }
 
   // Search term × day.
   const stRows = await safeQuery(() => customer.query(`
