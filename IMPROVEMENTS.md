@@ -3,6 +3,31 @@
 A running record of what changed, where, and why — judged against the prime
 directive: **clean UI + seamless UX, everything simpler.** Newest first.
 
+## 2026-07-20 — Shopify context: AOV-drop + per-product movement
+
+Extends `get_shopify_data` (`src/lib/diagnostics/agent-tools.ts`) beyond
+"is tracking broken" so the agent can answer more of the questions a specialist
+actually asks — all from data already stored, no schema change:
+
+- **AOV drop as its own signal.** The recent-vs-prior trend now includes AOV
+  ("AOV €45 vs €60, down 25% — basket size is shrinking, look at discounting /
+  product mix"), so a shrinking-basket problem is caught even when order count
+  holds.
+- **Per-product movement.** Where per-product sales exist, the tool names the
+  top sellers, which products are **falling** (€2,520→€420), which are **rising**,
+  and which are **newly emerging** (no prior sales) — so "what's selling", "where's
+  the drop", and "what's coming up" are answerable in one pull.
+- **Honest availability.** Per-product needs a live Shopify connection; the "Sales
+  over time" CSV is order totals only, and the tool now says exactly that instead
+  of silently omitting products.
+
+Still a genuine gap (needs new ingestion + a product decision): the
+**add-to-cart → begin-checkout → purchase funnel rate**. No path ingests
+behavioral funnel events today. The best fit for a PPC tool is the ad-side funnel
+from Google Ads micro-conversion actions (`add_to_cart` / `begin_checkout`),
+which would be a new Google Ads pull rather than Shopify. Deferred pending that
+decision.
+
 ## 2026-07-20 — Trustworthy reconciliation check + richer Shopify context
 
 Found by driving the app end-to-end as a specialist (seeded a realistically

@@ -82,7 +82,7 @@ export const AGENT_TOOLS = [
   },
   {
     name: "get_shopify_data",
-    description: "The account's real Shopify orders and revenue by window, plus top-selling products — the ground truth to reconcile against Google Ads conversions. Returns a clear note if Shopify isn't connected for this account.",
+    description: "The account's real Shopify orders as ground truth: order count, revenue, and AOV for the window; a recent-vs-prior TREND (orders, revenue, and AOV — so you can see a basket-size drop even when order count holds); a direct reconciliation of real orders against Google-Ads-attributed conversions (the 'tracking break vs real demand drop' signal); and, where per-product data exists, the top sellers plus which products are FALLING, RISING, or newly emerging. Use it for 'are real sales dropping?', 'is it tracking or demand?', 'is AOV falling?', and 'which products carry the store / which are sliding?'. Per-product movement needs a live Shopify connection — a 'Sales over time' CSV gives order totals only, and the tool says so.",
     input_schema: { type: "object", properties: { days: { type: "number", description: "Look-back window in days (default 30)." } } },
   },
   {
@@ -550,7 +550,7 @@ export async function runAgentTool(name: string, input: Record<string, unknown>,
     const recentYmd = recentStart.toISOString().slice(0, 10);
     const [orders, products, adsAgg] = await Promise.all([
       prisma.orderDaily.findMany({ where: { accountId: acc.id, date: { gte: ymd } }, select: { date: true, orders: true, revenue: true, currency: true } }),
-      prisma.productSalesDaily.findMany({ where: { accountId: acc.id, date: { gte: ymd } }, select: { title: true, units: true, revenue: true } }),
+      prisma.productSalesDaily.findMany({ where: { accountId: acc.id, date: { gte: ymd } }, select: { date: true, title: true, units: true, revenue: true } }),
       prisma.metricDaily.aggregate({ where: { accountId: acc.id, date: { gte: ymd } }, _sum: { conversions: true } }),
     ]);
     if (!conn && !upload && !orders.length) {
@@ -594,8 +594,12 @@ export async function runAgentTool(name: string, input: Record<string, unknown>,
     const pctChg = (now: number, was: number) => was > 0 ? Math.round(((now - was) / was) * 100) : null;
     const ordChg = pctChg(rOrders, pOrders), revChg = pctChg(rRev, pRev);
     const arrow = (n: number | null) => n == null ? "" : n > 0 ? `up ${n}%` : n < 0 ? `down ${Math.abs(n)}%` : "flat";
+    // AOV is its own signal: a basket-size drop (discounting, mix shift toward
+    // cheaper items) hurts even when order COUNT holds, so call it out separately.
+    const rAov = rOrders > 0 ? rRev / rOrders : 0, pAov = pOrders > 0 ? pRev / pOrders : 0;
+    const aovChg = pctChg(rAov, pAov);
     const trendLine = prior.length
-      ? `\nReal order trend — last ${half}d vs the prior ${half}d: ${rOrders} vs ${pOrders} orders (${arrow(ordChg) || "—"}), revenue ${money(rRev)} vs ${money(pRev)} (${arrow(revChg) || "—"}).`
+      ? `\nReal order trend — last ${half}d vs the prior ${half}d: ${rOrders} vs ${pOrders} orders (${arrow(ordChg) || "—"}), revenue ${money(rRev)} vs ${money(pRev)} (${arrow(revChg) || "—"}), AOV ${money(rAov)} vs ${money(pAov)} (${arrow(aovChg) || "—"})${aovChg != null && aovChg <= -10 ? " — basket size is shrinking, look at discounting / product mix" : ""}.`
       : "";
 
     // Reconcile real orders against Ads-attributed conversions for the SAME
@@ -606,18 +610,42 @@ export async function runAgentTool(name: string, input: Record<string, unknown>,
       ? `\nReconciliation (${days}d): Google Ads counted ${adsConv} conversions vs ${totOrders} real Shopify orders${Math.abs(gapPct) >= 25 ? ` — a ${Math.abs(gapPct)}% ${gapPct < 0 ? "SHORTFALL (Ads under-counting → suspect a tracking break, not a demand drop, especially if the order trend above is steady)" : "over-count (Ads over-attributing — check double-counting or view-through)"}` : ` — within ~${Math.abs(gapPct)}%, so tracking looks intact and any drop is real`}.`
       : "";
 
-    const pAgg = new Map<string, { title: string; units: number; revenue: number }>();
+    // Per-product sales, split recent vs prior so we can name what's carrying the
+    // store, what's dropping, and what's newly emerging — not just a flat total.
+    const pAgg = new Map<string, { title: string; units: number; revenue: number; rRev: number; pRev: number; rUnits: number; pUnits: number }>();
     for (const p of products) {
-      const e = pAgg.get(p.title) ?? { title: p.title, units: 0, revenue: 0 };
-      e.units += p.units; e.revenue += p.revenue; pAgg.set(p.title, e);
+      const e = pAgg.get(p.title) ?? { title: p.title, units: 0, revenue: 0, rRev: 0, pRev: 0, rUnits: 0, pUnits: 0 };
+      e.units += p.units; e.revenue += p.revenue;
+      if (p.date >= recentYmd) { e.rRev += p.revenue; e.rUnits += p.units; } else { e.pRev += p.revenue; e.pUnits += p.units; }
+      pAgg.set(p.title, e);
     }
-    const top = [...pAgg.values()].sort((a, b) => b.revenue - a.revenue).slice(0, 10);
-    const topLines = top.length ? `\nTop sellers:\n${top.map(p => `- ${p.title}: ${p.units} units, ${money(p.revenue)}`).join("\n")}` : "";
+    const prods = [...pAgg.values()];
+    let productSection: string;
+    if (!prods.length) {
+      // CSV / Flow give order totals only; per-product needs the live API.
+      productSection = upload
+        ? "\nPer-product sales aren't in this data — the “Sales over time” CSV is order totals only. A live Shopify connection (or a “Sales by product” export) is needed for product-level breakdowns."
+        : "";
+    } else {
+      const top = [...prods].sort((a, b) => b.revenue - a.revenue).slice(0, 5);
+      const topLines = `\nTop sellers (${days}d): ${top.map(p => `${p.title} (${p.units}u, ${money(p.revenue)})`).join("; ")}.`;
+      const movers = prods.filter(p => p.pRev > 0 || p.rRev > 0);
+      const fallers = movers.filter(p => p.rRev < p.pRev).sort((a, b) => (a.rRev - a.pRev) - (b.rRev - b.pRev)).slice(0, 3);
+      const risers = movers.filter(p => p.rRev > p.pRev && p.pRev > 0).sort((a, b) => (b.rRev - b.pRev) - (a.rRev - a.pRev)).slice(0, 2);
+      const emerging = prods.filter(p => p.pUnits === 0 && p.rUnits > 0).sort((a, b) => b.rRev - a.rRev).slice(0, 3);
+      const mv = (p: typeof prods[number]) => `${p.title} (${money(p.pRev)}→${money(p.rRev)})`;
+      const parts: string[] = [];
+      if (fallers.length) parts.push(`falling: ${fallers.map(mv).join("; ")}`);
+      if (risers.length) parts.push(`rising: ${risers.map(mv).join("; ")}`);
+      if (emerging.length) parts.push(`newly selling (no prior sales): ${emerging.map(p => `${p.title} (${money(p.rRev)})`).join("; ")}`);
+      const moverLine = parts.length ? `\nProduct movement (last ${half}d vs prior ${half}d) — ${parts.join(" · ")}.` : "";
+      productSection = topLines + moverLine;
+    }
     // Shop currency can differ from the Ads account currency — flag it so figures aren't misread.
     const orderCur = orders.find(o => o.currency)?.currency;
     const curNote = orderCur && orderCur !== acc.currency ? ` (orders reported in ${orderCur}, not the account's ${acc.currency})` : "";
     const label = conn ? `Shopify (${conn.shopDomain})` : "Shopify";
-    return `${label} — last ${days}d: ${totOrders} orders, ${money(totRev)} revenue, AOV ${money(aov)}${curNote}.${trendLine}${reconLine}${topLines}\n${sourceNote}`;
+    return `${label} — last ${days}d: ${totOrders} orders, ${money(totRev)} revenue, AOV ${money(aov)}${curNote}.${trendLine}${reconLine}${productSection}\n${sourceNote}`;
   }
 
   return `Unknown tool: ${name}`;
