@@ -516,6 +516,9 @@ model Product {
   status      String?  // ACTIVE | ARCHIVED | DRAFT
   price       Float?
   sku         String?
+  barcode     String?  // GTIN/EAN — the key that identifies the product on Google Shopping
+  vendor      String?  // brand/vendor as set in Shopify
+  url         String?  // public product page (onlineStoreUrl, else built from the shop domain)
   updatedAt   DateTime @updatedAt
 
   @@unique([accountId, externalId])

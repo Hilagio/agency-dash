@@ -484,18 +484,36 @@ export async function runAgentTool(name: string, input: Record<string, unknown>,
     if (!query) return "Give me a product or search term to scan (usually the product title).";
     const tldByCur: Record<string, string> = { EUR: "nl", GBP: "co.uk", USD: "com", CZK: "cz", PLN: "pl" };
     const tld = (typeof input?.tld === "string" && input.tld.trim()) ? input.tld.trim().toLowerCase() : (tldByCur[acc.currency] ?? "nl");
-    const highlight = typeof input?.highlight === "string" ? input.highlight : "";
+    let highlight = typeof input?.highlight === "string" ? input.highlight.trim() : "";
+    // No highlight given → derive it from the connected Shopify store, so the
+    // client's own listing is located without anyone having to name the shop.
+    if (!highlight) {
+      const conn = await prisma.shopifyConnection.findUnique({ where: { accountId: acc.id }, select: { shopDomain: true } });
+      if (conn?.shopDomain) highlight = conn.shopDomain.replace(/\.myshopify\.com$/i, "");
+    }
+    // The client's own listing from the ingested catalog — exact price + GTIN,
+    // shown even when the scrape doesn't surface their shop in the results.
+    const nq = norm(query);
+    const own = nq ? (await prisma.product.findMany({
+      where: { accountId: acc.id }, select: { title: true, price: true, barcode: true, url: true },
+    })).find(p => { const t = norm(p.title); return t === nq || (t.length > 5 && (t.includes(nq) || nq.includes(t))); }) : undefined;
     let scan;
     try { scan = await fetchGoogleShopping(query, tld, highlight); }
     catch (e) { return `Couldn't run the Google Shopping scan: ${e instanceof Error ? e.message : String(e)}.`; }
-    if (!scan.rows.length) return `No Google Shopping results for "${query}" on google.${tld}. Feed titles are often too specific — try a shorter, more generic term (e.g. drop the colour/size).`;
+    const ownLine = own
+      ? `\nThe client's own listing (Shopify catalog): "${own.title}"${own.price != null ? ` at ${money(own.price)}` : ""}${own.barcode ? `, GTIN ${own.barcode}` : ""}.`
+      : "";
+    if (!scan.rows.length) return `No Google Shopping results for "${query}" on google.${tld}. Feed titles are often too specific — try a shorter, more generic term (e.g. drop the colour/size).${ownLine}`;
     const s = scan.stats;
     const range = s.min != null && s.max != null ? `${money(s.min)}–${money(s.max)}, median ${money(s.median ?? 0)}` : "n/a";
     const listings = scan.rows.slice(0, 12).map(r => `- #${r.position} ${r.merchant || "?"}: ${r.price || (r.priceValue != null ? money(r.priceValue) : "—")}${r.isYou ? "  ← the client" : ""}`);
+    const ownVsMedian = own?.price != null && s.median != null && s.median > 0
+      ? ` That store price is ${Math.round(((own.price - s.median) / s.median) * 100) > 0 ? `${Math.round(((own.price - s.median) / s.median) * 100)}% ABOVE` : `${Math.abs(Math.round(((own.price - s.median) / s.median) * 100))}% below`} the market median.`
+      : "";
     const youLine = scan.you
       ? `\nThe client ranks #${scan.you.position}${scan.you.priceValue != null ? ` at ${money(scan.you.priceValue)}` : ""}${scan.you.vsMedianPct != null ? ` — ${scan.you.vsMedianPct > 0 ? `${scan.you.vsMedianPct}% ABOVE` : `${Math.abs(scan.you.vsMedianPct)}% below`} the median` : ""}.`
-      : (highlight ? `\nThe client's shop ("${highlight}") didn't appear in the listings — either not ranking for this term or listed under a different seller name.` : "");
-    return `Live Google Shopping for "${query}" (google.${tld}) — ${s.sellers} sellers, price range ${range}.${youLine}\nTop listings:\n${listings.join("\n")}\n\n(Real Shopping data, no Merchant API needed. Sellers are matched by name, so the client only shows as "← the client" if their shop is listed under a recognisable name — pass their shop name as highlight to locate them.)`;
+      : (highlight ? `\nThe client's shop ("${highlight}") didn't appear in the scraped listings — either not ranking for this term or listed under a different seller name.` : "");
+    return `Live Google Shopping for "${query}" (google.${tld}) — ${s.sellers} sellers, price range ${range}.${youLine}${ownLine}${ownVsMedian}\nTop listings:\n${listings.join("\n")}\n\n(Real Shopping data, no Merchant API needed. Sellers are matched by name, so the client only shows as "← the client" if their shop is listed under a recognisable name.)`;
   }
 
   if (name === "get_search_terms") {

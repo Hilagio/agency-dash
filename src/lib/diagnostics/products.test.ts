@@ -3,8 +3,8 @@
  *   npx tsx src/lib/diagnostics/products.test.ts
  */
 import {
-  joinProducts, buildProductGroups,
-  type AdsProductAgg, type SalesProductAgg, type AdsVariantRow, type SalesVariantRow,
+  joinProducts, buildProductGroups, attachCatalog,
+  type AdsProductAgg, type SalesProductAgg, type AdsVariantRow, type SalesVariantRow, type CatalogRow,
 } from "./products";
 
 let fail = 0;
@@ -93,5 +93,17 @@ ok("dead SKU wastes all its spend (€200)", ug.underperformers[0].wastedSpend =
 ok("thin-margin SKU: below-break-even reason with POAS", /POAS|break-even/i.test(ug.underperformers[1].underperformReason ?? ""));
 ok("winner keeps a healthy ROAS", (ug.groups.find(p => /winner/i.test(p.title))?.roas ?? 0) > 1);
 
-console.log(fail ? `\n${fail} ROLLUP FAILURE(S)` : "\nROLLUP: PASS — thin variants roll up + underperformers ranked");
+// ─── Catalog join: exact store price/GTIN/URL onto groups ─────────────────────
+const catalog: CatalogRow[] = [
+  { externalId: "gid://shopify/Product/777", title: "Winterjas", price: 89.95, barcode: "8712345678901", url: "https://acme.nl/products/winterjas", vendor: "Acme" },
+  { externalId: "gid://shopify/Product/999", title: "Zomerjas", price: 49.95, barcode: null, url: null, vendor: null },
+];
+attachCatalog(g.groups, catalog);
+ok("catalog matches by product id (pid ↔ gid numeric)", winter.catalog?.price === 89.95 && winter.catalog?.gtin === "8712345678901");
+ok("catalog falls back to normalised title", zomer.catalog?.price === 49.95); // ads pid is 555, catalog gid is 999 → only the title lines up
+ok("catalog URL carried through", winter.catalog?.url === "https://acme.nl/products/winterjas");
+attachCatalog(ug.groups, []);
+ok("empty catalog → null on every group (honest fallback)", ug.groups.every(p => p.catalog === null));
+
+console.log(fail ? `\n${fail} ROLLUP FAILURE(S)` : "\nROLLUP: PASS — thin variants roll up + underperformers ranked + catalog joins");
 process.exit(fail ? 1 : 0);

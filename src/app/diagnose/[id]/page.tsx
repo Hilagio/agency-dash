@@ -288,7 +288,7 @@ interface Briefing {
   worklistAt: string | null;
 }
 interface Trend { acuteDrop: boolean; spendSpike: boolean; note: string | null; }
-interface ShopifyStatus { appConfigured: boolean; connected: boolean; shopDomain: string | null; lastSyncAt: string | null; }
+interface ShopifyStatus { appConfigured: boolean; connected: boolean; shopDomain: string | null; lastSyncAt: string | null; shopName?: string | null; }
 interface TrackingStatus { status: "verified" | "broken" | null; note: string | null; setAt: string | null; setBy: string | null; }
 interface ProductPage { url: string; name: string; spend: number; clicks: number; conversions: number; conversionValue: number; roas: number | null; }
 interface VariantLine {
@@ -303,6 +303,7 @@ interface ProductGroup {
   variantCount: number; thinVariantCount: number; variants: VariantLine[];
   excludeCandidate: boolean; excludeReason: string | null;
   wastedSpend: number; underperformReason: string | null;
+  catalog?: { price: number | null; gtin: string | null; url: string | null; vendor: string | null } | null;
 }
 interface ProductDiagnostic {
   groups: ProductGroup[];
@@ -370,7 +371,7 @@ export default function DiagnosePage() {
   const [productPages, setProductPages] = useState<ProductPage[]>([]);
   // Product to compare on Google Shopping, with our own context (name/price/id/url) so
   // the scan always shows "your product" even when our listing isn't in the results.
-  const [scanCtx, setScanCtx] = useState<{ query: string; productName?: string; price?: number | null; id?: string | null; url?: string | null } | null>(null);
+  const [scanCtx, setScanCtx] = useState<{ query: string; productName?: string; price?: number | null; id?: string | null; url?: string | null; gtin?: string | null; priceSource?: "store" | "avg" } | null>(null);
   const [showAllPages, setShowAllPages] = useState(false); // landing-pages table: show all vs top 12
   const [wins, setWins] = useState<string[]>([]);
   // The persisted agent conversation (§agent memory): one ongoing thread.
@@ -1829,7 +1830,15 @@ export default function DiagnosePage() {
                                   : <span style={{ display: "inline-block", width: 18 }} />}
                                 {p.excludeCandidate && <span title="spend, no conversions" style={{ color: "var(--danger)", marginRight: 6 }}>●</span>}
                                 {p.title}
-                                <button onClick={e => { e.stopPropagation(); setScanCtx({ query: p.title, productName: p.title, price: p.units > 0 ? p.revenue / p.units : null, id: p.productKey }); }} title="Compare on Google Shopping — competitors & pricing"
+                                <button onClick={e => { e.stopPropagation(); setScanCtx({
+                                  query: p.title, productName: p.title,
+                                  // Prefer the exact store price from the Shopify catalog; fall back to avg sold.
+                                  price: p.catalog?.price ?? (p.units > 0 ? p.revenue / p.units : null),
+                                  priceSource: p.catalog?.price != null ? "store" : p.units > 0 ? "avg" : undefined,
+                                  gtin: p.catalog?.gtin ?? null,
+                                  url: p.catalog?.url ?? null,
+                                  id: p.productKey,
+                                }); }} title="Compare on Google Shopping — competitors & pricing"
                                   style={{ marginLeft: 7, verticalAlign: -2, display: "inline-flex", background: "none", border: "none", padding: 2, cursor: "pointer", color: "var(--text-dim)" }}>
                                   <ShoppingBag size={13} />
                                 </button>
@@ -1996,7 +2005,7 @@ export default function DiagnosePage() {
       </main>
 
       {scanCtx !== null && (
-        <ProductShoppingScan initialQuery={scanCtx.query} productName={scanCtx.productName} ourPrice={scanCtx.price ?? null} ourId={scanCtx.id ?? null} ourUrl={scanCtx.url ?? null} onClose={() => setScanCtx(null)} />
+        <ProductShoppingScan initialQuery={scanCtx.query} productName={scanCtx.productName} ourPrice={scanCtx.price ?? null} ourId={scanCtx.id ?? null} ourUrl={scanCtx.url ?? null} ourGtin={scanCtx.gtin ?? null} priceSource={scanCtx.priceSource ?? null} defaultHighlight={shopify?.shopName ?? null} onClose={() => setScanCtx(null)} />
       )}
 
       {shopifyModal && (() => {
