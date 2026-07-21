@@ -14,7 +14,7 @@ import Link from "next/link";
 import {
   ArrowLeft, ArrowUpRight, Loader2, CheckCircle2, AlertTriangle, HelpCircle,
   ShieldCheck, Sprout, XCircle, MinusCircle, TrendingUp, ShoppingBag, RefreshCw, ChevronRight, Sparkles,
-  Paperclip, X, FileText, Download, Trash2, Plug, Star, Gauge, Search, ExternalLink,
+  Paperclip, X, FileText, Download, Trash2, Plug, Star, Gauge, Search, ExternalLink, Share2,
 } from "lucide-react";
 import { ProductShoppingScan } from "@/components/ProductShoppingScan";
 
@@ -403,6 +403,19 @@ export default function DiagnosePage() {
   const [error, setError] = useState<string | null>(null);
   const [watched, setWatched] = useState(false);
   const [watchBusy, setWatchBusy] = useState(false);
+  const [shareState, setShareState] = useState<"idle" | "copying" | "copied">("idle");
+
+  // Generate (or fetch) the client-facing share link and copy it to the clipboard.
+  async function copyClientLink() {
+    if (shareState === "copying") return;
+    setShareState("copying");
+    try {
+      const r = await fetch(`/api/accounts/${id}/share-link`, { credentials: "include" });
+      const j = await r.json();
+      if (j.url) { await navigator.clipboard?.writeText(j.url); setShareState("copied"); setTimeout(() => setShareState("idle"), 2000); }
+      else setShareState("idle");
+    } catch { setShareState("idle"); }
+  }
   // Pre-flight page audit (12 personas).
   const [auditOpen, setAuditOpen] = useState(false);
   const [auditUrl, setAuditUrl] = useState("");
@@ -969,6 +982,12 @@ export default function DiagnosePage() {
             color: "var(--text-3)", border: "1px solid var(--border-2)", background: "var(--surface)", padding: "7px 12px", borderRadius: 8,
           }}>
             {refreshing ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />} {refreshing ? "Pulling…" : "Refresh"}
+          </button>
+          <button onClick={copyClientLink} disabled={shareState === "copying"} title="Copy a read-only client link — a clean performance overview, safe to share (no internal diagnosis)" style={{
+            display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, cursor: shareState === "copying" ? "default" : "pointer",
+            color: shareState === "copied" ? "var(--accent)" : "var(--text-3)", border: `1px solid ${shareState === "copied" ? "color-mix(in srgb, var(--accent) 40%, var(--border))" : "var(--border-2)"}`, background: "var(--surface)", padding: "7px 12px", borderRadius: 8,
+          }}>
+            {shareState === "copying" ? <Loader2 size={13} className="animate-spin" /> : shareState === "copied" ? <CheckCircle2 size={13} /> : <Share2 size={13} />} {shareState === "copied" ? "Link copied" : "Client link"}
           </button>
           {/* Primary action — the forward step after a diagnosis. */}
           <Link href={`/plan/${id}`} style={{
