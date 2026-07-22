@@ -19,6 +19,10 @@ const PUBLIC_PREFIXES = [
   "/api/auth/signout",
   "/api/invite",
   "/privacy", // public privacy policy — required + linked from the Shopify app listing
+  // Client-facing share pages — token-gated (unguessable per-account token), no
+  // session cookie; the page + its data endpoint authenticate via the token.
+  "/share",
+  "/api/share",
   // Server-to-server Shopify endpoints — no session cookie; they authenticate
   // themselves (HMAC for webhooks, a per-account secret key for Flow), so the
   // proxy must not redirect them to /login.

@@ -3,6 +3,37 @@
 A running record of what changed, where, and why — judged against the prime
 directive: **clean UI + seamless UX, everything simpler.** Newest first.
 
+## 2026-07-21 — Client-facing share dashboard (read-only, per-account link)
+
+A public, read-only performance page a specialist can share with a client —
+the Google Ads analogue of a social-media client dashboard.
+
+- **`/share/[token]`** — a clean, Dutch, Ecomtrada-branded page: period filter
+  (7/30/90d), KPI tiles (advertentiekosten, omzet, ROAS, bestellingen, POAS), a
+  spend-vs-omzet trend, and a best-products table. Deliberately NOT the internal
+  diagnosis — no problems, hypotheses, or agency jargon; a calm performance
+  overview only. `noindex`.
+- **`/api/share/[token]`** — public but token-gated; returns ONLY curated
+  client-safe metrics for the one account (never notes, signals, diagnosis, or
+  any other account). Rejects malformed tokens without a DB hit.
+- **`shareToken` on Account** (migration `0033`, additive/idempotent) — a 256-bit
+  unguessable per-account token, minted on demand.
+- **`/api/accounts/[id]/share-link`** (authed, org-scoped) — mint/rotate the link.
+- **Diagnose page** — a "Client link" button copies the share URL.
+- **proxy.ts** — `/share` + `/api/share` added to the public allowlist.
+
+**Per-link language (NL/EN, chosen at creation).** `shareLang` on Account
+(migration `0034`), set via `?lang=` on the share-link endpoint and picked with
+a small NL/EN chooser on the "Client link" button. The public page is fully
+bilingual; the internal app stays English.
+
+**Custom-domain ready.** New `publicOrigin()` helper (`src/lib/base-url.ts`)
+resolves the canonical origin, preferring `NEXT_PUBLIC_BASE_URL` / `APP_BASE_URL`
+over `RAILWAY_PUBLIC_DOMAIN`. Share links now build from it, so pointing the app
+at a custom domain (e.g. `https://ai.ecomtrada.nl`) is one env var — no code
+change. (DNS + Railway custom-domain + Google OAuth redirect URIs are the
+human-side steps.)
+
 ## 2026-07-20 — Funnel is data, not a tool; tools state numbers, agent reasons
 
 Two changes aligning with the app's design: the agent is an autonomous analyst,

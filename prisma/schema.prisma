@@ -172,6 +172,14 @@ model Account {
   // if auto-discovery fails (e.g. the MC is owned by a different Google account).
   merchantCenterId String?
 
+  // ─── Client share link ────────────────────────────────────────────────────
+  // Unguessable per-account token (256-bit) that opens a PUBLIC, read-only,
+  // client-facing performance page at /share/<token>. Minted on demand by a
+  // specialist; only curated client-safe metrics are exposed (never diagnosis,
+  // notes, signals, or other accounts). Null = no link generated yet.
+  shareToken String? @unique
+  shareLang  String  @default("nl") // "nl" | "en" — chosen when the link is created
+
   // ─── Peer group (internal agency use only — never shown to clients) ────────
   // Free-text label grouping competitor accounts managed by the same agency.
   // e.g. "polish-fashion" groups Moda Poznan + Perlowa Moda for gap analysis.
