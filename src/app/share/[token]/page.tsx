@@ -13,9 +13,31 @@ import { useParams } from "next/navigation";
 interface Win { days: number; spend: number; conversions: number; roas: number | null; poas: number | null; orders: number | null; revenue: number | null; partial: boolean }
 interface Day { date: string; spend: number; conversions: number; conversionValue: number; revenue: number }
 interface Product { name: string; spend: number; clicks: number; conversions: number; roas: number | null }
-interface Data { account: { name: string; client: string | null }; currency: string; hasCommerce: boolean; windows: Win[]; days: Day[]; products: Product[]; generatedAt: string }
+interface Data { account: { name: string; client: string | null }; lang: "nl" | "en"; currency: string; hasCommerce: boolean; windows: Win[]; days: Day[]; products: Product[]; generatedAt: string }
 
-const PERIODS = [{ days: 7, label: "7 dagen" }, { days: 30, label: "30 dagen" }, { days: 90, label: "90 dagen" }];
+// Client-facing copy in both languages; the link's language is chosen at creation.
+const COPY = {
+  nl: {
+    eyebrow: "Google Ads · Prestatieoverzicht", loading: "Laden…",
+    unavailTitle: "Dit overzicht is niet beschikbaar", unavailBody: "De link klopt niet meer of is verlopen. Vraag je accountmanager om een nieuwe.",
+    periods: { 7: "7 dagen", 30: "30 dagen", 90: "90 dagen" },
+    adSpend: "Advertentiekosten", revenue: "Omzet", viaAds: "via Google Ads", roasSub: "omzet ÷ kosten", orders: "Bestellingen",
+    conversions: "Conversies", roasSubConv: "waarde ÷ kosten", poasSub: "winst na marge",
+    trend: "Verloop", cost: "Kosten", revenueShort: "Omzet",
+    topTitle: "Best presterende producten", last30: "laatste 30 dagen",
+    product: "Product", clicks: "Klikken", updated: "Bijgewerkt", managed: "Beheerd door Ecomtrada", locale: "nl-NL",
+  },
+  en: {
+    eyebrow: "Google Ads · Performance overview", loading: "Loading…",
+    unavailTitle: "This overview isn't available", unavailBody: "The link is no longer valid or has expired. Ask your account manager for a new one.",
+    periods: { 7: "7 days", 30: "30 days", 90: "90 days" },
+    adSpend: "Ad spend", revenue: "Revenue", viaAds: "via Google Ads", roasSub: "revenue ÷ spend", orders: "Orders",
+    conversions: "Conversions", roasSubConv: "value ÷ spend", poasSub: "profit after margin",
+    trend: "Trend", cost: "Spend", revenueShort: "Revenue",
+    topTitle: "Top performing products", last30: "last 30 days",
+    product: "Product", clicks: "Clicks", updated: "Updated", managed: "Managed by Ecomtrada", locale: "en-GB",
+  },
+} as const;
 
 export default function ClientSharePage() {
   const { token } = useParams<{ token: string }>();
@@ -32,31 +54,33 @@ export default function ClientSharePage() {
       .finally(() => setLoading(false));
   }, [token]);
 
-  const money = (n: number | null | undefined) => n == null ? "—" : `${data?.currency ?? "€"}${Math.round(n).toLocaleString("nl-NL")}`;
-  const num = (n: number | null | undefined) => n == null ? "—" : Math.round(n).toLocaleString("nl-NL");
+  const loc = data?.lang === "en" ? "en-GB" : "nl-NL";
+  const money = (n: number | null | undefined) => n == null ? "—" : `${data?.currency ?? "€"}${Math.round(n).toLocaleString(loc)}`;
+  const num = (n: number | null | undefined) => n == null ? "—" : Math.round(n).toLocaleString(loc);
   const win = data?.windows.find(w => w.days === period);
 
   // Trend series scaled to the chosen period (last N days).
   const series = useMemo(() => (data?.days ?? []).slice(-period), [data, period]);
   const maxVal = Math.max(1, ...series.map(d => Math.max(d.spend, d.revenue || d.conversionValue)));
 
-  if (loading) return <Shell><div style={{ padding: "80px 0", textAlign: "center", color: "var(--text-muted)" }}>Laden…</div></Shell>;
+  if (loading) return <Shell><div style={{ padding: "80px 0", textAlign: "center", color: "var(--text-muted)" }}>{COPY.nl.loading}</div></Shell>;
   if (error || !data) return (
     <Shell>
       <div style={{ padding: "80px 24px", textAlign: "center" }}>
-        <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text)" }}>Dit overzicht is niet beschikbaar</div>
-        <div style={{ fontSize: 14, color: "var(--text-muted)", marginTop: 8 }}>De link klopt niet meer of is verlopen. Vraag je accountmanager om een nieuwe.</div>
+        <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text)" }}>{COPY.nl.unavailTitle}</div>
+        <div style={{ fontSize: 14, color: "var(--text-muted)", marginTop: 8 }}>{COPY.nl.unavailBody}</div>
       </div>
     </Shell>
   );
 
+  const t = COPY[data.lang === "en" ? "en" : "nl"];
   const showCommerce = data.hasCommerce;
   const kpis: { label: string; value: string; sub?: string }[] = [
-    { label: "Advertentiekosten", value: money(win?.spend) },
+    { label: t.adSpend, value: money(win?.spend) },
     ...(showCommerce
-      ? [{ label: "Omzet", value: money(win?.revenue), sub: "via Google Ads" }, { label: "ROAS", value: win?.roas != null ? `${win.roas.toFixed(2)}×` : "—", sub: "omzet ÷ kosten" }, { label: "Bestellingen", value: num(win?.orders) }]
-      : [{ label: "Conversies", value: num(win?.conversions) }, { label: "ROAS", value: win?.roas != null ? `${win.roas.toFixed(2)}×` : "—", sub: "waarde ÷ kosten" }]),
-    ...(showCommerce && win?.poas != null ? [{ label: "POAS", value: `${win.poas.toFixed(2)}×`, sub: "winst na marge" }] : []),
+      ? [{ label: t.revenue, value: money(win?.revenue), sub: t.viaAds }, { label: "ROAS", value: win?.roas != null ? `${win.roas.toFixed(2)}×` : "—", sub: t.roasSub }, { label: t.orders, value: num(win?.orders) }]
+      : [{ label: t.conversions, value: num(win?.conversions) }, { label: "ROAS", value: win?.roas != null ? `${win.roas.toFixed(2)}×` : "—", sub: t.roasSubConv }]),
+    ...(showCommerce && win?.poas != null ? [{ label: "POAS", value: `${win.poas.toFixed(2)}×`, sub: t.poasSub }] : []),
   ];
 
   return (
@@ -64,15 +88,15 @@ export default function ClientSharePage() {
       {/* Header */}
       <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: 16, marginBottom: 22 }}>
         <div>
-          <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: 0.6, textTransform: "uppercase", color: "var(--accent)" }}>Google Ads · Prestatieoverzicht</div>
+          <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: 0.6, textTransform: "uppercase", color: "var(--accent)" }}>{t.eyebrow}</div>
           <h1 style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.8px", margin: "6px 0 0", color: "var(--text)" }}>{data.account.client || data.account.name}</h1>
         </div>
         {/* Period filter */}
         <div style={{ display: "inline-flex", background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: 10, padding: 3 }}>
-          {PERIODS.map(p => (
-            <button key={p.days} onClick={() => setPeriod(p.days)}
-              style={{ fontSize: 12.5, fontWeight: 600, padding: "6px 13px", borderRadius: 8, border: "none", cursor: "pointer", background: period === p.days ? "var(--surface)" : "transparent", color: period === p.days ? "var(--text)" : "var(--text-3)", boxShadow: period === p.days ? "0 1px 3px rgba(0,0,0,0.1)" : "none" }}>
-              {p.label}
+          {([7, 30, 90] as const).map(d => (
+            <button key={d} onClick={() => setPeriod(d)}
+              style={{ fontSize: 12.5, fontWeight: 600, padding: "6px 13px", borderRadius: 8, border: "none", cursor: "pointer", background: period === d ? "var(--surface)" : "transparent", color: period === d ? "var(--text)" : "var(--text-3)", boxShadow: period === d ? "0 1px 3px rgba(0,0,0,0.1)" : "none" }}>
+              {t.periods[d]}
             </button>
           ))}
         </div>
@@ -93,15 +117,15 @@ export default function ClientSharePage() {
       {series.length > 1 && (
         <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: "18px 20px", marginBottom: 20 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 14, flexWrap: "wrap" }}>
-            <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>Verloop</span>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-muted)" }}><i style={{ width: 10, height: 10, borderRadius: 3, background: "var(--accent)" }} /> Kosten</span>
-            {showCommerce && <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-muted)" }}><i style={{ width: 10, height: 10, borderRadius: 3, background: "var(--accent-2, #d98a00)" }} /> Omzet</span>}
+            <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>{t.trend}</span>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-muted)" }}><i style={{ width: 10, height: 10, borderRadius: 3, background: "var(--accent)" }} /> {t.cost}</span>
+            {showCommerce && <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-muted)" }}><i style={{ width: 10, height: 10, borderRadius: 3, background: "var(--accent-2, #d98a00)" }} /> {t.revenueShort}</span>}
           </div>
           <div style={{ display: "flex", alignItems: "flex-end", gap: 2, height: 140 }}>
             {series.map((d) => {
               const rev = showCommerce ? d.revenue : d.conversionValue;
               return (
-                <div key={d.date} title={`${d.date} · kosten ${money(d.spend)}${showCommerce ? ` · omzet ${money(d.revenue)}` : ""}`} style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "flex-end", gap: 1, height: "100%" }}>
+                <div key={d.date} title={`${d.date} · ${t.cost} ${money(d.spend)}${showCommerce ? ` · ${t.revenueShort} ${money(d.revenue)}` : ""}`} style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "flex-end", gap: 1, height: "100%" }}>
                   {showCommerce && <div style={{ height: `${(rev / maxVal) * 100}%`, background: "var(--accent-2, #d98a00)", opacity: 0.85, borderRadius: "2px 2px 0 0", minHeight: rev > 0 ? 2 : 0 }} />}
                   <div style={{ height: `${(d.spend / maxVal) * 100}%`, background: "var(--accent)", opacity: 0.85, borderRadius: showCommerce ? 0 : "2px 2px 0 0", minHeight: d.spend > 0 ? 2 : 0 }} />
                 </div>
@@ -114,15 +138,15 @@ export default function ClientSharePage() {
       {/* Top products */}
       {data.products.length > 0 && (
         <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, overflow: "hidden" }}>
-          <div style={{ padding: "15px 20px 4px", fontSize: 14, fontWeight: 700, color: "var(--text)" }}>Best presterende producten <span style={{ fontSize: 12, fontWeight: 500, color: "var(--text-muted)" }}>· laatste 30 dagen</span></div>
+          <div style={{ padding: "15px 20px 4px", fontSize: 14, fontWeight: 700, color: "var(--text)" }}>{t.topTitle} <span style={{ fontSize: 12, fontWeight: 500, color: "var(--text-muted)" }}>· {t.last30}</span></div>
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 460 }}>
               <thead>
                 <tr style={{ color: "var(--text-muted)", textAlign: "right" }}>
-                  <th style={{ textAlign: "left", padding: "10px 20px", fontWeight: 600 }}>Product</th>
-                  <th style={{ padding: "10px 12px", fontWeight: 600 }}>Kosten</th>
-                  <th style={{ padding: "10px 12px", fontWeight: 600 }}>Klikken</th>
-                  <th style={{ padding: "10px 12px", fontWeight: 600 }}>Conversies</th>
+                  <th style={{ textAlign: "left", padding: "10px 20px", fontWeight: 600 }}>{t.product}</th>
+                  <th style={{ padding: "10px 12px", fontWeight: 600 }}>{t.cost}</th>
+                  <th style={{ padding: "10px 12px", fontWeight: 600 }}>{t.clicks}</th>
+                  <th style={{ padding: "10px 12px", fontWeight: 600 }}>{t.conversions}</th>
                   <th style={{ padding: "10px 20px", fontWeight: 600 }}>ROAS</th>
                 </tr>
               </thead>
@@ -143,7 +167,7 @@ export default function ClientSharePage() {
       )}
 
       <div style={{ marginTop: 24, textAlign: "center", fontSize: 12, color: "var(--text-muted)" }}>
-        Bijgewerkt {new Date(data.generatedAt).toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" })} · Beheerd door Ecomtrada
+        {t.updated} {new Date(data.generatedAt).toLocaleDateString(loc, { day: "numeric", month: "long", year: "numeric" })} · {t.managed}
       </div>
     </Shell>
   );

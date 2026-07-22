@@ -22,8 +22,17 @@ the Google Ads analogue of a social-media client dashboard.
 - **Diagnose page** — a "Client link" button copies the share URL.
 - **proxy.ts** — `/share` + `/api/share` added to the public allowlist.
 
-Client-facing copy is Dutch (the audience); the internal app stays English.
-Not yet deployed — new public surface, pending review.
+**Per-link language (NL/EN, chosen at creation).** `shareLang` on Account
+(migration `0034`), set via `?lang=` on the share-link endpoint and picked with
+a small NL/EN chooser on the "Client link" button. The public page is fully
+bilingual; the internal app stays English.
+
+**Custom-domain ready.** New `publicOrigin()` helper (`src/lib/base-url.ts`)
+resolves the canonical origin, preferring `NEXT_PUBLIC_BASE_URL` / `APP_BASE_URL`
+over `RAILWAY_PUBLIC_DOMAIN`. Share links now build from it, so pointing the app
+at a custom domain (e.g. `https://ai.ecomtrada.nl`) is one env var — no code
+change. (DNS + Railway custom-domain + Google OAuth redirect URIs are the
+human-side steps.)
 
 ## 2026-07-20 — Funnel is data, not a tool; tools state numbers, agent reasons
 

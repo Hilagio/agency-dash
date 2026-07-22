@@ -404,15 +404,17 @@ export default function DiagnosePage() {
   const [watched, setWatched] = useState(false);
   const [watchBusy, setWatchBusy] = useState(false);
   const [shareState, setShareState] = useState<"idle" | "copying" | "copied">("idle");
+  const [shareOpen, setShareOpen] = useState(false); // language chooser open
 
-  // Generate (or fetch) the client-facing share link and copy it to the clipboard.
-  async function copyClientLink() {
+  // Generate (or fetch) the client-facing share link in the chosen language and
+  // copy it to the clipboard. The language is stored on the account.
+  async function copyClientLink(lang: "nl" | "en") {
     if (shareState === "copying") return;
-    setShareState("copying");
+    setShareState("copying"); setShareOpen(false);
     try {
-      const r = await fetch(`/api/accounts/${id}/share-link`, { credentials: "include" });
+      const r = await fetch(`/api/accounts/${id}/share-link?lang=${lang}`, { credentials: "include" });
       const j = await r.json();
-      if (j.url) { await navigator.clipboard?.writeText(j.url); setShareState("copied"); setTimeout(() => setShareState("idle"), 2000); }
+      if (j.url) { await navigator.clipboard?.writeText(j.url); setShareState("copied"); setTimeout(() => setShareState("idle"), 2200); }
       else setShareState("idle");
     } catch { setShareState("idle"); }
   }
@@ -983,12 +985,29 @@ export default function DiagnosePage() {
           }}>
             {refreshing ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />} {refreshing ? "Pulling…" : "Refresh"}
           </button>
-          <button onClick={copyClientLink} disabled={shareState === "copying"} title="Copy a read-only client link — a clean performance overview, safe to share (no internal diagnosis)" style={{
-            display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, cursor: shareState === "copying" ? "default" : "pointer",
-            color: shareState === "copied" ? "var(--accent)" : "var(--text-3)", border: `1px solid ${shareState === "copied" ? "color-mix(in srgb, var(--accent) 40%, var(--border))" : "var(--border-2)"}`, background: "var(--surface)", padding: "7px 12px", borderRadius: 8,
-          }}>
-            {shareState === "copying" ? <Loader2 size={13} className="animate-spin" /> : shareState === "copied" ? <CheckCircle2 size={13} /> : <Share2 size={13} />} {shareState === "copied" ? "Link copied" : "Client link"}
-          </button>
+          {/* Client link — pick the language when creating it (stored per account) */}
+          {shareState === "copied" ? (
+            <span title="Copied to clipboard" style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: "var(--accent)", border: "1px solid color-mix(in srgb, var(--accent) 40%, var(--border))", background: "var(--surface)", padding: "7px 12px", borderRadius: 8 }}>
+              <CheckCircle2 size={13} /> Link copied
+            </span>
+          ) : shareOpen ? (
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, border: "1px solid var(--border-2)", background: "var(--surface)", borderRadius: 8, padding: "3px 5px 3px 9px" }}>
+              <Share2 size={13} style={{ color: "var(--text-3)" }} />
+              <span style={{ fontSize: 11.5, color: "var(--text-muted)", marginRight: 2 }}>Client link:</span>
+              {(["nl", "en"] as const).map(l => (
+                <button key={l} onClick={() => copyClientLink(l)} disabled={shareState === "copying"} title={l === "nl" ? "Nederlandse link kopiëren" : "Copy English link"} style={{
+                  fontSize: 11.5, fontWeight: 700, color: "var(--text-2)", background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 6, padding: "4px 9px", cursor: "pointer",
+                }}>{l.toUpperCase()}</button>
+              ))}
+            </span>
+          ) : (
+            <button onClick={() => setShareOpen(true)} title="Copy a read-only client link — a clean performance overview, safe to share (no internal diagnosis)" style={{
+              display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, cursor: "pointer",
+              color: "var(--text-3)", border: "1px solid var(--border-2)", background: "var(--surface)", padding: "7px 12px", borderRadius: 8,
+            }}>
+              {shareState === "copying" ? <Loader2 size={13} className="animate-spin" /> : <Share2 size={13} />} Client link
+            </button>
+          )}
           {/* Primary action — the forward step after a diagnosis. */}
           <Link href={`/plan/${id}`} style={{
             display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 700, textDecoration: "none",

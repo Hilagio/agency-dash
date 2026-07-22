@@ -10,6 +10,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getAuthContext, unauthorized, forbidden } from "@/lib/auth";
+import { publicOrigin } from "@/lib/base-url";
 
 export const dynamic = "force-dynamic";
 
@@ -20,36 +21,38 @@ function newToken(): string {
   return (crypto.randomUUID() + crypto.randomUUID()).replace(/-/g, "");
 }
 
-function baseUrl(): string {
-  const domain = process.env.RAILWAY_PUBLIC_DOMAIN;
-  return domain ? `https://${domain}` : "https://agency-dash-production.up.railway.app";
-}
-
-async function ensureToken(id: string, orgId: string, rotate: boolean) {
-  const account = await prisma.account.findFirst({ where: { id, organizationId: orgId }, select: { id: true, shareToken: true } });
+/** Mint the token if needed (or rotate), and set the link's language if given. */
+async function ensureToken(id: string, orgId: string, rotate: boolean, lang: string | null) {
+  const account = await prisma.account.findFirst({ where: { id, organizationId: orgId }, select: { id: true, shareToken: true, shareLang: true } });
   if (!account) return null;
+  const data: { shareToken?: string; shareLang?: string } = {};
   let token = account.shareToken;
-  if (!token || rotate) {
-    token = newToken();
-    await prisma.account.update({ where: { id }, data: { shareToken: token } });
-  }
-  return token;
+  if (!token || rotate) { token = newToken(); data.shareToken = token; }
+  const wantLang = lang === "en" || lang === "nl" ? lang : null;
+  if (wantLang && wantLang !== account.shareLang) data.shareLang = wantLang;
+  if (Object.keys(data).length) await prisma.account.update({ where: { id }, data });
+  return { token, lang: data.shareLang ?? account.shareLang };
 }
 
-export async function GET(_req: Request, { params }: Params) {
+function langOf(req: Request): string | null {
+  const l = new URL(req.url).searchParams.get("lang");
+  return l === "en" || l === "nl" ? l : null;
+}
+
+export async function GET(req: Request, { params }: Params) {
   const ctx = await getAuthContext();
   if (!ctx) return unauthorized();
   const { id } = await params;
-  const token = await ensureToken(id, ctx.orgId, false);
-  if (!token) return forbidden();
-  return NextResponse.json({ token, url: `${baseUrl()}/share/${token}` });
+  const res = await ensureToken(id, ctx.orgId, false, langOf(req));
+  if (!res) return forbidden();
+  return NextResponse.json({ token: res.token, lang: res.lang, url: `${publicOrigin()}/share/${res.token}` });
 }
 
-export async function POST(_req: Request, { params }: Params) {
+export async function POST(req: Request, { params }: Params) {
   const ctx = await getAuthContext();
   if (!ctx) return unauthorized();
   const { id } = await params;
-  const token = await ensureToken(id, ctx.orgId, true);
-  if (!token) return forbidden();
-  return NextResponse.json({ token, url: `${baseUrl()}/share/${token}` });
+  const res = await ensureToken(id, ctx.orgId, true, langOf(req));
+  if (!res) return forbidden();
+  return NextResponse.json({ token: res.token, lang: res.lang, url: `${publicOrigin()}/share/${res.token}` });
 }
