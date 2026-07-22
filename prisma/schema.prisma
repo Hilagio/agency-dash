@@ -533,6 +533,19 @@ model Product {
   @@unique([accountId, externalId])
 }
 
+// Cached product-page image (og:image) per landing page — lets the client share
+// dashboard show product photos even when Shopify isn't connected. Best-effort:
+// a null imageUrl means "fetched, none found" (so we don't refetch every view).
+model PageImage {
+  id        String   @id @default(cuid())
+  accountId String
+  url       String
+  imageUrl  String?
+  fetchedAt DateTime @default(now())
+
+  @@unique([accountId, url])
+}
+
 // ─── Account Ownership System ─────────────────────────────────────────────────
 // The engine and Slack ownership flow are the system of record; Notion is a
 // read-only source that only answers "which stores exist".
