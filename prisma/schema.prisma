@@ -527,6 +527,7 @@ model Product {
   barcode     String?  // GTIN/EAN — the key that identifies the product on Google Shopping
   vendor      String?  // brand/vendor as set in Shopify
   url         String?  // public product page (onlineStoreUrl, else built from the shop domain)
+  imageUrl    String?  // featured product image (client-facing dashboards)
   updatedAt   DateTime @updatedAt
 
   @@unique([accountId, externalId])

@@ -3,6 +3,26 @@
 A running record of what changed, where, and why — judged against the prime
 directive: **clean UI + seamless UX, everything simpler.** Newest first.
 
+## 2026-07-21 — Client dashboard v2: photos, gamification, shareable story
+
+Made the client share page feel alive and postable (vs. a plain table):
+
+- **Product photos** in the top-products list — `imageUrl` on `Product`
+  (migration `0035`) + `featuredImage` pulled in the catalog sync; matched to
+  landing-page products by title, with a coloured-initial tile fallback when no
+  image (or the image fails to load).
+- **Gamification** — period-over-period deltas (`deltas` in `/api/share`) shown
+  as ▲/▼ badges on revenue and orders/conversions ("▲210% vs. previous period").
+- **Playful revenue equivalent** — "with this revenue you could've bought
+  4 scooters 😄" (a fanciness-scaled tangible; NL/EN).
+- **Downloadable Instagram-story card** — a "Deel als story" button renders a
+  1080×1920 pure-SVG card (ROAS hero, revenue, the equivalent, spend/orders) and
+  exports it to PNG client-side (no library, no cross-origin taint) — ready to
+  post straight to a story.
+
+Deferred (data-sensitive, needs care): a "better than X% of comparable stores"
+percentile — it touches other clients' data, so it gets its own anonymised pass.
+
 ## 2026-07-21 — Client-facing share dashboard (read-only, per-account link)
 
 A public, read-only performance page a specialist can share with a client —

@@ -28,17 +28,18 @@ export async function GET(_req: NextRequest, { params }: Params) {
   });
   if (!account) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const since = new Date(); since.setUTCDate(since.getUTCDate() - 91);
-  const sinceYmd = since.toISOString().slice(0, 10);
+  const ago = (n: number) => { const d = new Date(); d.setUTCDate(d.getUTCDate() - n); return d.toISOString().slice(0, 10); };
+  // 181 days so a 90-day window can be compared against the prior 90 days.
+  const sinceYmd = ago(181);
   const todayYmd = new Date().toISOString().slice(0, 10);
-  const win30 = new Date(); win30.setUTCDate(win30.getUTCDate() - 30);
-  const win30Ymd = win30.toISOString().slice(0, 10);
-  const endYmd = new Date(Date.now() - 864e5).toISOString().slice(0, 10);
+  const win30Ymd = ago(30);
+  const endYmd = ago(1);
 
-  const [mRows, oRows, pRows] = await Promise.all([
+  const [mRows, oRows, pRows, catalog] = await Promise.all([
     prisma.metricDaily.findMany({ where: { accountId: account.id, date: { gte: sinceYmd } }, select: { date: true, spend: true, clicks: true, conversions: true, conversionValue: true } }),
     prisma.orderDaily.findMany({ where: { accountId: account.id, date: { gte: sinceYmd } }, select: { date: true, orders: true, revenue: true } }),
     prisma.metricProductDaily.findMany({ where: { accountId: account.id, date: { gte: win30Ymd, lte: endYmd } }, select: { landingPageUrl: true, spend: true, clicks: true, conversions: true, conversionValue: true } }),
+    prisma.product.findMany({ where: { accountId: account.id, imageUrl: { not: null } }, select: { title: true, imageUrl: true } }),
   ]);
 
   // Collapse per-campaign metric rows to per-day.
@@ -53,8 +54,24 @@ export async function GET(_req: NextRequest, { params }: Params) {
     .filter(w => [7, 30, 90].includes(w.days))
     .map(w => ({ days: w.days, spend: w.spend, conversions: w.conversions, roas: w.roas, poas: w.poas, orders: w.orders, revenue: w.revenue, partial: w.partial }));
 
+  // Period-over-period deltas (gamification): current window vs the equal window
+  // before it, for spend / revenue / conversions. Null when there's no prior data.
+  const revByDay = new Map(oRows.map(o => [o.date, o.revenue]));
+  const sumBetween = (fromYmd: string, toYmdExcl: string) => {
+    let spend = 0, conversions = 0, revenue = 0;
+    for (const d of perDay.values()) if (d.date >= fromYmd && d.date < toYmdExcl) { spend += d.spend; conversions += d.conversions; }
+    for (const o of oRows) if (o.date >= fromYmd && o.date < toYmdExcl) revenue += o.revenue;
+    return { spend, conversions, revenue };
+  };
+  const pct = (cur: number, prev: number): number | null => prev > 0 ? Math.round(((cur - prev) / prev) * 100) : null;
+  const deltas: Record<number, { spend: number | null; revenue: number | null; conversions: number | null }> = {};
+  for (const n of [7, 30, 90]) {
+    const cur = sumBetween(ago(n), todayYmd);
+    const prev = sumBetween(ago(2 * n), ago(n));
+    deltas[n] = { spend: pct(cur.spend, prev.spend), revenue: pct(cur.revenue, prev.revenue), conversions: pct(cur.conversions, prev.conversions) };
+  }
+
   // Daily trend (last 30 days) — spend + revenue per day for a simple chart.
-  const revByDay = new Map(oRows.map(o => [o.date, (o as { revenue: number }).revenue]));
   const days = [...perDay.values()]
     .filter(d => d.date >= win30Ymd)
     .sort((a, b) => a.date.localeCompare(b.date))
@@ -67,18 +84,29 @@ export async function GET(_req: NextRequest, { params }: Params) {
     e.spend += r.spend; e.clicks += r.clicks; e.conversions += r.conversions; e.conversionValue += r.conversionValue;
     pAgg.set(r.landingPageUrl, e);
   }
+  // Product images from the Shopify catalog, matched to the landing-page product
+  // by normalised title (best-effort; falls back to a placeholder in the UI).
+  const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const imgByTitle = new Map<string, string>();
+  for (const c of catalog) { const k = norm(c.title); if (k && c.imageUrl && !imgByTitle.has(k)) imgByTitle.set(k, c.imageUrl); }
+  const imageFor = (name: string): string | null => {
+    const k = norm(name);
+    if (imgByTitle.has(k)) return imgByTitle.get(k)!;
+    for (const [t, url] of imgByTitle) if (t.length > 5 && (t.includes(k) || k.includes(t))) return url;
+    return null;
+  };
   // Sort by revenue so a client-facing "best performing" list actually leads
   // with the best products (fall back to spend when no revenue is attributed).
   const products = [...pAgg.values()]
     .sort((a, b) => (b.conversionValue - a.conversionValue) || (b.spend - a.spend)).slice(0, 8)
-    .map(p => ({ name: p.name, spend: Math.round(p.spend), clicks: p.clicks, conversions: Math.round(p.conversions), roas: p.spend > 0 ? +(p.conversionValue / p.spend).toFixed(2) : null }));
+    .map(p => ({ name: p.name, image: imageFor(p.name), spend: Math.round(p.spend), clicks: p.clicks, conversions: Math.round(p.conversions), roas: p.spend > 0 ? +(p.conversionValue / p.spend).toFixed(2) : null }));
 
   return NextResponse.json({
     account: { name: account.name, client: account.clientName },
     lang: account.shareLang === "en" ? "en" : "nl",
     currency: SYMBOL[account.currency] ?? `${account.currency} `,
     hasCommerce: oRows.some(o => o.revenue > 0),
-    windows, days, products,
+    windows, deltas, days, products,
     generatedAt: new Date().toISOString(),
   });
 }

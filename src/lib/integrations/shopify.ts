@@ -344,6 +344,7 @@ export interface CatalogProduct {
   barcode: string | null;  // GTIN/EAN — identifies the product on Google Shopping
   vendor: string | null;
   url: string | null;      // public product page
+  imageUrl: string | null; // featured product image (for client-facing views)
 }
 
 const CATALOG_QUERY = `
@@ -352,6 +353,7 @@ query($cursor: String) {
     pageInfo { hasNextPage endCursor }
     nodes {
       id title productType status handle vendor onlineStoreUrl
+      featuredImage { url }
       variants(first: 1) { nodes { price sku barcode } }
     }
   }
@@ -377,6 +379,7 @@ export async function fetchProductCatalog(
       data?: { products?: { pageInfo: { hasNextPage: boolean; endCursor: string | null }; nodes: Array<{
         id: string; title?: string; productType?: string; status?: string;
         handle?: string; vendor?: string; onlineStoreUrl?: string | null;
+        featuredImage?: { url?: string | null } | null;
         variants?: { nodes: Array<{ price?: string; sku?: string; barcode?: string | null }> };
       }> } };
       errors?: unknown;
@@ -393,6 +396,7 @@ export async function fetchProductCatalog(
         externalId: p.id, title: p.title ?? "", productType: p.productType ?? null, status: p.status ?? null,
         price: v?.price != null ? Number(v.price) : null, sku: v?.sku ?? null,
         barcode: v?.barcode || null, vendor: p.vendor || null, url,
+        imageUrl: p.featuredImage?.url || null,
       });
     }
     if (!products.pageInfo.hasNextPage) break;
