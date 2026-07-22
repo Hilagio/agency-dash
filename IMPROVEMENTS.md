@@ -3,6 +3,33 @@
 A running record of what changed, where, and why — judged against the prime
 directive: **clean UI + seamless UX, everything simpler.** Newest first.
 
+## 2026-07-22 — Client dashboard v3: revenue-led, real bestsellers, photos without Shopify
+
+Feedback from the live Celiora link ("dit is gewoon een random lijst… revenue
+staat er niet bij… foto's ontbreken… story is nietszeggend") — rebuilt in the
+style of the client platform the team built before:
+
+- **Revenue front and center.** New `adRevenue` (Google-Ads conversion value)
+  in every window — every account has it, Shopify or not. The page now leads
+  with a hero banner ("€12.031 omzet uit €5.075 aan advertenties — dat is 2,4×
+  terug"), friendly KPI tiles (Verdiend / Rendement / Geïnvesteerd / Bestellingen)
+  and a plain-language summary sentence. Tiered honest headline (uitstekend /
+  goed / neutraal) — no fake celebration on a weak period.
+- **Bestsellers, not an inventory dump.** Top **5** by revenue *generated*,
+  homepage/root pages and zero-conversion rows excluded, value shown big per
+  product (ROAS demoted to the sub-line).
+- **Photos without Shopify.** New `PageImage` cache (migration `0036`) +
+  `src/lib/page-image.ts`: the product page's own `og:image` is fetched
+  server-side (SSRF-guarded, 4s timeout, ≤5 per request, weekly cache) when the
+  Shopify catalog has no image. Coloured-initial tile stays as last fallback.
+- **Story card fixed + revenue-led.** Bug: accounts without Shopify showed the
+  *ad spend* labelled as conversion value (spend fallback) — now uses
+  `adRevenue`. The card leads with revenue, then return, spend, the #1
+  bestseller (name + value), and the playful equivalent. Hero font auto-scales
+  so long amounts fit.
+- Fixed light palette for the share page (client deliverable — always the same
+  look, independent of the app theme).
+
 ## 2026-07-21 — Client dashboard v2: photos, gamification, shareable story
 
 Made the client share page feel alive and postable (vs. a plain table):
