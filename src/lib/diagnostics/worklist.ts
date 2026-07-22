@@ -112,7 +112,7 @@ export async function generateOrgWorklist(organizationId: string): Promise<{ inv
     if (st?.status === "red" || st?.status === "yellow") {
       flagged.push({ acc: { id: a.id, name: a.name, googleAdsId: a.googleAdsId, organizationId: a.organizationId, currency: a.currency, merchantCenterId: a.merchantCenterId }, red: st.status === "red", metrics: st.metrics });
     } else {
-      await prisma.account.update({ where: { id: a.id }, data: { worklist: null, worklistAt: null } }).catch(() => null);
+      await prisma.account.update({ where: { id: a.id }, data: { worklist: null, worklistAt: null, worklistDoneAt: null, worklistDoneBy: null } }).catch(() => null);
       cleared++;
     }
   }
@@ -135,7 +135,7 @@ export async function generateOrgWorklist(organizationId: string): Promise<{ inv
       const t = targets[cursor++];
       try {
         const item = await investigateAccount(t.acc, t.metrics);
-        if (item) { await prisma.account.update({ where: { id: t.acc.id }, data: { worklist: JSON.stringify(item), worklistAt: new Date() } }); investigated++; }
+        if (item) { await prisma.account.update({ where: { id: t.acc.id }, data: { worklist: JSON.stringify(item), worklistAt: new Date(), worklistDoneAt: null, worklistDoneBy: null } }); investigated++; }
       } catch { /* skip this account */ }
     }
   }

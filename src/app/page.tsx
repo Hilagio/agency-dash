@@ -26,6 +26,7 @@ interface Row {
   problemCount: number; opportunityCount: number;
   briefing: string | null; briefingAt: string | null;
   worklist: WorklistItem | null;
+  worklistDoneAt: string | null;
 }
 interface WorklistItem { headline: string; action: string; minutes: number; skill: string; confidence: string; category: string }
 interface Portfolio {
@@ -57,16 +58,6 @@ const segBtn = (active: boolean): React.CSSProperties => ({
   boxShadow: active ? "0 1px 3px rgba(0,0,0,0.10)" : "none",
 });
 
-// The one-line issue shown on a flagged card: the nightly briefing if we have
-// it (the agent's own words), else the strongest signal, plainly.
-function issueText(a: Row): string {
-  if (a.briefing) return a.briefing;
-  if (a.reconciliationMismatch) return "Tracking mismatch — Google Ads conversions don't match real orders. Fix before trusting the numbers.";
-  if (a.worstSignal) return a.worstSignal.title + (a.problemCount > 1 ? ` · +${a.problemCount - 1} more` : "");
-  if (!a.hasData) return "Awaiting data — pull to see what's happening.";
-  return "Flagged — open to see what's going on.";
-}
-
 function relTime(iso: string | null): string {
   if (!iso) return "";
   const h = Math.floor((Date.now() - new Date(iso).getTime()) / 3_600_000);
@@ -86,6 +77,24 @@ export default function PortfolioHome() {
   const [, setViewLoaded] = useState(false);
   const [busyWatch, setBusyWatch] = useState<Set<string>>(new Set());
   const [showAll, setShowAll] = useState(false);
+  const [showDone, setShowDone] = useState(false);
+  const [openRows, setOpenRows] = useState<Set<string>>(new Set());
+
+  // Tick / untick an account's worklist action — optimistic, reverts on failure.
+  async function toggleDone(id: string, next: boolean) {
+    const stamp = next ? new Date().toISOString() : null;
+    setData(prev => prev && ({ ...prev, accounts: prev.accounts.map(a => a.id === id ? { ...a, worklistDoneAt: stamp } : a) }));
+    try {
+      const r = await fetch(`/api/accounts/${id}/worklist-done`, {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" }, body: JSON.stringify({ done: next }),
+      });
+      if (!r.ok) throw new Error();
+    } catch {
+      setData(prev => prev && ({ ...prev, accounts: prev.accounts.map(a => a.id === id ? { ...a, worklistDoneAt: next ? null : a.worklistDoneAt } : a) }));
+    }
+  }
+  const toggleOpen = (id: string) => setOpenRows(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   const [backfill, setBackfill] = useState<{ running: boolean; done: number; total: number }>({ running: false, done: 0, total: 0 });
 
   useEffect(() => {
@@ -305,23 +314,50 @@ export default function PortfolioHome() {
               </div>
             ) : (
             <>
-              {/* NEEDS ATTENTION — the flagged accounts, cockpit-style */}
+              {/* TODAY'S ACTIONS — the flagged accounts as a checkable to-do list.
+                  One line per account: tick it off when handled; the reasoning
+                  paragraph stays behind the chevron for whoever wants it. */}
               {flagged.length > 0 ? (
                 <section style={{ marginBottom: 18 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 11, flexWrap: "wrap" }}>
-                    <AlertTriangle size={15} style={{ color: "var(--danger)" }} />
-                    <span style={{ fontSize: 14, fontWeight: 800, letterSpacing: "-0.3px" }}>Needs attention</span>
-                    <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{flagged.length} account{flagged.length === 1 ? "" : "s"} flagged by the nightly checks — worst first</span>
-                    {(() => {
-                      const withPlan = flagged.filter(a => a.worklist);
-                      const mins = withPlan.reduce((s, a) => s + (a.worklist?.minutes ?? 0), 0);
-                      if (!withPlan.length) return null;
-                      return <span style={{ marginLeft: "auto", fontSize: 11.5, fontWeight: 600, color: "var(--accent)", background: "var(--accent-dim)", border: "1px solid color-mix(in srgb, var(--accent) 25%, var(--border))", borderRadius: 999, padding: "3px 11px" }}>Your day: {withPlan.length} action{withPlan.length === 1 ? "" : "s"} · ~{mins < 60 ? `${mins} min` : `${(mins / 60).toFixed(1)}h`}</span>;
-                    })()}
-                  </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
-                    {flagged.map(a => <RadarCard key={a.id} a={a} busy={busyWatch.has(a.id)} onWatch={() => toggleWatch(a.id, !a.watched)} />)}
-                  </div>
+                  {(() => {
+                    const todo = flagged.filter(a => !a.worklistDoneAt);
+                    const done = flagged.filter(a => !!a.worklistDoneAt);
+                    const mins = todo.reduce((s, a) => s + (a.worklist?.minutes ?? 0), 0);
+                    return (
+                      <>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 11, flexWrap: "wrap" }}>
+                          <ListChecks size={15} style={{ color: "var(--danger)" }} />
+                          <span style={{ fontSize: 14, fontWeight: 800, letterSpacing: "-0.3px" }}>Today&rsquo;s actions</span>
+                          <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{todo.length} open · worst first{mins ? ` · ~${mins < 60 ? `${mins} min` : `${(mins / 60).toFixed(1)}h`}` : ""}</span>
+                          {done.length > 0 && (
+                            <button onClick={() => setShowDone(s => !s)} style={{ marginLeft: "auto", fontSize: 11.5, fontWeight: 600, color: "var(--accent)", background: "var(--accent-dim)", border: "1px solid color-mix(in srgb, var(--accent) 25%, var(--border))", borderRadius: 999, padding: "3px 11px", cursor: "pointer" }}>
+                              ✓ {done.length} done today{showDone ? " — hide" : ""}
+                            </button>
+                          )}
+                        </div>
+                        <div style={{ ...card, overflow: "hidden" }}>
+                          {todo.map((a, i) => (
+                            <ActionRow key={a.id} a={a} first={i === 0} open={openRows.has(a.id)}
+                              onToggleOpen={() => toggleOpen(a.id)} onDone={() => toggleDone(a.id, true)} />
+                          ))}
+                          {todo.length === 0 && (
+                            <div style={{ padding: "22px 18px", textAlign: "center", fontSize: 13, color: "var(--text-muted)" }}>
+                              <CheckCircle2 size={18} style={{ color: "var(--accent)", verticalAlign: -4, marginRight: 7 }} />
+                              All actions ticked off — nice. The nightly checks bring tomorrow&rsquo;s list.
+                            </div>
+                          )}
+                        </div>
+                        {showDone && done.length > 0 && (
+                          <div style={{ ...card, overflow: "hidden", marginTop: 8, opacity: 0.75 }}>
+                            {done.map((a, i) => (
+                              <ActionRow key={a.id} a={a} first={i === 0} done open={openRows.has(a.id)}
+                                onToggleOpen={() => toggleOpen(a.id)} onDone={() => toggleDone(a.id, false)} />
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
                 </section>
               ) : (
                 <section style={{ ...card, padding: "26px 20px", textAlign: "center", marginBottom: 18, background: "linear-gradient(160deg, var(--accent-dim), transparent), var(--surface)", border: "1px solid color-mix(in srgb, var(--accent) 22%, var(--border))" }}>
@@ -452,53 +488,52 @@ export default function PortfolioHome() {
   );
 }
 
-function RadarCard({ a, busy, onWatch }: { a: Row; busy: boolean; onWatch: () => void }) {
+/** One line of the to-do list: tick it, scan it, expand it, or open the account. */
+function ActionRow({ a, first, open, done, onToggleOpen, onDone }: { a: Row; first: boolean; open: boolean; done?: boolean; onToggleOpen: () => void; onDone: () => void }) {
   const red = a.status === "red";
+  // The one-liner: the planned action's short headline; else the strongest
+  // signal; else the first sentence of the briefing.
+  const oneLiner = a.worklist?.headline || a.worklist?.action || a.worstSignal?.title
+    || (a.briefing ? a.briefing.split(/(?<=[.!?])\s/)[0] : "Open to see what's going on.");
   return (
-    <div style={{
-      ...card, position: "relative", padding: "13px 15px",
-      borderColor: red ? "color-mix(in srgb, var(--danger) 45%, var(--border))" : "color-mix(in srgb, var(--accent-2) 40%, var(--border))",
-      background: red ? "linear-gradient(160deg, color-mix(in srgb, var(--danger) 7%, transparent), transparent), var(--surface)" : "var(--surface)",
-    }}>
-      <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-        <span title={STATUS_LABEL[a.status]} style={{ width: 10, height: 10, borderRadius: "50%", background: STATUS_COLOR[a.status], flexShrink: 0, marginTop: 4, boxShadow: red ? "0 0 0 4px color-mix(in srgb, var(--danger) 18%, transparent)" : "none" }} />
-        <Link href={`/diagnose/${a.id}`} style={{ textDecoration: "none", color: "inherit", flex: 1, minWidth: 0 }}>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
-            <span style={{ fontSize: 14, fontWeight: 800, letterSpacing: "-0.3px" }}>{a.name}</span>
-            {a.clientName && <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{a.clientName}</span>}
-            <span style={{ fontSize: 10.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.4, color: red ? "var(--danger)" : "var(--accent-2)" }}>{STATUS_LABEL[a.status]}</span>
-            {a.briefingAt && <span style={{ fontSize: 11, color: "var(--text-dim)" }}>· noticed {relTime(a.briefingAt)}</span>}
-          </div>
-          <div style={{ fontSize: 12.5, color: "var(--text-2)", lineHeight: 1.5, marginTop: 4 }}>{issueText(a)}</div>
-          {a.worklist && (
-            <div style={{ marginTop: 8, padding: "8px 11px", borderRadius: 9, background: "var(--accent-dim)", border: "1px solid color-mix(in srgb, var(--accent) 22%, var(--border))" }}>
-              <div style={{ fontSize: 12.5, color: "var(--text)", lineHeight: 1.45 }}><strong style={{ color: "var(--accent)" }}>Next:</strong> {a.worklist.action}</div>
-              <div style={{ display: "flex", gap: 7, marginTop: 6, flexWrap: "wrap", alignItems: "center" }}>
-                <span style={{ fontSize: 10.5, fontWeight: 700, color: "var(--text-2)", background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: 6, padding: "2px 7px" }}>~{a.worklist.minutes} min</span>
-                {a.worklist.skill && a.worklist.skill !== "none" && (
-                  <span style={{ fontSize: 10.5, fontWeight: 700, color: a.worklist.skill === "off-platform" ? "var(--danger, #dc2626)" : "var(--accent)", background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: 6, padding: "2px 7px", fontFamily: a.worklist.skill.startsWith("/") ? "ui-monospace, monospace" : "inherit" }}>{a.worklist.skill === "off-platform" ? "off-platform (client)" : a.worklist.skill}</span>
-                )}
-                <span style={{ fontSize: 10, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 0.3 }}>{a.worklist.confidence} confidence</span>
-              </div>
-            </div>
+    <div style={{ borderTop: first ? "none" : "1px solid var(--border)" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px" }}>
+        <button onClick={onDone} title={done ? "Mark as not done" : "Mark this action as done"}
+          style={{ width: 20, height: 20, borderRadius: 6, flexShrink: 0, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center",
+            border: done ? "none" : "1.5px solid var(--border-3, var(--border-2))", background: done ? "var(--accent)" : "transparent", color: "#fff" }}>
+          {done && <CheckCircle2 size={14} />}
+        </button>
+        <span title={STATUS_LABEL[a.status]} style={{ width: 8, height: 8, borderRadius: "50%", background: STATUS_COLOR[a.status], flexShrink: 0, boxShadow: red && !done ? "0 0 0 3px color-mix(in srgb, var(--danger) 16%, transparent)" : "none" }} />
+        <Link href={`/diagnose/${a.id}`} style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", textDecoration: "none", whiteSpace: "nowrap", flexShrink: 0 }}>{a.name}</Link>
+        <span onClick={onToggleOpen} style={{ flex: 1, minWidth: 0, fontSize: 12.5, color: done ? "var(--text-dim)" : "var(--text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "pointer", textDecoration: done ? "line-through" : "none" }}>
+          {oneLiner}
+        </span>
+        {a.worklist?.minutes ? <span style={{ fontSize: 10.5, fontWeight: 700, color: "var(--text-2)", background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 6, padding: "2px 7px", flexShrink: 0 }}>~{a.worklist.minutes}m</span> : null}
+        {a.worklist?.skill === "off-platform" && <span style={{ fontSize: 10.5, fontWeight: 700, color: "var(--danger, #dc2626)", background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 6, padding: "2px 7px", flexShrink: 0 }}>client</span>}
+        <span style={{ fontSize: 11.5, color: "var(--text-muted)", fontVariantNumeric: "tabular-nums", flexShrink: 0, minWidth: 52, textAlign: "right" }}>{a.hasData ? money(a.spend) : ""}</span>
+        <button onClick={onToggleOpen} title={open ? "Hide the reasoning" : "Why is this flagged?"}
+          style={{ background: "none", border: "none", cursor: "pointer", display: "inline-flex", padding: 3, color: "var(--text-dim)", flexShrink: 0 }}>
+          <ChevronDown size={15} style={{ transform: open ? "none" : "rotate(-90deg)", transition: "transform .12s" }} />
+        </button>
+        <Link href={`/diagnose/${a.id}`} title="Open the account" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 26, height: 26, borderRadius: 7, background: done ? "var(--surface-2)" : red ? "var(--danger)" : "var(--accent)", color: done ? "var(--text-3)" : "#fff", flexShrink: 0 }}>
+          <ArrowRight size={14} />
+        </Link>
+      </div>
+      {open && (
+        <div style={{ padding: "0 14px 12px 52px" }}>
+          {a.briefing && <div style={{ fontSize: 12.5, color: "var(--text-2)", lineHeight: 1.55 }}>{a.briefing}</div>}
+          {a.worklist && a.worklist.action !== oneLiner && (
+            <div style={{ fontSize: 12.5, color: "var(--text)", lineHeight: 1.5, marginTop: 7 }}><strong style={{ color: "var(--accent)" }}>Next:</strong> {a.worklist.action}</div>
           )}
           <div style={{ display: "flex", gap: 16, marginTop: 9, flexWrap: "wrap" }}>
             {a.hasData && <Stat label="Spend 7d" value={money(a.spend)} />}
             {a.poas != null && <Stat label="POAS" value={a.poas.toFixed(2)} danger={a.poas < 1} />}
             {a.roas != null && <Stat label="ROAS" value={a.roas.toFixed(2)} />}
             {a.orders != null && <Stat label="Orders" value={String(a.orders)} />}
+            {a.briefingAt && <Stat label="Noticed" value={relTime(a.briefingAt)} />}
           </div>
-        </Link>
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, flexShrink: 0 }}>
-          <button title={a.watched ? "Unpin" : "Pin to My accounts"} onClick={onWatch} disabled={busy}
-            style={{ background: "none", border: "none", cursor: busy ? "default" : "pointer", display: "inline-flex", padding: 2, color: a.watched ? "#e0a92e" : "var(--text-dim)" }}>
-            <Star size={15} style={{ fill: a.watched ? "currentColor" : "none" }} />
-          </button>
-          <Link href={`/diagnose/${a.id}`} title="Open the read" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 30, height: 30, borderRadius: 8, background: red ? "var(--danger)" : "var(--accent)", color: "#fff" }}>
-            <ArrowRight size={15} />
-          </Link>
         </div>
-      </div>
+      )}
     </div>
   );
 }

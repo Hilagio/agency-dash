@@ -166,6 +166,11 @@ model Account {
   // these into each specialist's ranked plan for the day. Cleared when green.
   worklist       String?   // JSON: { headline, action, minutes, skill, confidence, category }
   worklistAt     DateTime?
+  // Specialist ticked the action off (cockpit/diagnose checkbox). Cleared by the
+  // nightly worklist run when it writes a NEW action, so "done" never leaks onto
+  // tomorrow's item.
+  worklistDoneAt DateTime?
+  worklistDoneBy String?
 
   // ─── Merchant Center (for price competitiveness) ─────────────────────────
   // Auto-discovered via product_link on first load; set manually as fallback

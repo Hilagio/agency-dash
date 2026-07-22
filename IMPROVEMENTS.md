@@ -3,6 +3,35 @@
 A running record of what changed, where, and why — judged against the prime
 directive: **clean UI + seamless UX, everything simpler.** Newest first.
 
+## 2026-07-22 — Cockpit: checkable action list · audit PDF/print + always-English
+
+Feedback on the cockpit with 27 flagged accounts: "this is making me blind to
+the problems — I don't want to read them." Reading is now optional; doing is
+the interface:
+
+- **Today's actions.** The flagged section is a checklist, not prose: one row
+  per account — checkbox, status dot, name, the single next action (from the
+  nightly worklist), ~minutes chip, "client" chip when the fix is off-platform,
+  spend, and a chevron that expands the full briefing for the rare deep-read.
+  Header totals the open items and estimated minutes; ticked rows collapse into
+  a "✓ N done today" toggle; an all-ticked day shows a clean empty state.
+- **Mark as complete, everywhere.** New `worklistDoneAt/worklistDoneBy` on
+  `Account` (migration `0037`) + `POST /api/accounts/[id]/worklist-done`. The
+  same checkbox sits on the account page's "Next:" line (strike-through when
+  done). The nightly worklist run clears the flag whenever it writes a new
+  action, so yesterday's tick never hides today's problem.
+- **Audit report survives Save-as-PDF.** `renderAuditHtml` now emits a full
+  HTML document with embedded print CSS: `print-color-adjust:exact` keeps the
+  score ring, hero and chart bars from vanishing; `break-inside:avoid` stops
+  cards splitting across pages; the KPI and persona `auto-fit` grids get fixed
+  print columns (4 / 2) so the PDF aligns instead of collapsing to one column.
+  Bar segments carry their labels inline ("6 hesitant") with a min-width so
+  small segments stay readable.
+- **Audits are always English.** All three audit prompts (persona builder,
+  judge, fixes) now pin the output language to English regardless of the
+  page's language (French sites were producing French reports); the page's own
+  copy may still be quoted verbatim.
+
 ## 2026-07-22 — Client dashboard v3: revenue-led, real bestsellers, photos without Shopify
 
 Feedback from the live Celiora link ("dit is gewoon een random lijst… revenue

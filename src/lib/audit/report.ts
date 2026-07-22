@@ -10,7 +10,7 @@ const badge = (label: string, val: string, color: string) =>
 
 function personaCard(p: PersonaVerdict, action: string): string {
   const c = convColor(p.wouldConvert);
-  return `<div style="border:1px solid #e6ebf0;border-left:4px solid ${c};border-radius:10px;padding:13px 15px;background:#fff">
+  return `<div class="avoid" style="border:1px solid #e6ebf0;border-left:4px solid ${c};border-radius:10px;padding:13px 15px;background:#fff">
     <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
       <strong style="font-size:13.5px;color:${INK}">${esc(p.name)}</strong>
       <span style="font-size:10.5px;color:#8a97a6;text-transform:uppercase;letter-spacing:.4px">${esc(p.device)}</span>
@@ -25,7 +25,7 @@ function personaCard(p: PersonaVerdict, action: string): string {
 function fixCard(f: AuditFix): string {
   const impC = f.impact === "high" ? GREEN : f.impact === "low" ? "#8a97a6" : AMBER;
   const effC = f.effort === "easy" ? GREEN : f.effort === "hard" ? RED : AMBER;
-  return `<div style="border:1px solid #e6ebf0;border-left:4px solid ${INK};border-radius:10px;padding:14px 16px;background:#fff">
+  return `<div class="avoid" style="border:1px solid #e6ebf0;border-left:4px solid ${INK};border-radius:10px;padding:14px 16px;background:#fff">
     <div style="display:flex;gap:12px;align-items:baseline"><span style="font-size:20px;font-weight:800;color:#c3ccd6">${f.rank}</span><strong style="font-size:14px;color:${INK}">${esc(f.title)}</strong></div>
     <div style="font-size:12.5px;color:#5a6b7b;margin:8px 0 4px"><strong style="color:${INK}">Problem:</strong> ${esc(f.problem)}</div>
     <div style="font-size:12.5px;color:#5a6b7b;margin-bottom:9px"><strong style="color:${INK}">Fix:</strong> ${esc(f.fix)}</div>
@@ -36,7 +36,7 @@ function fixCard(f: AuditFix): string {
 function bar(label: string, segs: { n: number; color: string; text: string }[]): string {
   const total = segs.reduce((s, x) => s + x.n, 0) || 1;
   return `<div style="margin-bottom:12px"><div style="font-size:12px;font-weight:600;color:${INK};margin-bottom:5px">${esc(label)}</div>
-    <div style="display:flex;height:26px;border-radius:7px;overflow:hidden">${segs.filter(s => s.n > 0).map(s => `<div style="flex:${s.n};background:${s.color};color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center" title="${esc(s.text)}">${s.n}</div>`).join("")}</div></div>`;
+    <div style="display:flex;height:26px;border-radius:7px;overflow:hidden">${segs.filter(s => s.n > 0).map(s => `<div style="flex:${s.n};min-width:30px;background:${s.color};color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center" title="${esc(s.text)}">${s.n} ${esc(s.text)}</div>`).join("")}</div></div>`;
 }
 
 export function renderAuditHtml(r: AuditResult, date: string): string {
@@ -48,8 +48,24 @@ export function renderAuditHtml(r: AuditResult, date: string): string {
   const uP = r.personas.filter(p => p.understood === "partly").length;
   const uN = r.personas.filter(p => p.understood === "no").length;
   const action = r.pageType === "ecom" ? "buy" : "submit";
-  return `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:${INK};background:#f4f6f8;padding:22px;max-width:900px;margin:0 auto">
-    <div style="background:linear-gradient(135deg,#0f2942,#173a5c);color:#fff;border-radius:16px;padding:24px 26px;display:flex;gap:22px;align-items:center;flex-wrap:wrap">
+  // Full document (rendered in an iframe via srcDoc): the <style> block is what
+  // keeps colors, the score ring, and the grids intact when the user prints the
+  // iframe to PDF — browsers strip backgrounds unless print-color-adjust is set.
+  const css = `
+    *{-webkit-print-color-adjust:exact;print-color-adjust:exact;box-sizing:border-box}
+    html,body{margin:0;padding:0;background:#f4f6f8}
+    @page{size:A4;margin:10mm}
+    @media print{
+      body{background:#fff}
+      .wrap{padding:0 !important;max-width:none !important}
+      .avoid{break-inside:avoid;page-break-inside:avoid}
+      .hero{break-inside:avoid;page-break-inside:avoid}
+      .kpis{display:grid !important;grid-template-columns:repeat(4,1fr) !important}
+      .personas{display:grid !important;grid-template-columns:repeat(2,1fr) !important}
+      h3{break-after:avoid;page-break-after:avoid}
+    }`;
+  return `<!doctype html><html><head><meta charset="utf-8"><title>Page audit · ${esc(r.finalUrl)}</title><style>${css}</style></head><body><div class="wrap" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:${INK};background:#f4f6f8;padding:22px;max-width:900px;margin:0 auto">
+    <div class="hero" style="background:linear-gradient(135deg,#0f2942,#173a5c);color:#fff;border-radius:16px;padding:24px 26px;display:flex;gap:22px;align-items:center;flex-wrap:wrap">
       <div style="width:96px;height:96px;border-radius:50%;border:8px solid ${scoreColor};display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0">
         <span style="font-size:30px;font-weight:800;line-height:1">${r.score}</span><span style="font-size:10px;opacity:.7">/100 · ${esc(r.grade)}</span>
       </div>
@@ -60,7 +76,7 @@ export function renderAuditHtml(r: AuditResult, date: string): string {
       </div>
     </div>
     ${r.summary ? `<p style="font-size:14px;line-height:1.6;color:#3a4a5a;margin:18px 4px">${esc(r.summary)}</p>` : ""}
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:16px 0">
+    <div class="kpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:16px 0">
       ${[[`${yes}/${r.total}`, `Would ${action}`, yes ? GREEN : RED], [`${uY}/${r.total}`, "Understood the offer", GREEN], [`${r.total}`, "Personas", INK], [r.renderMode === "browser" ? "browser" : "fetch", "Render mode", INK]].map(([v, l, c]) => `<div style="background:#fff;border:1px solid #e6ebf0;border-radius:12px;padding:16px;text-align:center"><div style="font-size:24px;font-weight:800;color:${c}">${esc(String(v))}</div><div style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#8a97a6;margin-top:3px">${esc(String(l))}</div></div>`).join("")}
     </div>
     <div style="background:#fff;border:1px solid #e6ebf0;border-radius:12px;padding:16px;margin-bottom:18px">
@@ -70,6 +86,6 @@ export function renderAuditHtml(r: AuditResult, date: string): string {
     <h3 style="font-size:16px;margin:0 4px 12px">The ${r.fixes.length} fixes that matter</h3>
     <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:22px">${r.fixes.map(fixCard).join("") || '<div style="color:#8a97a6;font-size:13px">No fixes generated.</div>'}</div>
     <h3 style="font-size:16px;margin:0 4px 12px">The ${r.personas.length} personas in detail</h3>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px">${r.personas.map(p => personaCard(p, action)).join("")}</div>
-  </div>`;
+    <div class="personas" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px">${r.personas.map(p => personaCard(p, action)).join("")}</div>
+  </div></body></html>`;
 }
