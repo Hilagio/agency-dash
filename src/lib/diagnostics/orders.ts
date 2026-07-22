@@ -67,8 +67,8 @@ export async function ingestAccountOrders(accountId: string, days = 14): Promise
     for (const p of catalog) {
       await prisma.product.upsert({
         where: { accountId_externalId: { accountId, externalId: p.externalId } },
-        create: { accountId, externalId: p.externalId, title: p.title, productType: p.productType, status: p.status, price: p.price, sku: p.sku, barcode: p.barcode, vendor: p.vendor, url: p.url },
-        update: { title: p.title, productType: p.productType, status: p.status, price: p.price, sku: p.sku, barcode: p.barcode, vendor: p.vendor, url: p.url },
+        create: { accountId, externalId: p.externalId, title: p.title, productType: p.productType, status: p.status, price: p.price, sku: p.sku, barcode: p.barcode, vendor: p.vendor, url: p.url, imageUrl: p.imageUrl },
+        update: { title: p.title, productType: p.productType, status: p.status, price: p.price, sku: p.sku, barcode: p.barcode, vendor: p.vendor, url: p.url, imageUrl: p.imageUrl },
       });
     }
 
