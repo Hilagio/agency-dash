@@ -286,6 +286,7 @@ interface Briefing {
   at: string | null;
   worklist: { headline?: string; action: string; minutes: number; skill: string; confidence: string; category?: string } | null;
   worklistAt: string | null;
+  worklistDoneAt: string | null;
 }
 interface Trend { acuteDrop: boolean; spendSpike: boolean; note: string | null; }
 interface ShopifyStatus { appConfigured: boolean; connected: boolean; shopDomain: string | null; lastSyncAt: string | null; shopName?: string | null; }
@@ -405,6 +406,22 @@ export default function DiagnosePage() {
   const [watchBusy, setWatchBusy] = useState(false);
   const [shareState, setShareState] = useState<"idle" | "copying" | "copied">("idle");
   const [shareOpen, setShareOpen] = useState(false); // language chooser open
+
+  // Tick / untick the nightly worklist action — same state the cockpit list shows.
+  async function toggleWorklistDone() {
+    if (!briefing) return;
+    const next = !briefing.worklistDoneAt;
+    setBriefing(b => b && ({ ...b, worklistDoneAt: next ? new Date().toISOString() : null }));
+    try {
+      const r = await fetch(`/api/accounts/${id}/worklist-done`, {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" }, body: JSON.stringify({ done: next }),
+      });
+      if (!r.ok) throw new Error();
+    } catch {
+      setBriefing(b => b && ({ ...b, worklistDoneAt: next ? null : b.worklistDoneAt }));
+    }
+  }
 
   // Generate (or fetch) the client-facing share link in the chosen language and
   // copy it to the clipboard. The language is stored on the account.
@@ -1110,7 +1127,13 @@ export default function DiagnosePage() {
                 <div style={{ fontSize: 13.5, lineHeight: 1.55, color: "var(--text-2)" }}>{briefing.text}</div>
                 {briefing.worklist && (
                   <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--border-2)", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                    <span style={{ fontSize: 13, color: "var(--text)" }}><strong style={{ color: "var(--accent)" }}>Next:</strong> {briefing.worklist.action}</span>
+                    {/* Same tick as the cockpit list — done here shows there. */}
+                    <button onClick={toggleWorklistDone} title={briefing.worklistDoneAt ? "Mark as not done" : "Mark this action as done"}
+                      style={{ width: 20, height: 20, borderRadius: 6, flexShrink: 0, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center",
+                        border: briefing.worklistDoneAt ? "none" : "1.5px solid var(--border-3, var(--border-2))", background: briefing.worklistDoneAt ? "var(--accent)" : "transparent", color: "#fff" }}>
+                      {briefing.worklistDoneAt && <CheckCircle2 size={14} />}
+                    </button>
+                    <span style={{ fontSize: 13, color: "var(--text)", textDecoration: briefing.worklistDoneAt ? "line-through" : "none", opacity: briefing.worklistDoneAt ? 0.6 : 1 }}><strong style={{ color: "var(--accent)" }}>Next:</strong> {briefing.worklist.action}</span>
                     <span style={{ fontSize: 10.5, fontWeight: 700, color: "var(--text-2)", background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 6, padding: "2px 7px" }}>~{briefing.worklist.minutes} min</span>
                     {briefing.worklist.skill && briefing.worklist.skill !== "none" && (
                       <span style={{ fontSize: 10.5, fontWeight: 700, color: briefing.worklist.skill === "off-platform" ? "var(--danger, #dc2626)" : "var(--accent)", background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 6, padding: "2px 7px", fontFamily: briefing.worklist.skill.startsWith("/") ? "ui-monospace, monospace" : "inherit" }}>{briefing.worklist.skill === "off-platform" ? "off-platform (client)" : briefing.worklist.skill}</span>

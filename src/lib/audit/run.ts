@@ -52,7 +52,7 @@ async function buildIntentPersonas(pageType: PageType, offer: string, intentSour
   try {
     const msg = await client.messages.create({
       model: "claude-sonnet-5", max_tokens: 1500,
-      system: "You build realistic visitor personas for a conversion audit. Return only JSON.",
+      system: "You build realistic visitor personas for a conversion audit. Return only JSON. ALWAYS write your output in English, regardless of the language of the page — persona names, hurdles, quotes, fixes, everything. You may quote the page's own copy verbatim inside quotation marks.",
       messages: [{ role: "user", content: personaBuilderPrompt(pageType, offer, intentSource, count, pageSummary) }],
     });
     const text = msg.content.filter(b => b.type === "text").map(b => (b as { text: string }).text).join("");
@@ -80,7 +80,7 @@ function dossierBlock(d: PageDossier): string {
 }
 
 async function judge(persona: Persona, pageType: PageType, offer: string, dossier: PageDossier): Promise<PersonaVerdict> {
-  const sys = `You ARE this one visitor, judging a ${pageType === "ecom" ? "product/landing" : "lead-gen"} page alone and honestly — slightly uncomfortable honesty is the point. The conversion action is to ${conversion(pageType)}. Judge ONLY from what's actually on the page below (you're on ${persona.device}). Don't be nice; if something blocks you, say the specific, nameable thing.`;
+  const sys = `You ARE this one visitor, judging a ${pageType === "ecom" ? "product/landing" : "lead-gen"} page alone and honestly — slightly uncomfortable honesty is the point. The conversion action is to ${conversion(pageType)}. Judge ONLY from what's actually on the page below (you're on ${persona.device}). Don't be nice; if something blocks you, say the specific, nameable thing. ALWAYS write your output in English, regardless of the language of the page — persona names, hurdles, quotes, fixes, everything. You may quote the page's own copy verbatim inside quotation marks.`;
   const user = `WHO YOU ARE: ${persona.name} — ${persona.intent}. You arrived from: ${persona.arrivedFrom}. ${persona.brief}
 
 THE OFFER (what the business wants you to do): ${offer || "(infer from the page)"}
@@ -123,7 +123,7 @@ const gradeOf = (s: number): { grade: string; label: string } =>
 
 async function synthesise(pageType: PageType, offer: string, dossier: PageDossier, verdicts: PersonaVerdict[], rejected: string[]): Promise<{ summary: string; fixes: AuditFix[] }> {
   const vBlock = verdicts.map(v => `- ${v.name} [${v.device}]: understood=${v.understood}, wouldConvert=${v.wouldConvert}, intentMatch=${v.intentMatch}. Hurdle: ${v.hurdle || "none"}. "${v.quote}"`).join("\n");
-  const sys = `You are a senior CRO specialist. From the personas' independent verdicts, produce the ranked list of fixes that would win back the most conversions on THIS page. Concrete, page-specific, no generic advice. Rank by effect on intent to ${conversion(pageType)}. The hesitant personas are the lever — each is stuck on a nameable thing.`;
+  const sys = `You are a senior CRO specialist. From the personas' independent verdicts, produce the ranked list of fixes that would win back the most conversions on THIS page. Concrete, page-specific, no generic advice. Rank by effect on intent to ${conversion(pageType)}. The hesitant personas are the lever — each is stuck on a nameable thing. ALWAYS write your output in English, regardless of the language of the page — persona names, hurdles, quotes, fixes, everything. You may quote the page's own copy verbatim inside quotation marks.`;
   const user = `OFFER: ${offer}
 PAGE (${dossier.renderMode} render): ${dossierBlock(dossier).slice(0, 3500)}
 

@@ -64,7 +64,7 @@ async function handle(id: string, orgId: string, userId: string) {
       roasFloor: true, grossMarginPercent: true, minSpendForEval: true, minConversionsForEval: true,
       trackingStatus: true, trackingNote: true, trackingSetAt: true, trackingSetBy: true,
       merchantCenterId: true, slackChannelId: true, slackChannelName: true,
-      briefing: true, briefingAt: true, worklist: true, worklistAt: true,
+      briefing: true, briefingAt: true, worklist: true, worklistAt: true, worklistDoneAt: true,
     },
   });
   if (!account) return NextResponse.json({ error: "This account isn't in your organization, or doesn't exist." }, { status: 404 });
@@ -278,7 +278,7 @@ async function handle(id: string, orgId: string, userId: string) {
   // The nightly opener + planned next action — the same message the cockpit
   // shows, so the reasoning that flagged this account is visible in-account too.
   const briefing = account.briefing
-    ? { text: account.briefing, at: account.briefingAt, worklist: (() => { try { return account.worklist ? JSON.parse(account.worklist) : null; } catch { return null; } })(), worklistAt: account.worklistAt }
+    ? { text: account.briefing, at: account.briefingAt, worklist: (() => { try { return account.worklist ? JSON.parse(account.worklist) : null; } catch { return null; } })(), worklistAt: account.worklistAt, worklistDoneAt: account.worklistDoneAt ?? null }
     : null;
 
   return NextResponse.json({ diagnosis, briefing, windows, trend, shopify, connections, products, productPages, wins, tracking, watched, hasData: !!diag });
