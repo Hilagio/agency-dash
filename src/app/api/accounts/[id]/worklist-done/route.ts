@@ -17,8 +17,9 @@ export async function POST(req: Request, { params }: Params) {
   const { id } = await params;
   const body = await req.json().catch(() => ({}));
   const done = !!body?.done;
+  const source = body?.source === "cockpit" ? "cockpit" : "account";
 
-  const account = await prisma.account.findFirst({ where: { id, organizationId: ctx.orgId }, select: { id: true } });
+  const account = await prisma.account.findFirst({ where: { id, organizationId: ctx.orgId }, select: { id: true, worklist: true } });
   if (!account) return forbidden();
 
   const updated = await prisma.account.update({
@@ -26,5 +27,21 @@ export async function POST(req: Request, { params }: Params) {
     data: done ? { worklistDoneAt: new Date(), worklistDoneBy: ctx.email } : { worklistDoneAt: null, worklistDoneBy: null },
     select: { worklistDoneAt: true, worklistDoneBy: true },
   });
+
+  // A tick is a claim, not proof. From the cockpit (no conversation open) we
+  // leave the claim in the agent's memory so its NEXT read verifies it against
+  // fresh data instead of trusting the checkbox. The account page sends its own
+  // visible verification message, so no note is written for that source.
+  if (done && source === "cockpit") {
+    let action = "today's worklist action";
+    try { const w = account.worklist ? JSON.parse(account.worklist) : null; action = w?.action ?? w?.headline ?? action; } catch { /* keep default */ }
+    await prisma.agentMessage.create({
+      data: {
+        accountId: id, role: "user", kind: "chat", author: ctx.email,
+        content: `Marked today's action as done from the cockpit: "${action}". On your next read, verify against fresh data whether this actually resolved the underlying issue — if the numbers still show the problem, say so and keep it flagged.`,
+      },
+    }).catch(() => null);
+  }
+
   return NextResponse.json({ doneAt: updated.worklistDoneAt, doneBy: updated.worklistDoneBy });
 }

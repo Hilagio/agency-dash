@@ -10,7 +10,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getAuthContext, unauthorized, forbidden } from "@/lib/auth";
-import { parseDailySales } from "@/lib/diagnostics/shopify-csv";
+import { parseDailySales, parseProductSales, parseDiscounts, detectCsvKind } from "@/lib/diagnostics/shopify-csv";
+
+// Stable synthetic id for CSV-sourced products/variants — ProductSalesDaily
+// keys on (productId, variantId); the CSV only has titles, so the slug IS the id.
+const slugId = (s: string) => "csv:" + s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 80);
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -42,12 +46,15 @@ export async function POST(req: Request, { params }: Params) {
 
   let body: { kind?: string; csv?: string };
   try { body = await req.json(); } catch { return NextResponse.json({ error: "Invalid body." }, { status: 400 }); }
-  const kind = body.kind ?? "daily_sales";
   const csv = typeof body.csv === "string" ? body.csv : "";
   if (!csv.trim()) return NextResponse.json({ error: "No CSV content." }, { status: 400 });
-
-  if (kind !== "daily_sales") {
-    return NextResponse.json({ error: `Upload kind "${kind}" isn't supported yet — only daily_sales.` }, { status: 400 });
+  // "auto" (or no kind): recognise which Shopify report this is from its header,
+  // so the team can drop all three exports on the same button.
+  const kind = !body.kind || body.kind === "auto" ? detectCsvKind(csv) : body.kind;
+  if (kind !== "daily_sales" && kind !== "product_sales" && kind !== "discounts") {
+    return NextResponse.json({
+      error: "Couldn't recognise this CSV. Supported Shopify reports (each grouped by Day): 'Sales over time', 'Sales by product' / 'Sales by product variant', and 'Sales by discount' — keep Shopify's default column headers.",
+    }, { status: 422 });
   }
 
   // Don't let a manual CSV overwrite live-synced order data.
@@ -56,34 +63,59 @@ export async function POST(req: Request, { params }: Params) {
     return NextResponse.json({ error: `This account has a live Shopify connection (${live.shopDomain}) — its orders sync automatically, so a CSV isn't needed and won't be imported.` }, { status: 409 });
   }
 
-  const parsed = parseDailySales(csv);
-  if (!parsed.rows.length) {
-    return NextResponse.json({
-      error: "Couldn't read any daily rows. Export Analytics → Reports → 'Sales over time' grouped by Day, and keep Shopify's default column headers (Day, Orders, Net sales).",
-    }, { status: 422 });
-  }
-
   const cur = account.currency ?? "EUR";
-  // Replace the window this file covers, then re-write it — so a re-upload
-  // corrects any prior values for the same dates instead of duplicating.
-  await prisma.$transaction([
-    prisma.orderDaily.deleteMany({ where: { accountId: id, date: { gte: parsed.rangeStart!, lte: parsed.rangeEnd! } } }),
-    prisma.orderDaily.createMany({
-      data: parsed.rows.map(r => ({ accountId: id, date: r.date, orders: r.orders, revenue: r.revenue, currency: cur })),
-    }),
+  const uploadMark = (rows: number, rangeStart: string | null, rangeEnd: string | null) =>
     prisma.shopifyUpload.upsert({
       where: { accountId_kind: { accountId: id, kind } },
-      create: { accountId: id, kind, source: "csv", uploadedBy: ctx.email, rows: parsed.rows.length, rangeStart: parsed.rangeStart, rangeEnd: parsed.rangeEnd },
-      update: { source: "csv", uploadedBy: ctx.email, rows: parsed.rows.length, rangeStart: parsed.rangeStart, rangeEnd: parsed.rangeEnd, uploadedAt: new Date() },
-    }),
-  ]);
+      create: { accountId: id, kind, source: "csv", uploadedBy: ctx.email, rows, rangeStart, rangeEnd },
+      update: { source: "csv", uploadedBy: ctx.email, rows, rangeStart, rangeEnd, uploadedAt: new Date() },
+    });
+  const emptyErr = (report: string) => NextResponse.json({
+    error: `Couldn't read any rows. Export Analytics → Reports → '${report}' grouped by Day, and keep Shopify's default column headers.`,
+  }, { status: 422 });
 
-  return NextResponse.json({
-    ok: true,
-    kind,
-    rows: parsed.rows.length,
-    skipped: parsed.skipped,
-    rangeStart: parsed.rangeStart,
-    rangeEnd: parsed.rangeEnd,
-  });
+  // Each kind replaces the window its file covers, then re-writes it — so a
+  // re-upload corrects prior values for the same dates instead of duplicating.
+  if (kind === "daily_sales") {
+    const parsed = parseDailySales(csv);
+    if (!parsed.rows.length) return emptyErr("Sales over time");
+    await prisma.$transaction([
+      prisma.orderDaily.deleteMany({ where: { accountId: id, date: { gte: parsed.rangeStart!, lte: parsed.rangeEnd! } } }),
+      prisma.orderDaily.createMany({
+        data: parsed.rows.map(r => ({ accountId: id, date: r.date, orders: r.orders, revenue: r.revenue, currency: cur })),
+      }),
+      uploadMark(parsed.rows.length, parsed.rangeStart, parsed.rangeEnd),
+    ]);
+    return NextResponse.json({ ok: true, kind, rows: parsed.rows.length, skipped: parsed.skipped, rangeStart: parsed.rangeStart, rangeEnd: parsed.rangeEnd });
+  }
+
+  if (kind === "product_sales") {
+    const parsed = parseProductSales(csv);
+    if (!parsed.rows.length) return emptyErr("Sales by product variant");
+    await prisma.$transaction([
+      prisma.productSalesDaily.deleteMany({ where: { accountId: id, date: { gte: parsed.rangeStart!, lte: parsed.rangeEnd! } } }),
+      prisma.productSalesDaily.createMany({
+        data: parsed.rows.map(r => ({
+          accountId: id, date: r.date,
+          productId: slugId(r.title), variantId: r.variantTitle ? slugId(r.variantTitle) : "",
+          title: r.title, variantTitle: r.variantTitle,
+          units: r.units, revenue: r.revenue, currency: cur,
+        })),
+      }),
+      uploadMark(parsed.rows.length, parsed.rangeStart, parsed.rangeEnd),
+    ]);
+    return NextResponse.json({ ok: true, kind, rows: parsed.rows.length, skipped: parsed.skipped, hasVariants: parsed.hasVariants, rangeStart: parsed.rangeStart, rangeEnd: parsed.rangeEnd });
+  }
+
+  // kind === "discounts"
+  const parsed = parseDiscounts(csv);
+  if (!parsed.rows.length) return emptyErr("Sales by discount");
+  await prisma.$transaction([
+    prisma.discountDaily.deleteMany({ where: { accountId: id, date: { gte: parsed.rangeStart!, lte: parsed.rangeEnd! } } }),
+    prisma.discountDaily.createMany({
+      data: parsed.rows.map(r => ({ accountId: id, date: r.date, code: r.code, orders: r.orders, discounted: r.discounted, revenue: r.revenue, currency: cur })),
+    }),
+    uploadMark(parsed.rows.length, parsed.rangeStart, parsed.rangeEnd),
+  ]);
+  return NextResponse.json({ ok: true, kind, rows: parsed.rows.length, skipped: parsed.skipped, rangeStart: parsed.rangeStart, rangeEnd: parsed.rangeEnd });
 }

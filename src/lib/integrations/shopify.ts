@@ -157,8 +157,11 @@ export interface OrderNode {
   createdAt: string; // ISO8601
   test?: boolean;
   currentTotalPriceSet?: { shopMoney?: { amount?: string; currencyCode?: string } };
+  discountCodes?: string[];
+  totalDiscountsSet?: { shopMoney?: { amount?: string; currencyCode?: string } };
 }
 export interface OrderDayAgg { date: string; orders: number; revenue: number; currency: string; }
+export interface DiscountDayAgg { date: string; code: string; orders: number; discounted: number; revenue: number; currency: string; }
 
 /**
  * Aggregate order nodes into a per-day series. Test orders are excluded.
@@ -180,6 +183,34 @@ export function aggregateOrdersByDay(nodes: OrderNode[]): OrderDayAgg[] {
   return [...map.values()].sort((a, b) => a.date.localeCompare(b.date));
 }
 
+/**
+ * Aggregate orders that used a discount code into a per-day, per-code series
+ * (pure). An order with several codes credits its full revenue to each — rare,
+ * and fairer than inventing a split. `discounted` is the total amount given
+ * away on that order (attributed the same way).
+ */
+export function aggregateDiscountsByDay(nodes: OrderNode[]): DiscountDayAgg[] {
+  const map = new Map<string, DiscountDayAgg>();
+  for (const n of nodes) {
+    if (n.test) continue;
+    const codes = (n.discountCodes ?? []).filter(c => c && c.trim());
+    if (!codes.length) continue;
+    const date = n.createdAt.slice(0, 10);
+    const revenue = Number(n.currentTotalPriceSet?.shopMoney?.amount ?? 0);
+    const discounted = Number(n.totalDiscountsSet?.shopMoney?.amount ?? 0);
+    const currency = n.currentTotalPriceSet?.shopMoney?.currencyCode ?? "EUR";
+    for (const code of codes) {
+      const key = `${date}|${code}`;
+      const e = map.get(key) ?? { date, code, orders: 0, discounted: 0, revenue: 0, currency };
+      e.orders += 1;
+      e.revenue += Number.isFinite(revenue) ? revenue : 0;
+      e.discounted += Number.isFinite(discounted) ? discounted : 0;
+      map.set(key, e);
+    }
+  }
+  return [...map.values()].sort((a, b) => a.date.localeCompare(b.date) || b.revenue - a.revenue);
+}
+
 const ORDERS_QUERY = `
 query($cursor: String, $q: String!) {
   orders(first: 250, after: $cursor, query: $q, sortKey: CREATED_AT) {
@@ -188,17 +219,20 @@ query($cursor: String, $q: String!) {
       createdAt
       test
       currentTotalPriceSet { shopMoney { amount currencyCode } }
+      discountCodes
+      totalDiscountsSet { shopMoney { amount currencyCode } }
     }
   }
 }`;
 
 /**
  * Fetch every order between startDate and endDate (YYYY-MM-DD, inclusive) and
- * return the daily aggregate. Cursor-paginated with a hard page cap.
+ * return the daily aggregate plus the per-discount-code daily aggregate (both
+ * from the same pull — no extra API cost). Cursor-paginated with a hard page cap.
  */
 export async function fetchOrdersByDay(
   shop: string, accessToken: string, startDate: string, endDate: string, apiVersion = "2025-07",
-): Promise<OrderDayAgg[]> {
+): Promise<{ days: OrderDayAgg[]; discounts: DiscountDayAgg[] }> {
   if (!isValidShopDomain(shop)) throw new Error(`invalid shop domain: ${shop}`);
   const q = `created_at:>='${startDate}T00:00:00Z' created_at:<='${endDate}T23:59:59Z'`;
   const url = `https://${shop}/admin/api/${apiVersion}/graphql.json`;
@@ -223,7 +257,7 @@ export async function fetchOrdersByDay(
     if (!orders.pageInfo.hasNextPage) break;
     cursor = orders.pageInfo.endCursor;
   }
-  return aggregateOrdersByDay(nodes);
+  return { days: aggregateOrdersByDay(nodes), discounts: aggregateDiscountsByDay(nodes) };
 }
 
 // ─── Per-product sales (order line items) ──────────────────────────────────────

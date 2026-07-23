@@ -172,6 +172,11 @@ model Account {
   worklistDoneAt DateTime?
   worklistDoneBy String?
 
+  // ─── Onboarding ──────────────────────────────────────────────────────────
+  // Set when the guided setup (connect data → context → tracking check → first
+  // read) has been completed or explicitly skipped. Null = show the checklist.
+  onboardedAt DateTime?
+
   // ─── Merchant Center (for price competitiveness) ─────────────────────────
   // Auto-discovered via product_link on first load; set manually as fallback
   // if auto-discovery fails (e.g. the MC is owned by a different Google account).
@@ -227,6 +232,7 @@ model Account {
   // Product-level (ad performance vs real sales, + catalog)
   productAdsDaily   ProductAdsDaily[]
   productSalesDaily ProductSalesDaily[]
+  discountsDaily    DiscountDaily[]
   products          Product[]
 
   // Per-user "my accounts" watchlist entries pointing at this account.
@@ -516,6 +522,25 @@ model ProductSalesDaily {
   currency     String  @default("EUR")
 
   @@unique([accountId, date, productId, variantId])
+  @@index([accountId, date])
+}
+
+// Which discount codes actually drive orders — per day per code, from the OAuth
+// order feed (order.discountCodes) or the Shopify "Sales by discount" CSV.
+// `discounted` is the amount given away; `revenue` the net sales of orders that
+// used the code — so "did the code pay for itself" is answerable per code.
+model DiscountDaily {
+  id         String  @id @default(cuid())
+  accountId  String
+  account    Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  date       String  // YYYY-MM-DD
+  code       String  // discount code or automatic-discount name
+  orders     Int     @default(0)
+  discounted Float   @default(0) // amount discounted (given away)
+  revenue    Float   @default(0) // net sales on orders using this code
+  currency   String  @default("EUR")
+
+  @@unique([accountId, date, code])
   @@index([accountId, date])
 }
 

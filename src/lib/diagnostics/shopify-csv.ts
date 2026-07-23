@@ -1,8 +1,12 @@
 /**
  * Parse Shopify CSV exports the team uploads by hand (the no-API fallback).
- * Right now: the "Sales over time" (daily sales) report → OrderDaily rows.
+ * Supported reports (all grouped by Day):
+ *   - "Sales over time"               → OrderDaily        (kind: daily_sales)
+ *   - "Sales by product [variant]"    → ProductSalesDaily (kind: product_sales)
+ *   - "Sales by discount"             → DiscountDaily     (kind: discounts)
  * Column detection is forgiving (case-insensitive, matches on substrings) so
- * the client can export straight from Shopify without reshaping anything.
+ * the client can export straight from Shopify without reshaping anything, and
+ * detectCsvKind() recognises which report a file is from its header.
  */
 
 // Minimal RFC-4180-ish CSV parser: handles quoted fields, embedded commas,
@@ -106,6 +110,125 @@ export function parseDailySales(csv: string): DailySalesParse {
     byDate.set(date, e);
   }
   const out = [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
+  return {
+    rows: out,
+    rangeStart: out.length ? out[0].date : null,
+    rangeEnd: out.length ? out[out.length - 1].date : null,
+    skipped,
+  };
+}
+
+// Shared header lookup: first predicate that matches wins.
+function findCol(header: string[], ...preds: ((h: string) => boolean)[]): number {
+  for (const p of preds) { const i = header.findIndex(p); if (i >= 0) return i; }
+  return -1;
+}
+
+const hasProductCol = (header: string[]) =>
+  findCol(header, h => h === "product title", h => h === "product", h => h.includes("product title")) >= 0;
+const hasDiscountNameCol = (header: string[]) =>
+  findCol(header, h => h === "discount name", h => h === "discount code", h => h === "discount", h => h.includes("discount name") || h.includes("discount code")) >= 0;
+
+/**
+ * Which Shopify report is this file? Decided from the header row alone:
+ * a product-title column → product_sales; a discount-name/code column →
+ * discounts (the product report's "Discounts" AMOUNT column doesn't match);
+ * otherwise a date + sales column → daily_sales.
+ */
+export function detectCsvKind(csv: string): "daily_sales" | "product_sales" | "discounts" | null {
+  const first = parseCsv(csv.slice(0, 4000))[0];
+  if (!first) return null;
+  const header = first.map(h => h.trim().toLowerCase());
+  if (hasProductCol(header)) return "product_sales";
+  if (hasDiscountNameCol(header)) return "discounts";
+  const iDate = findCol(header, h => h === "day" || h === "date", h => h.includes("day") || h.includes("date"));
+  const iSales = findCol(header, h => h.includes("net sales"), h => h.includes("total sales"), h => h.includes("gross sales"));
+  return iDate >= 0 && iSales >= 0 ? "daily_sales" : null;
+}
+
+export interface ProductSalesRow { date: string; title: string; variantTitle: string; units: number; revenue: number; discounts: number }
+export interface ProductSalesParse { rows: ProductSalesRow[]; rangeStart: string | null; rangeEnd: string | null; skipped: number; hasVariants: boolean }
+
+/**
+ * Parse "Sales by product" / "Sales by product variant" grouped by Day.
+ * Revenue is Net sales when present (nets discounts + returns), else
+ * Total/Gross. The Discounts column (Shopify exports it negative) is kept as a
+ * positive "amount discounted" so discount pressure per product is visible.
+ */
+export function parseProductSales(csv: string): ProductSalesParse {
+  const rows = parseCsv(csv);
+  if (rows.length < 2) return { rows: [], rangeStart: null, rangeEnd: null, skipped: 0, hasVariants: false };
+  const header = rows[0].map(h => h.trim().toLowerCase());
+  const iDate = findCol(header, h => h === "day" || h === "date", h => h.includes("day") || h.includes("date"));
+  const iTitle = findCol(header, h => h === "product title", h => h === "product", h => h.includes("product title"));
+  const iVariant = findCol(header, h => h.includes("variant title"), h => h === "variant");
+  const iUnits = findCol(header, h => h.includes("net quantity"), h => h.includes("net items"), h => h.includes("items sold"), h => h === "quantity" || h.includes("quantity"), h => h === "units" || h.includes("units"));
+  const iNet = findCol(header, h => h.includes("net sales"));
+  const iTotal = findCol(header, h => h.includes("total sales"));
+  const iGross = findCol(header, h => h.includes("gross sales"));
+  const iDisc = findCol(header, h => h === "discounts", h => h.includes("amount discounted"));
+  if (iDate < 0 || iTitle < 0 || (iNet < 0 && iTotal < 0 && iGross < 0)) {
+    return { rows: [], rangeStart: null, rangeEnd: null, skipped: rows.length - 1, hasVariants: false };
+  }
+
+  const byKey = new Map<string, ProductSalesRow>();
+  let skipped = 0;
+  for (let r = 1; r < rows.length; r++) {
+    const cells = rows[r];
+    const date = ymd(cells[iDate] ?? "");
+    const title = (cells[iTitle] ?? "").trim();
+    if (!date || !title) { skipped++; continue; }
+    const revenue = num(cells[iNet]) ?? num(cells[iTotal]) ?? num(cells[iGross]);
+    if (revenue == null) { skipped++; continue; }
+    const variantTitle = iVariant >= 0 ? (cells[iVariant] ?? "").trim() : "";
+    const units = iUnits >= 0 ? Math.round(num(cells[iUnits]) ?? 0) : 0;
+    const discounts = iDisc >= 0 ? Math.abs(num(cells[iDisc]) ?? 0) : 0;
+    const key = `${date}|${title}|${variantTitle}`;
+    const e = byKey.get(key) ?? { date, title, variantTitle, units: 0, revenue: 0, discounts: 0 };
+    e.units += units; e.revenue += revenue; e.discounts += discounts;
+    byKey.set(key, e);
+  }
+  const out = [...byKey.values()].sort((a, b) => a.date.localeCompare(b.date) || b.revenue - a.revenue);
+  return {
+    rows: out,
+    rangeStart: out.length ? out[0].date : null,
+    rangeEnd: out.length ? out[out.length - 1].date : null,
+    skipped,
+    hasVariants: iVariant >= 0 && out.some(r => r.variantTitle !== ""),
+  };
+}
+
+export interface DiscountRow { date: string; code: string; orders: number; discounted: number; revenue: number }
+export interface DiscountParse { rows: DiscountRow[]; rangeStart: string | null; rangeEnd: string | null; skipped: number }
+
+/** Parse "Sales by discount" grouped by Day → which codes drove which sales. */
+export function parseDiscounts(csv: string): DiscountParse {
+  const rows = parseCsv(csv);
+  if (rows.length < 2) return { rows: [], rangeStart: null, rangeEnd: null, skipped: 0 };
+  const header = rows[0].map(h => h.trim().toLowerCase());
+  const iDate = findCol(header, h => h === "day" || h === "date", h => h.includes("day") || h.includes("date"));
+  const iCode = findCol(header, h => h === "discount name", h => h === "discount code", h => h === "discount", h => h.includes("discount name") || h.includes("discount code"));
+  const iOrders = findCol(header, h => h === "orders", h => h.includes("orders"));
+  const iDisc = findCol(header, h => h === "discounts", h => h.includes("amount discounted"), h => h.includes("discount amount"));
+  const iNet = findCol(header, h => h.includes("net sales"));
+  const iTotal = findCol(header, h => h.includes("total sales"));
+  const iGross = findCol(header, h => h.includes("gross sales"));
+  if (iDate < 0 || iCode < 0) return { rows: [], rangeStart: null, rangeEnd: null, skipped: rows.length - 1 };
+
+  const byKey = new Map<string, DiscountRow>();
+  let skipped = 0;
+  for (let r = 1; r < rows.length; r++) {
+    const cells = rows[r];
+    const date = ymd(cells[iDate] ?? "");
+    const code = (cells[iCode] ?? "").trim();
+    if (!date || !code || code === "—" || code === "-") { skipped++; continue; }
+    const e = byKey.get(`${date}|${code}`) ?? { date, code, orders: 0, discounted: 0, revenue: 0 };
+    e.orders += Math.round(iOrders >= 0 ? (num(cells[iOrders]) ?? 0) : 0);
+    e.discounted += Math.abs(iDisc >= 0 ? (num(cells[iDisc]) ?? 0) : 0);
+    e.revenue += (iNet >= 0 ? num(cells[iNet]) : null) ?? (iTotal >= 0 ? num(cells[iTotal]) : null) ?? (iGross >= 0 ? num(cells[iGross]) : null) ?? 0;
+    byKey.set(`${date}|${code}`, e);
+  }
+  const out = [...byKey.values()].sort((a, b) => a.date.localeCompare(b.date) || b.revenue - a.revenue);
   return {
     rows: out,
     rangeStart: out.length ? out[0].date : null,
