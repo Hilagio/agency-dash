@@ -40,7 +40,7 @@ export async function ingestAccountOrders(accountId: string, days = 14): Promise
     // Refresh the expiring offline token ONCE, then reuse it across the parallel
     // calls (the refresh token is single-use — refreshing per-call would race).
     const accessToken = await freshShopifyToken(conn);
-    const [series, productSales, catalog] = await Promise.all([
+    const [{ days: series, discounts }, productSales, catalog] = await Promise.all([
       fetchOrdersByDay(conn.shopDomain, accessToken, start, end, apiVersion),
       fetchProductSalesByDay(conn.shopDomain, accessToken, start, end, apiVersion),
       fetchProductCatalog(conn.shopDomain, accessToken, apiVersion).catch(() => []),
@@ -52,6 +52,12 @@ export async function ingestAccountOrders(accountId: string, days = 14): Promise
       ...(series.length
         ? [prisma.orderDaily.createMany({
             data: series.map(s => ({ accountId, date: s.date, orders: s.orders, revenue: s.revenue, currency: s.currency })),
+          })]
+        : []),
+      prisma.discountDaily.deleteMany({ where: inWindow }),
+      ...(discounts.length
+        ? [prisma.discountDaily.createMany({
+            data: discounts.map(d => ({ accountId, date: d.date, code: d.code, orders: d.orders, discounted: d.discounted, revenue: d.revenue, currency: d.currency })),
           })]
         : []),
       prisma.productSalesDaily.deleteMany({ where: inWindow }),

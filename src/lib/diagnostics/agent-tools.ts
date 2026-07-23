@@ -548,10 +548,11 @@ export async function runAgentTool(name: string, input: Record<string, unknown>,
     const half = Math.min(Math.floor(days / 2), 7);
     const recentStart = new Date(); recentStart.setUTCDate(recentStart.getUTCDate() - half);
     const recentYmd = recentStart.toISOString().slice(0, 10);
-    const [orders, products, adsAgg] = await Promise.all([
+    const [orders, products, adsAgg, discountRows] = await Promise.all([
       prisma.orderDaily.findMany({ where: { accountId: acc.id, date: { gte: ymd } }, select: { date: true, orders: true, revenue: true, currency: true } }),
       prisma.productSalesDaily.findMany({ where: { accountId: acc.id, date: { gte: ymd } }, select: { date: true, title: true, units: true, revenue: true } }),
       prisma.metricDaily.aggregate({ where: { accountId: acc.id, date: { gte: ymd } }, _sum: { conversions: true } }),
+      prisma.discountDaily.findMany({ where: { accountId: acc.id, date: { gte: ymd } }, select: { date: true, code: true, orders: true, discounted: true, revenue: true } }),
     ]);
     if (!conn && !upload && !orders.length) {
       return "Shopify is NOT connected and no CSV has been uploaded yet — no real order data to reconcile against. Ask the account manager for the Shopify 'Sales over time' CSV export (Analytics → Reports) and upload it; that's how we get order data for this account for now.";
@@ -624,9 +625,10 @@ export async function runAgentTool(name: string, input: Record<string, unknown>,
     const prods = [...pAgg.values()];
     let productSection: string;
     if (!prods.length) {
-      // CSV / Flow give order totals only; per-product needs the live API.
+      // "Sales over time" gives order totals only; per-product needs the live
+      // API or the "Sales by product" export (which uploads fine here too).
       productSection = upload
-        ? "\nPer-product sales aren't in this data — the “Sales over time” CSV is order totals only. A live Shopify connection (or a “Sales by product” export) is needed for product-level breakdowns."
+        ? "\nPer-product sales aren't in this data — the “Sales over time” CSV is order totals only. Ask for the “Sales by product variant” export (grouped by Day) and upload it, or connect Shopify live, to get product-level breakdowns."
         : "";
     } else {
       const top = [...prods].sort((a, b) => b.revenue - a.revenue).slice(0, 5);
@@ -643,11 +645,30 @@ export async function runAgentTool(name: string, input: Record<string, unknown>,
       const moverLine = parts.length ? `\nProduct movement (last ${half}d vs prior ${half}d) — ${parts.join(" · ")}.` : "";
       productSection = topLines + moverLine;
     }
+    // Discount codes — stated as facts (orders, revenue on those orders, amount
+    // given away, recent-vs-prior movement); whether a code is working is the
+    // agent's judgement.
+    let discountSection = "";
+    if (discountRows.length) {
+      const dAgg = new Map<string, { code: string; orders: number; discounted: number; revenue: number; rRev: number; pRev: number }>();
+      for (const d of discountRows) {
+        const e = dAgg.get(d.code) ?? { code: d.code, orders: 0, discounted: 0, revenue: 0, rRev: 0, pRev: 0 };
+        e.orders += d.orders; e.discounted += d.discounted; e.revenue += d.revenue;
+        if (d.date >= recentYmd) e.rRev += d.revenue; else e.pRev += d.revenue;
+        dAgg.set(d.code, e);
+      }
+      const codes = [...dAgg.values()].sort((a, b) => b.revenue - a.revenue).slice(0, 6);
+      const codeOrders = codes.reduce((s, c) => s + c.orders, 0);
+      const shareNote = totOrders > 0 && codeOrders > 0 ? ` (${Math.round((codeOrders / totOrders) * 100)}% of orders used a code)` : "";
+      discountSection = `\nDiscount codes (${days}d)${shareNote}: ${codes.map(c =>
+        `${c.code} — ${c.orders} orders, ${money(c.revenue)} revenue, ${money(c.discounted)} given away${c.pRev > 0 || c.rRev > 0 ? ` (${money(c.pRev)}→${money(c.rRev)} prior→recent)` : ""}`
+      ).join("; ")}.`;
+    }
     // Shop currency can differ from the Ads account currency — flag it so figures aren't misread.
     const orderCur = orders.find(o => o.currency)?.currency;
     const curNote = orderCur && orderCur !== acc.currency ? ` (orders reported in ${orderCur}, not the account's ${acc.currency})` : "";
     const label = conn ? `Shopify (${conn.shopDomain})` : "Shopify";
-    return `${label} — last ${days}d: ${totOrders} orders, ${money(totRev)} revenue, AOV ${money(aov)}${curNote}.${trendLine}${reconLine}${productSection}\n${sourceNote}`;
+    return `${label} — last ${days}d: ${totOrders} orders, ${money(totRev)} revenue, AOV ${money(aov)}${curNote}.${trendLine}${reconLine}${productSection}${discountSection}\n${sourceNote}`;
   }
 
   return `Unknown tool: ${name}`;

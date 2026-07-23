@@ -65,6 +65,7 @@ async function handle(id: string, orgId: string, userId: string) {
       trackingStatus: true, trackingNote: true, trackingSetAt: true, trackingSetBy: true,
       merchantCenterId: true, slackChannelId: true, slackChannelName: true,
       briefing: true, briefingAt: true, worklist: true, worklistAt: true, worklistDoneAt: true,
+      onboardedAt: true, landingPageUrl: true,
     },
   });
   if (!account) return NextResponse.json({ error: "This account isn't in your organization, or doesn't exist." }, { status: 404 });
@@ -217,11 +218,19 @@ async function handle(id: string, orgId: string, userId: string) {
 
   // Connections & context — the visual "what does this account know" panel.
   const anySpend = windows.some(w => w.spend > 0);
-  const CTX_KEYS = ["goal", "mainKpi", "targetRoasNote", "makeOrBreak", "usps", "audienceNuances", "adsStartedNote", "strategyPreference", "anythingElse"] as const;
-  const ctxFilled = ctxPack ? CTX_KEYS.filter(k => {
-    const v = (ctxPack as Record<string, unknown>)[k];
-    return typeof v === "string" && v.trim().length > 0;
-  }).length : 0;
+  // Five merged questions (the old goal/KPI/target trio and history/scaling/
+  // constraints trio each count as one) — legacy answers still count toward
+  // their merged question so existing accounts keep their completeness.
+  const CTX_KEYS = [
+    ["goal", "mainKpi", "targetRoasNote"],
+    ["makeOrBreak"],
+    ["usps"],
+    ["audienceNuances"],
+    ["anythingElse", "adsStartedNote", "strategyPreference"],
+  ];
+  const filledStr = (v: unknown) => typeof v === "string" && v.trim().length > 0;
+  const ctxFilled = ctxPack ? CTX_KEYS.filter(group =>
+    group.some(k => filledStr((ctxPack as Record<string, unknown>)[k]))).length : 0;
   const ctxStatus = ctxFilled === 0 ? "red" : ctxFilled >= Math.ceil(CTX_KEYS.length * 0.7) ? "green" : "yellow";
   // Slack: green = a channel is linked to this account; yellow = the org has a
   // Slack bot but no channel is linked here yet (linkable in one click);
@@ -281,5 +290,8 @@ async function handle(id: string, orgId: string, userId: string) {
     ? { text: account.briefing, at: account.briefingAt, worklist: (() => { try { return account.worklist ? JSON.parse(account.worklist) : null; } catch { return null; } })(), worklistAt: account.worklistAt, worklistDoneAt: account.worklistDoneAt ?? null }
     : null;
 
-  return NextResponse.json({ diagnosis, briefing, windows, trend, shopify, connections, products, productPages, wins, tracking, watched, hasData: !!diag });
+  return NextResponse.json({
+    diagnosis, briefing, windows, trend, shopify, connections, products, productPages, wins, tracking, watched, hasData: !!diag,
+    onboardedAt: account.onboardedAt ?? null,
+  });
 }

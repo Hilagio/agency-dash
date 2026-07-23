@@ -87,7 +87,7 @@ export default function PortfolioHome() {
     try {
       const r = await fetch(`/api/accounts/${id}/worklist-done`, {
         method: "POST", credentials: "include",
-        headers: { "Content-Type": "application/json" }, body: JSON.stringify({ done: next }),
+        headers: { "Content-Type": "application/json" }, body: JSON.stringify({ done: next, source: "cockpit" }),
       });
       if (!r.ok) throw new Error();
     } catch {

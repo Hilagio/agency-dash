@@ -26,18 +26,21 @@ interface VitalCheck { key: string; label: string; status: "ok" | "warn" | "fail
 interface Vitals { checks: VitalCheck[]; governing: string | null; summary: string }
 
 // The context we ask the team to fill so the agent knows the client — the things
-// the data can't tell it. Keys map to the ClientContext / Typeform fields.
-const CONTEXT_QUESTIONS: { key: string; q: string }[] = [
-  { key: "goal", q: "What does this client want to achieve?" },
-  { key: "mainKpi", q: "Their main KPI for us to hit?" },
-  { key: "targetRoasNote", q: "Target ROAS — and have they hit it before?" },
-  { key: "makeOrBreak", q: "The one make-or-break factor for this client?" },
-  { key: "usps", q: "What makes them different (USPs)?" },
-  { key: "audienceNuances", q: "Audiences the algorithm must learn separately?" },
-  { key: "adsStartedNote", q: "When did their Google Ads start spending?" },
-  { key: "strategyPreference", q: "Scale aggressively, cautiously, or balanced?" },
-  { key: "anythingElse", q: "Anything else / constraints (stock, seasonality…)?" },
+// the data can't tell it. Five questions, not nine: the old goal/KPI/target-ROAS
+// trio and the ads-history/scaling/constraints trio each collapse into one.
+const CONTEXT_QUESTIONS: { key: string; q: string; hint: string }[] = [
+  { key: "goal", q: "What does success look like?", hint: "Goal, the KPI we're judged on, target ROAS — and whether they've hit it before. e.g. \"Grow to €50k/mo at ROAS 4 (best so far: 3.2)\"" },
+  { key: "makeOrBreak", q: "The one make-or-break factor for this client?", hint: "The thing that, if we get it wrong, loses the account." },
+  { key: "usps", q: "What makes them different (USPs)?", hint: "Why customers pick them over the competitor ranking next to them." },
+  { key: "audienceNuances", q: "Audiences or segments that behave differently?", hint: "Anything the algorithm must learn separately — B2B vs B2C, countries, gift buyers…" },
+  { key: "anythingElse", q: "History & constraints", hint: "When ads started, scale aggressively/cautiously, stock limits, seasonality, margins — anything else that shapes decisions." },
 ];
+// Legacy columns whose content now lives inside a merged question — pulled into
+// the textarea on load (labelled) and cleared on save so nothing is fed twice.
+const CONTEXT_LEGACY: Record<string, { key: string; label: string }[]> = {
+  goal: [{ key: "mainKpi", label: "Main KPI" }, { key: "targetRoasNote", label: "Target ROAS" }],
+  anythingElse: [{ key: "adsStartedNote", label: "Ads started" }, { key: "strategyPreference", label: "Scaling" }],
+};
 const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5MB/file, ≤4 files — base64 stays under the 32MB request cap
 
 /** Read a File into a base64 Attachment for the chat. Images, PDF, and text/CSV. */
@@ -404,6 +407,11 @@ export default function DiagnosePage() {
   const [error, setError] = useState<string | null>(null);
   const [watched, setWatched] = useState(false);
   const [watchBusy, setWatchBusy] = useState(false);
+  // Guided setup (onboarding): null onboardedAt + gaps in data/context = show it.
+  const [onboardedAt, setOnboardedAt] = useState<string | null>(null);
+  const [setupChecks, setSetupChecks] = useState<{ key: string; label: string; status: "ok" | "warn" | "fail" | "na"; detail: string }[] | null>(null);
+  const [setupRunning, setSetupRunning] = useState(false);
+  const [onboardBusy, setOnboardBusy] = useState(false);
   const [shareState, setShareState] = useState<"idle" | "copying" | "copied">("idle");
   const [shareOpen, setShareOpen] = useState(false); // language chooser open
 
@@ -411,6 +419,7 @@ export default function DiagnosePage() {
   async function toggleWorklistDone() {
     if (!briefing) return;
     const next = !briefing.worklistDoneAt;
+    const action = briefing.worklist?.action ?? briefing.worklist?.headline ?? "today's action";
     setBriefing(b => b && ({ ...b, worklistDoneAt: next ? new Date().toISOString() : null }));
     try {
       const r = await fetch(`/api/accounts/${id}/worklist-done`, {
@@ -418,6 +427,11 @@ export default function DiagnosePage() {
         headers: { "Content-Type": "application/json" }, body: JSON.stringify({ done: next }),
       });
       if (!r.ok) throw new Error();
+      // A tick is a claim, not proof — the agent re-reads and verifies whether
+      // the fix actually shows up in the data, so "done" can't hide a live issue.
+      if (next && !insightLoading && !followSending) {
+        askAbout(`I've just marked today's action as done: "${action}". Pull fresh data and verify whether it actually happened and resolved the underlying issue — if the numbers still show the problem (or it's too early to tell), say so plainly and keep it flagged.`);
+      }
     } catch {
       setBriefing(b => b && ({ ...b, worklistDoneAt: next ? null : b.worklistDoneAt }));
     }
@@ -473,6 +487,7 @@ export default function DiagnosePage() {
       setWins(j.wins ?? []);
       setTracking(j.tracking ?? null);
       setWatched(!!j.watched);
+      setOnboardedAt(j.onboardedAt ?? null);
     } catch (e) { setError(e instanceof Error ? e.message : "Network error"); }
     setLoading(false);
   }
@@ -493,7 +508,37 @@ export default function DiagnosePage() {
     finally { setWatchBusy(false); }
   }
 
+  // Guided setup — the tracking & consent pre-flight and the "done" mark.
+  async function runSetupCheck() {
+    setSetupRunning(true);
+    try {
+      const r = await fetch(`/api/diagnostics/account/${id}/setup-check`, { method: "POST", credentials: "include" });
+      const j = await r.json().catch(() => ({}));
+      if (r.ok) setSetupChecks(j.checks ?? []);
+    } finally { setSetupRunning(false); }
+  }
+  async function markOnboarded() {
+    setOnboardBusy(true);
+    try {
+      const r = await fetch(`/api/accounts/${id}/onboarded`, {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ done: true }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (r.ok) setOnboardedAt(j.onboardedAt ?? new Date().toISOString());
+    } finally { setOnboardBusy(false); }
+  }
+
   useEffect(() => { load(); }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // An account that already has data + context + a read predates the guided
+  // setup — stamp it quietly so the checklist never nags on it.
+  useEffect(() => {
+    if (loading || onboardedAt || onboardBusy || !connections) return;
+    const complete = connections.shopify !== "red" && (connections.contextFilled ?? 0) >= 3 && thread.length > 0;
+    if (complete) markOnboarded();
+  }, [loading, onboardedAt, connections, thread.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // The platform speaks first (§agent): on a flagged account, auto-open the
   // conversation so the teammate lands on "here's what I noticed", not a button —
@@ -702,7 +747,16 @@ export default function DiagnosePage() {
         const j = await r.json();
         const pack = j.context ?? {};
         const vals: Record<string, string> = {};
-        for (const { key } of CONTEXT_QUESTIONS) vals[key] = pack[key] ?? "";
+        for (const { key } of CONTEXT_QUESTIONS) {
+          // Fold answers from the old, more granular questions into the merged
+          // textarea (labelled) so nothing already captured is lost or hidden.
+          const parts: string[] = [pack[key] ?? ""];
+          for (const legacy of CONTEXT_LEGACY[key] ?? []) {
+            const v = (pack[legacy.key] ?? "").trim();
+            if (v) parts.push(`${legacy.label}: ${v}`);
+          }
+          vals[key] = parts.filter(p => p.trim()).join("\n");
+        }
         setCtxValues(vals);
       }
     } catch { /* start blank */ }
@@ -711,10 +765,14 @@ export default function DiagnosePage() {
   async function saveContext() {
     setCtxSaving(true);
     try {
+      // The legacy columns' content is now inside the merged text the user just
+      // edited — clear them so the agent isn't fed the same fact twice.
+      const legacyClear = Object.fromEntries(
+        Object.values(CONTEXT_LEGACY).flat().map(l => [l.key, ""]));
       await fetch(`/api/accounts/${id}/context`, {
         method: "PUT", credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(ctxValues),
+        body: JSON.stringify({ ...legacyClear, ...ctxValues }),
       });
       setCtxOpen(false);
       load(); // refresh the connections completeness
@@ -820,20 +878,28 @@ export default function DiagnosePage() {
     return walk(text);
   }
 
-  // Upload a Shopify "Sales over time" CSV — the data is kept and reconciled
-  // against until it's replaced; the server stamps when it was uploaded.
-  async function uploadShopifyCsv(file: File) {
+  // Upload Shopify CSV exports — the server recognises which report each file
+  // is ("Sales over time" / "Sales by product [variant]" / "Sales by discount")
+  // from its header, so several files can be dropped in one go.
+  async function uploadShopifyCsv(files: File | FileList) {
+    const list = files instanceof FileList ? [...files] : [files];
+    if (!list.length) return;
     setCsvBusy(true); setCsvMsg(null);
+    const kindLabel: Record<string, string> = { daily_sales: "daily sales", product_sales: "product sales", discounts: "discounts" };
+    const results: string[] = [];
     try {
-      const csv = await file.text();
-      const r = await fetch(`/api/diagnostics/account/${id}/shopify-csv`, {
-        method: "POST", credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ kind: "daily_sales", csv }),
-      });
-      const j = await r.json().catch(() => ({}));
-      if (!r.ok) { setCsvMsg(j.error ?? "Upload failed."); return; }
-      setCsvMsg(`Loaded ${j.rows} days${j.rangeStart ? ` (${j.rangeStart} → ${j.rangeEnd})` : ""}.${j.skipped ? ` Skipped ${j.skipped} unreadable rows.` : ""}`);
+      for (const file of list) {
+        const csv = await file.text();
+        const r = await fetch(`/api/diagnostics/account/${id}/shopify-csv`, {
+          method: "POST", credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ kind: "auto", csv }),
+        });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) { results.push(`${file.name}: ${j.error ?? "upload failed"}`); continue; }
+        results.push(`${kindLabel[j.kind] ?? j.kind}: ${j.rows} rows${j.rangeStart ? ` (${j.rangeStart} → ${j.rangeEnd})` : ""}${j.skipped ? `, ${j.skipped} skipped` : ""}`);
+      }
+      setCsvMsg(`Loaded — ${results.join(" · ")}`);
       load();
     } catch { setCsvMsg("Couldn't read that file."); }
     finally { setCsvBusy(false); if (csvInputRef.current) csvInputRef.current.value = ""; }
@@ -1099,6 +1165,85 @@ export default function DiagnosePage() {
               {diag.name}{diag.clientName ? <span style={{ color: "var(--text-muted)", fontWeight: 400, fontSize: 18 }}> · {diag.clientName}</span> : null}
             </h1>
 
+            {/* Guided setup — one logical flow instead of scattered connect
+                buttons and a hidden context tab. Shows until the account is
+                properly fed (or the checklist is explicitly skipped); the first
+                real read is the final step, so the agent starts from full context. */}
+            {!onboardedAt && connections && (() => {
+              const steps: { key: string; label: string; detail: string; done: boolean; action: () => void; actionLabel: string; busy?: boolean }[] = [
+                {
+                  key: "data", label: "Connect order data",
+                  detail: "Shopify — live, or the three CSV exports (sales over time, by product variant, by discount). Real orders are what the agent reconciles Ads numbers against.",
+                  done: connections.shopify !== "red",
+                  action: () => { setShopifyMethod("csv"); setShopifyModal(true); },
+                  actionLabel: "Connect Shopify",
+                },
+                {
+                  key: "context", label: "Tell the agent about the client",
+                  detail: "Five questions the data can't answer — goal & target, make-or-break, USPs, audiences, constraints.",
+                  done: (connections.contextFilled ?? 0) >= 3,
+                  action: openContextForm,
+                  actionLabel: "Answer questions",
+                },
+                {
+                  key: "tracking", label: "Check tracking & consent",
+                  detail: "Scans the landing page for the Google tag, the Ads conversion tag and Consent Mode, and reconciles Ads conversions against real orders.",
+                  done: !!setupChecks || !!tracking?.status,
+                  action: runSetupCheck,
+                  actionLabel: setupChecks ? "Re-run check" : "Run check",
+                  busy: setupRunning,
+                },
+                {
+                  key: "read", label: "Run the first read",
+                  detail: "With data, context and tracking in place, the agent's first read is worth trusting.",
+                  done: thread.length > 0,
+                  action: () => { markOnboarded(); getInsight(); },
+                  actionLabel: "Run first read",
+                  busy: insightLoading || onboardBusy,
+                },
+              ];
+              const openSteps = steps.filter(s => !s.done);
+              if (!openSteps.length) return null; // auto-stamped by the effect below
+              const stColor = (s: "ok" | "warn" | "fail" | "na") => s === "ok" ? "var(--accent)" : s === "warn" ? "var(--accent-2, #d98a00)" : s === "fail" ? "var(--danger)" : "var(--text-dim)";
+              return (
+                <div style={{ ...card, marginTop: 16, padding: "18px 20px", border: "1px solid color-mix(in srgb, var(--accent) 30%, var(--border))" }}>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+                    <span style={{ fontSize: 14.5, fontWeight: 800 }}>Set this account up properly</span>
+                    <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{steps.filter(s => s.done).length}/{steps.length} done — the first read fires when the agent has what it needs</span>
+                    <button onClick={markOnboarded} disabled={onboardBusy} style={{ marginLeft: "auto", fontSize: 11.5, color: "var(--text-dim)", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>Skip setup</button>
+                  </div>
+                  <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+                    {steps.map((s, i) => (
+                      <div key={s.key} style={{ display: "flex", alignItems: "flex-start", gap: 11, padding: "9px 12px", borderRadius: 10, background: s.done ? "transparent" : "var(--surface-2)", opacity: s.done ? 0.6 : 1 }}>
+                        {s.done
+                          ? <CheckCircle2 size={17} style={{ color: "var(--accent)", flexShrink: 0, marginTop: 1 }} />
+                          : <span style={{ width: 17, height: 17, borderRadius: "50%", border: "2px solid var(--border-3)", flexShrink: 0, marginTop: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, color: "var(--text-muted)" }}>{i + 1}</span>}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 13, fontWeight: 700, textDecoration: s.done ? "line-through" : "none" }}>{s.label}</div>
+                          {!s.done && <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2, lineHeight: 1.5 }}>{s.detail}</div>}
+                          {s.key === "tracking" && setupChecks && (
+                            <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 5 }}>
+                              {setupChecks.map(c => (
+                                <div key={c.key} style={{ display: "flex", gap: 8, fontSize: 12, lineHeight: 1.5 }}>
+                                  <span style={{ color: stColor(c.status), fontWeight: 700, flexShrink: 0 }}>{c.status === "ok" ? "✓" : c.status === "warn" ? "!" : c.status === "fail" ? "✕" : "·"}</span>
+                                  <span style={{ color: "var(--text-2)" }}><b>{c.label}:</b> {c.detail}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        {!s.done && (
+                          <button onClick={s.action} disabled={s.busy} style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 700, color: i === steps.findIndex(x => !x.done) ? "#fff" : "var(--text-2)", background: i === steps.findIndex(x => !x.done) ? "var(--btn-primary, var(--accent))" : "var(--surface)", border: i === steps.findIndex(x => !x.done) ? "none" : "1px solid var(--border-2)", borderRadius: 8, padding: "6px 12px", cursor: s.busy ? "default" : "pointer", opacity: s.busy ? 0.7 : 1 }}>
+                            {s.busy ? <Loader2 size={12} className="animate-spin" /> : null} {s.actionLabel}
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+
             {/* Headline */}
             <div id="overview" style={{
               ...card, border: `1px solid ${diag.status === "green" ? "var(--border)" : "var(--border-2)"}`,
@@ -1170,8 +1315,8 @@ export default function DiagnosePage() {
             {detailsOpen && (
               <SectionNav items={[
                 { id: "overview", label: "Overview" },
+                ...((products && products.groups.length) || productPages.length ? [{ id: "products", label: "Products" }] : []),
                 ...(windows.some(w => w.spend > 0) ? [{ id: "trends", label: "Trends" }] : []),
-                ...(products && products.groups.length ? [{ id: "products", label: "Products" }] : []),
                 ...((diag.observations.length || diag.checksRun.length || diag.questions.length) ? [{ id: "diagnosis", label: "Diagnosis" }] : []),
                 ...(shopify ? [{ id: "data", label: "Data & connections" }] : []),
               ]} />
@@ -1267,8 +1412,8 @@ export default function DiagnosePage() {
                 })()}
 
                 {/* Hidden file input — driven by the Upload button inside the Connect-Shopify modal. */}
-                <input ref={csvInputRef} type="file" accept=".csv,text/csv" style={{ display: "none" }}
-                  onChange={e => { const f = e.target.files?.[0]; if (f) uploadShopifyCsv(f); }} />
+                <input ref={csvInputRef} type="file" accept=".csv,text/csv" multiple style={{ display: "none" }}
+                  onChange={e => { if (e.target.files?.length) uploadShopifyCsv(e.target.files); }} />
 
                 {/* Inline Slack-channel picker — link the client's channel without leaving the chat */}
                 {slackOpen && (
@@ -1330,13 +1475,14 @@ export default function DiagnosePage() {
                     ) : (
                       <>
                         <div style={{ display: "grid", gap: 10 }}>
-                          {CONTEXT_QUESTIONS.map(({ key, q }) => (
+                          {CONTEXT_QUESTIONS.map(({ key, q, hint }) => (
                             <div key={key}>
                               <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", display: "block", marginBottom: 4 }}>{q}</label>
                               <textarea
                                 value={ctxValues[key] ?? ""}
                                 onChange={e => setCtxValues(v => ({ ...v, [key]: e.target.value }))}
-                                rows={key === "makeOrBreak" || key === "goal" || key === "usps" ? 2 : 1}
+                                rows={2}
+                                placeholder={hint}
                                 style={{ width: "100%", resize: "vertical", fontSize: 12.5, lineHeight: 1.5, color: "var(--text)", background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 8, padding: "7px 10px", fontFamily: "inherit" }}
                               />
                             </div>
@@ -1739,18 +1885,127 @@ export default function DiagnosePage() {
               </>
             )}
 
-            {/* Product performance — winners & losers, by spend (Google Ads) */}
-            {productPages.length > 0 && (
+            {/* Product breakdown — ad spend vs real sales, variant→product (§4/§8) */}
+            {products && products.groups.length > 0 && (
               <>
-                <SectionTitle onAsk={() => askAbout("Read the landing-page performance: where is spend going to pages that don't convert, and which winning pages deserve more?")}>Landing pages — where the spend goes (last 30 days)</SectionTitle>
+                <div id="products" style={{ scrollMarginTop: 116 }} />
+                {products.excludeCandidates.length > 0 && (
+                  <>
+                    <SectionTitle>Feed candidates — spend, no conversions (judged at product level)</SectionTitle>
+                    <div style={{ ...card, border: "1px solid color-mix(in srgb, var(--danger) 30%, transparent)", padding: "6px 4px", marginBottom: 4 }}>
+                      {products.excludeCandidates.map(p => (
+                        <div key={p.productKey} style={{ display: "flex", gap: 11, padding: "11px 16px", borderBottom: "1px solid var(--border)" }}>
+                          <AlertTriangle size={16} style={{ color: "var(--danger)", flexShrink: 0, marginTop: 2 }} />
+                          <div>
+                            <div style={{ fontSize: 13.5, fontWeight: 700 }}>{p.title}</div>
+                            <div style={{ fontSize: 12.5, color: "var(--text-3)", marginTop: 2 }}>{p.excludeReason} — a candidate to exclude from the feed.</div>
+                          </div>
+                        </div>
+                      ))}
+                      <div style={{ fontSize: 11.5, color: "var(--text-muted)", padding: "8px 16px" }}>
+                        Individual variants are often too thin to judge — this call is made on the rolled-up product. The system flags the candidate; the specialist makes the exclusion.
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                <SectionTitle onAsk={() => askAbout("Looking at the product breakdown (ad spend vs what actually sold, including variant/size splits), where's the biggest lever — scale, fix, or exclude?")}>Products — what the ads did vs what actually sold (last 30 days)</SectionTitle>
                 <div style={{ ...card, overflowX: "auto" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5, minWidth: 520 }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5, minWidth: 640 }}>
                     <thead>
                       <tr style={{ color: "var(--text-muted)", textAlign: "right" }}>
-                        <th style={{ textAlign: "left", padding: "10px 14px", fontWeight: 600 }}>Landing page</th>
+                        <th style={{ textAlign: "left", padding: "10px 14px", fontWeight: 600 }}>Product</th>
                         <th style={{ padding: "10px 8px", fontWeight: 600 }}>Spend</th>
                         <th style={{ padding: "10px 8px", fontWeight: 600 }}>Clicks</th>
                         <th style={{ padding: "10px 8px", fontWeight: 600 }}>Conv.</th>
+                        <th style={{ padding: "10px 8px", fontWeight: 600 }}>Units</th>
+                        <th style={{ padding: "10px 8px", fontWeight: 600 }}>Revenue</th>
+                        <th style={{ padding: "10px 8px", fontWeight: 600 }} title="Real revenue ÷ ad spend">ROAS</th>
+                        <th style={{ padding: "10px 14px", fontWeight: 600 }}>POAS</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {products.groups.slice(0, 15).map(p => {
+                        const open = expanded.has(p.productKey);
+                        const canExpand = p.variants.length > 1;
+                        return (
+                          <Fragment key={p.productKey}>
+                            <tr
+                              onClick={() => canExpand && toggle(p.productKey)}
+                              style={{ borderTop: "1px solid var(--border)", textAlign: "right", color: "var(--text-2)", cursor: canExpand ? "pointer" : "default" }}>
+                              <td style={{ textAlign: "left", padding: "9px 14px", fontWeight: 600, color: "var(--text)", maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                {canExpand
+                                  ? <ChevronRight size={13} style={{ verticalAlign: -2, marginRight: 5, color: "var(--text-dim)", transform: open ? "rotate(90deg)" : "none", transition: "transform .12s" }} />
+                                  : <span style={{ display: "inline-block", width: 18 }} />}
+                                {p.excludeCandidate && <span title="spend, no conversions" style={{ color: "var(--danger)", marginRight: 6 }}>●</span>}
+                                {p.title}
+                                <button onClick={e => { e.stopPropagation(); setScanCtx({
+                                  query: p.title, productName: p.title,
+                                  // Prefer the exact store price from the Shopify catalog; fall back to avg sold.
+                                  price: p.catalog?.price ?? (p.units > 0 ? p.revenue / p.units : null),
+                                  priceSource: p.catalog?.price != null ? "store" : p.units > 0 ? "avg" : undefined,
+                                  gtin: p.catalog?.gtin ?? null,
+                                  url: p.catalog?.url ?? null,
+                                  id: p.productKey,
+                                }); }} title="Compare on Google Shopping — competitors & pricing"
+                                  style={{ marginLeft: 7, verticalAlign: -2, display: "inline-flex", background: "none", border: "none", padding: 2, cursor: "pointer", color: "var(--text-dim)" }}>
+                                  <ShoppingBag size={13} />
+                                </button>
+                                {p.variantCount > 1 && <span style={{ fontSize: 11, color: "var(--text-dim)", marginLeft: 7 }}>{p.variantCount} variants{p.thinVariantCount ? `, ${p.thinVariantCount} thin` : ""}</span>}
+                              </td>
+                              <td style={{ padding: "9px 8px", fontVariantNumeric: "tabular-nums" }}>{p.spend > 0 ? fmtMoney(p.spend) : "—"}</td>
+                              <td style={{ padding: "9px 8px", fontVariantNumeric: "tabular-nums" }}>{p.clicks || "—"}</td>
+                              <td style={{ padding: "9px 8px", fontVariantNumeric: "tabular-nums", color: p.excludeCandidate ? "var(--danger)" : "var(--text-2)" }}>{Math.round(p.adConversions)}</td>
+                              <td style={{ padding: "9px 8px", fontVariantNumeric: "tabular-nums" }}>{p.units || "—"}</td>
+                              <td style={{ padding: "9px 8px", fontVariantNumeric: "tabular-nums", fontWeight: 600 }}>{p.revenue > 0 ? fmtMoney(p.revenue) : "—"}</td>
+                              <td style={{ padding: "9px 8px", fontVariantNumeric: "tabular-nums", fontWeight: 600, color: p.roas != null ? (p.roas < 1 ? "var(--danger)" : p.roas >= 2 ? "var(--accent)" : "var(--text-2)") : "var(--text-dim)" }}>{p.roas != null ? p.roas.toFixed(2) : "—"}</td>
+                              <td style={{ padding: "9px 14px", fontVariantNumeric: "tabular-nums", color: p.poas != null ? (p.poas < 1 ? "var(--danger)" : "var(--accent)") : "var(--text-dim)" }}>{p.poas != null ? p.poas.toFixed(2) : "—"}</td>
+                            </tr>
+                            {open && p.variants.map(v => (
+                              <tr key={v.variantKey} style={{ textAlign: "right", color: "var(--text-3)", background: "var(--surface-2)", fontSize: 12 }}>
+                                <td style={{ textAlign: "left", padding: "7px 14px 7px 37px", maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                  {v.spendNoSales && <span style={{ color: "var(--danger)", marginRight: 5 }}>●</span>}
+                                  {v.label}
+                                  {v.thin && <span title="too little data to judge alone" style={{ fontSize: 10, color: "var(--text-dim)", marginLeft: 6 }}>thin</span>}
+                                </td>
+                                <td style={{ padding: "7px 8px", fontVariantNumeric: "tabular-nums" }}>{v.spend > 0 ? fmtMoney(v.spend) : "—"}</td>
+                                <td style={{ padding: "7px 8px", fontVariantNumeric: "tabular-nums" }}>{v.clicks || "—"}</td>
+                                <td style={{ padding: "7px 8px", fontVariantNumeric: "tabular-nums" }}>{Math.round(v.adConversions)}</td>
+                                <td style={{ padding: "7px 8px", fontVariantNumeric: "tabular-nums" }}>{v.units || "—"}</td>
+                                <td style={{ padding: "7px 8px", fontVariantNumeric: "tabular-nums" }}>{v.revenue > 0 ? fmtMoney(v.revenue) : "—"}</td>
+                                <td style={{ padding: "7px 8px", fontVariantNumeric: "tabular-nums" }}>{v.revenue > 0 && v.spend > 0 ? (v.revenue / v.spend).toFixed(2) : "—"}</td>
+                                <td style={{ padding: "7px 14px", fontVariantNumeric: "tabular-nums" }}>{v.poas != null ? v.poas.toFixed(2) : "—"}</td>
+                              </tr>
+                            ))}
+                          </Fragment>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                <div style={{ fontSize: 11.5, color: "var(--text-muted)", margin: "8px 4px 0" }}>
+                  {products.concentration.breadth !== "unknown" && (
+                    <>Revenue is <b>{products.concentration.breadth}</b> — top product is {Math.round(products.concentration.topShare * 100)}% of sales, top 3 are {Math.round(products.concentration.top3Share * 100)}%. </>
+                  )}
+                  Click a product to see its variants/sizes. ROAS here is <b>real revenue ÷ spend</b>, not the ads-attributed number. Units &amp; revenue come from Shopify — live connection or the &ldquo;Sales by product variant&rdquo; CSV. Last 30 days.
+                </div>
+              </>
+            )}
+
+            {/* Product pages — the same products through the ads lens (landing pages) */}
+            {productPages.length > 0 && (
+              <>
+                {!(products && products.groups.length > 0) && <div id="products" style={{ scrollMarginTop: 116 }} />}
+                <SectionTitle onAsk={() => askAbout("Read the product-page performance: where is spend going to pages that don't convert, and which winning pages deserve more?")}>Product pages — the ads view (last 30 days)</SectionTitle>
+                <div style={{ ...card, overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5, minWidth: 560 }}>
+                    <thead>
+                      <tr style={{ color: "var(--text-muted)", textAlign: "right" }}>
+                        <th style={{ textAlign: "left", padding: "10px 14px", fontWeight: 600 }}>Page</th>
+                        <th style={{ padding: "10px 8px", fontWeight: 600 }}>Spend</th>
+                        <th style={{ padding: "10px 8px", fontWeight: 600 }}>Clicks</th>
+                        <th style={{ padding: "10px 8px", fontWeight: 600 }}>Conv.</th>
+                        <th style={{ padding: "10px 8px", fontWeight: 600 }} title="Conversion value Google Ads attributed to this page">Ads revenue</th>
                         <th style={{ padding: "10px 14px", fontWeight: 600 }}>ROAS</th>
                       </tr>
                     </thead>
@@ -1777,6 +2032,7 @@ export default function DiagnosePage() {
                             <td style={{ padding: "9px 8px", fontVariantNumeric: "tabular-nums" }}>{fmtMoney(p.spend)}</td>
                             <td style={{ padding: "9px 8px", fontVariantNumeric: "tabular-nums" }}>{p.clicks || "—"}</td>
                             <td style={{ padding: "9px 8px", fontVariantNumeric: "tabular-nums", color: p.conversions < 1 ? "var(--danger)" : "var(--text-2)" }}>{Math.round(p.conversions)}</td>
+                            <td style={{ padding: "9px 8px", fontVariantNumeric: "tabular-nums", fontWeight: 600 }}>{p.conversionValue > 0 ? fmtMoney(p.conversionValue) : "—"}</td>
                             <td style={{ padding: "9px 14px", fontVariantNumeric: "tabular-nums", fontWeight: 600, color: bad ? "var(--danger)" : good ? "var(--accent)" : "var(--text-2)" }}>{p.roas != null ? p.roas.toFixed(2) : "—"}</td>
                           </tr>
                         );
@@ -1792,7 +2048,7 @@ export default function DiagnosePage() {
                   </button>
                 )}
                 <div style={{ fontSize: 11.5, color: "var(--text-muted)", margin: "8px 4px 0" }}>
-                  The page each click landed on (from Google Ads) — for Shopping/PMax these are product pages, so “Homepage” just means spend that went to the site root. Click a name to open the page, or the 🛍 icon to compare it on Google Shopping. Green = converting (ROAS ≥ 2), red = little/no return.
+                  The page each click landed on (from Google Ads) — &ldquo;Ads revenue&rdquo; and ROAS here are what <b>Google attributed</b>, so use the Products table above for what actually sold. &ldquo;Homepage&rdquo; just means spend that went to the site root. Green = converting (ROAS ≥ 2), red = little/no return.
                 </div>
               </>
             )}
@@ -1842,110 +2098,6 @@ export default function DiagnosePage() {
                 </div>
                 <div style={{ fontSize: 11.5, color: "var(--text-muted)", margin: "8px 4px 0" }}>
                   Each window ends yesterday. POAS and Orders need Shopify connected. &ldquo;partial&rdquo; = history doesn&rsquo;t yet cover the full window — back-fill 90 days to fill it in.
-                </div>
-              </>
-            )}
-
-            {/* Product breakdown — ad spend vs real sales, variant→product (§4/§8) */}
-            {products && products.groups.length > 0 && (
-              <>
-                <div id="products" style={{ scrollMarginTop: 116 }} />
-                {products.excludeCandidates.length > 0 && (
-                  <>
-                    <SectionTitle>Feed candidates — spend, no conversions (judged at product level)</SectionTitle>
-                    <div style={{ ...card, border: "1px solid color-mix(in srgb, var(--danger) 30%, transparent)", padding: "6px 4px", marginBottom: 4 }}>
-                      {products.excludeCandidates.map(p => (
-                        <div key={p.productKey} style={{ display: "flex", gap: 11, padding: "11px 16px", borderBottom: "1px solid var(--border)" }}>
-                          <AlertTriangle size={16} style={{ color: "var(--danger)", flexShrink: 0, marginTop: 2 }} />
-                          <div>
-                            <div style={{ fontSize: 13.5, fontWeight: 700 }}>{p.title}</div>
-                            <div style={{ fontSize: 12.5, color: "var(--text-3)", marginTop: 2 }}>{p.excludeReason} — a candidate to exclude from the feed.</div>
-                          </div>
-                        </div>
-                      ))}
-                      <div style={{ fontSize: 11.5, color: "var(--text-muted)", padding: "8px 16px" }}>
-                        Individual variants are often too thin to judge — this call is made on the rolled-up product. The system flags the candidate; the specialist makes the exclusion.
-                      </div>
-                    </div>
-                  </>
-                )}
-
-                <SectionTitle onAsk={() => askAbout("Looking at the product breakdown (ad spend vs what actually sold), where's the biggest lever — scale, fix, or exclude?")}>By product — what the ads did vs what actually sold</SectionTitle>
-                <div style={{ ...card, overflowX: "auto" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5, minWidth: 580 }}>
-                    <thead>
-                      <tr style={{ color: "var(--text-muted)", textAlign: "right" }}>
-                        <th style={{ textAlign: "left", padding: "10px 14px", fontWeight: 600 }}>Product</th>
-                        <th style={{ padding: "10px 8px", fontWeight: 600 }}>Spend</th>
-                        <th style={{ padding: "10px 8px", fontWeight: 600 }}>Clicks</th>
-                        <th style={{ padding: "10px 8px", fontWeight: 600 }}>Conv.</th>
-                        <th style={{ padding: "10px 8px", fontWeight: 600 }}>Units</th>
-                        <th style={{ padding: "10px 8px", fontWeight: 600 }}>Revenue</th>
-                        <th style={{ padding: "10px 14px", fontWeight: 600 }}>POAS</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {products.groups.slice(0, 15).map(p => {
-                        const open = expanded.has(p.productKey);
-                        const canExpand = p.variants.length > 1;
-                        return (
-                          <Fragment key={p.productKey}>
-                            <tr
-                              onClick={() => canExpand && toggle(p.productKey)}
-                              style={{ borderTop: "1px solid var(--border)", textAlign: "right", color: "var(--text-2)", cursor: canExpand ? "pointer" : "default" }}>
-                              <td style={{ textAlign: "left", padding: "9px 14px", fontWeight: 600, color: "var(--text)", maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                {canExpand
-                                  ? <ChevronRight size={13} style={{ verticalAlign: -2, marginRight: 5, color: "var(--text-dim)", transform: open ? "rotate(90deg)" : "none", transition: "transform .12s" }} />
-                                  : <span style={{ display: "inline-block", width: 18 }} />}
-                                {p.excludeCandidate && <span title="spend, no conversions" style={{ color: "var(--danger)", marginRight: 6 }}>●</span>}
-                                {p.title}
-                                <button onClick={e => { e.stopPropagation(); setScanCtx({
-                                  query: p.title, productName: p.title,
-                                  // Prefer the exact store price from the Shopify catalog; fall back to avg sold.
-                                  price: p.catalog?.price ?? (p.units > 0 ? p.revenue / p.units : null),
-                                  priceSource: p.catalog?.price != null ? "store" : p.units > 0 ? "avg" : undefined,
-                                  gtin: p.catalog?.gtin ?? null,
-                                  url: p.catalog?.url ?? null,
-                                  id: p.productKey,
-                                }); }} title="Compare on Google Shopping — competitors & pricing"
-                                  style={{ marginLeft: 7, verticalAlign: -2, display: "inline-flex", background: "none", border: "none", padding: 2, cursor: "pointer", color: "var(--text-dim)" }}>
-                                  <ShoppingBag size={13} />
-                                </button>
-                                {p.variantCount > 1 && <span style={{ fontSize: 11, color: "var(--text-dim)", marginLeft: 7 }}>{p.variantCount} variants{p.thinVariantCount ? `, ${p.thinVariantCount} thin` : ""}</span>}
-                              </td>
-                              <td style={{ padding: "9px 8px", fontVariantNumeric: "tabular-nums" }}>{p.spend > 0 ? fmtMoney(p.spend) : "—"}</td>
-                              <td style={{ padding: "9px 8px", fontVariantNumeric: "tabular-nums" }}>{p.clicks || "—"}</td>
-                              <td style={{ padding: "9px 8px", fontVariantNumeric: "tabular-nums", color: p.excludeCandidate ? "var(--danger)" : "var(--text-2)" }}>{Math.round(p.adConversions)}</td>
-                              <td style={{ padding: "9px 8px", fontVariantNumeric: "tabular-nums" }}>{p.units || "—"}</td>
-                              <td style={{ padding: "9px 8px", fontVariantNumeric: "tabular-nums" }}>{p.revenue > 0 ? fmtMoney(p.revenue) : "—"}</td>
-                              <td style={{ padding: "9px 14px", fontVariantNumeric: "tabular-nums", color: p.poas != null ? (p.poas < 1 ? "var(--danger)" : "var(--accent)") : "var(--text-dim)" }}>{p.poas != null ? p.poas.toFixed(2) : "—"}</td>
-                            </tr>
-                            {open && p.variants.map(v => (
-                              <tr key={v.variantKey} style={{ textAlign: "right", color: "var(--text-3)", background: "var(--surface-2)", fontSize: 12 }}>
-                                <td style={{ textAlign: "left", padding: "7px 14px 7px 37px", maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                  {v.spendNoSales && <span style={{ color: "var(--danger)", marginRight: 5 }}>●</span>}
-                                  {v.label}
-                                  {v.thin && <span title="too little data to judge alone" style={{ fontSize: 10, color: "var(--text-dim)", marginLeft: 6 }}>thin</span>}
-                                </td>
-                                <td style={{ padding: "7px 8px", fontVariantNumeric: "tabular-nums" }}>{v.spend > 0 ? fmtMoney(v.spend) : "—"}</td>
-                                <td style={{ padding: "7px 8px", fontVariantNumeric: "tabular-nums" }}>{v.clicks || "—"}</td>
-                                <td style={{ padding: "7px 8px", fontVariantNumeric: "tabular-nums" }}>{Math.round(v.adConversions)}</td>
-                                <td style={{ padding: "7px 8px", fontVariantNumeric: "tabular-nums" }}>{v.units || "—"}</td>
-                                <td style={{ padding: "7px 8px", fontVariantNumeric: "tabular-nums" }}>{v.revenue > 0 ? fmtMoney(v.revenue) : "—"}</td>
-                                <td style={{ padding: "7px 14px", fontVariantNumeric: "tabular-nums" }}>{v.poas != null ? v.poas.toFixed(2) : "—"}</td>
-                              </tr>
-                            ))}
-                          </Fragment>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-                <div style={{ fontSize: 11.5, color: "var(--text-muted)", margin: "8px 4px 0" }}>
-                  {products.concentration.breadth !== "unknown" && (
-                    <>Revenue is <b>{products.concentration.breadth}</b> — top product is {Math.round(products.concentration.topShare * 100)}% of sales, top 3 are {Math.round(products.concentration.top3Share * 100)}%. </>
-                  )}
-                  Click a product to see its variants. Ads roll up from item/variant level; units &amp; revenue need Shopify connected. Last 30 days.
                 </div>
               </>
             )}
@@ -2078,7 +2230,7 @@ export default function DiagnosePage() {
       )}
 
       {shopifyModal && (() => {
-        const SIDEKICK_PROMPT = `Export a "Sales over time" report for the last 90 days, grouped by day, as a CSV file.`;
+        const SIDEKICK_PROMPT = `Export three CSV reports for the last 90 days, each grouped by day: 1) "Sales over time", 2) "Sales by product variant" (product title, variant title, net quantity, net sales, discounts), 3) "Sales by discount".`;
         const methods = [
           { key: "csv" as const, label: "CSV upload", note: "Recommended", enabled: true },
           { key: "flow" as const, label: "Shopify Flow", note: "Free, no app", enabled: true },
@@ -2118,7 +2270,7 @@ export default function DiagnosePage() {
                 {shopifyMethod === "csv" && (
                   <div>
                     <p style={{ fontSize: 12.5, color: "var(--text-2)", lineHeight: 1.6, margin: "0 0 12px" }}>
-                      The fastest way — export a “Sales over time” CSV from Shopify and upload it here. No app install, no review.
+                      The fastest way — export CSVs from Shopify and drop them here (several at once is fine; each file is recognised automatically). <strong>“Sales over time”</strong> gives daily orders &amp; revenue; add <strong>“Sales by product variant”</strong> for per-product and per-size sales, and <strong>“Sales by discount”</strong> for which codes drive orders. No app install, no review.
                     </p>
                     <div style={{ background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 10, padding: "12px 14px", marginBottom: 14 }}>
                       <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text)", marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}><Sparkles size={13} style={{ color: "var(--accent)" }} /> Easiest: ask Shopify Sidekick</div>
@@ -2127,7 +2279,7 @@ export default function DiagnosePage() {
                         <code style={{ flex: 1, minWidth: 0, fontSize: 11.5, color: "var(--text)", background: "var(--bg)", border: "1px solid var(--border-2)", borderRadius: 7, padding: "8px 10px", lineHeight: 1.5 }}>{SIDEKICK_PROMPT}</code>
                         <button onClick={copySidekick} style={{ fontSize: 11.5, fontWeight: 700, color: "var(--text-2)", background: "var(--bg)", border: "1px solid var(--border-2)", borderRadius: 7, padding: "8px 12px", cursor: "pointer", flexShrink: 0 }}>{sidekickCopied ? "Copied ✓" : "Copy"}</button>
                       </div>
-                      <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 8 }}>Sidekick generates the CSV — download it, then upload it below. Or do it manually: <strong>Analytics → Reports → “Sales over time” → group by Day → last 90 days → Export</strong>.</div>
+                      <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 8 }}>Sidekick generates the CSVs — download them, then upload all of them below. Or do it manually: <strong>Analytics → Reports</strong> → open each report → group by Day → last 90 days → Export.</div>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                       <button onClick={() => csvInputRef.current?.click()} disabled={csvBusy}

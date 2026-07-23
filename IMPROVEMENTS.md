@@ -3,6 +3,49 @@
 A running record of what changed, where, and why — judged against the prime
 directive: **clean UI + seamless UX, everything simpler.** Newest first.
 
+## 2026-07-23 — Deeper Shopify · Products front-and-center · guided onboarding · verify-after-done
+
+Feedback: "we are not getting enough information from Shopify even though we
+can", the landing-pages tab is "scuffed" (no revenue, no sizes), context
+questions repeat themselves, and ticking an action just crosses it out with no
+check. All four addressed:
+
+- **Shopify depth without the API.** The CSV upload now accepts THREE Shopify
+  reports and recognises each file from its header (drop them all on one
+  button): "Sales over time" (daily orders/revenue), **"Sales by product
+  [variant]"** (per-product, per-size units & net sales → lights up the
+  ads-vs-sold product join for every CSV account) and **"Sales by discount"**
+  (new `DiscountDaily`, migration `0038`: which codes drive orders, what they
+  give away). The Sidekick prompt in the connect modal asks for all three. The
+  OAuth path pulls discount codes from the same orders query at no extra cost.
+- **The agent sees it too.** `get_shopify_data` now reports discount-code
+  performance (orders, revenue, amount given away, prior→recent movement) as
+  neutral facts, and points at the product-variant CSV when per-product data
+  is missing.
+- **Products, not landing pages.** The "Products — what the ads did vs what
+  actually sold" table (real revenue, variant/size split, catalog join) is now
+  the FIRST evidence section with its own tab, and gained a **ROAS column
+  computed from real revenue ÷ spend**. The landing-pages table is renamed
+  "Product pages — the ads view", gains an "Ads revenue" column, and states
+  plainly that its numbers are Google-attributed.
+- **Context: 5 questions instead of 9.** Goal/KPI/target-ROAS merged into
+  "What does success look like?"; ads-history/scaling/constraints merged into
+  "History & constraints". Old answers fold into the merged fields on open
+  (labelled) and the legacy columns are cleared on save so the agent is never
+  fed the same fact twice. Completeness counts (x/5) migrate transparently.
+- **Guided onboarding.** Un-set-up accounts get a 4-step checklist at the top
+  of the account page: connect order data → answer the 5 questions → **run the
+  tracking & consent check** (new endpoint scans the landing page for
+  gtag/GTM, the AW- conversion tag, Consent Mode and CMPs — SSRF-guarded, and
+  refuses to judge a bot-blocked page — plus Ads-vs-orders reconciliation) →
+  run the first read. Accounts that are already fully set up are stamped
+  quietly; "Skip setup" is always available.
+- **A tick is a claim, not proof.** Marking an action done on the account page
+  auto-sends a verification message to the agent ("verify whether it actually
+  happened — keep flagging if not"); from the cockpit the claim is stored in
+  agent memory so the next read verifies it. Done can no longer hide a live
+  issue.
+
 ## 2026-07-22 — Cockpit: checkable action list · audit PDF/print + always-English
 
 Feedback on the cockpit with 27 flagged accounts: "this is making me blind to
