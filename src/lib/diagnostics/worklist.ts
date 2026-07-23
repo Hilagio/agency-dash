@@ -79,7 +79,10 @@ export async function investigateAccount(acc: AgentAccount & { name: string }, m
   let finalText = "";
   for (let step = 0; step < MAX_STEPS; step++) {
     const msg = await client.messages.create({
-      model: "claude-sonnet-5", max_tokens: 900, system: SYSTEM,
+      // Adaptive thinking would silently eat the max_tokens budget and return
+      // an empty final text → no worklist item written, stale done-flags never
+      // cleared. Explicitly disabled; the tool loop is the reasoning here.
+      model: "claude-sonnet-5", max_tokens: 1200, thinking: { type: "disabled" }, system: SYSTEM,
       tools: AGENT_TOOLS as unknown as Anthropic.Tool[],
       messages,
     });

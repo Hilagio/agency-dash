@@ -100,7 +100,11 @@ export async function generateAccountBriefing(accountId: string): Promise<{ text
 
   const msg = await client.messages.create({
     model: "claude-sonnet-5",
-    max_tokens: 200,
+    // Sonnet 5 runs adaptive thinking by default and max_tokens caps
+    // thinking + output together — with a small cap the thinking eats the
+    // whole budget and the briefing comes back EMPTY. Disable it explicitly.
+    max_tokens: 400,
+    thinking: { type: "disabled" },
     system: BRIEF_SYSTEM,
     messages: [{ role: "user", content: L.join("\n") }],
   });
