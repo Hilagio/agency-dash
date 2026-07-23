@@ -172,6 +172,10 @@ export async function syncStoresFromNotion(
   const stores = await queryAllStores(token);
   const clientCache = new Map<string, string>();
   const seenActivePageIds = new Set<string>();
+  // Every page currently in the Stores DB — used to tell a STALE notionPageId
+  // (links to a page that no longer exists, e.g. the DB was rebuilt) from a
+  // LIVE one (a genuine duplicate customer id across two current pages).
+  const livePageIds = new Set(stores.map(p => p.id as string));
 
   for (const page of stores) {
     const pageId = page.id as string;
@@ -224,13 +228,15 @@ export async function syncStoresFromNotion(
         await prisma.account.update({ where: { id: existing.id }, data: notionFields });
         result.updated++;
       } else {
-        // An account with this customer id may already exist WITHOUT a Notion
-        // link (imported by hand before the Stores sync existed, or a Notion
-        // page was recreated). Creating would violate the unique googleAdsId
-        // and the store would silently never appear — adopt the existing
-        // account instead by linking the Notion page onto it.
+        // An account with this customer id may already exist WITHOUT a valid
+        // Notion link: imported by hand before the Stores sync existed, or
+        // linked to a page that was since deleted/recreated (a rebuilt Stores
+        // DB gives every store a new page id). Creating would violate the
+        // unique googleAdsId and the store would silently never appear —
+        // adopt the existing account instead by (re)linking this page onto it.
         const byCustomerId = await prisma.account.findUnique({ where: { googleAdsId: customerId } });
-        if (byCustomerId && byCustomerId.organizationId === organizationId && !byCustomerId.notionPageId) {
+        const linkIsStale = !!byCustomerId?.notionPageId && !livePageIds.has(byCustomerId.notionPageId);
+        if (byCustomerId && byCustomerId.organizationId === organizationId && (!byCustomerId.notionPageId || linkIsStale)) {
           await prisma.account.update({
             where: { id: byCustomerId.id },
             data: { ...notionFields, notionPageId: pageId },

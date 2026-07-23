@@ -3,6 +3,18 @@
 A running record of what changed, where, and why — judged against the prime
 directive: **clean UI + seamless UX, everything simpler.** Newest first.
 
+## 2026-07-23 (later still) — Stale Notion links: the actual missing-accounts case
+
+Diagnosed live for Solution Clothing (332-700-5811) and Lydia Boutique: both
+are PERFECT in the Notion Stores DB (Active, customer id filled, no
+duplicates) — verified directly against the database. So the block is on our
+side: an existing Account row holds the same Google Ads customer id but links
+to a Notion page that no longer exists (a rebuilt/recreated Stores page gets a
+new page id), and the unique-id check made the sync fail on those stores every
+night, silently. The sync now recognises a STALE link (page id not present in
+the current Stores DB) and re-links the account to the live page — same-run
+duplicates still error loudly by name.
+
 ## 2026-07-23 (later) — Missing accounts explained & findable · cockpit search · business type · product segments
 
 Feedback: "some of our key accounts are not in here, why not" + "why is there
