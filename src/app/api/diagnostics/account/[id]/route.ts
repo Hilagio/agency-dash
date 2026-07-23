@@ -65,7 +65,7 @@ async function handle(id: string, orgId: string, userId: string) {
       trackingStatus: true, trackingNote: true, trackingSetAt: true, trackingSetBy: true,
       merchantCenterId: true, slackChannelId: true, slackChannelName: true,
       briefing: true, briefingAt: true, worklist: true, worklistAt: true, worklistDoneAt: true,
-      onboardedAt: true, landingPageUrl: true,
+      onboardedAt: true, landingPageUrl: true, businessModel: true,
     },
   });
   if (!account) return NextResponse.json({ error: "This account isn't in your organization, or doesn't exist." }, { status: 404 });
@@ -293,5 +293,6 @@ async function handle(id: string, orgId: string, userId: string) {
   return NextResponse.json({
     diagnosis, briefing, windows, trend, shopify, connections, products, productPages, wins, tracking, watched, hasData: !!diag,
     onboardedAt: account.onboardedAt ?? null,
+    businessModel: account.businessModel ?? null,
   });
 }

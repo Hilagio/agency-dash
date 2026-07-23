@@ -33,13 +33,20 @@ async function syncOrg(organizationId: string): Promise<StoresSyncResult & { org
   }
   try {
     const res = await syncStoresFromNotion(conn.accessToken, organizationId);
-    await prisma.notionConnection.update({ where: { id: conn.id }, data: { lastSyncedAt: new Date() } });
+    // Persist the report — skipped/errored stores must be visible in the UI,
+    // not just in whatever called the cron.
+    await prisma.notionConnection.update({
+      where: { id: conn.id },
+      data: { lastSyncedAt: new Date(), lastSyncResult: JSON.stringify(res).slice(0, 20_000) },
+    });
     return { organizationId, ...res };
   } catch (err) {
-    return {
-      organizationId, created: 0, updated: 0, deactivated: 0, skipped: [], errors: [],
-      error: err instanceof Error ? err.message : "unknown error",
-    };
+    const error = err instanceof Error ? err.message : "unknown error";
+    await prisma.notionConnection.update({
+      where: { id: conn.id },
+      data: { lastSyncResult: JSON.stringify({ created: 0, updated: 0, deactivated: 0, skipped: [], errors: [error] }) },
+    }).catch(() => null);
+    return { organizationId, created: 0, updated: 0, deactivated: 0, skipped: [], errors: [], error };
   }
 }
 

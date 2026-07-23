@@ -224,10 +224,28 @@ export async function syncStoresFromNotion(
         await prisma.account.update({ where: { id: existing.id }, data: notionFields });
         result.updated++;
       } else {
-        await prisma.account.create({
-          data: { organizationId, notionPageId: pageId, currency: "EUR", ...notionFields },
-        });
-        result.created++;
+        // An account with this customer id may already exist WITHOUT a Notion
+        // link (imported by hand before the Stores sync existed, or a Notion
+        // page was recreated). Creating would violate the unique googleAdsId
+        // and the store would silently never appear — adopt the existing
+        // account instead by linking the Notion page onto it.
+        const byCustomerId = await prisma.account.findUnique({ where: { googleAdsId: customerId } });
+        if (byCustomerId && byCustomerId.organizationId === organizationId && !byCustomerId.notionPageId) {
+          await prisma.account.update({
+            where: { id: byCustomerId.id },
+            data: { ...notionFields, notionPageId: pageId },
+          });
+          result.updated++;
+        } else if (byCustomerId && byCustomerId.notionPageId) {
+          result.errors.push(`${name}: customer id ${customerId} is already used by "${byCustomerId.name}" (another Notion store links to the same Google Ads account — fix the duplicate in Notion)`);
+        } else if (byCustomerId) {
+          result.errors.push(`${name}: customer id ${customerId} already belongs to an account in another organization`);
+        } else {
+          await prisma.account.create({
+            data: { organizationId, notionPageId: pageId, currency: "EUR", ...notionFields },
+          });
+          result.created++;
+        }
       }
     } catch (err) {
       result.errors.push(`${name}: ${err instanceof Error ? err.message : "unknown error"}`);

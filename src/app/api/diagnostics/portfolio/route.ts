@@ -32,7 +32,7 @@ export async function GET() {
   const ctx = await getAuthContext();
   if (!ctx) return unauthorized();
 
-  const [accounts, watches] = await Promise.all([
+  const [accounts, watches, hiddenAccounts, notionConn] = await Promise.all([
     prisma.account.findMany({
       where: { organizationId: ctx.orgId, active: true, archived: false },
       select: {
@@ -44,8 +44,34 @@ export async function GET() {
       orderBy: { name: "asc" },
     }),
     prisma.accountWatch.findMany({ where: { userId: ctx.userId }, select: { accountId: true } }),
+    // Accounts that exist but are filtered out of the cockpit — searchable so
+    // "where did account X go" is answerable in the UI instead of a mystery.
+    prisma.account.findMany({
+      where: { organizationId: ctx.orgId, OR: [{ active: false }, { archived: true }] },
+      select: { id: true, name: true, clientName: true, archived: true, active: true },
+      orderBy: { name: "asc" },
+    }),
+    prisma.notionConnection.findUnique({
+      where: { organizationId: ctx.orgId },
+      select: { lastSyncedAt: true, lastSyncResult: true },
+    }),
   ]);
   const watched = new Set(watches.map(w => w.accountId));
+
+  const hidden = hiddenAccounts.map(a => ({
+    id: a.id, name: a.name, clientName: a.clientName,
+    // archived is the manual hide (wins over sync); otherwise it's Notion status.
+    reason: a.archived ? "archived" as const : "inactive" as const,
+  }));
+  let syncIssues: { skipped: { page: string; reason: string }[]; errors: string[]; at: Date | null } | null = null;
+  if (notionConn?.lastSyncResult) {
+    try {
+      const r = JSON.parse(notionConn.lastSyncResult) as { skipped?: { page: string; reason: string }[]; errors?: string[] };
+      if ((r.skipped?.length ?? 0) || (r.errors?.length ?? 0)) {
+        syncIssues = { skipped: r.skipped ?? [], errors: r.errors ?? [], at: notionConn.lastSyncedAt };
+      }
+    } catch { /* unreadable report — nothing to surface */ }
+  }
 
   const rows = await Promise.all(accounts.map(async (a) => {
     const recent = await prisma.accountStatus.findMany({
@@ -102,6 +128,8 @@ export async function GET() {
 
   return NextResponse.json({
     accounts: rows,
+    hidden,
+    syncIssues,
     counts: { red: counts.red ?? 0, yellow: counts.yellow ?? 0, green: counts.green ?? 0, unknown: counts.unknown ?? 0 },
     total: rows.length,
     unverified: rows.filter(r => r.hasData && !r.dataVerified).length,

@@ -11,7 +11,7 @@ import Link from "next/link";
 import {
   ShieldCheck, Settings as SettingsIcon, ListChecks, BookOpen,
   Loader2, ArrowRight, Sprout, Activity, ShoppingBag, AlertTriangle, CheckCircle2, XCircle, Star, Sparkles, RefreshCw,
-  ChevronDown, TrendingUp, Plus,
+  ChevronDown, TrendingUp, Plus, Search, EyeOff,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
@@ -29,8 +29,12 @@ interface Row {
   worklistDoneAt: string | null;
 }
 interface WorklistItem { headline: string; action: string; minutes: number; skill: string; confidence: string; category: string }
+interface HiddenAccount { id: string; name: string; clientName: string | null; reason: "archived" | "inactive" }
+interface SyncIssues { skipped: { page: string; reason: string }[]; errors: string[]; at: string | null }
 interface Portfolio {
   accounts: Row[];
+  hidden?: HiddenAccount[];
+  syncIssues?: SyncIssues | null;
   counts: Record<Colour, number>;
   total: number; unverified: number; verified: number; noOrderData: number; withData: number; watchedCount: number;
 }
@@ -79,6 +83,26 @@ export default function PortfolioHome() {
   const [showAll, setShowAll] = useState(false);
   const [showDone, setShowDone] = useState(false);
   const [openRows, setOpenRows] = useState<Set<string>>(new Set());
+  const [query, setQuery] = useState("");
+  const [unarchiving, setUnarchiving] = useState<Set<string>>(new Set());
+
+  // Bring an archived account back into the cockpit, then refresh the list.
+  async function unarchive(id: string) {
+    setUnarchiving(prev => new Set(prev).add(id));
+    try {
+      const r = await fetch(`/api/accounts/${id}`, {
+        method: "PATCH", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ archived: false }),
+      });
+      if (r.ok) {
+        const pf = await fetch("/api/diagnostics/portfolio", { credentials: "include" }).then(x => x.ok ? x.json() : null).catch(() => null);
+        if (pf) setData(pf);
+      }
+    } finally {
+      setUnarchiving(prev => { const n = new Set(prev); n.delete(id); return n; });
+    }
+  }
 
   // Tick / untick an account's worklist action — optimistic, reverts on failure.
   async function toggleDone(id: string, next: boolean) {
@@ -182,7 +206,15 @@ export default function PortfolioHome() {
   const c = data?.counts ?? { red: 0, yellow: 0, green: 0, unknown: 0 };
   const allAccounts = data?.accounts ?? [];
   const watchedCount = data?.watchedCount ?? 0;
-  const visible = view === "mine" ? allAccounts.filter(a => a.watched) : allAccounts;
+  // Search cuts across the My/All toggle — when you're looking for a specific
+  // account, "it's not pinned" shouldn't make it invisible.
+  const q = query.trim().toLowerCase();
+  const matches = (name: string, client?: string | null, owner?: string | null) =>
+    name.toLowerCase().includes(q) || (client ?? "").toLowerCase().includes(q) || (owner ?? "").toLowerCase().includes(q);
+  const visible = q
+    ? allAccounts.filter(a => matches(a.name, a.clientName, a.ownerName))
+    : view === "mine" ? allAccounts.filter(a => a.watched) : allAccounts;
+  const hiddenMatches = q ? (data?.hidden ?? []).filter(h => matches(h.name, h.clientName)) : [];
 
   // Cockpit buckets (visible list is already sorted worst-first by the API).
   const flagged = visible.filter(a => a.status === "red" || a.status === "yellow");
@@ -296,7 +328,23 @@ export default function PortfolioHome() {
               </div>
             )}
 
-            {/* My accounts / All */}
+            {/* Notion stores that couldn't sync — the answer to "why isn't
+                account X in here", surfaced instead of buried in a cron log. */}
+            {data.syncIssues && (data.syncIssues.skipped.length > 0 || data.syncIssues.errors.length > 0) && (
+              <div style={{ ...card, border: "1px solid color-mix(in srgb, var(--accent-2) 40%, var(--border))", padding: "12px 16px", marginBottom: 14, fontSize: 12.5, lineHeight: 1.6 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 7, fontWeight: 700, color: "var(--accent-2)", marginBottom: 4 }}>
+                  <AlertTriangle size={14} />
+                  <span>{`${data.syncIssues.skipped.length + data.syncIssues.errors.length} store${data.syncIssues.skipped.length + data.syncIssues.errors.length === 1 ? "" : "s"} in Notion couldn’t sync into the cockpit`}</span>
+                </div>
+                {data.syncIssues.skipped.slice(0, 6).map((s, i) => (
+                  <div key={i} style={{ color: "var(--text-2)" }}><b>{s.page}</b> — {s.reason}. Fill it in the Notion Stores database and it syncs in tonight (or run the sync from Settings).</div>
+                ))}
+                {data.syncIssues.skipped.length > 6 && <div style={{ color: "var(--text-muted)" }}>…and {data.syncIssues.skipped.length - 6} more with the same kind of gap.</div>}
+                {data.syncIssues.errors.slice(0, 4).map((e, i) => <div key={`e${i}`} style={{ color: "var(--text-2)" }}>{e}</div>)}
+              </div>
+            )}
+
+            {/* My accounts / All + search */}
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
               <div style={{ display: "inline-flex", background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: 10, padding: 3 }}>
                 <button onClick={() => chooseView("mine")} style={segBtn(view === "mine")}>
@@ -304,9 +352,31 @@ export default function PortfolioHome() {
                 </button>
                 <button onClick={() => chooseView("all")} style={segBtn(view === "all")}>All · {data.total}</button>
               </div>
+              <div style={{ position: "relative", flex: "1 1 220px", maxWidth: 340, marginLeft: "auto" }}>
+                <Search size={14} style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", color: "var(--text-dim)", pointerEvents: "none" }} />
+                <input
+                  value={query} onChange={e => setQuery(e.target.value)}
+                  placeholder="Search accounts…"
+                  style={{ width: "100%", fontSize: 13, padding: "8px 30px 8px 32px", borderRadius: 10, border: "1px solid var(--border-2)", background: "var(--surface)", color: "var(--text)", fontFamily: "inherit" }}
+                />
+                {query && (
+                  <button onClick={() => setQuery("")} title="Clear search" style={{ position: "absolute", right: 7, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "var(--text-dim)", cursor: "pointer", padding: 2, display: "inline-flex" }}>
+                    <XCircle size={14} />
+                  </button>
+                )}
+              </div>
             </div>
 
-            {view === "mine" && visible.length === 0 ? (
+            {q && visible.length === 0 && hiddenMatches.length === 0 ? (
+              <div style={{ ...card, padding: "36px 20px", textAlign: "center", color: "var(--text-muted)" }}>
+                <Search size={22} style={{ marginBottom: 8, color: "var(--text-dim)" }} />
+                <div style={{ fontWeight: 600, color: "var(--text-2)" }}>No account matches &ldquo;{query.trim()}&rdquo;</div>
+                <div style={{ fontSize: 12.5, marginTop: 5, lineHeight: 1.6 }}>
+                  Hidden (archived / Notion-inactive) accounts would show here too — so this account isn&rsquo;t in the system yet.
+                  It comes in via the Notion Stores database: status <b>Active</b> + a filled <b>Google Ads Customer ID</b>, synced nightly.
+                </div>
+              </div>
+            ) : !q && view === "mine" && visible.length === 0 ? (
               <div style={{ ...card, padding: "40px 20px", textAlign: "center", color: "var(--text-muted)" }}>
                 <Star size={24} style={{ color: "var(--accent)", marginBottom: 8 }} />
                 <div style={{ fontWeight: 600, color: "var(--text-2)" }}>No accounts pinned yet</div>
@@ -317,7 +387,7 @@ export default function PortfolioHome() {
               {/* TODAY'S ACTIONS — the flagged accounts as a checkable to-do list.
                   One line per account: tick it off when handled; the reasoning
                   paragraph stays behind the chevron for whoever wants it. */}
-              {flagged.length > 0 ? (
+              {q && flagged.length === 0 ? null : flagged.length > 0 ? (
                 <section style={{ marginBottom: 18 }}>
                   {(() => {
                     const todo = flagged.filter(a => !a.worklistDoneAt);
@@ -397,9 +467,9 @@ export default function PortfolioHome() {
                 <button onClick={() => setShowAll(s => !s)} style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", background: "none", border: "none", cursor: "pointer", padding: "6px 2px", color: "var(--text-2)" }}>
                   <ChevronDown size={16} style={{ transform: showAll ? "none" : "rotate(-90deg)", transition: "transform .15s", color: "var(--text-dim)" }} />
                   <span style={{ fontSize: 13, fontWeight: 700 }}>All accounts</span>
-                  <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{visible.length} total · {calm.length} under control{awaiting.length ? ` · ${awaiting.length} awaiting data` : ""}</span>
+                  <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{visible.length} {q ? "matching" : "total"} · {calm.length} under control{awaiting.length ? ` · ${awaiting.length} awaiting data` : ""}</span>
                 </button>
-                {showAll && (
+                {(showAll || !!q) && (
                   <div style={{ ...card, overflowX: "auto", marginTop: 10 }}>
                     <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 760 }}>
                       <thead>
@@ -466,6 +536,38 @@ export default function PortfolioHome() {
                   </div>
                 )}
               </section>
+
+              {/* HIDDEN MATCHES — accounts that exist but are filtered out of the
+                  cockpit. Only surfaced by search: the answer to "where did
+                  account X go" with the reason and, where possible, the fix. */}
+              {hiddenMatches.length > 0 && (
+                <section style={{ marginTop: 14 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 8, color: "var(--text-muted)", fontSize: 12.5, fontWeight: 700 }}>
+                    <EyeOff size={13} /> Hidden accounts matching your search
+                  </div>
+                  <div style={{ ...card, overflow: "hidden", opacity: 0.85 }}>
+                    {hiddenMatches.map((h, i) => (
+                      <div key={h.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 16px", borderTop: i ? "1px solid var(--border)" : "none", fontSize: 13 }}>
+                        <span style={{ width: 9, height: 9, borderRadius: "50%", background: "var(--text-dim)", flexShrink: 0 }} />
+                        <span style={{ fontWeight: 700 }}>{h.name}</span>
+                        {h.clientName && <span style={{ fontSize: 11.5, color: "var(--text-muted)" }}>{h.clientName}</span>}
+                        <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 6, padding: "2px 8px" }}>
+                          {h.reason === "archived" ? "archived here" : "inactive in Notion"}
+                        </span>
+                        <span style={{ marginLeft: "auto" }} />
+                        {h.reason === "archived" ? (
+                          <button onClick={() => unarchive(h.id)} disabled={unarchiving.has(h.id)}
+                            style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 700, color: "var(--accent)", background: "var(--accent-dim)", border: "1px solid color-mix(in srgb, var(--accent) 30%, var(--border))", borderRadius: 7, padding: "5px 12px", cursor: unarchiving.has(h.id) ? "default" : "pointer" }}>
+                            {unarchiving.has(h.id) ? <Loader2 size={12} className="animate-spin" /> : null} Bring back
+                          </button>
+                        ) : (
+                          <span style={{ fontSize: 11.5, color: "var(--text-muted)" }}>Set its Status to &ldquo;Active&rdquo; in the Notion Stores database — it returns on the next sync.</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
             </>
             )}
 

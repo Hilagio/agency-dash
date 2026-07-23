@@ -198,12 +198,14 @@ const COUNTRY_CVR_MULTIPLIER: Record<string, number> = {
  * Dropshippers have lower CVR due to brand unfamiliarity; DTC brands higher.
  */
 const BUSINESS_MODEL_CVR_MULTIPLIER: Record<string, number> = {
-  dtc:          1.10, // own brand, higher trust
-  marketplace:  1.15, // high-intent, price-competitive listings
-  dropship:     0.55, // unrecognised brand, slow shipping, price shopped
-  subscription: 0.75, // commitment friction reduces impulse conversions
-  service:      1.00,
-  lead_gen:     1.00, // lead-gen CVR benchmarks are already "lead" focused
+  dtc:              1.10, // own brand, higher trust
+  brand:            1.10, // same as dtc — the onboarding label the team uses
+  marketplace:      1.15, // high-intent, price-competitive listings
+  dropship:         0.55, // unrecognised brand, slow shipping, price shopped
+  branded_dropship: 0.80, // own branding/site but dropship fulfilment — between the two
+  subscription:     0.75, // commitment friction reduces impulse conversions
+  service:          1.00,
+  lead_gen:         1.00, // lead-gen CVR benchmarks are already "lead" focused
 };
 
 /**

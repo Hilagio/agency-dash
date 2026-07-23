@@ -316,6 +316,31 @@ interface ProductDiagnostic {
   concentration: { topShare: number; top3Share: number; productCount: number; breadth: "concentrated" | "balanced" | "broad" | "unknown" };
 }
 
+// Metric-based product segments — the flat list becomes a triage: what drains
+// spend, what wins, what sells with barely any ad push, and the long tail.
+interface ProductSegment { key: string; label: string; hint: string; color: string; items: ProductGroup[] }
+function segmentProducts(groups: ProductGroup[]): ProductSegment[] {
+  const taken = new Set<string>();
+  const take = (pred: (p: ProductGroup) => boolean) => {
+    const out = groups.filter(p => !taken.has(p.productKey) && pred(p));
+    out.forEach(p => taken.add(p.productKey));
+    return out;
+  };
+  const draining = take(p => p.excludeCandidate || p.underperformReason != null)
+    .sort((a, b) => b.wastedSpend - a.wastedSpend);
+  const winners = take(p => p.spend >= 20 && ((p.roas != null && p.roas >= 2) || (p.poas != null && p.poas >= 1.2)))
+    .sort((a, b) => b.revenue - a.revenue);
+  const underexposed = take(p => p.units > 0 && p.spend < 20)
+    .sort((a, b) => b.revenue - a.revenue);
+  const middle = take(() => true).sort((a, b) => b.spend - a.spend);
+  return [
+    { key: "draining", label: "Draining spend", hint: "spend without return — fix or exclude", color: "var(--danger)", items: draining },
+    { key: "winners", label: "Winners", hint: "returning well — scale candidates", color: "var(--accent)", items: winners },
+    { key: "underexposed", label: "Selling, barely advertised", hint: "real sales, little ad spend — untapped", color: "var(--accent-2)", items: underexposed },
+    { key: "middle", label: "In between", hint: "no clear verdict yet", color: "var(--text-dim)", items: middle },
+  ];
+}
+
 const STATUS_COLOR: Record<Status, string> = { green: "var(--accent)", yellow: "var(--accent-2)", red: "var(--danger)" };
 const STATUS_LABEL: Record<Status, string> = { green: "Under control", yellow: "Action needed", red: "Immediate action" };
 const TONE_COLOR: Record<Fact["tone"], string> = { bad: "var(--danger)", warn: "var(--accent-2)", good: "var(--accent)", neutral: "var(--text)" };
@@ -412,6 +437,8 @@ export default function DiagnosePage() {
   const [setupChecks, setSetupChecks] = useState<{ key: string; label: string; status: "ok" | "warn" | "fail" | "na"; detail: string }[] | null>(null);
   const [setupRunning, setSetupRunning] = useState(false);
   const [onboardBusy, setOnboardBusy] = useState(false);
+  const [bizModel, setBizModel] = useState<string | null>(null);
+  const [bizSaving, setBizSaving] = useState(false);
   const [shareState, setShareState] = useState<"idle" | "copying" | "copied">("idle");
   const [shareOpen, setShareOpen] = useState(false); // language chooser open
 
@@ -488,6 +515,7 @@ export default function DiagnosePage() {
       setTracking(j.tracking ?? null);
       setWatched(!!j.watched);
       setOnboardedAt(j.onboardedAt ?? null);
+      setBizModel(j.businessModel ?? null);
     } catch (e) { setError(e instanceof Error ? e.message : "Network error"); }
     setLoading(false);
   }
@@ -517,6 +545,22 @@ export default function DiagnosePage() {
       if (r.ok) setSetupChecks(j.checks ?? []);
     } finally { setSetupRunning(false); }
   }
+  // Business type (dropshipper / branded dropshipper / brand) — steers the CVR
+  // benchmark the diagnostics judge against and how the agent reads the account.
+  async function saveBizModel(model: string) {
+    const prev = bizModel;
+    setBizModel(model); setBizSaving(true);
+    try {
+      const r = await fetch(`/api/accounts/${id}`, {
+        method: "PATCH", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ businessModel: model }),
+      });
+      if (!r.ok) throw new Error();
+    } catch { setBizModel(prev); }
+    finally { setBizSaving(false); }
+  }
+
   async function markOnboarded() {
     setOnboardBusy(true);
     try {
@@ -1180,8 +1224,8 @@ export default function DiagnosePage() {
                 },
                 {
                   key: "context", label: "Tell the agent about the client",
-                  detail: "Five questions the data can't answer — goal & target, make-or-break, USPs, audiences, constraints.",
-                  done: (connections.contextFilled ?? 0) >= 3,
+                  detail: "Pick the business type, then five questions the data can't answer — goal & target, make-or-break, USPs, audiences, constraints.",
+                  done: (connections.contextFilled ?? 0) >= 3 && !!bizModel,
                   action: openContextForm,
                   actionLabel: "Answer questions",
                 },
@@ -1221,6 +1265,23 @@ export default function DiagnosePage() {
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontSize: 13, fontWeight: 700, textDecoration: s.done ? "line-through" : "none" }}>{s.label}</div>
                           {!s.done && <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2, lineHeight: 1.5 }}>{s.detail}</div>}
+                          {s.key === "context" && !s.done && (
+                            <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                              <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--text-3)" }}>Business type:</span>
+                              {[["dropship", "Dropshipper"], ["branded_dropship", "Branded dropshipper"], ["brand", "Brand"]].map(([val, label]) => (
+                                <button key={val} onClick={() => saveBizModel(val)} disabled={bizSaving}
+                                  style={{ fontSize: 11.5, fontWeight: 700, padding: "4px 11px", borderRadius: 999, cursor: "pointer",
+                                    color: bizModel === val ? "#fff" : "var(--text-2)",
+                                    background: bizModel === val ? "var(--btn-primary, var(--accent))" : "var(--surface)",
+                                    border: bizModel === val ? "none" : "1px solid var(--border-2)" }}>
+                                  {label}
+                                </button>
+                              ))}
+                              {bizModel && !["dropship", "branded_dropship", "brand"].includes(bizModel) && (
+                                <span style={{ fontSize: 11, color: "var(--text-muted)" }}>currently: {bizModel}</span>
+                              )}
+                            </div>
+                          )}
                           {s.key === "tracking" && setupChecks && (
                             <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 5 }}>
                               {setupChecks.map(c => (
@@ -1925,7 +1986,17 @@ export default function DiagnosePage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {products.groups.slice(0, 15).map(p => {
+                      {segmentProducts(products.groups).filter(seg => seg.items.length > 0).map(seg => (
+                        <Fragment key={seg.key}>
+                          <tr>
+                            <td colSpan={8} style={{ padding: "9px 14px 6px", borderTop: "1px solid var(--border)", background: "var(--surface-2)" }}>
+                              <span style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.5, color: seg.color }}>
+                                ● {seg.label} · {seg.items.length}
+                              </span>
+                              <span style={{ fontSize: 11, color: "var(--text-muted)", marginLeft: 8 }}>{seg.hint}</span>
+                            </td>
+                          </tr>
+                      {seg.items.slice(0, seg.key === "middle" ? 8 : 15).map(p => {
                         const open = expanded.has(p.productKey);
                         const canExpand = p.variants.length > 1;
                         return (
@@ -1980,6 +2051,11 @@ export default function DiagnosePage() {
                           </Fragment>
                         );
                       })}
+                      {seg.key === "middle" && seg.items.length > 8 && (
+                        <tr><td colSpan={8} style={{ padding: "6px 14px 9px", fontSize: 11, color: "var(--text-dim)" }}>…and {seg.items.length - 8} more without a clear verdict.</td></tr>
+                      )}
+                        </Fragment>
+                      ))}
                     </tbody>
                   </table>
                 </div>
@@ -1987,7 +2063,7 @@ export default function DiagnosePage() {
                   {products.concentration.breadth !== "unknown" && (
                     <>Revenue is <b>{products.concentration.breadth}</b> — top product is {Math.round(products.concentration.topShare * 100)}% of sales, top 3 are {Math.round(products.concentration.top3Share * 100)}%. </>
                   )}
-                  Click a product to see its variants/sizes. ROAS here is <b>real revenue ÷ spend</b>, not the ads-attributed number. Units &amp; revenue come from Shopify — live connection or the &ldquo;Sales by product variant&rdquo; CSV. Last 30 days.
+                  Segmented by the metrics: <b style={{ color: "var(--danger)" }}>draining</b> (spend without return, worst first) · <b style={{ color: "var(--accent)" }}>winners</b> (returning well, biggest first) · <b style={{ color: "var(--accent-2)" }}>selling barely advertised</b> (untapped) · the rest. Click a product to see its variants/sizes. ROAS here is <b>real revenue ÷ spend</b>, not the ads-attributed number. Units &amp; revenue come from Shopify — live connection or the &ldquo;Sales by product variant&rdquo; CSV. Last 30 days.
                 </div>
               </>
             )}
