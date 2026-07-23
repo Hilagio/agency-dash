@@ -15,6 +15,7 @@ import { computeWindows, detectTrend } from "@/lib/diagnostics/windows";
 import { buildProductGroups, attachCatalog, type AdsVariantRow, type SalesVariantRow } from "@/lib/diagnostics/products";
 import { shopifyAppConfig } from "@/lib/integrations/shopify";
 import type { Signal } from "@/lib/diagnostics/signals";
+import { effectiveDoneAt } from "@/lib/diagnostics/done";
 
 export const dynamic = "force-dynamic";
 
@@ -287,7 +288,7 @@ async function handle(id: string, orgId: string, userId: string) {
   // The nightly opener + planned next action — the same message the cockpit
   // shows, so the reasoning that flagged this account is visible in-account too.
   const briefing = account.briefing
-    ? { text: account.briefing, at: account.briefingAt, worklist: (() => { try { return account.worklist ? JSON.parse(account.worklist) : null; } catch { return null; } })(), worklistAt: account.worklistAt, worklistDoneAt: account.worklistDoneAt ?? null }
+    ? { text: account.briefing, at: account.briefingAt, worklist: (() => { try { return account.worklist ? JSON.parse(account.worklist) : null; } catch { return null; } })(), worklistAt: account.worklistAt, worklistDoneAt: effectiveDoneAt(account.worklistDoneAt) }
     : null;
 
   return NextResponse.json({

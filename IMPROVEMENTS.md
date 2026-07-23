@@ -3,6 +3,23 @@
 A running record of what changed, where, and why — judged against the prime
 directive: **clean UI + seamless UX, everything simpler.** Newest first.
 
+## 2026-07-23 (night) — Stale done-ticks can't hide the cockpit; nightly runs un-broken
+
+Live report: "nu zie ik mn stores niet meer in de cockpit" — all 27 flagged
+accounts sat under "done today" because ticks from a previous day were never
+cleared. Root causes, both fixed:
+
+- **The nightly briefing/worklist runs were producing EMPTY output** (the
+  audit's Tier-1 finding, now actually fixed): claude-sonnet-5 runs adaptive
+  thinking by default and `max_tokens` caps thinking + output together — at
+  200/900 tokens the thinking ate the whole budget. Both calls now pass
+  `thinking: { type: "disabled" }` with roomier caps (400/1200). With the runs
+  writing fresh actions again, done-flags clear nightly as designed.
+- **"Done" is now day-scoped as a hard guarantee**: the API treats a done-mark
+  from a previous Amsterdam calendar day as expired (`lib/diagnostics/done.ts`),
+  so even if a nightly run fails, yesterday's ticks can never blank today's
+  action list.
+
 ## 2026-07-23 (evening) — Google Ads MCC is the account source; Notion enriches
 
 "Waarom haal je niet gewoon alle stores op uit Google Ads en dat wij ze dan

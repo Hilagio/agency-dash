@@ -9,6 +9,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getAuthContext, unauthorized } from "@/lib/auth";
 import type { Signal } from "@/lib/diagnostics/signals";
+import { effectiveDoneAt } from "@/lib/diagnostics/done";
 
 export const dynamic = "force-dynamic";
 
@@ -102,7 +103,7 @@ export async function GET() {
       briefing: a.briefing ?? null,
       briefingAt: a.briefingAt ?? null,
       worklist: (() => { try { return a.worklist ? JSON.parse(a.worklist) : null; } catch { return null; } })(),
-      worklistDoneAt: a.worklistDoneAt ?? null,
+      worklistDoneAt: effectiveDoneAt(a.worklistDoneAt),
       hasData: !!diag,
       spend,
       conversions: w?.conversions ?? null,
