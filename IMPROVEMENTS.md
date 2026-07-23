@@ -3,6 +3,25 @@
 A running record of what changed, where, and why — judged against the prime
 directive: **clean UI + seamless UX, everything simpler.** Newest first.
 
+## 2026-07-23 (night 2) — MCC importer rebuilt in-house-style · client portal v4
+
+- **MCC importer rebuilt** ("deze komt uit de oude versie"): new house-style
+  modal — auto-loads the MCC list, search, tap-to-tick rows, "Select all new",
+  bulk import with a small request pool. After import the cockpit expands the
+  full list, switches to All, and kicks the first data pull for every account
+  without data — imports now VISIBLY land instead of hiding as "unknown" in a
+  collapsed section. Legacy raw Notion 404s stored in the old sync report are
+  translated to the share-the-database instruction at read time too.
+- **Client portal v4** (Luna feedback): "Bestellingen 0" next to €85k is gone —
+  the tile shows real store orders only when Shopify has CURRENT data, else
+  the conversions Google Ads measured (labelled "gemeten via Google Ads").
+  Bestsellers get a fallback: when ads land on collections/root (no per-page
+  product rows), the list is built from real Shopify sales (live or CSV) with
+  "N verkocht". The revenue equivalent is now a visual (emoji row scaled to
+  the count) with correct singular/plural ("1 elektrische auto", not "1
+  elektrische auto's"). More air everywhere: wider container, bigger hero,
+  roomier tiles/cards, taller trend chart.
+
 ## 2026-07-23 (night) — Stale done-ticks can't hide the cockpit; nightly runs un-broken
 
 Live report: "nu zie ik mn stores niet meer in de cockpit" — all 27 flagged
