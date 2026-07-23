@@ -41,7 +41,13 @@ async function syncOrg(organizationId: string): Promise<StoresSyncResult & { org
     });
     return { organizationId, ...res };
   } catch (err) {
-    const error = err instanceof Error ? err.message : "unknown error";
+    let error = err instanceof Error ? err.message : "unknown error";
+    // A Notion 404 here almost always means the integration lost access —
+    // e.g. the Stores database was rebuilt/moved and never re-shared. Turn
+    // the raw API error into the instruction that actually fixes it.
+    if (/object_not_found|Could not find database/i.test(error)) {
+      error = "The Notion integration can't reach the Stores database — it isn't shared with the integration. In Notion: open the Stores database (or its parent Agency OS page) → ⋯ menu → Connections → add the integration. Then run this sync again.";
+    }
     await prisma.notionConnection.update({
       where: { id: conn.id },
       data: { lastSyncResult: JSON.stringify({ created: 0, updated: 0, deactivated: 0, skipped: [], errors: [error] }) },
