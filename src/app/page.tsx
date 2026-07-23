@@ -14,6 +14,7 @@ import {
   ChevronDown, TrendingUp, Plus, Search, EyeOff,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { AccountImporter } from "@/components/AccountImporter";
 
 type Colour = "red" | "yellow" | "green" | "unknown";
 interface Row {
@@ -85,6 +86,12 @@ export default function PortfolioHome() {
   const [openRows, setOpenRows] = useState<Set<string>>(new Set());
   const [query, setQuery] = useState("");
   const [unarchiving, setUnarchiving] = useState<Set<string>>(new Set());
+  const [importOpen, setImportOpen] = useState(false);
+
+  async function reloadPortfolio() {
+    const pf = await fetch("/api/diagnostics/portfolio", { credentials: "include" }).then(x => x.ok ? x.json() : null).catch(() => null);
+    if (pf) setData(pf);
+  }
 
   // Bring an archived account back into the cockpit, then refresh the list.
   async function unarchive(id: string) {
@@ -275,9 +282,9 @@ export default function PortfolioHome() {
             </div>
             <HealthChip health={health} />
             {/* Utility actions — quiet, icon-only so they don't compete with triage. */}
-            <Link href="/stores" title="Add or manage accounts" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 34, height: 34, borderRadius: 10, textDecoration: "none", color: "var(--text-3)", background: "var(--surface)", border: "1px solid var(--border)" }}>
+            <button onClick={() => setImportOpen(true)} title="Add accounts — pick them straight from the Google Ads MCC" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 34, height: 34, borderRadius: 10, cursor: "pointer", color: "var(--text-3)", background: "var(--surface)", border: "1px solid var(--border)" }}>
               <Plus size={15} />
-            </Link>
+            </button>
             {data && data.total > 0 && (
               <button onClick={backfillAll} disabled={backfill.running} title="Refresh all — pull 90 days for every account"
                 style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, height: 34, width: backfill.running ? "auto" : 34, padding: backfill.running ? "0 12px" : 0, borderRadius: 10, fontSize: 12, fontWeight: 600, cursor: backfill.running ? "default" : "pointer", color: backfill.running ? "var(--text-3)" : "var(--text-3)", background: "var(--surface)", border: "1px solid var(--border)" }}>
@@ -586,6 +593,17 @@ export default function PortfolioHome() {
           </>
         )}
       </main>
+
+      {/* Import accounts straight from the Google Ads MCC — the MCC is the
+          source of truth for what exists; ticking here is the source of truth
+          for what's relevant. Notion (if connected) only enriches afterwards. */}
+      {importOpen && (
+        <div onClick={() => setImportOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 1000, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "7vh 16px 40px", overflowY: "auto" }}>
+          <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 640 }}>
+            <AccountImporter onImported={reloadPortfolio} onClose={() => setImportOpen(false)} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

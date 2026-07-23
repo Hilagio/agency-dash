@@ -3,6 +3,17 @@
 A running record of what changed, where, and why — judged against the prime
 directive: **clean UI + seamless UX, everything simpler.** Newest first.
 
+## 2026-07-23 (evening) — Google Ads MCC is the account source; Notion enriches
+
+"Waarom haal je niet gewoon alle stores op uit Google Ads en dat wij ze dan
+aanvinken?" — exactly. The MCC importer existed but was buried on the legacy
+/stores page; it now opens from the cockpit's "+" button: load every account
+in the MCC, search, tick the relevant ones (or Import all). Importing also
+REVIVES an account that was deactivated by Notion or archived by hand, and can
+never move an account between organizations. Notion becomes optional
+enrichment (client name, Slack channel, budget) — the sync's adopt-by-customer-id
+links a Notion store onto an MCC-imported account instead of duplicating it.
+
 ## 2026-07-23 (later still) — Stale Notion links: the actual missing-accounts case
 
 Diagnosed live for Solution Clothing (332-700-5811) and Lydia Boutique: both

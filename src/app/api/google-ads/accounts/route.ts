@@ -248,9 +248,17 @@ export async function POST(req: NextRequest) {
   const body = await req.json() as { googleAdsId: string; name: string; currency?: string; industry?: string; monthlyBudget?: number };
   if (!body.googleAdsId || !body.name) return NextResponse.json({ error: "googleAdsId and name are required" }, { status: 400 });
 
+  // Never let an import move an account between organizations.
+  const existing = await prisma.account.findUnique({ where: { googleAdsId: body.googleAdsId }, select: { organizationId: true } });
+  if (existing && existing.organizationId !== ctx.orgId) {
+    return NextResponse.json({ error: "This customer id already belongs to an account in another organization." }, { status: 409 });
+  }
+
   const account = await prisma.account.upsert({
     where:  { googleAdsId: body.googleAdsId },
-    update: { name: body.name, currency: body.currency ?? "USD", industry: body.industry ?? null, monthlyBudget: body.monthlyBudget ?? null, organizationId: ctx.orgId },
+    // Importing is an explicit "this account is relevant" — it also revives a
+    // row that was deactivated (Notion) or archived (manual hide).
+    update: { name: body.name, currency: body.currency ?? "USD", industry: body.industry ?? null, monthlyBudget: body.monthlyBudget ?? null, active: true, archived: false },
     create: { googleAdsId: body.googleAdsId, name: body.name, currency: body.currency ?? "USD", industry: body.industry ?? null, monthlyBudget: body.monthlyBudget ?? null, organizationId: ctx.orgId },
   });
 
