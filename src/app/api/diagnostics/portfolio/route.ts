@@ -68,8 +68,15 @@ export async function GET() {
   if (notionConn?.lastSyncResult) {
     try {
       const r = JSON.parse(notionConn.lastSyncResult) as { skipped?: { page: string; reason: string }[]; errors?: string[] };
-      if ((r.skipped?.length ?? 0) || (r.errors?.length ?? 0)) {
-        syncIssues = { skipped: r.skipped ?? [], errors: r.errors ?? [], at: notionConn.lastSyncedAt };
+      // Reports stored before friendly-error translation may hold the raw
+      // Notion API JSON — translate at read time too, so the banner is always
+      // an instruction, never a stack of JSON.
+      const friendly = (e: string) => /object_not_found|Could not find database/i.test(e)
+        ? "The Notion integration can't reach the Stores database — share it (or its parent page) with the integration via ⋯ → Connections in Notion, then run the sync again from Settings."
+        : e;
+      const errors = (r.errors ?? []).map(friendly);
+      if ((r.skipped?.length ?? 0) || errors.length) {
+        syncIssues = { skipped: r.skipped ?? [], errors, at: notionConn.lastSyncedAt };
       }
     } catch { /* unreadable report — nothing to surface */ }
   }

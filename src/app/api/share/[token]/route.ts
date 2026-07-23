@@ -94,10 +94,31 @@ export async function GET(_req: NextRequest, { params }: Params) {
     e.spend += r.spend; e.clicks += r.clicks; e.conversions += r.conversions; e.conversionValue += r.conversionValue;
     pAgg.set(r.landingPageUrl, e);
   }
-  const bestsellers = [...pAgg.values()]
+  const strict = [...pAgg.values()]
     .filter(p => !isRootPage(p.url, p.name) && p.conversions >= 1 && p.conversionValue > 0)
     .sort((a, b) => b.conversionValue - a.conversionValue)
     .slice(0, 5);
+  // Fallback: stores whose ads land on collections/the root have no per-page
+  // product rows that pass the strict filter — use real Shopify sales
+  // (live or the "Sales by product" CSV) so the client still sees their
+  // bestsellers instead of an empty section.
+  let bestsellers = strict;
+  let bestsellerSource: "ads" | "store" = "ads";
+  if (!bestsellers.length) {
+    const saleRows = await prisma.productSalesDaily.findMany({
+      where: { accountId: account.id, date: { gte: win30Ymd, lte: endYmd } },
+      select: { title: true, units: true, revenue: true },
+    });
+    const sAgg = new Map<string, { url: string; name: string; spend: number; clicks: number; conversions: number; conversionValue: number }>();
+    for (const r of saleRows) {
+      const e = sAgg.get(r.title) ?? { url: "", name: r.title, spend: 0, clicks: 0, conversions: 0, conversionValue: 0 };
+      e.conversions += r.units; e.conversionValue += r.revenue;
+      sAgg.set(r.title, e);
+    }
+    bestsellers = [...sAgg.values()].filter(p => p.conversionValue > 0)
+      .sort((a, b) => b.conversionValue - a.conversionValue).slice(0, 5);
+    if (bestsellers.length) bestsellerSource = "store";
+  }
 
   // Product photos: Shopify catalog first (title match), else the product page's
   // own og:image (fetched + cached server-side) — so photos work without Shopify.
@@ -110,11 +131,11 @@ export async function GET(_req: NextRequest, { params }: Params) {
     for (const [t, url] of imgByTitle) if (t.length > 5 && (t.includes(k) || k.includes(t))) return url;
     return null;
   };
-  const needPage = bestsellers.filter(p => !catalogImageFor(p.name)).map(p => p.url);
+  const needPage = bestsellers.filter(p => !catalogImageFor(p.name) && p.url).map(p => p.url);
   const pageImages = await getPageImages(account.id, needPage);
   const products = bestsellers.map(p => ({
     name: p.name,
-    image: catalogImageFor(p.name) ?? pageImages.get(p.url) ?? null,
+    image: catalogImageFor(p.name) ?? (p.url ? pageImages.get(p.url) ?? null : null),
     value: Math.round(p.conversionValue),
     spend: Math.round(p.spend), clicks: p.clicks, conversions: Math.round(p.conversions),
     roas: p.spend > 0 ? +(p.conversionValue / p.spend).toFixed(2) : null,
@@ -125,7 +146,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
     lang: account.shareLang === "en" ? "en" : "nl",
     currency: SYMBOL[account.currency] ?? `${account.currency} `,
     hasCommerce: oRows.some(o => o.revenue > 0),
-    windows, deltas, days, products,
+    windows, deltas, days, products, bestsellerSource,
     generatedAt: new Date().toISOString(),
   });
 }

@@ -93,6 +93,31 @@ export default function PortfolioHome() {
     if (pf) setData(pf);
   }
 
+  // Freshly imported accounts have no data yet (status "unknown", buried in the
+  // collapsed list) — kick their first pull immediately and open the full list
+  // so they're visibly THERE, then reload once statuses land.
+  async function onAccountsImported(_importedIds: string[]) {
+    setShowAll(true);
+    if (view === "mine") chooseView("all");
+    const pf: Portfolio | null = await fetch("/api/diagnostics/portfolio", { credentials: "include" }).then(x => x.ok ? x.json() : null).catch(() => null);
+    if (pf) setData(pf);
+    // Pull first data for every account that has none yet (covers the imports).
+    const queue = (pf?.accounts ?? []).filter(r => !r.hasData).map(r => r.id);
+    const worker = async () => {
+      for (;;) {
+        const id = queue.shift();
+        if (!id) return;
+        await fetch(`/api/diagnostics/account/${id}/refresh`, {
+          method: "POST", credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ days: 30 }),
+        }).catch(() => null);
+      }
+    };
+    await Promise.all(Array.from({ length: 4 }, () => worker()));
+    await reloadPortfolio();
+  }
+
   // Bring an archived account back into the cockpit, then refresh the list.
   async function unarchive(id: string) {
     setUnarchiving(prev => new Set(prev).add(id));
@@ -600,7 +625,7 @@ export default function PortfolioHome() {
       {importOpen && (
         <div onClick={() => setImportOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 1000, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "7vh 16px 40px", overflowY: "auto" }}>
           <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 640 }}>
-            <AccountImporter onImported={reloadPortfolio} onClose={() => setImportOpen(false)} />
+            <AccountImporter onImported={onAccountsImported} onClose={() => setImportOpen(false)} />
           </div>
         </div>
       )}

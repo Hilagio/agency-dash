@@ -18,27 +18,28 @@ interface Win { days: number; spend: number; conversions: number; adRevenue: num
 interface Delta { spend: number | null; revenue: number | null; adRevenue: number | null; conversions: number | null }
 interface Day { date: string; spend: number; conversions: number; conversionValue: number; revenue: number }
 interface Product { name: string; image: string | null; value: number; spend: number; clicks: number; conversions: number; roas: number | null }
-interface Data { account: { name: string; client: string | null }; lang: "nl" | "en"; currency: string; hasCommerce: boolean; windows: Win[]; deltas: Record<number, Delta>; days: Day[]; products: Product[]; generatedAt: string }
+interface Data { account: { name: string; client: string | null }; lang: "nl" | "en"; currency: string; hasCommerce: boolean; windows: Win[]; deltas: Record<number, Delta>; days: Day[]; products: Product[]; bestsellerSource?: "ads" | "store"; generatedAt: string }
 
-// Playful "you could have bought…" items, cheapest → priciest.
-const ITEMS: { p: number; nl: string; en: string; e: string }[] = [
-  { p: 3.5, nl: "cappuccino’s", en: "cappuccinos", e: "☕" },
-  { p: 13, nl: "bioscooptickets", en: "cinema tickets", e: "🎬" },
-  { p: 45, nl: "pizza-avonden", en: "pizza nights", e: "🍕" },
-  { p: 120, nl: "paar sneakers", en: "pairs of sneakers", e: "👟" },
-  { p: 260, nl: "festivaltickets", en: "festival tickets", e: "🎫" },
-  { p: 900, nl: "vliegtickets naar Barcelona", en: "flights to Barcelona", e: "✈️" },
-  { p: 3500, nl: "scooters", en: "scooters", e: "🛵" },
-  { p: 14000, nl: "stadsauto’s", en: "city cars", e: "🚗" },
-  { p: 55000, nl: "elektrische auto’s", en: "electric cars", e: "🔋" },
-  { p: 250000, nl: "vakantiehuisjes", en: "holiday homes", e: "🏡" },
+// Playful "you could have bought…" items, cheapest → priciest: [singular, plural].
+const ITEMS: { p: number; nl: [string, string]; en: [string, string]; e: string }[] = [
+  { p: 3.5, nl: ["cappuccino", "cappuccino’s"], en: ["cappuccino", "cappuccinos"], e: "☕" },
+  { p: 13, nl: ["bioscoopticket", "bioscooptickets"], en: ["cinema ticket", "cinema tickets"], e: "🎬" },
+  { p: 45, nl: ["pizza-avond", "pizza-avonden"], en: ["pizza night", "pizza nights"], e: "🍕" },
+  { p: 120, nl: ["paar sneakers", "paar sneakers"], en: ["pair of sneakers", "pairs of sneakers"], e: "👟" },
+  { p: 260, nl: ["festivalticket", "festivaltickets"], en: ["festival ticket", "festival tickets"], e: "🎫" },
+  { p: 900, nl: ["vliegticket naar Barcelona", "vliegtickets naar Barcelona"], en: ["flight to Barcelona", "flights to Barcelona"], e: "✈️" },
+  { p: 3500, nl: ["scooter", "scooters"], en: ["scooter", "scooters"], e: "🛵" },
+  { p: 14000, nl: ["stadsauto", "stadsauto’s"], en: ["city car", "city cars"], e: "🚗" },
+  { p: 55000, nl: ["elektrische auto", "elektrische auto’s"], en: ["electric car", "electric cars"], e: "🚙" },
+  { p: 250000, nl: ["vakantiehuisje", "vakantiehuisjes"], en: ["holiday home", "holiday homes"], e: "🏡" },
 ];
-function equivalent(revenue: number, lang: "nl" | "en"): { text: string; emoji: string } | null {
+function equivalent(revenue: number, lang: "nl" | "en"): { text: string; emoji: string; count: number } | null {
   if (revenue < ITEMS[0].p) return null;
   let pick = ITEMS[0];
   for (const it of ITEMS) if (revenue / it.p >= 1.5) pick = it;
   const count = Math.max(1, Math.floor(revenue / pick.p));
-  return { text: `${count.toLocaleString(lang === "en" ? "en-GB" : "nl-NL")} ${lang === "en" ? pick.en : pick.nl}`, emoji: pick.e };
+  const forms = lang === "en" ? pick.en : pick.nl;
+  return { text: `${count.toLocaleString(lang === "en" ? "en-GB" : "nl-NL")} ${count === 1 ? forms[0] : forms[1]}`, emoji: pick.e, count };
 }
 
 const COPY = {
@@ -57,7 +58,7 @@ const COPY = {
     vsPrev: "t.o.v. vorige periode", couldBuy: "Met deze omzet had je kunnen kopen",
     trend: "Verloop", cost: "Kosten", revenueShort: "Omzet",
     topTitle: "Jouw bestsellers", topSub: "top 5 op gegenereerde omzet · laatste 30 dagen",
-    generated: "omzet", convs: "conversies", clicks: "klikken",
+    generated: "omzet", convs: "conversies", clicks: "klikken", sold: "verkocht", ordersAds: "gemeten via Google Ads",
     story: "Deel als story", generating: "Bezig…", storyRevLabel: "Omzet via Google Ads", storyReturn: (r: string) => `${r} van je investering terug`,
     bestseller: "Bestseller", adSpend: "Advertentiekosten",
     updated: "Bijgewerkt", managed: "Beheerd door Ecomtrada", locale: "nl-NL",
@@ -77,7 +78,7 @@ const COPY = {
     vsPrev: "vs. previous period", couldBuy: "With this revenue you could've bought",
     trend: "Trend", cost: "Spend", revenueShort: "Revenue",
     topTitle: "Your bestsellers", topSub: "top 5 by revenue generated · last 30 days",
-    generated: "revenue", convs: "conversions", clicks: "clicks",
+    generated: "revenue", convs: "conversions", clicks: "clicks", sold: "sold", ordersAds: "measured via Google Ads",
     story: "Share as story", generating: "Working…", storyRevLabel: "Revenue via Google Ads", storyReturn: (r: string) => `${r} return on your investment`,
     bestseller: "Bestseller", adSpend: "Ad spend",
     updated: "Updated", managed: "Managed by Ecomtrada", locale: "en-GB",
@@ -171,7 +172,7 @@ export default function ClientSharePage() {
   return (
     <Shell>
       {/* Greeting + controls */}
-      <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: 16, marginBottom: 18 }}>
+      <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: 16, marginBottom: 26 }}>
         <div>
           <h1 style={{ fontSize: 26, fontWeight: 800, letterSpacing: "-0.6px", margin: 0, color: C.text }}>{greet}, {data.account.client || data.account.name}! ✨</h1>
           <div style={{ fontSize: 14, color: C.muted, marginTop: 4 }}>{t.sub}</div>
@@ -193,38 +194,48 @@ export default function ClientSharePage() {
       </div>
 
       {/* Hero banner — revenue-led */}
-      <div style={{ background: "linear-gradient(135deg, #12b76a, #059669)", borderRadius: 18, padding: "30px 26px", textAlign: "center", color: "#fff", marginBottom: 14, boxShadow: "0 8px 24px rgba(18,183,106,0.25)" }}>
+      <div style={{ background: "linear-gradient(135deg, #12b76a, #059669)", borderRadius: 20, padding: "38px 28px", textAlign: "center", color: "#fff", marginBottom: 20, boxShadow: "0 8px 24px rgba(18,183,106,0.25)" }}>
         <div style={{ fontSize: 15, fontWeight: 700, opacity: 0.95 }}>{heroTitle}</div>
         <div style={{ fontSize: "clamp(24px, 4.5vw, 40px)", fontWeight: 800, letterSpacing: "-1px", margin: "10px 0 6px" }}>{t.heroLine(money(revenue), money(win?.spend))}</div>
         {roas != null && <div style={{ fontSize: 15, opacity: 0.95 }}>{t.heroReturn(roasStr)}</div>}
       </div>
 
-      {/* KPI tiles */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginBottom: 14 }}>
-        <Tile bg={C.greenBg} iconBg={C.green} icon="€" label={t.made} value={money(revenue)} sub={t.madeSub} badge={<Badge v={revDelta} />} />
-        <Tile bg={C.blueBg} iconBg={C.blueDark} icon="🏆" label={t.ret} value={roasStr} sub={t.retSub} />
-        <Tile bg={C.purpleBg} iconBg={C.purpleDark} icon="💳" label={t.invested} value={money(win?.spend)} sub={t.investedSub} />
-        {data.hasCommerce && win?.orders != null && <Tile bg="#fff7ed" iconBg={C.amber} icon="📦" label={t.orders} value={num(win.orders)} sub={t.vsPrev} badge={<Badge v={delta?.conversions} />} />}
-      </div>
+      {/* KPI tiles. Orders: real store orders when Shopify has CURRENT data,
+          else the conversions Google Ads measured — never a bare 0 next to a
+          five-figure revenue number. */}
+      {(() => {
+        const realOrders = data.hasCommerce && win?.orders != null && win.orders > 0 ? win.orders : null;
+        const shownOrders = realOrders ?? (win && win.conversions >= 1 ? Math.round(win.conversions) : null);
+        return (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 14, marginBottom: 20 }}>
+            <Tile bg={C.greenBg} iconBg={C.green} icon="€" label={t.made} value={money(revenue)} sub={t.madeSub} badge={<Badge v={revDelta} />} />
+            <Tile bg={C.blueBg} iconBg={C.blueDark} icon="🏆" label={t.ret} value={roasStr} sub={t.retSub} />
+            <Tile bg={C.purpleBg} iconBg={C.purpleDark} icon="💳" label={t.invested} value={money(win?.spend)} sub={t.investedSub} />
+            {shownOrders != null && <Tile bg="#fff7ed" iconBg={C.amber} icon="📦" label={t.orders} value={num(shownOrders)} sub={realOrders != null ? t.vsPrev : t.ordersAds} badge={<Badge v={delta?.conversions} />} />}
+          </div>
+        );
+      })()}
 
       {/* Quick summary sentence */}
       {roas != null && roas > 0 && (
-        <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: "14px 18px", textAlign: "center", fontSize: 14, color: C.text, marginBottom: 14 }}>
+        <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: "16px 20px", textAlign: "center", fontSize: 14.5, color: C.text, marginBottom: 20 }}>
           {t.summary(`${cur}${roas.toFixed(2).replace(".", data.lang === "en" ? "." : ",")}`, money(revenue))}
         </div>
       )}
 
-      {/* Playful revenue equivalent */}
+      {/* Playful revenue equivalent — with the visual to match */}
       {equiv && (
-        <div style={{ display: "flex", alignItems: "center", gap: 14, background: C.greenBg, border: `1px solid #c7ecd9`, borderRadius: 14, padding: "13px 18px", marginBottom: 14 }}>
-          <span style={{ fontSize: 28, lineHeight: 1 }}>{equiv.emoji}</span>
-          <span style={{ fontSize: 14, color: C.text }}>{t.couldBuy}: <strong>{equiv.text}</strong> 😄</span>
+        <div style={{ background: C.greenBg, border: `1px solid #c7ecd9`, borderRadius: 16, padding: "20px 22px", marginBottom: 20, textAlign: "center" }}>
+          <div style={{ fontSize: 42, lineHeight: 1.1, letterSpacing: 4 }}>
+            {equiv.emoji.repeat(Math.min(equiv.count, 5))}
+          </div>
+          <div style={{ fontSize: 14.5, color: C.text, marginTop: 10 }}>{t.couldBuy}: <strong>{equiv.text}</strong> 😄</div>
         </div>
       )}
 
       {/* Bestsellers — top 5 by generated revenue, with photos */}
       {data.products.length > 0 && (
-        <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 16, padding: "18px 20px", marginBottom: 14 }}>
+        <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 16, padding: "22px 24px", marginBottom: 20 }}>
           <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
             <span style={{ fontSize: 16, fontWeight: 800, color: C.text }}>🔥 {t.topTitle}</span>
             <span style={{ fontSize: 12, color: C.muted }}>{t.topSub}</span>
@@ -236,7 +247,11 @@ export default function ClientSharePage() {
                 <Thumb name={p.name} image={p.image} rank={i} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 14, fontWeight: 700, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</div>
-                  <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{num(p.conversions)} {t.convs} · {num(p.clicks)} {t.clicks}{p.roas != null ? ` · ROAS ${p.roas.toFixed(1)}×` : ""}</div>
+                  <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>
+                    {data.bestsellerSource === "store"
+                      ? `${num(p.conversions)} ${t.sold}`
+                      : `${num(p.conversions)} ${t.convs} · ${num(p.clicks)} ${t.clicks}${p.roas != null ? ` · ROAS ${p.roas.toFixed(1)}×` : ""}`}
+                  </div>
                 </div>
                 <div style={{ textAlign: "right" }}>
                   <div style={{ fontSize: 17, fontWeight: 800, color: C.greenDark, fontVariantNumeric: "tabular-nums" }}>{money(p.value)}</div>
@@ -250,13 +265,13 @@ export default function ClientSharePage() {
 
       {/* Trend */}
       {series.length > 1 && (
-        <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 16, padding: "18px 20px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 14, flexWrap: "wrap" }}>
+        <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 16, padding: "22px 24px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 16, flexWrap: "wrap" }}>
             <span style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{t.trend}</span>
             <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: C.muted }}><i style={{ width: 10, height: 10, borderRadius: 3, background: C.green }} /> {t.revenueShort}</span>
             <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: C.muted }}><i style={{ width: 10, height: 10, borderRadius: 3, background: "#cbd5e1" }} /> {t.cost}</span>
           </div>
-          <div style={{ display: "flex", alignItems: "flex-end", gap: 2, height: 130 }}>
+          <div style={{ display: "flex", alignItems: "flex-end", gap: 2, height: 180 }}>
             {series.map((d) => (
               <div key={d.date} title={`${d.date} · ${t.revenueShort} ${money(d.conversionValue)} · ${t.cost} ${money(d.spend)}`} style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "flex-end", gap: 1, height: "100%" }}>
                 <div style={{ height: `${(d.conversionValue / maxVal) * 100}%`, background: C.green, borderRadius: "2px 2px 0 0", minHeight: d.conversionValue > 0 ? 2 : 0 }} />
@@ -276,7 +291,7 @@ export default function ClientSharePage() {
 
 function Tile({ bg, iconBg, icon, label, value, sub, badge }: { bg: string; iconBg: string; icon: string; label: string; value: string; sub: string; badge?: React.ReactNode }) {
   return (
-    <div style={{ background: bg, borderRadius: 16, padding: "16px 18px", display: "flex", gap: 14, alignItems: "center" }}>
+    <div style={{ background: bg, borderRadius: 16, padding: "20px 20px", display: "flex", gap: 14, alignItems: "center" }}>
       <div style={{ width: 42, height: 42, borderRadius: 12, background: iconBg, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 800, flexShrink: 0 }}>{icon}</div>
       <div style={{ minWidth: 0 }}>
         <div style={{ fontSize: 12.5, fontWeight: 600, color: C.muted }}>{label}</div>
@@ -312,7 +327,7 @@ function Shell({ children }: { children: React.ReactNode }) {
           Ecomtrada
         </div>
       </div>
-      <main style={{ maxWidth: 880, margin: "0 auto", padding: "26px 22px 70px", fontFamily: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" }}>{children}</main>
+      <main style={{ maxWidth: 960, margin: "0 auto", padding: "38px 26px 80px", fontFamily: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" }}>{children}</main>
     </div>
   );
 }
