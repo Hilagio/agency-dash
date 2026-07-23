@@ -3,6 +3,39 @@
 A running record of what changed, where, and why — judged against the prime
 directive: **clean UI + seamless UX, everything simpler.** Newest first.
 
+## 2026-07-23 (later) — Missing accounts explained & findable · cockpit search · business type · product segments
+
+Feedback: "some of our key accounts are not in here, why not" + "why is there
+no search option" + onboarding should ask dropshipper/branded/brand + "product
+data should be segmented based on metrics":
+
+- **Why accounts go missing — fixed and visible.** Accounts enter the system
+  ONLY via the nightly Notion Stores sync, and three things silently swallowed
+  them: (1) a store whose "Google Ads Customer ID" is empty in Notion was
+  skipped with no trace — the skip report is now stored (migration `0039`) and
+  shown as a cockpit banner naming each store and what to fill in; (2) a store
+  whose customer id already existed on a manually-imported account hit a
+  unique-constraint error forever — the sync now ADOPTS that account and links
+  the Notion page onto it; (3) archived/Notion-inactive accounts were
+  invisible — search now reveals them with the reason and a one-click "Bring
+  back" for archived ones (Notion-inactive ones say exactly what to flip in
+  Notion).
+- **Search.** Search box on the cockpit — filters by account, client and
+  owner, cuts across the My/All toggle (searching is about finding, not about
+  what's pinned), auto-expands the full list, and includes hidden accounts. A
+  no-match state explains how accounts enter the system.
+- **Business type in onboarding.** The context step asks Dropshipper /
+  Branded dropshipper / Brand (one tap, saved to `Account.businessModel`) —
+  it steers the CVR benchmark the diagnostics judge against (new multipliers
+  for `branded_dropship` 0.80 and `brand` 1.10) and flows into every agent
+  prompt that reads the business model.
+- **Products segmented by the metrics.** The Products table is no longer a
+  flat list: rows group into **Draining spend** (spend without return, worst
+  first) → **Winners** (returning well, biggest first) → **Selling, barely
+  advertised** (real sales with almost no spend — untapped) → the rest
+  (capped, "no clear verdict"). Same columns, same variant expansion — the
+  triage is the table now.
+
 ## 2026-07-23 — Deeper Shopify · Products front-and-center · guided onboarding · verify-after-done
 
 Feedback: "we are not getting enough information from Shopify even though we
