@@ -42,6 +42,7 @@ interface Portfolio {
   mccMissing?: MccMissing | null;
   myRole?: string | null;
   joinRequests?: JoinRequest[];
+  pendingJoinCount?: number;
   counts: Record<Colour, number>;
   total: number; unverified: number; verified: number; noOrderData: number; withData: number; watchedCount: number;
 }
@@ -437,6 +438,14 @@ export default function PortfolioHome() {
                     {wsBusy ? <Loader2 size={13} className="animate-spin" /> : null} Request access
                   </button>
                 )}
+              </div>
+            )}
+
+            {/* Pending requests exist but this user can't approve them — say so
+                instead of hiding them (an invisible stuck request is a bug report). */}
+            {(data.pendingJoinCount ?? 0) > 0 && (data.joinRequests?.length ?? 0) === 0 && (
+              <div style={{ ...card, border: "1px solid color-mix(in srgb, var(--accent-2) 40%, var(--border))", padding: "12px 16px", marginBottom: 14, fontSize: 12.5, color: "var(--text-2)", lineHeight: 1.55 }}>
+                <b>{data.pendingJoinCount} access request{data.pendingJoinCount === 1 ? "" : "s"} pending for this workspace</b> — but your role here is {data.myRole ?? "not set"}, and only an OWNER or ADMIN can approve. Ask an admin, or if you should be the owner of this workspace, sign out and back in once (ownerless workspaces self-heal on login).
               </div>
             )}
 

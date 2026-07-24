@@ -70,15 +70,16 @@ export async function GET() {
   const myRole = myMembership?.role ?? null;
   const isAdmin = myRole === "OWNER" || myRole === "ADMIN";
 
-  // Pending join requests — surfaced to OWNER/ADMIN so approving a teammate is
-  // one click in the cockpit instead of a hidden settings page.
-  const joinRequests = isAdmin
-    ? (await prisma.orgJoinRequest.findMany({
-        where: { organizationId: ctx.orgId, status: "pending" },
-        include: { user: { select: { email: true, name: true } } },
-        orderBy: { createdAt: "asc" },
-      })).map(r => ({ id: r.id, email: r.user.email, name: r.user.name }))
-    : [];
+  // Pending join requests — the full approvable list for OWNER/ADMIN, and the
+  // COUNT for everyone else (a request must never be invisibly stuck: a
+  // non-admin should see it exists and why they can't act on it).
+  const pendingRequests = await prisma.orgJoinRequest.findMany({
+    where: { organizationId: ctx.orgId, status: "pending" },
+    include: { user: { select: { email: true, name: true } } },
+    orderBy: { createdAt: "asc" },
+  });
+  const joinRequests = isAdmin ? pendingRequests.map(r => ({ id: r.id, email: r.user.email, name: r.user.name })) : [];
+  const pendingJoinCount = pendingRequests.length;
 
   // Accounts that exist in the Google Ads MCC but not in the system at all —
   // from the cached MCC list (refreshed whenever the importer loads).
@@ -174,6 +175,7 @@ export async function GET() {
     mccMissing,
     myRole,
     joinRequests,
+    pendingJoinCount,
     counts: { red: counts.red ?? 0, yellow: counts.yellow ?? 0, green: counts.green ?? 0, unknown: counts.unknown ?? 0 },
     total: rows.length,
     unverified: rows.filter(r => r.hasData && !r.dataVerified).length,
