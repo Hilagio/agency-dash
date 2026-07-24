@@ -80,6 +80,25 @@ export async function GET(req: NextRequest) {
     create: { email: profile.email, name: profile.name ?? null, image: profile.picture ?? null },
   });
 
+  // ── 4a. Consume pending invites — the simple path. An admin typed this
+  // email in the cockpit; logging in IS accepting. No link, no request dance.
+  const pendingInvites = await prisma.organizationInvite.findMany({
+    where: { email: profile.email.toLowerCase(), usedAt: null, expiresAt: { gt: new Date() } },
+  });
+  for (const inv of pendingInvites) {
+    await prisma.organizationMember.upsert({
+      where: { organizationId_userId: { organizationId: inv.organizationId, userId: user.id } },
+      create: { organizationId: inv.organizationId, userId: user.id, role: inv.role },
+      update: {}, // never downgrade an existing role
+    }).catch(() => null);
+    await prisma.organizationInvite.update({ where: { id: inv.id }, data: { usedAt: new Date() } }).catch(() => null);
+    // A matching pending join request is implicitly approved by the invite.
+    await prisma.orgJoinRequest.updateMany({
+      where: { organizationId: inv.organizationId, userId: user.id, status: "pending" },
+      data: { status: "approved", decidedBy: "invite", decidedAt: new Date() },
+    }).catch(() => null);
+  }
+
   // ── 4. One agency = one workspace ────────────────────────────────────────────
   // Colleagues sign in with the same company email domain — they belong in the
   // SAME organization (the one holding the client accounts), not in accidental
