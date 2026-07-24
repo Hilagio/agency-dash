@@ -3,6 +3,21 @@
 A running record of what changed, where, and why — judged against the prime
 directive: **clean UI + seamless UX, everything simpler.** Newest first.
 
+## 2026-07-24 (later 5) — Client portal: lead-gen variant
+
+Accounts with business type "Lead generation" now get a leads-led share page
+(same link mechanism, automatic based on the account's business type):
+
+- Hero: "222 aanvragen uit €3.911 aan advertenties — dat is gemiddeld €17,62
+  per aanvraag" (tiered honest headline on lead volume trend).
+- Tiles: Aanvragen (with period delta) · Kosten per aanvraag · Geïnvesteerd —
+  no revenue/ROAS/orders, which mean nothing to a lead-gen client.
+- Playful bit: "Dat zijn er gemiddeld N per werkdag 📅".
+- Trend chart plots leads vs cost (each on its own scale); bestsellers and the
+  revenue-equivalent are hidden.
+- The Instagram story card leads with the lead count + cost per lead.
+- Bilingual (NL "aanvragen" / EN "leads") like the rest of the page.
+
 ## 2026-07-24 (later 4) — Page audit: sees the photo, counts the images, rotates personas
 
 Feedback: the audit claimed a product page had no images (it had plenty) and

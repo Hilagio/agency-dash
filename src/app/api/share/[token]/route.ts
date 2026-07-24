@@ -25,7 +25,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
 
   const account = await prisma.account.findUnique({
     where: { shareToken: token },
-    select: { id: true, name: true, clientName: true, currency: true, grossMarginPercent: true, shareLang: true },
+    select: { id: true, name: true, clientName: true, currency: true, grossMarginPercent: true, shareLang: true, businessModel: true },
   });
   if (!account) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
@@ -146,6 +146,8 @@ export async function GET(_req: NextRequest, { params }: Params) {
     lang: account.shareLang === "en" ? "en" : "nl",
     currency: SYMBOL[account.currency] ?? `${account.currency} `,
     hasCommerce: oRows.some(o => o.revenue > 0),
+    // Lead-gen clients get a leads-led page — no revenue/orders/bestsellers.
+    mode: account.businessModel === "lead_gen" ? "leadgen" : "ecom",
     windows, deltas, days, products, bestsellerSource,
     generatedAt: new Date().toISOString(),
   });

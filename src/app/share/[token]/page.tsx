@@ -18,7 +18,7 @@ interface Win { days: number; spend: number; conversions: number; adRevenue: num
 interface Delta { spend: number | null; revenue: number | null; adRevenue: number | null; conversions: number | null }
 interface Day { date: string; spend: number; conversions: number; conversionValue: number; revenue: number }
 interface Product { name: string; image: string | null; value: number; spend: number; clicks: number; conversions: number; roas: number | null }
-interface Data { account: { name: string; client: string | null }; lang: "nl" | "en"; currency: string; hasCommerce: boolean; windows: Win[]; deltas: Record<number, Delta>; days: Day[]; products: Product[]; bestsellerSource?: "ads" | "store"; generatedAt: string }
+interface Data { account: { name: string; client: string | null }; lang: "nl" | "en"; currency: string; hasCommerce: boolean; mode?: "ecom" | "leadgen"; windows: Win[]; deltas: Record<number, Delta>; days: Day[]; products: Product[]; bestsellerSource?: "ads" | "store"; generatedAt: string }
 
 // Playful "you could have bought…" items, cheapest → priciest: [singular, plural].
 const ITEMS: { p: number; nl: [string, string]; en: [string, string]; e: string }[] = [
@@ -62,6 +62,14 @@ const COPY = {
     story: "Deel als story", generating: "Bezig…", storyRevLabel: "Omzet via Google Ads", storyReturn: (r: string) => `${r} van je investering terug`,
     bestseller: "Bestseller", adSpend: "Advertentiekosten",
     updated: "Bijgewerkt", managed: "Beheerd door Ecomtrada", locale: "nl-NL",
+    // Lead-gen variant
+    lgHeroGreat: "Je advertenties leveren volop aanvragen op! 🚀", lgHeroGood: "Je advertenties leveren mooi aanvragen op 👍",
+    lgHeroLine: (n: string, spend: string) => `${n} aanvragen uit ${spend} aan advertenties`,
+    lgHeroSub: (cpl: string) => `Dat is gemiddeld ${cpl} per aanvraag`,
+    leads: "Aanvragen", leadsSub: "via Google Ads", cpl: "Kosten per aanvraag", cplSub: "gemiddeld deze periode",
+    lgSummary: (n: string, cpl: string) => `Je advertenties leverden ${n} aanvragen op, voor gemiddeld ${cpl} per aanvraag.`,
+    lgPerDay: (n: string) => `Dat zijn er gemiddeld ${n} per werkdag`,
+    storyLeadsLabel: "Aanvragen via Google Ads", storyCpl: (c: string) => `${c} per aanvraag`,
   },
   en: {
     loading: "Loading…", unavailTitle: "This overview isn't available",
@@ -82,6 +90,14 @@ const COPY = {
     story: "Share as story", generating: "Working…", storyRevLabel: "Revenue via Google Ads", storyReturn: (r: string) => `${r} return on your investment`,
     bestseller: "Bestseller", adSpend: "Ad spend",
     updated: "Updated", managed: "Managed by Ecomtrada", locale: "en-GB",
+    // Lead-gen variant
+    lgHeroGreat: "Your ads are bringing in plenty of leads! 🚀", lgHeroGood: "Your ads are bringing in solid leads 👍",
+    lgHeroLine: (n: string, spend: string) => `${n} leads from ${spend} spent`,
+    lgHeroSub: (cpl: string) => `That's an average of ${cpl} per lead`,
+    leads: "Leads", leadsSub: "via Google Ads", cpl: "Cost per lead", cplSub: "average this period",
+    lgSummary: (n: string, cpl: string) => `Your ads brought in ${n} leads, at an average of ${cpl} per lead.`,
+    lgPerDay: (n: string) => `That's an average of ${n} per working day`,
+    storyLeadsLabel: "Leads via Google Ads", storyCpl: (c: string) => `${c} per lead`,
   },
 } as const;
 
@@ -133,12 +149,20 @@ export default function ClientSharePage() {
 
   const t = COPY[data.lang === "en" ? "en" : "nl"];
   const greet = hour < 12 ? t.greetM : hour < 18 ? t.greetA : t.greetE;
+  const isLead = data.mode === "leadgen";
   const revenue = win?.adRevenue ?? 0;             // ad-attributed revenue — every account has this
   const roas = win?.roas ?? null;
   const roasStr = roas != null ? `${roas.toFixed(1).replace(".", data.lang === "en" ? "." : ",")}×` : "—";
-  const heroTitle = roas == null ? t.heroOk : roas >= 3 ? t.heroGreat : roas >= 1.5 ? t.heroGood : t.heroOk;
-  const equiv = revenue > 0 ? equivalent(revenue, data.lang) : null;
+  // Lead-gen: leads + cost per lead take the place of revenue + ROAS.
+  const leads = Math.round(win?.conversions ?? 0);
+  const cplV = win && leads > 0 ? win.spend / leads : null;
+  const cplStr = cplV != null ? `${cur}${cplV.toFixed(2).replace(".", data.lang === "en" ? "." : ",")}` : "—";
+  const heroTitle = isLead
+    ? (leads > 0 && (delta?.conversions ?? 0) >= 15 ? t.lgHeroGreat : leads > 0 ? t.lgHeroGood : t.heroOk)
+    : (roas == null ? t.heroOk : roas >= 3 ? t.heroGreat : roas >= 1.5 ? t.heroGood : t.heroOk);
+  const equiv = !isLead && revenue > 0 ? equivalent(revenue, data.lang) : null;
   const revDelta = data.hasCommerce ? (delta?.revenue ?? delta?.adRevenue) : delta?.adRevenue;
+  const perWorkday = leads >= 5 ? leads / (period * (5 / 7)) : null;
 
   const Badge = ({ v }: { v: number | null | undefined }) => v == null ? null : (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 12, fontWeight: 700, marginLeft: 8, padding: "2px 8px", borderRadius: 999, color: v >= 0 ? C.greenDark : C.red, background: v >= 0 ? C.greenBg : C.redBg }}>
@@ -193,17 +217,27 @@ export default function ClientSharePage() {
         </div>
       </div>
 
-      {/* Hero banner — revenue-led */}
+      {/* Hero banner — revenue-led (ecom) or leads-led (lead-gen) */}
       <div style={{ background: "linear-gradient(135deg, #12b76a, #059669)", borderRadius: 20, padding: "38px 28px", textAlign: "center", color: "#fff", marginBottom: 20, boxShadow: "0 8px 24px rgba(18,183,106,0.25)" }}>
         <div style={{ fontSize: 15, fontWeight: 700, opacity: 0.95 }}>{heroTitle}</div>
-        <div style={{ fontSize: "clamp(24px, 4.5vw, 40px)", fontWeight: 800, letterSpacing: "-1px", margin: "10px 0 6px" }}>{t.heroLine(money(revenue), money(win?.spend))}</div>
-        {roas != null && <div style={{ fontSize: 15, opacity: 0.95 }}>{t.heroReturn(roasStr)}</div>}
+        <div style={{ fontSize: "clamp(24px, 4.5vw, 40px)", fontWeight: 800, letterSpacing: "-1px", margin: "10px 0 6px" }}>
+          {isLead ? t.lgHeroLine(num(leads), money(win?.spend)) : t.heroLine(money(revenue), money(win?.spend))}
+        </div>
+        {isLead
+          ? (cplV != null && <div style={{ fontSize: 15, opacity: 0.95 }}>{t.lgHeroSub(cplStr)}</div>)
+          : (roas != null && <div style={{ fontSize: 15, opacity: 0.95 }}>{t.heroReturn(roasStr)}</div>)}
       </div>
 
       {/* KPI tiles. Orders: real store orders when Shopify has CURRENT data,
           else the conversions Google Ads measured — never a bare 0 next to a
           five-figure revenue number. */}
-      {(() => {
+      {isLead ? (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 14, marginBottom: 20 }}>
+          <Tile bg={C.greenBg} iconBg={C.green} icon="📥" label={t.leads} value={num(leads)} sub={t.leadsSub} badge={<Badge v={delta?.conversions} />} />
+          <Tile bg={C.blueBg} iconBg={C.blueDark} icon="🎯" label={t.cpl} value={cplStr} sub={t.cplSub} />
+          <Tile bg={C.purpleBg} iconBg={C.purpleDark} icon="💳" label={t.invested} value={money(win?.spend)} sub={t.investedSub} badge={<Badge v={delta?.spend} />} />
+        </div>
+      ) : (() => {
         const realOrders = data.hasCommerce && win?.orders != null && win.orders > 0 ? win.orders : null;
         const shownOrders = realOrders ?? (win && win.conversions >= 1 ? Math.round(win.conversions) : null);
         return (
@@ -217,9 +251,21 @@ export default function ClientSharePage() {
       })()}
 
       {/* Quick summary sentence */}
-      {roas != null && roas > 0 && (
+      {isLead ? (leads > 0 && (
+        <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: "16px 20px", textAlign: "center", fontSize: 14.5, color: C.text, marginBottom: 20 }}>
+          {t.lgSummary(num(leads), cplStr)}
+        </div>
+      )) : (roas != null && roas > 0 && (
         <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: "16px 20px", textAlign: "center", fontSize: 14.5, color: C.text, marginBottom: 20 }}>
           {t.summary(`${cur}${roas.toFixed(2).replace(".", data.lang === "en" ? "." : ",")}`, money(revenue))}
+        </div>
+      ))}
+
+      {/* Lead-gen: the playful per-workday visual */}
+      {isLead && perWorkday != null && (
+        <div style={{ background: C.greenBg, border: `1px solid #c7ecd9`, borderRadius: 16, padding: "20px 22px", marginBottom: 20, textAlign: "center" }}>
+          <div style={{ fontSize: 42, lineHeight: 1.1, letterSpacing: 4 }}>{"📅"}</div>
+          <div style={{ fontSize: 14.5, color: C.text, marginTop: 10 }}><strong>{t.lgPerDay(perWorkday >= 10 ? String(Math.round(perWorkday)) : perWorkday.toFixed(1).replace(".", data.lang === "en" ? "." : ","))}</strong> 😄</div>
         </div>
       )}
 
@@ -233,8 +279,8 @@ export default function ClientSharePage() {
         </div>
       )}
 
-      {/* Bestsellers — top 5 by generated revenue, with photos */}
-      {data.products.length > 0 && (
+      {/* Bestsellers — top 5 by generated revenue, with photos (ecom only) */}
+      {!isLead && data.products.length > 0 && (
         <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 16, padding: "22px 24px", marginBottom: 20 }}>
           <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
             <span style={{ fontSize: 16, fontWeight: 800, color: C.text }}>🔥 {t.topTitle}</span>
@@ -268,16 +314,22 @@ export default function ClientSharePage() {
         <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 16, padding: "22px 24px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 16, flexWrap: "wrap" }}>
             <span style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{t.trend}</span>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: C.muted }}><i style={{ width: 10, height: 10, borderRadius: 3, background: C.green }} /> {t.revenueShort}</span>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: C.muted }}><i style={{ width: 10, height: 10, borderRadius: 3, background: C.green }} /> {isLead ? t.leads : t.revenueShort}</span>
             <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: C.muted }}><i style={{ width: 10, height: 10, borderRadius: 3, background: "#cbd5e1" }} /> {t.cost}</span>
           </div>
           <div style={{ display: "flex", alignItems: "flex-end", gap: 2, height: 180 }}>
-            {series.map((d) => (
-              <div key={d.date} title={`${d.date} · ${t.revenueShort} ${money(d.conversionValue)} · ${t.cost} ${money(d.spend)}`} style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "flex-end", gap: 1, height: "100%" }}>
-                <div style={{ height: `${(d.conversionValue / maxVal) * 100}%`, background: C.green, borderRadius: "2px 2px 0 0", minHeight: d.conversionValue > 0 ? 2 : 0 }} />
-                <div style={{ height: `${(d.spend / maxVal) * 100}%`, background: "#cbd5e1", minHeight: d.spend > 0 ? 2 : 0 }} />
-              </div>
-            ))}
+            {(() => {
+              // Lead-gen plots leads vs cost — different units, so each series
+              // gets its own scale; ecom keeps the shared money scale.
+              const maxLeads = Math.max(1, ...series.map(d => d.conversions));
+              const maxSpend = Math.max(1, ...series.map(d => d.spend));
+              return series.map((d) => (
+                <div key={d.date} title={isLead ? `${d.date} · ${t.leads} ${num(d.conversions)} · ${t.cost} ${money(d.spend)}` : `${d.date} · ${t.revenueShort} ${money(d.conversionValue)} · ${t.cost} ${money(d.spend)}`} style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "flex-end", gap: 1, height: "100%" }}>
+                  <div style={{ height: `${((isLead ? d.conversions / maxLeads : d.conversionValue / maxVal)) * 100}%`, background: C.green, borderRadius: "2px 2px 0 0", minHeight: (isLead ? d.conversions : d.conversionValue) > 0 ? 2 : 0 }} />
+                  <div style={{ height: `${((isLead ? (d.spend / maxSpend) * 0.35 : d.spend / maxVal)) * 100}%`, background: "#cbd5e1", minHeight: d.spend > 0 ? 2 : 0 }} />
+                </div>
+              ));
+            })()}
           </div>
         </div>
       )}
@@ -338,12 +390,17 @@ function fitText(s: string, max: number): string { return s.length > max ? s.sli
 function buildStorySvg(data: Data, win: Win, equiv: { text: string; emoji: string } | null, t: typeof COPY[keyof typeof COPY], cur: string, loc: string): string {
   const m = (n: number | null | undefined) => n == null ? "—" : `${cur}${Math.round(n).toLocaleString(loc)}`;
   const client = esc(fitText(data.account.client || data.account.name, 20));
-  const revenue = m(win.adRevenue);
+  // Lead-gen story leads with the lead count; ecom with revenue.
+  const isLead = data.mode === "leadgen";
+  const leadCount = Math.round(win.conversions);
+  const cpl = leadCount > 0 ? `${cur}${(win.spend / leadCount).toFixed(2)}` : null;
+  const heroValue = isLead ? leadCount.toLocaleString(loc) : m(win.adRevenue);
+  const heroLabel = isLead ? t.storyLeadsLabel : t.storyRevLabel;
+  const heroSub = isLead ? (cpl ? t.storyCpl(cpl) : null) : (win.roas != null ? t.storyReturn(`${win.roas.toFixed(1)}×`) : null);
   // Scale the hero so long amounts still fit the 900px text area.
-  const heroSize = revenue.length <= 8 ? 210 : revenue.length <= 11 ? 165 : 130;
-  const roasStr = win.roas != null ? `${win.roas.toFixed(1)}×` : null;
+  const heroSize = heroValue.length <= 8 ? 210 : heroValue.length <= 11 ? 165 : 130;
   const period = esc(t.periods[win.days]);
-  const top = data.products[0];
+  const top = isLead ? undefined : data.products[0];
   const F = "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif";
   return `<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920" font-family="${F}">
   <defs>
@@ -364,10 +421,10 @@ function buildStorySvg(data: Data, win: Win, equiv: { text: string; emoji: strin
   </g>
   <text x="90" y="320" font-size="30" font-weight="700" letter-spacing="2" fill="#33cc80">GOOGLE ADS · ${period.toUpperCase()}</text>
   <text x="90" y="400" font-size="66" font-weight="800" fill="#ffffff">${client}</text>
-  <!-- Revenue hero -->
-  <text x="90" y="600" font-size="34" font-weight="600" fill="#8fa39a">${esc(t.storyRevLabel)}</text>
-  <text x="84" y="${600 + heroSize + 30}" font-size="${heroSize}" font-weight="800" fill="url(#acc)">${esc(revenue)}</text>
-  ${roasStr ? `<text x="90" y="${600 + heroSize + 110}" font-size="42" font-weight="700" fill="#ffffff">${esc(t.storyReturn(roasStr))}</text>` : ""}
+  <!-- Hero: revenue (ecom) or lead count (lead-gen) -->
+  <text x="90" y="600" font-size="34" font-weight="600" fill="#8fa39a">${esc(heroLabel)}</text>
+  <text x="84" y="${600 + heroSize + 30}" font-size="${heroSize}" font-weight="800" fill="url(#acc)">${esc(heroValue)}</text>
+  ${heroSub ? `<text x="90" y="${600 + heroSize + 110}" font-size="42" font-weight="700" fill="#ffffff">${esc(heroSub)}</text>` : ""}
   <!-- Spend card -->
   <g transform="translate(90,1080)">
     <rect width="900" height="150" rx="28" fill="#121b17" stroke="#1f2c26"/>
