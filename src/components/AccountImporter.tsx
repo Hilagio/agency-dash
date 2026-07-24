@@ -35,6 +35,18 @@ export function AccountImporter({ onImported, onClose, onAuthFailed }: Props) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [importing, setImporting] = useState(false);
   const [doneMsg, setDoneMsg] = useState<string | null>(null);
+  const [joinState, setJoinState] = useState<"idle" | "busy" | "requested">("idle");
+
+  // When imports bounce off the team workspace, the fix is to JOIN it — offer
+  // that right here instead of pointing at a banner hidden behind this modal.
+  async function requestTeamAccess() {
+    setJoinState("busy");
+    try {
+      const r = await fetch("/api/org/join-request", { method: "POST", credentials: "include" });
+      const j = await r.json().catch(() => ({}));
+      setJoinState(r.ok || j.status === "pending" || j.status === "member" ? "requested" : "idle");
+    } catch { setJoinState("idle"); }
+  }
 
   async function fetchAccounts() {
     setLoading(true); setError(null); setAuthRequired(false);
@@ -159,6 +171,22 @@ export function AccountImporter({ onImported, onClose, onAuthFailed }: Props) {
               <a href="/api/auth/google-ads" style={{ display: "inline-flex", alignItems: "center", gap: 5, marginLeft: 8, fontSize: 12, fontWeight: 700, color: "#fff", background: "var(--btn-primary, var(--accent))", borderRadius: 7, padding: "4px 11px", textDecoration: "none" }}>
                 Connect Google Ads →
               </a>
+            )}
+            {/* The accounts live in the team workspace — the fix is joining it, not importing. */}
+            {/team workspace/i.test(error) && (
+              <div style={{ marginTop: 8 }}>
+                {joinState === "requested" ? (
+                  <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--accent)" }}>
+                    <CheckCircle2 size={13} style={{ verticalAlign: -2, marginRight: 5 }} />
+                    Access requested — once an admin approves it (they see it in their cockpit), a &ldquo;Switch to team workspace&rdquo; button appears on your cockpit and you&rsquo;ll work in the shared workspace with all accounts.
+                  </span>
+                ) : (
+                  <button onClick={requestTeamAccess} disabled={joinState === "busy"}
+                    style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 700, color: "#fff", background: "var(--btn-primary, var(--accent))", border: "none", borderRadius: 8, padding: "7px 14px", cursor: joinState === "busy" ? "default" : "pointer" }}>
+                    {joinState === "busy" ? <Loader2 size={13} className="animate-spin" /> : null} Request access to the team workspace
+                  </button>
+                )}
+              </div>
             )}
           </div>
         )}
