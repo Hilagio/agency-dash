@@ -3,6 +3,28 @@
 A running record of what changed, where, and why — judged against the prime
 directive: **clean UI + seamless UX, everything simpler.** Newest first.
 
+## 2026-07-24 (later 4) — Page audit: sees the photo, counts the images, rotates personas
+
+Feedback: the audit claimed a product page had no images (it had plenty) and
+based its verdict on that; and every run met the same personas.
+
+- **Image facts, not guesses.** Both render paths now extract content images —
+  including lazy-loaded Shopify galleries (`data-src`/`srcset`), with
+  icons/logos filtered out — plus alt texts and the og:image. The dossier
+  states "IMAGES: N content images detected" as fact, and the judges are
+  explicitly forbidden to claim photos are missing or judge visuals they
+  can't see. (Verified live: a page previously reported without images now
+  reports 62.)
+- **The personas SEE the product.** The page's hero/product photo is fetched
+  (8s timeout, type/size-guarded) and attached as a real image to every
+  persona judgement and the fix synthesis — visual reactions are now grounded
+  in the actual photo instead of imagination.
+- **Fresh eyes per run.** Three anchor archetypes stay fixed for score
+  comparability (sceptic, price-first, in-a-hurry); the other three rotate
+  from a pool of eight (gift buyer, deal hunter, careful 55+ reader,
+  returning visitor, quality-first…). The intent-persona builder is told to
+  vary names/ages/situations between runs. Same-y audits are gone by design.
+
 ## 2026-07-24 (later 3) — Lead generation as a business type
 
 Some clients are lead-gen — added as a fourth onboarding chip ("Lead

@@ -17,6 +17,10 @@ export interface PageDossier {
   formFields: string[];  // input labels / placeholders (lead-gen forms)
   priceHints: string[];  // strings that look like prices
   bodyText: string;      // cleaned visible text, truncated
+  // Image FACTS — so a text-only judge can never hallucinate "no photos".
+  imageCount: number;    // content images detected (icons/logos filtered out)
+  imageAlts: string[];   // first alt texts (what the photos are of)
+  heroImage: string | null; // og:image or the first big content image (absolute URL)
   blocked?: boolean;     // the site refused us (WAF/403/challenge) — not a page fault
   error?: string;
 }
@@ -36,11 +40,17 @@ const EXTRACT = `() => {
   const formFields = q('input, textarea, select').map(el => el.getAttribute('aria-label') || el.getAttribute('placeholder') || el.getAttribute('name') || el.type || '').filter(Boolean).slice(0, 40);
   const body = document.body ? document.body.innerText.replace(/\\s+/g, ' ').trim() : '';
   const priceHints = (body.match(/(?:€|\\$|£|EUR|USD)\\s?\\d[\\d.,]*/g) || []).slice(0, 20);
+  // Content images: rendered large enough to matter (kills icons/logos/pixels).
+  const imgs = q('img').filter(el => (el.naturalWidth || el.width || 0) >= 150 && (el.naturalHeight || el.height || 0) >= 150);
+  const og = (document.querySelector('meta[property="og:image"]') || {}).content || '';
   return {
     title: document.title || '',
     metaDescription: (document.querySelector('meta[name=description]') || {}).content || '',
     headings, ctas, formFields, priceHints,
     bodyText: body,
+    imageCount: imgs.length,
+    imageAlts: imgs.map(el => el.getAttribute('alt') || '').filter(Boolean).slice(0, 10),
+    heroImage: og || (imgs[0] ? (imgs[0].currentSrc || imgs[0].src || '') : ''),
   };
 }`;
 
@@ -81,6 +91,9 @@ async function renderWithBrowser(url: string): Promise<PageDossier> {
       title: d.title, metaDescription: d.metaDescription,
       headings: uniq(d.headings), ctas: uniq(d.ctas), formFields: uniq(d.formFields), priceHints: uniq(d.priceHints),
       bodyText: clip(d.bodyText, 9000),
+      imageCount: d.imageCount ?? 0,
+      imageAlts: uniq(d.imageAlts ?? []),
+      heroImage: d.heroImage ? new URL(d.heroImage, finalUrl).toString() : null,
     };
   } finally { await browser.close().catch(() => {}); }
 }
@@ -111,6 +124,7 @@ function dossierFromHtml(url: string, finalUrl: string, html: string, status: nu
     return {
       url, finalUrl, renderMode,
       title: "", metaDescription: "", headings: [], ctas: [], formFields: [], priceHints: [], bodyText: "",
+      imageCount: 0, imageAlts: [], heroImage: null,
       blocked: true,
       error: `The site refused our request (HTTP ${status}${rawTitle ? `, "${rawTitle.slice(0, 40)}"` : ""}). It's behind bot protection that blocks automated requests${renderMode === "browser" ? " even through the render service" : ""} — this is an access issue, not a fault in the page.`,
     };
@@ -128,7 +142,26 @@ function dossierFromHtml(url: string, finalUrl: string, html: string, status: nu
   const formFields = uniq((html.match(/<(?:input|textarea|select)[^>]*>/gi) ?? []).map(tag => (tag.match(/(?:aria-label|placeholder|name)=["']([^"']+)["']/i)?.[1] ?? "")).filter(Boolean)).slice(0, 40);
   const bodyText = clip(html.replace(/<script[\s\S]*?<\/script>/gi, " ").replace(/<style[\s\S]*?<\/style>/gi, " ").replace(/<[^>]+>/g, " ").replace(/&[a-z]+;/gi, " ").replace(/\s+/g, " ").trim(), 9000);
   const priceHints = uniq((bodyText.match(/(?:€|\$|£|EUR|USD)\s?\d[\d.,]*/g) ?? [])).slice(0, 20);
-  return { url, finalUrl, renderMode, title, metaDescription, headings, ctas, formFields, priceHints, bodyText };
+
+  // Image FACTS from raw HTML — src/data-src/srcset all count (lazy-loaded
+  // Shopify galleries live in data-src), icons/logos/pixels filtered by name.
+  const imgTags = html.match(/<img[^>]*>/gi) ?? [];
+  const NOISE = /logo|icon|sprite|favicon|pixel|badge|payment|flag|\.svg/i;
+  const contentImgs = imgTags.map(tag => ({
+    src: tag.match(/(?:data-src|data-srcset|srcset|src)=["']([^"' ,]+)/i)?.[1] ?? "",
+    alt: tag.match(/alt=["']([^"']+)["']/i)?.[1] ?? "",
+    tag,
+  })).filter(i => i.src && !NOISE.test(i.src) && !/width=["']?\d?\d["']?/.test(i.tag));
+  const ogImage = html.match(/<meta[^>]+property=["']og:image(?::secure_url)?["'][^>]+content=["']([^"']+)["']/i)?.[1]
+    ?? html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i)?.[1] ?? null;
+  const abs = (s: string | null): string | null => { try { return s ? new URL(s, finalUrl).toString() : null; } catch { return null; } };
+
+  return {
+    url, finalUrl, renderMode, title, metaDescription, headings, ctas, formFields, priceHints, bodyText,
+    imageCount: contentImgs.length,
+    imageAlts: uniq(contentImgs.map(i => i.alt).filter(Boolean)).slice(0, 10),
+    heroImage: abs(ogImage) ?? abs(contentImgs[0]?.src ?? null),
+  };
 }
 
 /**
@@ -186,6 +219,7 @@ export async function renderPage(url: string): Promise<PageDossier> {
       return {
         url, finalUrl: url, renderMode: "fetch", title: "", metaDescription: "",
         headings: [], ctas: [], formFields: [], priceHints: [], bodyText: "",
+        imageCount: 0, imageAlts: [], heroImage: null,
         error: `Couldn't render the page. Browser: ${browserErr instanceof Error ? browserErr.message : browserErr}. Fetch: ${fetchErr instanceof Error ? fetchErr.message : fetchErr}`,
       };
     }
