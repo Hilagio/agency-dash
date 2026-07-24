@@ -11,7 +11,7 @@ import Link from "next/link";
 import {
   ShieldCheck, Settings as SettingsIcon, ListChecks, BookOpen,
   Loader2, ArrowRight, Sprout, Activity, ShoppingBag, AlertTriangle, CheckCircle2, XCircle, Star, Sparkles, RefreshCw,
-  ChevronDown, TrendingUp, Plus, Search, EyeOff, LogOut,
+  ChevronDown, TrendingUp, Plus, Search, EyeOff, LogOut, UserPlus,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AccountImporter } from "@/components/AccountImporter";
@@ -96,6 +96,29 @@ export default function PortfolioHome() {
   const [importOpen, setImportOpen] = useState(false);
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [wsBusy, setWsBusy] = useState(false);
+  // Invite a teammate by email — logging in with that email IS accepting.
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState<"SPECIALIST" | "ADMIN">("SPECIALIST");
+  const [inviteBusy, setInviteBusy] = useState(false);
+  const [inviteMsg, setInviteMsg] = useState<string | null>(null);
+
+  async function sendInvite() {
+    const email = inviteEmail.trim().toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) || inviteBusy) return;
+    setInviteBusy(true); setInviteMsg(null);
+    try {
+      const r = await fetch("/api/org/invites", {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, role: inviteRole }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) { setInviteMsg(j.error ?? "Couldn't create the invite."); return; }
+      setInviteMsg(`${email} is invited — the moment they sign in with that Google account, they're in this workspace${inviteRole === "ADMIN" ? " as admin" : ""}. Already signed in? They just sign out and back in once.`);
+      setInviteEmail("");
+    } finally { setInviteBusy(false); }
+  }
 
   // Ask to join the team workspace / switch into it once approved.
   async function requestJoin() {
@@ -351,9 +374,14 @@ export default function PortfolioHome() {
             <HealthChip health={health} />
             {/* Utility actions — quiet, icon-only so they don't compete with triage. */}
             {(data?.myRole === "OWNER" || data?.myRole === "ADMIN") && (
-              <button onClick={() => setImportOpen(true)} title="Add accounts — pick them straight from the Google Ads MCC" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 34, height: 34, borderRadius: 10, cursor: "pointer", color: "var(--text-3)", background: "var(--surface)", border: "1px solid var(--border)" }}>
-                <Plus size={15} />
-              </button>
+              <>
+                <button onClick={() => setImportOpen(true)} title="Add accounts — pick them straight from the Google Ads MCC" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 34, height: 34, borderRadius: 10, cursor: "pointer", color: "var(--text-3)", background: "var(--surface)", border: "1px solid var(--border)" }}>
+                  <Plus size={15} />
+                </button>
+                <button onClick={() => { setInviteOpen(true); setInviteMsg(null); }} title="Invite a teammate into this workspace" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", height: 34, padding: "0 13px", gap: 6, borderRadius: 10, cursor: "pointer", fontSize: 12.5, fontWeight: 700, color: "var(--text-3)", background: "var(--surface)", border: "1px solid var(--border)" }}>
+                  <UserPlus size={14} /> Invite
+                </button>
+              </>
             )}
             {data && data.total > 0 && (
               <button onClick={backfillAll} disabled={backfill.running} title="Refresh all — pull 90 days for every account"
@@ -714,6 +742,36 @@ export default function PortfolioHome() {
           </>
         )}
       </main>
+
+      {/* Invite a teammate — type the email, done. Signing in with that email
+          IS accepting: no link to share, no request/approve dance. */}
+      {inviteOpen && (
+        <div onClick={() => setInviteOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 1000, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "12vh 16px 40px" }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 16, width: "100%", maxWidth: 480, boxShadow: "0 20px 60px rgba(0,0,0,0.4)", padding: "18px 20px" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+              <span style={{ fontSize: 15, fontWeight: 700 }}>Invite a teammate</span>
+              <button onClick={() => setInviteOpen(false)} style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", padding: 4 }}><XCircle size={17} /></button>
+            </div>
+            <div style={{ fontSize: 12, color: "var(--text-faint)", marginBottom: 12 }}>They log in with this Google account and land straight in this workspace — nothing else needed.</div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <input value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} onKeyDown={e => e.key === "Enter" && sendInvite()}
+                placeholder="name@company.com" type="email" autoFocus
+                style={{ flex: "1 1 200px", fontSize: 13, padding: "9px 12px", borderRadius: 9, border: "1px solid var(--border-2)", background: "var(--surface)", color: "var(--text)", fontFamily: "inherit" }} />
+              <div style={{ display: "inline-flex", background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: 9, padding: 3 }}>
+                {(["SPECIALIST", "ADMIN"] as const).map(r => (
+                  <button key={r} onClick={() => setInviteRole(r)} style={{ fontSize: 11.5, fontWeight: 700, padding: "5px 11px", borderRadius: 7, border: "none", cursor: "pointer", background: inviteRole === r ? "var(--surface)" : "transparent", color: inviteRole === r ? "var(--text)" : "var(--text-3)" }}>
+                    {r === "SPECIALIST" ? "Teammate" : "Admin"}
+                  </button>
+                ))}
+              </div>
+              <button onClick={sendInvite} disabled={inviteBusy} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 700, color: "#fff", background: "var(--btn-primary, var(--accent))", border: "none", borderRadius: 9, padding: "9px 16px", cursor: inviteBusy ? "default" : "pointer" }}>
+                {inviteBusy ? <Loader2 size={13} className="animate-spin" /> : <UserPlus size={13} />} Invite
+              </button>
+            </div>
+            {inviteMsg && <div style={{ marginTop: 10, fontSize: 12.5, color: inviteMsg.includes("invited") ? "var(--accent)" : "var(--danger)", lineHeight: 1.5 }}>{inviteMsg}</div>}
+          </div>
+        </div>
+      )}
 
       {/* Import accounts straight from the Google Ads MCC — the MCC is the
           source of truth for what exists; ticking here is the source of truth
