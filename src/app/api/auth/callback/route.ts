@@ -80,12 +80,36 @@ export async function GET(req: NextRequest) {
     create: { email: profile.email, name: profile.name ?? null, image: profile.picture ?? null },
   });
 
-  // ── 4. Find first org membership ─────────────────────────────────────────────
-  const membership = await prisma.organizationMember.findFirst({
+  // ── 4. One agency = one workspace ────────────────────────────────────────────
+  // Colleagues sign in with the same company email domain — they belong in the
+  // SAME organization (the one holding the client accounts), not in accidental
+  // personal orgs created via /onboard. At every login:
+  //   a. ensure the user is a member of the biggest same-domain organization;
+  //   b. land them in whichever of their orgs has the most accounts.
+  const domain = profile.email.split("@")[1]?.toLowerCase();
+  const PUBLIC_DOMAINS = new Set(["gmail.com", "googlemail.com", "outlook.com", "hotmail.com", "live.nl", "live.com", "yahoo.com", "icloud.com", "proton.me", "protonmail.com"]);
+  if (domain && !PUBLIC_DOMAINS.has(domain)) {
+    const colleagues = await prisma.organizationMember.findMany({
+      where: { user: { email: { endsWith: `@${domain}` } } },
+      include: { organization: { include: { _count: { select: { accounts: true } } } } },
+      take: 50,
+    });
+    const teamOrg = colleagues.sort((a, b) => b.organization._count.accounts - a.organization._count.accounts)[0]?.organization ?? null;
+    if (teamOrg && !colleagues.some(c => c.userId === user.id && c.organizationId === teamOrg.id)) {
+      await prisma.organizationMember.create({
+        data: { organizationId: teamOrg.id, userId: user.id, role: "MEMBER" },
+      }).catch(() => null);
+    }
+  }
+
+  const memberships = await prisma.organizationMember.findMany({
     where:   { userId: user.id },
-    include: { organization: true },
+    include: { organization: { include: { _count: { select: { accounts: true } } } } },
     orderBy: { createdAt: "asc" },
   });
+  const membership = memberships.length
+    ? [...memberships].sort((a, b) => b.organization._count.accounts - a.organization._count.accounts)[0]
+    : null;
 
   // ── 5. Set session and redirect ───────────────────────────────────────────────
   await setSessionCookie({

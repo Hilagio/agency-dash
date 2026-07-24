@@ -251,7 +251,7 @@ export async function POST(req: NextRequest) {
   // Never let an import move an account between organizations.
   const existing = await prisma.account.findUnique({ where: { googleAdsId: body.googleAdsId }, select: { organizationId: true } });
   if (existing && existing.organizationId !== ctx.orgId) {
-    return NextResponse.json({ error: "This customer id already belongs to an account in another organization." }, { status: 409 });
+    return NextResponse.json({ error: "This account already exists in your team's main workspace — sign out and back in to switch to it (logins now land in the organization that holds the client accounts)." }, { status: 409 });
   }
 
   const account = await prisma.account.upsert({

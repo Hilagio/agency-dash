@@ -79,8 +79,9 @@ export function AccountImporter({ onImported, onClose, onAuthFailed }: Props) {
 
   async function importSelected(ids: string[]) {
     if (!ids.length || importing) return;
-    setImporting(true); setDoneMsg(null);
+    setImporting(true); setDoneMsg(null); setError(null);
     const ok: string[] = [];
+    const failures: string[] = [];
     try {
       // Small pool — kind to the API, still fast for a whole MCC.
       const queue = [...ids];
@@ -95,16 +96,21 @@ export function AccountImporter({ onImported, onClose, onAuthFailed }: Props) {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ googleAdsId: acc.googleAdsId, name: acc.name, currency: acc.currency }),
           }).catch(() => null);
-          if (res?.ok) ok.push(id);
+          if (res?.ok) { ok.push(id); continue; }
+          // Surface the REAL reason — "nothing was imported, try again" hides
+          // actionable causes like org mismatches.
+          const j = res ? await res.json().catch(() => ({})) : {};
+          failures.push(`${acc.name}: ${j.error ?? (res ? `HTTP ${res.status}` : "network error")}`);
         }
       };
       await Promise.all(Array.from({ length: 4 }, worker));
       setAccounts(prev => prev.map(a => ok.includes(a.googleAdsId) ? { ...a, imported: true } : a));
       setSelected(prev => { const n = new Set(prev); ok.forEach(id => n.delete(id)); return n; });
-      setDoneMsg(ok.length
-        ? `${ok.length} account${ok.length === 1 ? "" : "s"} added — pulling their first data now; they'll show in the list with a status shortly.`
-        : "Nothing was imported — try again.");
-      if (ok.length) onImported(ok);
+      if (ok.length) {
+        setDoneMsg(`${ok.length} account${ok.length === 1 ? "" : "s"} added — pulling their first data now; they'll show in the list with a status shortly.`);
+        onImported(ok);
+      }
+      if (failures.length) setError(failures.slice(0, 3).join(" · ") + (failures.length > 3 ? ` · +${failures.length - 3} more` : ""));
     } finally {
       setImporting(false);
     }

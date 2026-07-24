@@ -3,6 +3,26 @@
 A running record of what changed, where, and why — judged against the prime
 directive: **clean UI + seamless UX, everything simpler.** Newest first.
 
+## 2026-07-24 — One agency, one workspace: teammates land in the team org
+
+Live report: teammates couldn't import MCC accounts ("Nothing was imported")
+and saw a cockpit with 2 accounts instead of 29. Root cause: every first login
+went through /onboard and created a personal, empty organization — the team
+was split across islands, and the cross-org guard (correctly) blocked imports
+of accounts that already lived in Lennard's org. Fixed at the door:
+
+- **Same company domain → same workspace.** On every login, a user with a
+  private email domain (e.g. @ecomtrada.nl) is made a member of the biggest
+  same-domain organization if they aren't already, and the session lands in
+  whichever of their orgs holds the most accounts — never the accidental
+  empty one. Stray personal orgs become harmless.
+- **The importer tells the truth**: failed imports now show the per-account
+  reason (e.g. "already exists in your team's main workspace — sign out and
+  back in") instead of "Nothing was imported — try again."
+
+For the team: sign out and back in once — you'll land in the shared
+workspace with all accounts, and import works from there.
+
 ## 2026-07-23 (night 2) — MCC importer rebuilt in-house-style · client portal v4
 
 - **MCC importer rebuilt** ("deze komt uit de oude versie"): new house-style
