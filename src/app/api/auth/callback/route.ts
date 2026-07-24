@@ -111,6 +111,22 @@ export async function GET(req: NextRequest) {
     ? [...memberships].sort((a, b) => b.organization._count.accounts - a.organization._count.accounts)[0]
     : null;
 
+  // Self-heal: an organization whose members are ALL non-admin is stuck —
+  // nobody can approve join requests or import accounts. Promote its earliest
+  // member to OWNER (only fires when no OWNER/ADMIN exists at all).
+  if (membership) {
+    const admins = await prisma.organizationMember.count({
+      where: { organizationId: membership.organizationId, role: { in: ["OWNER", "ADMIN"] } },
+    });
+    if (admins === 0) {
+      const eldest = await prisma.organizationMember.findFirst({
+        where: { organizationId: membership.organizationId },
+        orderBy: { createdAt: "asc" },
+      });
+      if (eldest) await prisma.organizationMember.update({ where: { id: eldest.id }, data: { role: "OWNER" } }).catch(() => null);
+    }
+  }
+
   // ── 5. Set session and redirect ───────────────────────────────────────────────
   await setSessionCookie({
     userId: user.id,
