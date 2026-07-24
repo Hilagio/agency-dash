@@ -230,7 +230,23 @@ export default function PortfolioHome() {
       setViewLoaded(true);
       setLoading(false);
       fetch("/api/google-ads/health", { credentials: "include" }).then(r => r.json()).then(setHealth).catch(() => setHealth({ ok: false, error: "unreachable" }));
-      fetch("/api/org/workspace", { credentials: "include" }).then(r => r.ok ? r.json() : null).then(ws => { if (ws) setWorkspace(ws); }).catch(() => null);
+      fetch("/api/org/workspace", { credentials: "include" }).then(r => r.ok ? r.json() : null).then(async (ws: Workspace | null) => {
+        if (!ws) return;
+        // The team workspace IS the default. A member whose session is parked
+        // in another org (personal org from onboarding, stale cookie) gets
+        // switched over automatically — once per tab, so a deliberate switch
+        // elsewhere isn't fought on every load.
+        if (ws.main && !ws.main.isCurrent && ws.main.isMember && !window.sessionStorage.getItem("wsAutoSwitched")) {
+          window.sessionStorage.setItem("wsAutoSwitched", "1");
+          const r = await fetch("/api/org/switch", {
+            method: "POST", credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ organizationId: ws.main.id }),
+          }).catch(() => null);
+          if (r?.ok) { window.location.reload(); return; }
+        }
+        setWorkspace(ws);
+      }).catch(() => null);
     })();
   }, []);
 
