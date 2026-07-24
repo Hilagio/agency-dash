@@ -295,6 +295,31 @@ export default function PortfolioHome() {
     }
   }
 
+  // Stray-user rescue: this session isn't in the team workspace (the org
+  // holding the client accounts). Offer the way home: switch if already a
+  // member, otherwise request access from an admin. Rendered BOTH in the
+  // normal cockpit and in the zero-accounts empty state — the empty state is
+  // exactly where stray users land.
+  const workspaceBanner = workspace?.main && !workspace.main.isCurrent ? (
+    <div style={{ ...card, border: "1px solid color-mix(in srgb, var(--accent) 40%, var(--border))", padding: "14px 18px", marginBottom: 14, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+      <ShieldCheck size={16} style={{ color: "var(--accent)", flexShrink: 0 }} />
+      <span style={{ fontSize: 13, color: "var(--text-2)", lineHeight: 1.5, flex: 1, minWidth: 220 }}>
+        <b>This isn&rsquo;t the team workspace.</b> The Ecomtrada workspace &ldquo;{workspace.main.name}&rdquo; holds {workspace.main.accounts} client accounts — that&rsquo;s where the team works together.
+      </span>
+      {workspace.main.isMember ? (
+        <button onClick={switchToMain} disabled={wsBusy} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 700, color: "#fff", background: "var(--btn-primary, var(--accent))", border: "none", borderRadius: 9, padding: "8px 15px", cursor: wsBusy ? "default" : "pointer" }}>
+          {wsBusy ? <Loader2 size={13} className="animate-spin" /> : null} Switch to team workspace
+        </button>
+      ) : workspace.joinRequestStatus === "pending" ? (
+        <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--accent-2)" }}>Access requested — waiting for an admin to approve.</span>
+      ) : (
+        <button onClick={requestJoin} disabled={wsBusy} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 700, color: "#fff", background: "var(--btn-primary, var(--accent))", border: "none", borderRadius: 9, padding: "8px 15px", cursor: wsBusy ? "default" : "pointer" }}>
+          {wsBusy ? <Loader2 size={13} className="animate-spin" /> : null} Request access
+        </button>
+      )}
+    </div>
+  ) : null;
+
   const hour = nowMs != null ? new Date(nowMs).getHours() : 9;
   const partOfDay = hour < 12 ? "morning" : hour < 18 ? "afternoon" : "evening";
   const first = (name ?? "there").split(" ")[0];
@@ -416,11 +441,20 @@ export default function PortfolioHome() {
             ))}
           </div>
         ) : !data || data.total === 0 ? (
-          <div style={{ ...card, padding: "44px 20px", textAlign: "center", color: "var(--text-muted)" }}>
-            <Sprout size={26} style={{ color: "var(--accent)", marginBottom: 8 }} />
-            <div style={{ fontWeight: 600, color: "var(--text-2)" }}>No accounts yet</div>
-            <div style={{ fontSize: 13, marginTop: 4 }}>Add stores on the Stores screen to start.</div>
-          </div>
+          <>
+            {workspaceBanner}
+            <div style={{ ...card, padding: "44px 20px", textAlign: "center", color: "var(--text-muted)" }}>
+              <Sprout size={26} style={{ color: "var(--accent)", marginBottom: 8 }} />
+              <div style={{ fontWeight: 600, color: "var(--text-2)" }}>
+                {workspaceBanner ? "Your accounts live in the team workspace" : "No accounts yet"}
+              </div>
+              <div style={{ fontSize: 13, marginTop: 4 }}>
+                {workspaceBanner
+                  ? "Use the banner above to switch into it (or request access) — everything the team manages is there."
+                  : "Add them straight from the Google Ads MCC with the + button above."}
+              </div>
+            </div>
+          </>
         ) : (
           <>
             {data.withData === 0 && (
@@ -438,28 +472,8 @@ export default function PortfolioHome() {
                 issues live in Settings next to the sync button, not on the
                 cockpit's front door. */}
 
-            {/* Stray-user rescue: this session isn't in the team workspace (the
-                org holding the client accounts). Offer the way home: switch if
-                already a member, otherwise request access from an admin. */}
-            {workspace?.main && !workspace.main.isCurrent && (
-              <div style={{ ...card, border: "1px solid color-mix(in srgb, var(--accent) 40%, var(--border))", padding: "14px 18px", marginBottom: 14, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-                <ShieldCheck size={16} style={{ color: "var(--accent)", flexShrink: 0 }} />
-                <span style={{ fontSize: 13, color: "var(--text-2)", lineHeight: 1.5, flex: 1, minWidth: 220 }}>
-                  <b>This isn&rsquo;t the team workspace.</b> The Ecomtrada workspace &ldquo;{workspace.main.name}&rdquo; holds {workspace.main.accounts} client accounts — that&rsquo;s where the team works together.
-                </span>
-                {workspace.main.isMember ? (
-                  <button onClick={switchToMain} disabled={wsBusy} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 700, color: "#fff", background: "var(--btn-primary, var(--accent))", border: "none", borderRadius: 9, padding: "8px 15px", cursor: wsBusy ? "default" : "pointer" }}>
-                    {wsBusy ? <Loader2 size={13} className="animate-spin" /> : null} Switch to team workspace
-                  </button>
-                ) : workspace.joinRequestStatus === "pending" ? (
-                  <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--accent-2)" }}>Access requested — waiting for an admin to approve.</span>
-                ) : (
-                  <button onClick={requestJoin} disabled={wsBusy} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 700, color: "#fff", background: "var(--btn-primary, var(--accent))", border: "none", borderRadius: 9, padding: "8px 15px", cursor: wsBusy ? "default" : "pointer" }}>
-                    {wsBusy ? <Loader2 size={13} className="animate-spin" /> : null} Request access
-                  </button>
-                )}
-              </div>
-            )}
+            {/* Stray-user rescue (also rendered in the zero-accounts state). */}
+            {workspaceBanner}
 
             {/* Pending requests exist but this user can't approve them — say so
                 instead of hiding them (an invisible stuck request is a bug report). */}
