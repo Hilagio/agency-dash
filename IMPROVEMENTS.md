@@ -3,6 +3,24 @@
 A running record of what changed, where, and why — judged against the prime
 directive: **clean UI + seamless UX, everything simpler.** Newest first.
 
+## 2026-07-24 (later 2) — The team workspace claims stray accounts
+
+"Ik kan gewoon geen accounts importeren" — accounts that teammates imported
+into their personal orgs before the team flow existed blocked the main
+workspace's import (one Google Ads id = one account). The rule is now: **the
+team workspace is authoritative**.
+
+- Importing from the main workspace CLAIMS a stray account: it moves — with
+  all its data (metrics, orders, briefings, everything keyed by accountId) —
+  into the main workspace, reactivated, owner link cleared. New
+  `lib/workspace.ts` (`mainWorkspaceId`, `claimAccount`).
+- The Notion sync claims the same way when it runs for the main workspace.
+- The reverse is refused: a personal org importing an account that lives in
+  the team workspace gets "managed in the team workspace — request access
+  there instead".
+- Verified both directions end-to-end locally (claim moves the row + child
+  data; steal attempt 409s).
+
 ## 2026-07-24 (later) — Team workspace with roles: request access, approve, switch
 
 The domain auto-join wasn't enough (teammates log in with non-company emails)

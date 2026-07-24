@@ -22,6 +22,7 @@
  * mark Account.active = false (never delete — keep the history).
  */
 import { prisma } from "@/lib/db";
+import { mainWorkspaceId, claimAccount } from "@/lib/workspace";
 
 // The Stores id in the spec is a *data source* id, which the modern data-sources
 // API (2025-09-03) queries directly. We fall back to the legacy databases
@@ -172,6 +173,8 @@ export async function syncStoresFromNotion(
   const stores = await queryAllStores(token);
   const clientCache = new Map<string, string>();
   const seenActivePageIds = new Set<string>();
+  // The team workspace may claim accounts that strayed into personal orgs.
+  const mainOrgId = await mainWorkspaceId();
   // Every page currently in the Stores DB — used to tell a STALE notionPageId
   // (links to a page that no longer exists, e.g. the DB was rebuilt) from a
   // LIVE one (a genuine duplicate customer id across two current pages).
@@ -242,10 +245,16 @@ export async function syncStoresFromNotion(
             data: { ...notionFields, notionPageId: pageId },
           });
           result.updated++;
-        } else if (byCustomerId && byCustomerId.notionPageId) {
+        } else if (byCustomerId && byCustomerId.organizationId === organizationId && byCustomerId.notionPageId) {
           result.errors.push(`${name}: customer id ${customerId} is already used by "${byCustomerId.name}" (another Notion store links to the same Google Ads account — fix the duplicate in Notion)`);
+        } else if (byCustomerId && organizationId === mainOrgId) {
+          // The account strayed into a personal org — the team workspace claims
+          // it (moved with all its data) and links the Notion page onto it.
+          await claimAccount(customerId, organizationId);
+          await prisma.account.update({ where: { googleAdsId: customerId }, data: { ...notionFields, notionPageId: pageId } });
+          result.updated++;
         } else if (byCustomerId) {
-          result.errors.push(`${name}: customer id ${customerId} already belongs to an account in another organization`);
+          result.errors.push(`${name}: customer id ${customerId} is managed in the team workspace`);
         } else {
           await prisma.account.create({
             data: { organizationId, notionPageId: pageId, currency: "EUR", ...notionFields },

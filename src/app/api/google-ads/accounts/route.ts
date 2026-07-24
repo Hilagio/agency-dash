@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { isGoogleAdsConfigured } from "@/lib/integrations/google-ads";
 import { getAuthContext, unauthorized } from "@/lib/auth";
+import { mainWorkspaceId, claimAccount } from "@/lib/workspace";
 
 const GADS_REST_BASE = "https://googleads.googleapis.com/v23";
 const DEV_TOKEN      = process.env.GOOGLE_ADS_DEVELOPER_TOKEN!;
@@ -268,10 +269,18 @@ export async function POST(req: NextRequest) {
   const body = await req.json() as { googleAdsId: string; name: string; currency?: string; industry?: string; monthlyBudget?: number };
   if (!body.googleAdsId || !body.name) return NextResponse.json({ error: "googleAdsId and name are required" }, { status: 400 });
 
-  // Never let an import move an account between organizations.
+  // An account that lives in ANOTHER organization: the team workspace (the
+  // org with the client accounts) is authoritative — importing from it CLAIMS
+  // the stray account, moving it (with all its data) into the main workspace.
+  // A stray org can never claim in the other direction.
   const existing = await prisma.account.findUnique({ where: { googleAdsId: body.googleAdsId }, select: { organizationId: true } });
   if (existing && existing.organizationId !== ctx.orgId) {
-    return NextResponse.json({ error: "This account already exists in your team's main workspace — sign out and back in to switch to it (logins now land in the organization that holds the client accounts)." }, { status: 409 });
+    const mainId = await mainWorkspaceId();
+    if (mainId !== ctx.orgId) {
+      return NextResponse.json({ error: "This account is managed in the team workspace — request access there instead of importing it here." }, { status: 409 });
+    }
+    const claimed = await claimAccount(body.googleAdsId, ctx.orgId, { name: body.name, currency: body.currency ?? "USD" });
+    return NextResponse.json(claimed, { status: 201 });
   }
 
   const account = await prisma.account.upsert({
