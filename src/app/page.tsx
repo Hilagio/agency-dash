@@ -11,7 +11,7 @@ import Link from "next/link";
 import {
   ShieldCheck, Settings as SettingsIcon, ListChecks, BookOpen,
   Loader2, ArrowRight, Sprout, Activity, ShoppingBag, AlertTriangle, CheckCircle2, XCircle, Star, Sparkles, RefreshCw,
-  ChevronDown, TrendingUp, Plus, Search, EyeOff,
+  ChevronDown, TrendingUp, Plus, Search, EyeOff, LogOut,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AccountImporter } from "@/components/AccountImporter";
@@ -317,6 +317,9 @@ export default function PortfolioHome() {
           <Link href="/settings" style={{ display: "flex", width: 32, height: 32, borderRadius: 8, border: "1px solid var(--border-2)", background: "var(--surface)", alignItems: "center", justifyContent: "center", color: "var(--text-3)" }} title="Settings">
             <SettingsIcon size={15} />
           </Link>
+          <a href="/api/auth/signout" title={`Sign out${name ? ` (${name})` : ""}`} style={{ display: "flex", width: 32, height: 32, borderRadius: 8, border: "1px solid var(--border-2)", background: "var(--surface)", alignItems: "center", justifyContent: "center", color: "var(--text-3)" }}>
+            <LogOut size={15} />
+          </a>
         </div>
       </nav>
 
