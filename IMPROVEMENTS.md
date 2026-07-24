@@ -3,6 +3,14 @@
 A running record of what changed, where, and why — judged against the prime
 directive: **clean UI + seamless UX, everything simpler.** Newest first.
 
+## 2026-07-24 (later 3) — Lead generation as a business type
+
+Some clients are lead-gen — added as a fourth onboarding chip ("Lead
+generation" → `lead_gen`, which the CVR benchmarks and prompts already
+understand). The setup checklist adapts: the "Connect order data" step
+completes itself for lead-gen clients (no store, nothing to reconcile), and
+the quiet auto-stamp for already-set-up accounts applies the same rule.
+
 ## 2026-07-24 (later 2) — The team workspace claims stray accounts
 
 "Ik kan gewoon geen accounts importeren" — accounts that teammates imported
