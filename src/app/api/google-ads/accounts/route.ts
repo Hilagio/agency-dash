@@ -221,6 +221,17 @@ export async function GET() {
 
     const existing    = await prisma.account.findMany({ where: { organizationId: ctx.orgId }, select: { googleAdsId: true } });
     const importedIds = new Set(existing.map(a => a.googleAdsId));
+
+    // Cache the MCC list so the cockpit can flag "in the MCC but not in the
+    // system" without paying the live MCC query on every page load.
+    await prisma.oAuthCredential.update({
+      where: { organizationId: ctx.orgId },
+      data: {
+        mccAccounts: JSON.stringify(accounts.map(a => ({ id: a.googleAdsId, name: a.name, currency: a.currency }))).slice(0, 200_000),
+        mccSyncedAt: new Date(),
+      },
+    }).catch(() => null);
+
     return NextResponse.json(accounts.map(a => ({ ...a, imported: importedIds.has(a.googleAdsId) })));
   };
 

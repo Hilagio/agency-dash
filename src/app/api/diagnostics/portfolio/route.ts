@@ -33,7 +33,7 @@ export async function GET() {
   const ctx = await getAuthContext();
   if (!ctx) return unauthorized();
 
-  const [accounts, watches, hiddenAccounts, notionConn] = await Promise.all([
+  const [accounts, watches, hiddenAccounts, notionConn, gadsCred] = await Promise.all([
     prisma.account.findMany({
       where: { organizationId: ctx.orgId, active: true, archived: false },
       select: {
@@ -56,8 +56,24 @@ export async function GET() {
       where: { organizationId: ctx.orgId },
       select: { lastSyncedAt: true, lastSyncResult: true },
     }),
+    prisma.oAuthCredential.findUnique({
+      where: { organizationId: ctx.orgId },
+      select: { mccAccounts: true, mccSyncedAt: true },
+    }),
   ]);
   const watched = new Set(watches.map(w => w.accountId));
+
+  // Accounts that exist in the Google Ads MCC but not in the system at all —
+  // from the cached MCC list (refreshed whenever the importer loads).
+  let mccMissing: { count: number; names: string[]; syncedAt: Date | null } | null = null;
+  if (gadsCred?.mccAccounts) {
+    try {
+      const mcc = JSON.parse(gadsCred.mccAccounts) as { id: string; name: string }[];
+      const knownGads = new Set((await prisma.account.findMany({ where: { organizationId: ctx.orgId }, select: { googleAdsId: true } })).map(a => a.googleAdsId));
+      const missing = mcc.filter(m => !knownGads.has(m.id));
+      if (missing.length) mccMissing = { count: missing.length, names: missing.slice(0, 4).map(m => m.name), syncedAt: gadsCred.mccSyncedAt };
+    } catch { /* unreadable cache */ }
+  }
 
   const hidden = hiddenAccounts.map(a => ({
     id: a.id, name: a.name, clientName: a.clientName,
@@ -138,6 +154,7 @@ export async function GET() {
     accounts: rows,
     hidden,
     syncIssues,
+    mccMissing,
     counts: { red: counts.red ?? 0, yellow: counts.yellow ?? 0, green: counts.green ?? 0, unknown: counts.unknown ?? 0 },
     total: rows.length,
     unverified: rows.filter(r => r.hasData && !r.dataVerified).length,

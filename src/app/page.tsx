@@ -32,10 +32,12 @@ interface Row {
 interface WorklistItem { headline: string; action: string; minutes: number; skill: string; confidence: string; category: string }
 interface HiddenAccount { id: string; name: string; clientName: string | null; reason: "archived" | "inactive" }
 interface SyncIssues { skipped: { page: string; reason: string }[]; errors: string[]; at: string | null }
+interface MccMissing { count: number; names: string[]; syncedAt: string | null }
 interface Portfolio {
   accounts: Row[];
   hidden?: HiddenAccount[];
   syncIssues?: SyncIssues | null;
+  mccMissing?: MccMissing | null;
   counts: Record<Colour, number>;
   total: number; unverified: number; verified: number; noOrderData: number; withData: number; watchedCount: number;
 }
@@ -373,6 +375,21 @@ export default function PortfolioHome() {
                 ))}
                 {data.syncIssues.skipped.length > 6 && <div style={{ color: "var(--text-muted)" }}>…and {data.syncIssues.skipped.length - 6} more with the same kind of gap.</div>}
                 {data.syncIssues.errors.slice(0, 4).map((e, i) => <div key={`e${i}`} style={{ color: "var(--text-2)" }}>{e}</div>)}
+              </div>
+            )}
+
+            {/* Accounts that live in the Google Ads MCC but not in the system —
+                the gap between "what exists" and "what we watch", one click to close. */}
+            {data.mccMissing && data.mccMissing.count > 0 && (
+              <div style={{ ...card, border: "1px solid color-mix(in srgb, var(--accent) 35%, var(--border))", padding: "12px 16px", marginBottom: 14, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                <Plus size={15} style={{ color: "var(--accent)", flexShrink: 0 }} />
+                <span style={{ fontSize: 12.5, color: "var(--text-2)", lineHeight: 1.5 }}>
+                  <b>{data.mccMissing.count} account{data.mccMissing.count === 1 ? "" : "s"} in the Google Ads MCC {data.mccMissing.count === 1 ? "isn't" : "aren't"} in the system yet</b>
+                  {data.mccMissing.names.length > 0 && <span style={{ color: "var(--text-muted)" }}> — {data.mccMissing.names.join(", ")}{data.mccMissing.count > data.mccMissing.names.length ? "…" : ""}</span>}
+                </span>
+                <button onClick={() => setImportOpen(true)} style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 700, color: "#fff", background: "var(--btn-primary, var(--accent))", border: "none", borderRadius: 8, padding: "6px 13px", cursor: "pointer", flexShrink: 0 }}>
+                  Review &amp; add
+                </button>
               </div>
             )}
 
