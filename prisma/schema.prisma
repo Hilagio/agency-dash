@@ -739,6 +739,11 @@ model OAuthCredential {
   refreshToken    String
   customerIds     String       @default("[]")
   loginCustomerId String?
+  // Cached MCC child-account list (JSON [{id,name,currency}]) — refreshed each
+  // time the importer loads; lets the cockpit show "N MCC accounts aren't in
+  // the system yet" without a 20s live MCC query per page load.
+  mccAccounts     String?
+  mccSyncedAt     DateTime?
   updatedAt       DateTime     @updatedAt
 }
 
