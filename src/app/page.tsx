@@ -405,21 +405,10 @@ export default function PortfolioHome() {
               </div>
             )}
 
-            {/* Notion stores that couldn't sync — the answer to "why isn't
-                account X in here", surfaced instead of buried in a cron log. */}
-            {data.syncIssues && (data.syncIssues.skipped.length > 0 || data.syncIssues.errors.length > 0) && (
-              <div style={{ ...card, border: "1px solid color-mix(in srgb, var(--accent-2) 40%, var(--border))", padding: "12px 16px", marginBottom: 14, fontSize: 12.5, lineHeight: 1.6 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 7, fontWeight: 700, color: "var(--accent-2)", marginBottom: 4 }}>
-                  <AlertTriangle size={14} />
-                  <span>{`${data.syncIssues.skipped.length + data.syncIssues.errors.length} store${data.syncIssues.skipped.length + data.syncIssues.errors.length === 1 ? "" : "s"} in Notion couldn’t sync into the cockpit`}</span>
-                </div>
-                {data.syncIssues.skipped.slice(0, 6).map((s, i) => (
-                  <div key={i} style={{ color: "var(--text-2)" }}><b>{s.page}</b> — {s.reason}. Fill it in the Notion Stores database and it syncs in tonight (or run the sync from Settings).</div>
-                ))}
-                {data.syncIssues.skipped.length > 6 && <div style={{ color: "var(--text-muted)" }}>…and {data.syncIssues.skipped.length - 6} more with the same kind of gap.</div>}
-                {data.syncIssues.errors.slice(0, 4).map((e, i) => <div key={`e${i}`} style={{ color: "var(--text-2)" }}>{e}</div>)}
-              </div>
-            )}
+            {/* The Notion sync report is deliberately NOT shown here — accounts
+                come from the MCC now and Notion is optional enrichment; its
+                issues live in Settings next to the sync button, not on the
+                cockpit's front door. */}
 
             {/* Stray-user rescue: this session isn't in the team workspace (the
                 org holding the client accounts). Offer the way home: switch if
