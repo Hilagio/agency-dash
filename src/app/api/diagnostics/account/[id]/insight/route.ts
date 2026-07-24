@@ -142,8 +142,15 @@ function buildContext(
   name: string, cur: string, diag: DiagMetrics | null,
   windows: Awaited<ReturnType<typeof computeWindows>>,
   pages: Page[], winners: Winner[], changes: { changeType: string; changedAt: Date }[],
+  businessModel?: string | null,
 ): string {
   const L: string[] = [`ACCOUNT: ${name} (currency ${cur})`];
+  // Lead-gen: conversion value/ROAS being 0 is EXPECTED, never a tracking break.
+  if (businessModel === "lead_gen") {
+    L.push(`BUSINESS TYPE: lead generation — judge on lead volume (conversions) and cost per lead. Conversion VALUE and ROAS are normally 0.00 here; that is expected, NOT a tracking break. Never frame this account around ROAS or revenue.`);
+  } else if (businessModel) {
+    L.push(`BUSINESS TYPE: ${businessModel}.`);
+  }
 
   // Lead with the full multi-window picture — the trend is the story.
   if (windows.some(x => x.spend > 0)) {
@@ -236,6 +243,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       id: true, name: true, currency: true, googleAdsId: true, organizationId: true,
       grossMarginPercent: true, roasFloor: true, minSpendForEval: true, minConversionsForEval: true, dataVerified: true,
       trackingStatus: true, trackingNote: true, trackingSetAt: true, trackingSetBy: true, merchantCenterId: true,
+      businessModel: true,
     },
   });
   if (!account) return forbidden();
@@ -416,7 +424,7 @@ export async function POST(req: NextRequest, { params }: Params) {
           if (good.length) liveSnapshot = `\n\nLIVE SNAPSHOT — pulled just now (treat as ground truth; cite freely, it's real). Read ALL of it, INCLUDING the Slack channel, BEFORE you write — if the answer to an off-platform question (checkout, payments, promo, stock) is already here, use it and don't ask the team again:\n${good.map(p => p.out).join("\n\n")}${funnelBlock ?? ""}`;
         }
 
-        const context = buildClientBlock(clientCtx) + buildContext(account.name, cur, diag, windows, pages, winners, changeRows) + liveSnapshot;
+        const context = buildClientBlock(clientCtx) + buildContext(account.name, cur, diag, windows, pages, winners, changeRows, account.businessModel) + liveSnapshot;
         const firstTurn = { role: "user" as const, content: `${context}\n\nGive the expert read.` };
         let messages: unknown[];
         let useChatSystem: boolean;

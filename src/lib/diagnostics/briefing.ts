@@ -47,7 +47,7 @@ const ymd = (daysAgo: number) => { const d = new Date(); d.setUTCDate(d.getUTCDa
 export async function generateAccountBriefing(accountId: string): Promise<{ text: string | null; status: string } | null> {
   const account = await prisma.account.findUnique({
     where: { id: accountId },
-    select: { id: true, name: true, currency: true, grossMarginPercent: true },
+    select: { id: true, name: true, currency: true, grossMarginPercent: true, businessModel: true },
   });
   if (!account) return null;
   const cur = CUR[account.currency] ?? `${account.currency} `;
@@ -84,6 +84,13 @@ export async function generateAccountBriefing(accountId: string): Promise<{ text
   const windows = computeWindows([...perDay.values()], oRows, end, diag.grossMarginPct ?? account.grossMarginPercent ?? null);
 
   const L: string[] = [`ACCOUNT: ${account.name} (currency ${cur}). Current status: ${status.toUpperCase()}.`];
+  // A lead-gen account tracks LEADS: conversion value/ROAS are expected to be
+  // zero and must never be read as a tracking break or performance problem.
+  if (account.businessModel === "lead_gen") {
+    L.push(`BUSINESS TYPE: lead generation — judge on lead volume (conversions) and cost per lead. Conversion VALUE and ROAS are normally 0.00 here; that is expected, NOT a tracking break. Never frame the account around ROAS/revenue.`);
+  } else if (account.businessModel) {
+    L.push(`BUSINESS TYPE: ${account.businessModel}.`);
+  }
   if (windows.some(w => w.spend > 0)) {
     L.push(`Windows (spend / ROAS / POAS${windows.some(w => w.orders != null) ? " / orders" : ""}):`);
     for (const w of windows) {

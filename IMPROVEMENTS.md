@@ -3,6 +3,30 @@
 A running record of what changed, where, and why — judged against the prime
 directive: **clean UI + seamless UX, everything simpler.** Newest first.
 
+## 2026-07-24 (later 6) — Lead-gen aware diagnostics · one setup card · invite hygiene
+
+Three account-page fixes from live feedback:
+
+- **The AI stops moaning about ROAS on lead-gen accounts.** The briefing,
+  worklist and in-account agent prompts now carry the business type; for
+  lead_gen they're told explicitly: conversion value/ROAS being 0.00 is
+  EXPECTED, judge on lead volume and cost per lead, never call it a tracking
+  break. And the business type is now editable ANY time — chips at the top of
+  the "Tell the agent about this client" form (was: onboarding-only, so an
+  existing account couldn't be switched at all).
+- **Fundamentals + Connected merged into one clean "setup" card** — aligned
+  VITALS / SOURCES label rows, one consistent chip style and height, healthy
+  items behind a compact "+N ok", one divider, one summary. No more two
+  wonky stacked pill-soups.
+- **Canned "auto answer" chips removed.** The six generic preset questions
+  under the chat were never used — gone. Only suggestions generated from the
+  actual conversation remain, capped at three.
+- **Invite hygiene** (Settings): a pending invite for someone who is already a
+  member (e.g. joined via domain auto-join) is settled automatically and no
+  longer shows; inviting an existing member is refused with a clear message;
+  and every pending invite now has a cancel button (DELETE endpoint,
+  admin-gated).
+
 ## 2026-07-24 (later 5) — Client portal: lead-gen variant
 
 Accounts with business type "Lead generation" now get a leads-led share page
