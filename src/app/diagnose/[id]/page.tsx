@@ -580,7 +580,7 @@ export default function DiagnosePage() {
   // setup — stamp it quietly so the checklist never nags on it.
   useEffect(() => {
     if (loading || onboardedAt || onboardBusy || !connections) return;
-    const complete = connections.shopify !== "red" && (connections.contextFilled ?? 0) >= 3 && thread.length > 0;
+    const complete = (connections.shopify !== "red" || bizModel === "lead_gen") && (connections.contextFilled ?? 0) >= 3 && thread.length > 0;
     if (complete) markOnboarded();
   }, [loading, onboardedAt, connections, thread.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -1217,8 +1217,11 @@ export default function DiagnosePage() {
               const steps: { key: string; label: string; detail: string; done: boolean; action: () => void; actionLabel: string; busy?: boolean }[] = [
                 {
                   key: "data", label: "Connect order data",
-                  detail: "Shopify — live, or the three CSV exports (sales over time, by product variant, by discount). Real orders are what the agent reconciles Ads numbers against.",
-                  done: connections.shopify !== "red",
+                  detail: bizModel === "lead_gen"
+                    ? "Not needed for lead generation — there's no order feed to reconcile. This step completes itself."
+                    : "Shopify — live, or the three CSV exports (sales over time, by product variant, by discount). Real orders are what the agent reconciles Ads numbers against.",
+                  // Lead-gen clients have no store: the order-data step doesn't apply.
+                  done: connections.shopify !== "red" || bizModel === "lead_gen",
                   action: () => { setShopifyMethod("csv"); setShopifyModal(true); },
                   actionLabel: "Connect Shopify",
                 },
@@ -1268,7 +1271,7 @@ export default function DiagnosePage() {
                           {s.key === "context" && !s.done && (
                             <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                               <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--text-3)" }}>Business type:</span>
-                              {[["dropship", "Dropshipper"], ["branded_dropship", "Branded dropshipper"], ["brand", "Brand"]].map(([val, label]) => (
+                              {[["dropship", "Dropshipper"], ["branded_dropship", "Branded dropshipper"], ["brand", "Brand"], ["lead_gen", "Lead generation"]].map(([val, label]) => (
                                 <button key={val} onClick={() => saveBizModel(val)} disabled={bizSaving}
                                   style={{ fontSize: 11.5, fontWeight: 700, padding: "4px 11px", borderRadius: 999, cursor: "pointer",
                                     color: bizModel === val ? "#fff" : "var(--text-2)",
@@ -1277,7 +1280,7 @@ export default function DiagnosePage() {
                                   {label}
                                 </button>
                               ))}
-                              {bizModel && !["dropship", "branded_dropship", "brand"].includes(bizModel) && (
+                              {bizModel && !["dropship", "branded_dropship", "brand", "lead_gen"].includes(bizModel) && (
                                 <span style={{ fontSize: 11, color: "var(--text-muted)" }}>currently: {bizModel}</span>
                               )}
                             </div>
