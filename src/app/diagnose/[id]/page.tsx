@@ -257,15 +257,9 @@ const TOOL_LABELS: Record<string, string> = {
   consult_playbook: "agency playbook",
 };
 
-// One-click follow-ups so the team can steer without typing.
-const PRESET_QUESTIONS = [
-  "What should we check first?",
-  "What's the single highest-leverage fix?",
-  "What would confirm your hypothesis?",
-  "How does this compare to similar accounts?",
-  "Draft the next steps for the team",
-  "Summarise this for the client",
-];
+// NOTE: the old static "preset question" chips are gone — nobody used them.
+// Only conversation-specific suggestions (generated from the actual thread)
+// are shown, capped to three.
 
 type Status = "green" | "yellow" | "red";
 interface Fact { label: string; value: string; context?: string; tone: "bad" | "warn" | "good" | "neutral"; }
@@ -1386,63 +1380,60 @@ export default function DiagnosePage() {
               ]} />
             )}
 
-            {/* Fundamentals check — the vitals, visible the instant the page opens */}
-            {(vitalsLoading || vitals) && (
-              <div style={{ ...card, padding: "12px 15px", marginTop: 14, border: vitals?.governing ? "1px solid color-mix(in srgb, var(--danger, #d33) 40%, var(--border))" : "1px solid var(--border)" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: vitals ? 10 : 0, flexWrap: "wrap" }}>
-                  <ShieldCheck size={14} style={{ color: vitals?.governing ? "var(--danger, #d33)" : "var(--text-dim)" }} />
-                  <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, color: "var(--text-muted)" }}>Fundamentals</span>
-                  {vitalsLoading && <span style={{ fontSize: 12, color: "var(--text-3)", display: "inline-flex", alignItems: "center", gap: 6 }}><Loader2 size={12} className="animate-spin" /> checking…</span>}
-                  {vitals?.governing && <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--danger, #d33)" }}>{vitals.governing} needs fixing first</span>}
-                  {vitals && !vitals.governing && <span style={{ fontSize: 11.5, fontWeight: 600, color: "var(--text-muted)" }}>foundation holds</span>}
-                </div>
-                {vitals && (() => {
-                  // Quiet by default: only checks that need attention show as chips.
-                  // Healthy ones collapse into one muted "N healthy" toggle.
-                  const problems = vitals.checks.filter(c => c.status === "warn" || c.status === "fail");
-                  const healthy = vitals.checks.filter(c => c.status === "ok" || c.status === "na");
-                  const chipFor = (c: VitalCheck) => {
-                    const col = c.status === "ok" ? "var(--text-dim)" : c.status === "warn" ? "var(--warn, #d98a00)" : c.status === "fail" ? "var(--danger, #d33)" : "var(--text-dim)";
-                    const glyph = c.status === "ok" ? "✓" : c.status === "warn" ? "⚠" : c.status === "fail" ? "✗" : "–";
-                    const muted = c.status === "ok" || c.status === "na";
-                    const open = vitalsOpen === c.key;
-                    return (
-                      <button key={c.key} onClick={() => setVitalsOpen(open ? null : c.key)} title={c.detail}
-                        style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600, color: muted ? "var(--text-3)" : "var(--text-2)", background: open ? "var(--surface-2)" : "transparent", border: `1px solid ${muted ? "var(--border)" : `color-mix(in srgb, ${col} 45%, var(--border))`}`, borderRadius: 999, padding: "4px 11px", cursor: "pointer" }}>
-                        <span style={{ color: col, fontWeight: 800 }}>{glyph}</span> {c.label}
-                      </button>
-                    );
-                  };
-                  return (
-                    <>
-                      {(problems.length > 0 || showAllVitals) && (
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
-                          {problems.map(chipFor)}
-                          {showAllVitals && healthy.map(chipFor)}
-                          {healthy.length > 0 && (
-                            <button onClick={() => setShowAllVitals(v => !v)}
-                              style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 600, color: "var(--text-3)", background: "transparent", border: "1px dashed var(--border-2)", borderRadius: 999, padding: "4px 11px", cursor: "pointer" }}>
-                              {showAllVitals ? "Hide healthy" : `${healthy.length} healthy`}
-                              <ChevronRight size={12} style={{ transform: showAllVitals ? "rotate(90deg)" : "none", transition: "transform .12s" }} />
-                            </button>
-                          )}
-                        </div>
-                      )}
-                      {vitalsOpen && (
-                        <div style={{ marginTop: 9, fontSize: 12.5, color: "var(--text-2)", lineHeight: 1.5 }}>
-                          {vitals.checks.find(c => c.key === vitalsOpen)?.detail}
-                        </div>
-                      )}
-                      <div style={{ marginTop: problems.length || showAllVitals ? 9 : 0, fontSize: 12, color: vitals.governing ? "var(--danger, #d33)" : "var(--text-muted)", lineHeight: 1.5 }}>{vitals.summary}</div>
-                    </>
-                  );
-                })()}
-              </div>
-            )}
-
-            {/* Connections & context — what this account knows, at a glance */}
+            {/* Account setup — ONE card: the health vitals and the data sources,
+                same chip language, aligned label column, one summary line. */}
             {connections && (
-              <div ref={connRef} style={{ ...card, padding: "12px 15px", marginTop: 14 }}>
+              <div ref={connRef} style={{ ...card, padding: "14px 16px", marginTop: 14, border: vitals?.governing ? "1px solid color-mix(in srgb, var(--danger, #d33) 40%, var(--border))" : "1px solid var(--border)" }}>
+                {/* Row 1 — vitals */}
+                {(vitalsLoading || vitals) && (
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 10, flexWrap: "wrap", marginBottom: connections ? 0 : undefined }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, color: "var(--text-muted)", width: 62, flexShrink: 0, paddingTop: 6 }}>Vitals</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      {vitalsLoading && !vitals && <span style={{ fontSize: 12, color: "var(--text-3)", display: "inline-flex", alignItems: "center", gap: 6, paddingTop: 5 }}><Loader2 size={12} className="animate-spin" /> checking…</span>}
+                      {vitals && (() => {
+                        const problems = vitals.checks.filter(c => c.status === "warn" || c.status === "fail");
+                        const healthy = vitals.checks.filter(c => c.status === "ok" || c.status === "na");
+                        const chipFor = (c: VitalCheck) => {
+                          const col = c.status === "warn" ? "var(--warn, #d98a00)" : c.status === "fail" ? "var(--danger, #d33)" : "var(--text-dim)";
+                          const glyph = c.status === "ok" ? "✓" : c.status === "warn" ? "⚠" : c.status === "fail" ? "✗" : "–";
+                          const muted = c.status === "ok" || c.status === "na";
+                          const open = vitalsOpen === c.key;
+                          return (
+                            <button key={c.key} onClick={() => setVitalsOpen(open ? null : c.key)} title={c.detail}
+                              style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600, height: 28, color: muted ? "var(--text-3)" : "var(--text-2)", background: open ? "var(--surface-2)" : "transparent", border: `1px solid ${muted ? "var(--border)" : `color-mix(in srgb, ${col} 45%, var(--border))`}`, borderRadius: 999, padding: "0 11px", cursor: "pointer" }}>
+                              <span style={{ color: col, fontWeight: 800 }}>{glyph}</span> {c.label}
+                            </button>
+                          );
+                        };
+                        return (
+                          <>
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: 7, alignItems: "center" }}>
+                              {problems.length === 0 && !showAllVitals && <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--accent)", display: "inline-flex", alignItems: "center", height: 28 }}>✓ all healthy</span>}
+                              {problems.map(chipFor)}
+                              {showAllVitals && healthy.map(chipFor)}
+                              {healthy.length > 0 && (
+                                <button onClick={() => setShowAllVitals(v => !v)}
+                                  style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 600, height: 28, color: "var(--text-3)", background: "transparent", border: "1px dashed var(--border-2)", borderRadius: 999, padding: "0 11px", cursor: "pointer" }}>
+                                  {showAllVitals ? "hide" : `+${healthy.length} ok`}
+                                  <ChevronRight size={12} style={{ transform: showAllVitals ? "rotate(90deg)" : "none", transition: "transform .12s" }} />
+                                </button>
+                              )}
+                              {vitals.governing && <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--danger, #d33)" }}>{vitals.governing} needs fixing first</span>}
+                            </div>
+                            {vitalsOpen && (
+                              <div style={{ marginTop: 8, fontSize: 12.5, color: "var(--text-2)", lineHeight: 1.5 }}>
+                                {vitals.checks.find(c => c.key === vitalsOpen)?.detail}
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                )}
+
+                {(vitalsLoading || vitals) && <div style={{ borderTop: "1px solid var(--border)", margin: "11px 0" }} />}
+
                 {(() => {
                   // The MC pill mirrors the live Fundamentals check (auto-detected via
                   // the Ads↔Merchant Center link), so the two never disagree.
@@ -1460,17 +1451,20 @@ export default function DiagnosePage() {
                   const attention = items.filter(i => i.status !== "green");
                   const ok = items.filter(i => i.status === "green");
                   return (
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                      <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, color: "var(--text-muted)", marginRight: 4 }}>Connected</span>
-                      {attention.map(i => i.el)}
-                      {showAllConns && ok.map(i => i.el)}
-                      {ok.length > 0 && (
-                        <button onClick={() => setShowAllConns(v => !v)}
-                          style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 600, color: "var(--text-3)", background: "transparent", border: "1px dashed var(--border-2)", borderRadius: 999, padding: "5px 12px", cursor: "pointer" }}>
-                          {showAllConns ? "Hide connected" : `${ok.length} connected`}
-                          <ChevronRight size={12} style={{ transform: showAllConns ? "rotate(90deg)" : "none", transition: "transform .12s" }} />
-                        </button>
-                      )}
+                    <div style={{ display: "flex", alignItems: "flex-start", gap: 10, flexWrap: "wrap" }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, color: "var(--text-muted)", width: 62, flexShrink: 0, paddingTop: 6 }}>Sources</span>
+                      <div style={{ flex: 1, minWidth: 0, display: "flex", flexWrap: "wrap", gap: 7, alignItems: "center" }}>
+                        {attention.length === 0 && !showAllConns && <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--accent)", display: "inline-flex", alignItems: "center", height: 28 }}>✓ all connected</span>}
+                        {attention.map(i => i.el)}
+                        {showAllConns && ok.map(i => i.el)}
+                        {ok.length > 0 && (
+                          <button onClick={() => setShowAllConns(v => !v)}
+                            style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 600, height: 28, color: "var(--text-3)", background: "transparent", border: "1px dashed var(--border-2)", borderRadius: 999, padding: "0 11px", cursor: "pointer" }}>
+                            {showAllConns ? "hide" : `+${ok.length} ok`}
+                            <ChevronRight size={12} style={{ transform: showAllConns ? "rotate(90deg)" : "none", transition: "transform .12s" }} />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   );
                 })()}
@@ -1534,6 +1528,20 @@ export default function DiagnosePage() {
                   <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--border-2)" }}>
                     <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 3 }}>Tell the agent about this client</div>
                     <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginBottom: 11 }}>The things the data can&rsquo;t know — so its read reasons against what the client actually wants. Fill what you can; blanks are fine.</div>
+                    {/* Business type — always editable here (not only during onboarding);
+                        it steers how the diagnostics judge the account (lead-gen ≠ ROAS). */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginBottom: 13 }}>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)" }}>Business type:</span>
+                      {[["dropship", "Dropshipper"], ["branded_dropship", "Branded dropshipper"], ["brand", "Brand"], ["lead_gen", "Lead generation"]].map(([val, label]) => (
+                        <button key={val} onClick={() => saveBizModel(val)} disabled={bizSaving}
+                          style={{ fontSize: 11.5, fontWeight: 700, padding: "4px 11px", borderRadius: 999, cursor: "pointer",
+                            color: bizModel === val ? "#fff" : "var(--text-2)",
+                            background: bizModel === val ? "var(--btn-primary, var(--accent))" : "var(--surface)",
+                            border: bizModel === val ? "none" : "1px solid var(--border-2)" }}>
+                          {label}
+                        </button>
+                      ))}
+                    </div>
                     {ctxLoading ? (
                       <div style={{ fontSize: 12.5, color: "var(--text-3)", display: "flex", alignItems: "center", gap: 8 }}><Loader2 size={13} className="animate-spin" /> Loading…</div>
                     ) : (
@@ -1765,11 +1773,11 @@ export default function DiagnosePage() {
                       )}
                     </div>
                   )}
-                  {/* Follow-up chips — dynamic to this conversation when available,
-                      otherwise a sensible default set. Steer with one click. */}
-                  {!insightLoading && !followSending && thread[thread.length - 1]?.role === "assistant" && (
+                  {/* Follow-up chips — ONLY when generated from this specific
+                      conversation; generic canned questions added noise, not value. */}
+                  {!insightLoading && !followSending && suggestions.length > 0 && thread[thread.length - 1]?.role === "assistant" && (
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 9 }}>
-                      {(suggestions.length ? suggestions : PRESET_QUESTIONS).map(q => (
+                      {suggestions.slice(0, 3).map(q => (
                         <button key={q} onClick={() => sendPreset(q)} style={{ fontSize: 11.5, fontWeight: 500, color: "var(--text-2)", background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 999, padding: "5px 12px", cursor: "pointer", whiteSpace: "nowrap" }}
                           onMouseEnter={e => { e.currentTarget.style.borderColor = "color-mix(in srgb, var(--accent) 40%, var(--border))"; e.currentTarget.style.color = "var(--text)"; }}
                           onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border-2)"; e.currentTarget.style.color = "var(--text-2)"; }}>

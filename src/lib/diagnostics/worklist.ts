@@ -60,10 +60,12 @@ function extractItem(text: string): WorklistItem | null {
   } catch { return null; }
 }
 
-function seedContext(name: string, metricsJson: string): string {
+function seedContext(name: string, metricsJson: string, businessModel?: string | null): string {
   try {
     const m = JSON.parse(metricsJson) as { window?: { spend: number; conversions: number; conversionValue: number; days: number }; commerce?: { orders: number; revenue: number } | null; reconciliation?: { adsConversions: number; actualOrders: number } | null; signals?: Signal[] };
     const L = [`ACCOUNT: ${name}`];
+    if (businessModel === "lead_gen") L.push(`BUSINESS TYPE: lead generation — judge on lead volume and cost per lead. Conversion VALUE/ROAS are normally 0 here; that is expected, NOT a tracking break.`);
+    else if (businessModel) L.push(`BUSINESS TYPE: ${businessModel}`);
     if (m.window) L.push(`Last ${m.window.days}d: spend ${Math.round(m.window.spend)}, conv ${m.window.conversions.toFixed(1)}, value ${Math.round(m.window.conversionValue)}, ROAS ${m.window.spend > 0 ? (m.window.conversionValue / m.window.spend).toFixed(2) : "—"}`);
     if (m.commerce) L.push(`Shopify: ${m.commerce.orders} orders, ${Math.round(m.commerce.revenue)} revenue`);
     if (m.reconciliation) L.push(`Reconciliation: ${m.reconciliation.adsConversions.toFixed(1)} Ads conv vs ${m.reconciliation.actualOrders} real orders`);
@@ -73,8 +75,8 @@ function seedContext(name: string, metricsJson: string): string {
   } catch { return `ACCOUNT: ${name} (flagged; no detail parsed)`; }
 }
 
-export async function investigateAccount(acc: AgentAccount & { name: string }, metricsJson: string): Promise<WorklistItem | null> {
-  const context = seedContext(acc.name, metricsJson);
+export async function investigateAccount(acc: AgentAccount & { name: string; businessModel?: string | null }, metricsJson: string): Promise<WorklistItem | null> {
+  const context = seedContext(acc.name, metricsJson, acc.businessModel);
   const messages: Anthropic.MessageParam[] = [{ role: "user", content: `${context}\n\nTriage this account and give me the one worklist item.` }];
   let finalText = "";
   for (let step = 0; step < MAX_STEPS; step++) {
@@ -105,15 +107,15 @@ export async function investigateAccount(acc: AgentAccount & { name: string }, m
 export async function generateOrgWorklist(organizationId: string): Promise<{ investigated: number; cleared: number; flagged: number }> {
   const accounts = await prisma.account.findMany({
     where: { organizationId, active: true, archived: false },
-    select: { id: true, name: true, googleAdsId: true, organizationId: true, currency: true, merchantCenterId: true },
+    select: { id: true, name: true, googleAdsId: true, organizationId: true, currency: true, merchantCenterId: true, businessModel: true },
   });
   // Latest status per account → only investigate the flagged ones; clear the rest.
-  const flagged: Array<{ acc: AgentAccount & { name: string }; red: boolean; metrics: string }> = [];
+  const flagged: Array<{ acc: AgentAccount & { name: string; businessModel?: string | null }; red: boolean; metrics: string }> = [];
   let cleared = 0;
   for (const a of accounts) {
     const st = await prisma.accountStatus.findFirst({ where: { accountId: a.id }, orderBy: { computedAt: "desc" }, select: { status: true, metrics: true } });
     if (st?.status === "red" || st?.status === "yellow") {
-      flagged.push({ acc: { id: a.id, name: a.name, googleAdsId: a.googleAdsId, organizationId: a.organizationId, currency: a.currency, merchantCenterId: a.merchantCenterId }, red: st.status === "red", metrics: st.metrics });
+      flagged.push({ acc: { id: a.id, name: a.name, googleAdsId: a.googleAdsId, organizationId: a.organizationId, currency: a.currency, merchantCenterId: a.merchantCenterId, businessModel: a.businessModel }, red: st.status === "red", metrics: st.metrics });
     } else {
       await prisma.account.update({ where: { id: a.id }, data: { worklist: null, worklistAt: null, worklistDoneAt: null, worklistDoneBy: null } }).catch(() => null);
       cleared++;

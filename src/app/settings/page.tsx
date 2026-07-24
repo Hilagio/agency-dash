@@ -717,6 +717,16 @@ export default function SettingsPage() {
                         {copiedToken === inv.token ? <Check size={11} style={{ color: "#22c55e" }} /> : <Copy size={11} />}
                         {copiedToken === inv.token ? "Copied" : "Copy link"}
                       </button>
+                      <button
+                        onClick={async () => {
+                          await fetch(`/api/org/invites?id=${inv.id}`, { method: "DELETE", credentials: "include" }).catch(() => null);
+                          setInvites(prev => prev.filter(x => x.id !== inv.id));
+                        }}
+                        title="Cancel this invite"
+                        style={{ padding: "4px 7px", borderRadius: 6, background: "var(--surface)", border: "1px solid var(--border-2)", color: "#ef4444", cursor: "pointer", display: "flex", alignItems: "center" }}
+                      >
+                        <Trash2 size={11} />
+                      </button>
                     </div>
                   ))}
                 </div>
