@@ -256,6 +256,15 @@ export async function POST(req: NextRequest) {
   const ctx = await getAuthContext();
   if (!ctx) return unauthorized();
 
+  // Adding accounts shapes the whole team's workspace — OWNER/ADMIN only.
+  const member = await prisma.organizationMember.findUnique({
+    where: { organizationId_userId: { organizationId: ctx.orgId, userId: ctx.userId } },
+    select: { role: true },
+  });
+  if (!member || !["OWNER", "ADMIN"].includes(member.role)) {
+    return NextResponse.json({ error: "Only an owner or admin can add accounts to the workspace." }, { status: 403 });
+  }
+
   const body = await req.json() as { googleAdsId: string; name: string; currency?: string; industry?: string; monthlyBudget?: number };
   if (!body.googleAdsId || !body.name) return NextResponse.json({ error: "googleAdsId and name are required" }, { status: 400 });
 

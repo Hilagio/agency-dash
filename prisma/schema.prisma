@@ -15,8 +15,9 @@ model Organization {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  members   OrganizationMember[]
-  invites   OrganizationInvite[]
+  members      OrganizationMember[]
+  invites      OrganizationInvite[]
+  joinRequests OrgJoinRequest[]
   accounts  Account[]
   sops      AgencySop[]
   oauthCred OAuthCredential?
@@ -35,8 +36,9 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  memberships OrganizationMember[]
-  watches     AccountWatch[]
+  memberships  OrganizationMember[]
+  watches      AccountWatch[]
+  joinRequests OrgJoinRequest[]
 }
 
 // A per-user "my accounts" watchlist: the accounts a manager is working on, so
@@ -61,6 +63,24 @@ model OrganizationMember {
   userId         String
   user           User         @relation(fields: [userId], references: [id])
   role           String       @default("SPECIALIST") // OWNER | ADMIN | SPECIALIST
+  createdAt      DateTime     @default(now())
+
+  @@unique([organizationId, userId])
+}
+
+// A user asking to join the team workspace (the org that holds the client
+// accounts). An OWNER/ADMIN approves from the cockpit; approval creates the
+// OrganizationMember row. Keeps login open without leaking client data to
+// whoever signs in with a random Google account.
+model OrgJoinRequest {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status         String       @default("pending") // pending | approved | denied
+  decidedBy      String?      // email of the approver
+  decidedAt      DateTime?
   createdAt      DateTime     @default(now())
 
   @@unique([organizationId, userId])

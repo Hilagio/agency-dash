@@ -33,7 +33,7 @@ export async function GET() {
   const ctx = await getAuthContext();
   if (!ctx) return unauthorized();
 
-  const [accounts, watches, hiddenAccounts, notionConn, gadsCred] = await Promise.all([
+  const [accounts, watches, hiddenAccounts, notionConn, gadsCred, myMembership] = await Promise.all([
     prisma.account.findMany({
       where: { organizationId: ctx.orgId, active: true, archived: false },
       select: {
@@ -60,8 +60,25 @@ export async function GET() {
       where: { organizationId: ctx.orgId },
       select: { mccAccounts: true, mccSyncedAt: true },
     }),
+    prisma.organizationMember.findUnique({
+      where: { organizationId_userId: { organizationId: ctx.orgId, userId: ctx.userId } },
+      select: { role: true },
+    }),
   ]);
   const watched = new Set(watches.map(w => w.accountId));
+
+  const myRole = myMembership?.role ?? null;
+  const isAdmin = myRole === "OWNER" || myRole === "ADMIN";
+
+  // Pending join requests — surfaced to OWNER/ADMIN so approving a teammate is
+  // one click in the cockpit instead of a hidden settings page.
+  const joinRequests = isAdmin
+    ? (await prisma.orgJoinRequest.findMany({
+        where: { organizationId: ctx.orgId, status: "pending" },
+        include: { user: { select: { email: true, name: true } } },
+        orderBy: { createdAt: "asc" },
+      })).map(r => ({ id: r.id, email: r.user.email, name: r.user.name }))
+    : [];
 
   // Accounts that exist in the Google Ads MCC but not in the system at all —
   // from the cached MCC list (refreshed whenever the importer loads).
@@ -155,6 +172,8 @@ export async function GET() {
     hidden,
     syncIssues,
     mccMissing,
+    myRole,
+    joinRequests,
     counts: { red: counts.red ?? 0, yellow: counts.yellow ?? 0, green: counts.green ?? 0, unknown: counts.unknown ?? 0 },
     total: rows.length,
     unverified: rows.filter(r => r.hasData && !r.dataVerified).length,

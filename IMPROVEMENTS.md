@@ -3,6 +3,25 @@
 A running record of what changed, where, and why — judged against the prime
 directive: **clean UI + seamless UX, everything simpler.** Newest first.
 
+## 2026-07-24 (later) — Team workspace with roles: request access, approve, switch
+
+The domain auto-join wasn't enough (teammates log in with non-company emails)
+— built the full flow the team needs:
+
+- **Stray users get rescued in-app.** A cockpit banner tells anyone outside
+  the team workspace: "This isn't the team workspace — Ecomtrada holds N
+  client accounts" with **Request access** (or **Switch to team workspace**
+  if already a member — one click, no sign-out dance; the session cookie is
+  swapped in place).
+- **Admins approve from the cockpit.** Pending requests show for OWNER/ADMIN
+  with "Approve as teammate" / "Deny" (new `OrgJoinRequest`, migration
+  `0041`). Approval grants the SPECIALIST role.
+- **Roles mean something now**: adding accounts (MCC import) is OWNER/ADMIN
+  only — enforced server-side (403) and the "+"/MCC-gap banner are hidden for
+  specialists. Specialists see, manage and favorite everything else.
+- End-to-end verified locally with a second user: request → approve →
+  switch → team accounts visible as SPECIALIST → import correctly refused.
+
 ## 2026-07-24 — One agency, one workspace: teammates land in the team org
 
 Live report: teammates couldn't import MCC accounts ("Nothing was imported")
