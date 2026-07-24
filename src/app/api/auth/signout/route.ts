@@ -15,3 +15,10 @@ export async function POST(req: NextRequest) {
   // 303 See Other: correct status for POST → GET redirect (browser will GET /login)
   return NextResponse.redirect(`${getOrigin(req)}/login`, { status: 303 });
 }
+
+// The Settings "Sign out" is a plain <a href> — a GET. Without this handler the
+// link 405'd and signing out was impossible from the UI.
+export async function GET(req: NextRequest) {
+  await clearSessionCookie();
+  return NextResponse.redirect(`${getOrigin(req)}/login`, { status: 303 });
+}
