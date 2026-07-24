@@ -75,12 +75,32 @@ function dossierBlock(d: PageDossier): string {
     d.headings.length && `HEADINGS (in order): ${d.headings.slice(0, 25).join(" | ")}`,
     d.ctas.length && `BUTTONS / LINKS: ${d.ctas.slice(0, 30).join(" | ")}`,
     d.formFields.length && `FORM FIELDS: ${d.formFields.join(", ")}`,
+    // Stated as FACT so no persona can hallucinate "there are no photos".
+    `IMAGES: ${d.imageCount} content image${d.imageCount === 1 ? "" : "s"} detected on the page${d.imageAlts.length ? ` (alt texts: ${d.imageAlts.slice(0, 8).join(" | ")})` : ""}${d.renderMode === "fetch" ? " — lazy-loaded galleries may add more" : ""}`,
     d.bodyText && `PAGE TEXT (top): ${d.bodyText}`,
   ].filter(Boolean).join("\n");
 }
 
-async function judge(persona: Persona, pageType: PageType, offer: string, dossier: PageDossier): Promise<PersonaVerdict> {
-  const sys = `You ARE this one visitor, judging a ${pageType === "ecom" ? "product/landing" : "lead-gen"} page alone and honestly — slightly uncomfortable honesty is the point. The conversion action is to ${conversion(pageType)}. Judge ONLY from what's actually on the page below (you're on ${persona.device}). Don't be nice; if something blocks you, say the specific, nameable thing. ALWAYS write your output in English, regardless of the language of the page — persona names, hurdles, quotes, fixes, everything. You may quote the page's own copy verbatim inside quotation marks.`;
+/** Fetch the page's hero/product image so the personas SEE it instead of guessing. */
+async function fetchHeroImage(d: PageDossier): Promise<{ media_type: "image/jpeg" | "image/png" | "image/webp" | "image/gif"; data: string } | null> {
+  if (!d.heroImage) return null;
+  try {
+    const res = await fetch(d.heroImage, { signal: AbortSignal.timeout(8000), headers: { "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)" } });
+    if (!res.ok) return null;
+    const ct = (res.headers.get("content-type") ?? "").split(";")[0].trim();
+    if (!["image/jpeg", "image/png", "image/webp", "image/gif"].includes(ct)) return null;
+    const buf = Buffer.from(await res.arrayBuffer());
+    if (buf.byteLength < 2_000 || buf.byteLength > 4_500_000) return null; // skip pixels and oversized files
+    return { media_type: ct as "image/jpeg", data: buf.toString("base64") };
+  } catch { return null; }
+}
+
+type HeroImage = Awaited<ReturnType<typeof fetchHeroImage>>;
+
+async function judge(persona: Persona, pageType: PageType, offer: string, dossier: PageDossier, hero: HeroImage): Promise<PersonaVerdict> {
+  const sys = `You ARE this one visitor, judging a ${pageType === "ecom" ? "product/landing" : "lead-gen"} page alone and honestly — slightly uncomfortable honesty is the point. The conversion action is to ${conversion(pageType)}. Judge ONLY from what's actually on the page below (you're on ${persona.device}). Don't be nice; if something blocks you, say the specific, nameable thing.
+The page is given to you as TEXT plus the stated image count${hero ? " and the actual hero/product photo" : ""}. You CANNOT see the full design or every photo — NEVER claim images/photos are missing or judge visual quality beyond what you're actually given; the IMAGES line states the facts. Judge the offer, copy, clarity, prices, CTAs and trust signals.
+ALWAYS write your output in English, regardless of the language of the page — persona names, hurdles, quotes, fixes, everything. You may quote the page's own copy verbatim inside quotation marks.`;
   const user = `WHO YOU ARE: ${persona.name} — ${persona.intent}. You arrived from: ${persona.arrivedFrom}. ${persona.brief}
 
 THE OFFER (what the business wants you to do): ${offer || "(infer from the page)"}
@@ -91,8 +111,11 @@ ${dossierBlock(dossier)}
 Return ONLY this JSON:
 {"understood": "yes"|"partly"|"no", "wouldConvert": "yes"|"hesitant"|"no", "intentMatch": true|false, "hurdle": "the ONE concrete thing stopping or slowing you (empty if none)", "quote": "one first-person sentence in your voice"}
 - understood = did you grasp the offer? wouldConvert = would you ${conversion(pageType)} right now? intentMatch = is this page actually about what you came for?`;
+  const content: Anthropic.ContentBlockParam[] = hero
+    ? [{ type: "image", source: { type: "base64", media_type: hero.media_type, data: hero.data } }, { type: "text", text: `(The image above is the page's hero/product photo — this you CAN judge.)\n\n${user}` }]
+    : [{ type: "text", text: user }];
   try {
-    const msg = await client.messages.create({ model: "claude-sonnet-5", max_tokens: 500, system: sys, messages: [{ role: "user", content: user }] });
+    const msg = await client.messages.create({ model: "claude-sonnet-5", max_tokens: 500, system: sys, messages: [{ role: "user", content }] });
     const text = msg.content.filter(b => b.type === "text").map(b => (b as { text: string }).text).join("");
     const v = extractJson<{ understood: string; wouldConvert: string; intentMatch: boolean; hurdle: string; quote: string }>(text, { understood: "partly", wouldConvert: "hesitant", intentMatch: true, hurdle: "", quote: "" });
     const u = v.understood === "yes" || v.understood === "no" ? v.understood : "partly";
@@ -123,7 +146,7 @@ const gradeOf = (s: number): { grade: string; label: string } =>
 
 async function synthesise(pageType: PageType, offer: string, dossier: PageDossier, verdicts: PersonaVerdict[], rejected: string[]): Promise<{ summary: string; fixes: AuditFix[] }> {
   const vBlock = verdicts.map(v => `- ${v.name} [${v.device}]: understood=${v.understood}, wouldConvert=${v.wouldConvert}, intentMatch=${v.intentMatch}. Hurdle: ${v.hurdle || "none"}. "${v.quote}"`).join("\n");
-  const sys = `You are a senior CRO specialist. From the personas' independent verdicts, produce the ranked list of fixes that would win back the most conversions on THIS page. Concrete, page-specific, no generic advice. Rank by effect on intent to ${conversion(pageType)}. The hesitant personas are the lever — each is stuck on a nameable thing. ALWAYS write your output in English, regardless of the language of the page — persona names, hurdles, quotes, fixes, everything. You may quote the page's own copy verbatim inside quotation marks.`;
+  const sys = `You are a senior CRO specialist. From the personas' independent verdicts, produce the ranked list of fixes that would win back the most conversions on THIS page. Concrete, page-specific, no generic advice. Rank by effect on intent to ${conversion(pageType)}. The hesitant personas are the lever — each is stuck on a nameable thing. The page dossier is TEXT — trust the IMAGES line as fact and never propose adding photos the page already has. ALWAYS write your output in English, regardless of the language of the page — persona names, hurdles, quotes, fixes, everything. You may quote the page's own copy verbatim inside quotation marks.`;
   const user = `OFFER: ${offer}
 PAGE (${dossier.renderMode} render): ${dossierBlock(dossier).slice(0, 3500)}
 
@@ -162,6 +185,9 @@ export async function runPageAudit(
     };
   }
 
+  onProgress("Fetching the product photo…");
+  const hero = await fetchHeroImage(dossier);
+
   const archetypes = fixedArchetypes(opts.pageType);
   onProgress("Building the intent personas from the offer and keywords…");
   // Ground the intent personas in what the page ACTUALLY sells (title, headings,
@@ -183,7 +209,7 @@ export async function runPageAudit(
   async function worker() {
     while (cursor < personas.length) {
       const p = personas[cursor++];
-      const v = await judge(p, opts.pageType, opts.offer, dossier);
+      const v = await judge(p, opts.pageType, opts.offer, dossier, hero);
       verdicts.push(v); done++;
       onProgress(`Persona ${done}/${personas.length}: ${v.name} — ${v.wouldConvert === "yes" ? "would convert" : v.wouldConvert === "no" ? "gone" : "hesitant"}`);
     }
