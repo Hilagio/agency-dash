@@ -97,7 +97,7 @@ export async function GET(req: NextRequest) {
     const teamOrg = colleagues.sort((a, b) => b.organization._count.accounts - a.organization._count.accounts)[0]?.organization ?? null;
     if (teamOrg && !colleagues.some(c => c.userId === user.id && c.organizationId === teamOrg.id)) {
       await prisma.organizationMember.create({
-        data: { organizationId: teamOrg.id, userId: user.id, role: "MEMBER" },
+        data: { organizationId: teamOrg.id, userId: user.id, role: "SPECIALIST" },
       }).catch(() => null);
     }
   }

@@ -33,11 +33,15 @@ interface WorklistItem { headline: string; action: string; minutes: number; skil
 interface HiddenAccount { id: string; name: string; clientName: string | null; reason: "archived" | "inactive" }
 interface SyncIssues { skipped: { page: string; reason: string }[]; errors: string[]; at: string | null }
 interface MccMissing { count: number; names: string[]; syncedAt: string | null }
+interface JoinRequest { id: string; email: string; name: string | null }
+interface Workspace { main: { id: string; name: string; accounts: number; isCurrent: boolean; isMember: boolean } | null; myRole: string | null; joinRequestStatus: string | null }
 interface Portfolio {
   accounts: Row[];
   hidden?: HiddenAccount[];
   syncIssues?: SyncIssues | null;
   mccMissing?: MccMissing | null;
+  myRole?: string | null;
+  joinRequests?: JoinRequest[];
   counts: Record<Colour, number>;
   total: number; unverified: number; verified: number; noOrderData: number; withData: number; watchedCount: number;
 }
@@ -89,6 +93,38 @@ export default function PortfolioHome() {
   const [query, setQuery] = useState("");
   const [unarchiving, setUnarchiving] = useState<Set<string>>(new Set());
   const [importOpen, setImportOpen] = useState(false);
+  const [workspace, setWorkspace] = useState<Workspace | null>(null);
+  const [wsBusy, setWsBusy] = useState(false);
+
+  // Ask to join the team workspace / switch into it once approved.
+  async function requestJoin() {
+    setWsBusy(true);
+    try {
+      await fetch("/api/org/join-request", { method: "POST", credentials: "include" });
+      const ws = await fetch("/api/org/workspace", { credentials: "include" }).then(r => r.ok ? r.json() : null).catch(() => null);
+      if (ws) setWorkspace(ws);
+    } finally { setWsBusy(false); }
+  }
+  async function switchToMain() {
+    if (!workspace?.main) return;
+    setWsBusy(true);
+    try {
+      const r = await fetch("/api/org/switch", {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ organizationId: workspace.main.id }),
+      });
+      if (r.ok) window.location.reload();
+    } finally { setWsBusy(false); }
+  }
+  async function decideJoin(requestId: string, approve: boolean) {
+    await fetch("/api/org/join-request", {
+      method: "PATCH", credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ requestId, approve }),
+    }).catch(() => null);
+    await reloadPortfolio();
+  }
 
   async function reloadPortfolio() {
     const pf = await fetch("/api/diagnostics/portfolio", { credentials: "include" }).then(x => x.ok ? x.json() : null).catch(() => null);
@@ -170,6 +206,7 @@ export default function PortfolioHome() {
       setViewLoaded(true);
       setLoading(false);
       fetch("/api/google-ads/health", { credentials: "include" }).then(r => r.json()).then(setHealth).catch(() => setHealth({ ok: false, error: "unreachable" }));
+      fetch("/api/org/workspace", { credentials: "include" }).then(r => r.ok ? r.json() : null).then(ws => { if (ws) setWorkspace(ws); }).catch(() => null);
     })();
   }, []);
 
@@ -309,9 +346,11 @@ export default function PortfolioHome() {
             </div>
             <HealthChip health={health} />
             {/* Utility actions — quiet, icon-only so they don't compete with triage. */}
-            <button onClick={() => setImportOpen(true)} title="Add accounts — pick them straight from the Google Ads MCC" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 34, height: 34, borderRadius: 10, cursor: "pointer", color: "var(--text-3)", background: "var(--surface)", border: "1px solid var(--border)" }}>
-              <Plus size={15} />
-            </button>
+            {(data?.myRole === "OWNER" || data?.myRole === "ADMIN") && (
+              <button onClick={() => setImportOpen(true)} title="Add accounts — pick them straight from the Google Ads MCC" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 34, height: 34, borderRadius: 10, cursor: "pointer", color: "var(--text-3)", background: "var(--surface)", border: "1px solid var(--border)" }}>
+                <Plus size={15} />
+              </button>
+            )}
             {data && data.total > 0 && (
               <button onClick={backfillAll} disabled={backfill.running} title="Refresh all — pull 90 days for every account"
                 style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, height: 34, width: backfill.running ? "auto" : 34, padding: backfill.running ? "0 12px" : 0, borderRadius: 10, fontSize: 12, fontWeight: 600, cursor: backfill.running ? "default" : "pointer", color: backfill.running ? "var(--text-3)" : "var(--text-3)", background: "var(--surface)", border: "1px solid var(--border)" }}>
@@ -378,9 +417,48 @@ export default function PortfolioHome() {
               </div>
             )}
 
+            {/* Stray-user rescue: this session isn't in the team workspace (the
+                org holding the client accounts). Offer the way home: switch if
+                already a member, otherwise request access from an admin. */}
+            {workspace?.main && !workspace.main.isCurrent && (
+              <div style={{ ...card, border: "1px solid color-mix(in srgb, var(--accent) 40%, var(--border))", padding: "14px 18px", marginBottom: 14, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                <ShieldCheck size={16} style={{ color: "var(--accent)", flexShrink: 0 }} />
+                <span style={{ fontSize: 13, color: "var(--text-2)", lineHeight: 1.5, flex: 1, minWidth: 220 }}>
+                  <b>This isn&rsquo;t the team workspace.</b> The Ecomtrada workspace &ldquo;{workspace.main.name}&rdquo; holds {workspace.main.accounts} client accounts — that&rsquo;s where the team works together.
+                </span>
+                {workspace.main.isMember ? (
+                  <button onClick={switchToMain} disabled={wsBusy} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 700, color: "#fff", background: "var(--btn-primary, var(--accent))", border: "none", borderRadius: 9, padding: "8px 15px", cursor: wsBusy ? "default" : "pointer" }}>
+                    {wsBusy ? <Loader2 size={13} className="animate-spin" /> : null} Switch to team workspace
+                  </button>
+                ) : workspace.joinRequestStatus === "pending" ? (
+                  <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--accent-2)" }}>Access requested — waiting for an admin to approve.</span>
+                ) : (
+                  <button onClick={requestJoin} disabled={wsBusy} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 700, color: "#fff", background: "var(--btn-primary, var(--accent))", border: "none", borderRadius: 9, padding: "8px 15px", cursor: wsBusy ? "default" : "pointer" }}>
+                    {wsBusy ? <Loader2 size={13} className="animate-spin" /> : null} Request access
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Pending join requests — one-click approval for OWNER/ADMIN. */}
+            {(data.joinRequests?.length ?? 0) > 0 && (
+              <div style={{ ...card, border: "1px solid color-mix(in srgb, var(--accent) 40%, var(--border))", padding: "12px 16px", marginBottom: 14 }}>
+                <div style={{ fontSize: 12.5, fontWeight: 700, color: "var(--text)", marginBottom: 8 }}>Access requests for this workspace</div>
+                {data.joinRequests!.map(r => (
+                  <div key={r.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 0", flexWrap: "wrap" }}>
+                    <span style={{ fontSize: 13, color: "var(--text-2)" }}>{r.name ?? r.email}<span style={{ color: "var(--text-muted)", fontSize: 11.5 }}> · {r.email}</span></span>
+                    <span style={{ marginLeft: "auto" }} />
+                    <button onClick={() => decideJoin(r.id, true)} style={{ fontSize: 12, fontWeight: 700, color: "#fff", background: "var(--btn-primary, var(--accent))", border: "none", borderRadius: 7, padding: "5px 12px", cursor: "pointer" }}>Approve as teammate</button>
+                    <button onClick={() => decideJoin(r.id, false)} style={{ fontSize: 12, fontWeight: 600, color: "var(--text-3)", background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 7, padding: "5px 12px", cursor: "pointer" }}>Deny</button>
+                  </div>
+                ))}
+              </div>
+            )}
+
             {/* Accounts that live in the Google Ads MCC but not in the system —
-                the gap between "what exists" and "what we watch", one click to close. */}
-            {data.mccMissing && data.mccMissing.count > 0 && (
+                the gap between "what exists" and "what we watch", one click to close.
+                Adding accounts is an admin call, so members don't see the banner. */}
+            {(data.myRole === "OWNER" || data.myRole === "ADMIN") && data.mccMissing && data.mccMissing.count > 0 && (
               <div style={{ ...card, border: "1px solid color-mix(in srgb, var(--accent) 35%, var(--border))", padding: "12px 16px", marginBottom: 14, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                 <Plus size={15} style={{ color: "var(--accent)", flexShrink: 0 }} />
                 <span style={{ fontSize: 12.5, color: "var(--text-2)", lineHeight: 1.5 }}>
