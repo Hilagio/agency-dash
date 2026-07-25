@@ -2192,13 +2192,16 @@ export default function DiagnosePage() {
             {/* Diagnosis (checks → questions) — issues are surfaced up top now */}
             <div id="diagnosis" style={{ scrollMarginTop: 116 }} />
 
-            {/* Checks already run — §5, show the work */}
-            {diag.checksRun.length > 0 && (
-              <>
-                <SectionTitle>What I already checked</SectionTitle>
+            {/* Checks already run — §5, show the work. Items the system could
+                NOT verify get their own honest heading instead of sitting
+                under "already checked" (which read as the opposite). */}
+            {(() => {
+              const checked = diag.checksRun.filter(c => c.result !== "not_available");
+              const blocked = diag.checksRun.filter(c => c.result === "not_available");
+              const renderChecks = (list: typeof diag.checksRun) => (
                 <div style={{ ...card, padding: "6px 4px" }}>
-                  {diag.checksRun.map((c, i) => (
-                    <div key={i} style={{ display: "flex", gap: 11, padding: "12px 16px", borderBottom: i < diag.checksRun.length - 1 ? "1px solid var(--border)" : "none" }}>
+                  {list.map((c, i) => (
+                    <div key={i} style={{ display: "flex", gap: 11, padding: "12px 16px", borderBottom: i < list.length - 1 ? "1px solid var(--border)" : "none" }}>
                       <CheckIcon result={c.result} />
                       <div>
                         <div style={{ fontSize: 13.5, fontWeight: 600 }}>{c.label}</div>
@@ -2207,8 +2210,24 @@ export default function DiagnosePage() {
                     </div>
                   ))}
                 </div>
-              </>
-            )}
+              );
+              return (
+                <>
+                  {checked.length > 0 && (
+                    <>
+                      <SectionTitle>What I already checked</SectionTitle>
+                      {renderChecks(checked)}
+                    </>
+                  )}
+                  {blocked.length > 0 && (
+                    <>
+                      <SectionTitle>What I couldn&rsquo;t check yet</SectionTitle>
+                      {renderChecks(blocked)}
+                    </>
+                  )}
+                </>
+              );
+            })()}
 
             {/* Questions for the specialist — §9, the heart of it */}
             {diag.questions.length > 0 && (

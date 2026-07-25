@@ -111,6 +111,15 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
     prisma.chatMessage.deleteMany({
       where: { session: { accountId: id } },
     }),
+    // Time-series data tables — none cascade, so an account that has ever
+    // pulled data can't be deleted without clearing these first.
+    prisma.metricDaily.deleteMany({ where: { accountId: id } }),
+    prisma.metricProductDaily.deleteMany({ where: { accountId: id } }),
+    prisma.searchTermDaily.deleteMany({ where: { accountId: id } }),
+    prisma.changeEvent.deleteMany({ where: { accountId: id } }),
+    prisma.orderDaily.deleteMany({ where: { accountId: id } }),
+    prisma.productAdsDaily.deleteMany({ where: { accountId: id } }),
+    prisma.productSalesDaily.deleteMany({ where: { accountId: id } }),
     prisma.chatSession.deleteMany({ where: { accountId: id } }),
     prisma.accountNote.deleteMany({ where: { accountId: id } }),
     prisma.accountSopProgress.deleteMany({ where: { accountId: id } }),

@@ -292,8 +292,8 @@ function buildChecks(input: DiagnosisInput): CheckRun[] {
   // handled at the input level; here we note verification state).
   if (!input.dataVerified) {
     checks.push({
-      label: "Data verified against real orders", result: "not_available",
-      detail: "This account hasn't been reconciled yet — numbers are provisional and no external alert is raised until it is (§4.9).",
+      label: "Verification against real orders", result: "not_available",
+      detail: "No order feed (Shopify) is connected to compare against, so treat the numbers as provisional until one confirms them.",
     });
   }
 
@@ -391,7 +391,7 @@ export function buildDiagnosis(input: DiagnosisInput): Diagnosis {
     headline: buildHeadline(input),
     unverifiedNote: input.dataVerified
       ? undefined
-      : "Not yet reconciled against real orders — numbers are provisional and no client-facing alert is raised (§4.9).",
+      : "Not yet reconciled against real orders — treat the numbers as provisional until an order feed confirms them.",
     facts: buildFacts(input),
     observations: buildObservations(input.signals, input.currency ?? "€"),
     checksRun: buildChecks(input),
