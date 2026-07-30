@@ -21,6 +21,13 @@ export interface PageDossier {
   imageCount: number;    // content images detected (icons/logos filtered out)
   imageAlts: string[];   // first alt texts (what the photos are of)
   heroImage: string | null; // og:image or the first big content image (absolute URL)
+  // Provable-positive feature signals from the page's full code — so a judge
+  // can never claim a detected feature (newsletter form, size guide, zoom
+  // library, reviews widget, geo currency) is missing.
+  featureHints: string[];
+  // Tail of the page text (footer area) — the 9k body clip was cutting off
+  // footers, which is where newsletter signups and trust links live.
+  bodyTextTail: string;
   blocked?: boolean;     // the site refused us (WAF/403/challenge) — not a page fault
   error?: string;
 }
@@ -43,11 +50,23 @@ const EXTRACT = `() => {
   // Content images: rendered large enough to matter (kills icons/logos/pixels).
   const imgs = q('img').filter(el => (el.naturalWidth || el.width || 0) >= 150 && (el.naturalHeight || el.height || 0) >= 150);
   const og = (document.querySelector('meta[property="og:image"]') || {}).content || '';
+  // Provable-positive features from the full page code (incl. hidden/footer
+  // markup) — a judge must never claim these are missing when detected.
+  const code = document.documentElement ? document.documentElement.innerHTML : '';
+  const features = [];
+  if (q('input[type=email], input[name*=mail]').length && /newsletter|subscribe|sign.?up|nieuwsbrief|inschrijv/i.test(code)) features.push('newsletter/email signup form (often in the footer)');
+  if (/size.?(chart|guide|table)|maattabel/i.test(code)) features.push('size chart/guide referenced (may be an image or behind a dropdown)');
+  if (/photoswipe|magnific|drift|image.?zoom|pinch.?zoom|data-zoom|zoom-?on/i.test(code)) features.push('image zoom capability');
+  if (/judge\\.?me|loox|yotpo|stamped|okendo|trustpilot|reviews\\.io/i.test(code)) features.push('product reviews widget');
+  if (/currency-?(selector|switcher|converter)|localization-?form|geoip|geolocat/i.test(code)) features.push('currency/country localisation (prices may auto-adapt to the visitor)');
+  if (/shipping|delivery|verzendkost|levertijd/i.test(body)) features.push('shipping/delivery info in the page text');
   return {
     title: document.title || '',
     metaDescription: (document.querySelector('meta[name=description]') || {}).content || '',
     headings, ctas, formFields, priceHints,
     bodyText: body,
+    bodyTail: body.length > 9000 ? body.slice(-2000) : '',
+    features,
     imageCount: imgs.length,
     imageAlts: imgs.map(el => el.getAttribute('alt') || '').filter(Boolean).slice(0, 10),
     heroImage: og || (imgs[0] ? (imgs[0].currentSrc || imgs[0].src || '') : ''),
@@ -84,13 +103,15 @@ async function renderWithBrowser(url: string): Promise<PageDossier> {
     await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30_000 });
     await page.waitForTimeout(2500); // let above-the-fold JS settle
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const d = await page.evaluate(EXTRACT as any) as Omit<PageDossier, "url" | "finalUrl" | "renderMode">;
+    const d = await page.evaluate(EXTRACT as any) as Omit<PageDossier, "url" | "finalUrl" | "renderMode" | "featureHints" | "bodyTextTail"> & { features?: string[]; bodyTail?: string };
     const finalUrl = page.url();
     return {
       url, finalUrl, renderMode: "browser",
       title: d.title, metaDescription: d.metaDescription,
       headings: uniq(d.headings), ctas: uniq(d.ctas), formFields: uniq(d.formFields), priceHints: uniq(d.priceHints),
       bodyText: clip(d.bodyText, 9000),
+      bodyTextTail: d.bodyTail ?? "",
+      featureHints: uniq(d.features ?? []),
       imageCount: d.imageCount ?? 0,
       imageAlts: uniq(d.imageAlts ?? []),
       heroImage: d.heroImage ? new URL(d.heroImage, finalUrl).toString() : null,
@@ -124,6 +145,7 @@ function dossierFromHtml(url: string, finalUrl: string, html: string, status: nu
     return {
       url, finalUrl, renderMode,
       title: "", metaDescription: "", headings: [], ctas: [], formFields: [], priceHints: [], bodyText: "",
+      bodyTextTail: "", featureHints: [],
       imageCount: 0, imageAlts: [], heroImage: null,
       blocked: true,
       error: `The site refused our request (HTTP ${status}${rawTitle ? `, "${rawTitle.slice(0, 40)}"` : ""}). It's behind bot protection that blocks automated requests${renderMode === "browser" ? " even through the render service" : ""} — this is an access issue, not a fault in the page.`,
@@ -140,8 +162,20 @@ function dossierFromHtml(url: string, finalUrl: string, html: string, status: nu
   const headings = uniq(pick(/<h[1-3][^>]*>([\s\S]*?)<\/h[1-3]>/gi, true));
   const ctas = uniq([...pick(/<button[^>]*>([\s\S]*?)<\/button>/gi, true), ...pick(/<a[^>]*>([\s\S]*?)<\/a>/gi, true)].filter(t => t && t.length < 60)).slice(0, 60);
   const formFields = uniq((html.match(/<(?:input|textarea|select)[^>]*>/gi) ?? []).map(tag => (tag.match(/(?:aria-label|placeholder|name)=["']([^"']+)["']/i)?.[1] ?? "")).filter(Boolean)).slice(0, 40);
-  const bodyText = clip(html.replace(/<script[\s\S]*?<\/script>/gi, " ").replace(/<style[\s\S]*?<\/style>/gi, " ").replace(/<[^>]+>/g, " ").replace(/&[a-z]+;/gi, " ").replace(/\s+/g, " ").trim(), 9000);
+  const fullText = html.replace(/<script[\s\S]*?<\/script>/gi, " ").replace(/<style[\s\S]*?<\/style>/gi, " ").replace(/<[^>]+>/g, " ").replace(/&[a-z]+;/gi, " ").replace(/\s+/g, " ").trim();
+  const bodyText = clip(fullText, 9000);
   const priceHints = uniq((bodyText.match(/(?:€|\$|£|EUR|USD)\s?\d[\d.,]*/g) ?? [])).slice(0, 20);
+
+  // Provable-positive features from the full raw HTML (incl. footer + hidden
+  // markup) — a judge must never claim these are missing when detected.
+  const featureHints: string[] = [];
+  const hasEmailInput = /<input[^>]+(type=["']email["']|name=["'][^"']*mail)/i.test(html);
+  if (hasEmailInput && /newsletter|subscribe|sign.?up|nieuwsbrief|inschrijv/i.test(html)) featureHints.push("newsletter/email signup form (often in the footer)");
+  if (/size.?(chart|guide|table)|maattabel/i.test(html)) featureHints.push("size chart/guide referenced (may be an image or behind a dropdown)");
+  if (/photoswipe|magnific|drift|image.?zoom|pinch.?zoom|data-zoom|zoom-?on/i.test(html)) featureHints.push("image zoom capability");
+  if (/judge\.?me|loox|yotpo|stamped|okendo|trustpilot|reviews\.io/i.test(html)) featureHints.push("product reviews widget");
+  if (/currency-?(selector|switcher|converter)|localization-?form|geoip|geolocat/i.test(html)) featureHints.push("currency/country localisation (prices may auto-adapt to the visitor)");
+  if (/shipping|delivery|verzendkost|levertijd/i.test(fullText)) featureHints.push("shipping/delivery info in the page text");
 
   // Image FACTS from raw HTML — src/data-src/srcset all count (lazy-loaded
   // Shopify galleries live in data-src), icons/logos/pixels filtered by name.
@@ -158,6 +192,8 @@ function dossierFromHtml(url: string, finalUrl: string, html: string, status: nu
 
   return {
     url, finalUrl, renderMode, title, metaDescription, headings, ctas, formFields, priceHints, bodyText,
+    bodyTextTail: fullText.length > 9000 ? fullText.slice(-2000) : "",
+    featureHints,
     imageCount: contentImgs.length,
     imageAlts: uniq(contentImgs.map(i => i.alt).filter(Boolean)).slice(0, 10),
     heroImage: abs(ogImage) ?? abs(contentImgs[0]?.src ?? null),
@@ -219,6 +255,7 @@ export async function renderPage(url: string): Promise<PageDossier> {
       return {
         url, finalUrl: url, renderMode: "fetch", title: "", metaDescription: "",
         headings: [], ctas: [], formFields: [], priceHints: [], bodyText: "",
+        bodyTextTail: "", featureHints: [],
         imageCount: 0, imageAlts: [], heroImage: null,
         error: `Couldn't render the page. Browser: ${browserErr instanceof Error ? browserErr.message : browserErr}. Fetch: ${fetchErr instanceof Error ? fetchErr.message : fetchErr}`,
       };
