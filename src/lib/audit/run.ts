@@ -71,13 +71,15 @@ function dossierBlock(d: PageDossier): string {
     `URL: ${d.finalUrl} (rendered via ${d.renderMode === "browser" ? "a real mobile browser" : "server fetch — JS-rendered content may be partial"})`,
     d.title && `TITLE: ${d.title}`,
     d.metaDescription && `META: ${d.metaDescription}`,
-    d.priceHints.length && `PRICES SEEN: ${d.priceHints.join(", ")}`,
+    d.priceHints.length && `PRICES SEEN (as rendered from OUR location — many stores auto-localise currency per visitor, so don't assume a UK/EU visitor sees these): ${d.priceHints.join(", ")}`,
     d.headings.length && `HEADINGS (in order): ${d.headings.slice(0, 25).join(" | ")}`,
-    d.ctas.length && `BUTTONS / LINKS: ${d.ctas.slice(0, 30).join(" | ")}`,
+    d.ctas.length && `BUTTONS / LINKS (raw code — includes hidden state variants: shops keep e.g. both "Sold out" and "Add to cart" in the code and show only one, so both appearing here is NOT a page fault): ${d.ctas.slice(0, 30).join(" | ")}`,
     d.formFields.length && `FORM FIELDS: ${d.formFields.join(", ")}`,
     // Stated as FACT so no persona can hallucinate "there are no photos".
     `IMAGES: ${d.imageCount} content image${d.imageCount === 1 ? "" : "s"} detected on the page${d.imageAlts.length ? ` (alt texts: ${d.imageAlts.slice(0, 8).join(" | ")})` : ""}${d.renderMode === "fetch" ? " — lazy-loaded galleries may add more" : ""}`,
+    d.featureHints.length && `CONFIRMED PRESENT (detected in the page's code — never claim these are missing): ${d.featureHints.join("; ")}`,
     d.bodyText && `PAGE TEXT (top): ${d.bodyText}`,
+    d.bodyTextTail && `PAGE TEXT (bottom of page / footer): ${d.bodyTextTail}`,
   ].filter(Boolean).join("\n");
 }
 
@@ -99,7 +101,8 @@ type HeroImage = Awaited<ReturnType<typeof fetchHeroImage>>;
 
 async function judge(persona: Persona, pageType: PageType, offer: string, dossier: PageDossier, hero: HeroImage): Promise<PersonaVerdict> {
   const sys = `You ARE this one visitor, judging a ${pageType === "ecom" ? "product/landing" : "lead-gen"} page alone and honestly — slightly uncomfortable honesty is the point. The conversion action is to ${conversion(pageType)}. Judge ONLY from what's actually on the page below (you're on ${persona.device}). Don't be nice; if something blocks you, say the specific, nameable thing.
-The page is given to you as TEXT plus the stated image count${hero ? " and the actual hero/product photo" : ""}. You CANNOT see the full design or every photo — NEVER claim images/photos are missing or judge visual quality beyond what you're actually given; the IMAGES line states the facts. Judge the offer, copy, clarity, prices, CTAs and trust signals.
+The page is given to you as TEXT plus the stated image count${hero ? " and the actual hero/product photo" : ""}. You CANNOT see the full design or every photo — NEVER claim images/photos are missing or judge visual quality beyond what you're actually given; the IMAGES line states the facts.
+This dossier is a STATIC SNAPSHOT rendered from one location. It cannot show: image zoom/pinch behaviour, the contents of dropdowns/accordions/tabs, geo-personalised elements (currency and shipping widgets usually auto-adapt to the visitor's location), what's inside images (size charts are often images), or which of several stateful buttons is actually visible. NEVER report any of those as missing, broken or manual — the site may well do it. If one genuinely matters to your decision, phrase the hurdle as something to verify ("I'd want to check whether…"), never as a stated defect. The CONFIRMED PRESENT line lists features provably in the page's code — never claim any of them is absent. Judge the offer, copy, clarity, prices, CTAs and trust signals.
 ALWAYS write your output in English, regardless of the language of the page — persona names, hurdles, quotes, fixes, everything. You may quote the page's own copy verbatim inside quotation marks.`;
   const user = `WHO YOU ARE: ${persona.name} — ${persona.intent}. You arrived from: ${persona.arrivedFrom}. ${persona.brief}
 
@@ -146,7 +149,7 @@ const gradeOf = (s: number): { grade: string; label: string } =>
 
 async function synthesise(pageType: PageType, offer: string, dossier: PageDossier, verdicts: PersonaVerdict[], rejected: string[]): Promise<{ summary: string; fixes: AuditFix[] }> {
   const vBlock = verdicts.map(v => `- ${v.name} [${v.device}]: understood=${v.understood}, wouldConvert=${v.wouldConvert}, intentMatch=${v.intentMatch}. Hurdle: ${v.hurdle || "none"}. "${v.quote}"`).join("\n");
-  const sys = `You are a senior CRO specialist. From the personas' independent verdicts, produce the ranked list of fixes that would win back the most conversions on THIS page. Concrete, page-specific, no generic advice. Rank by effect on intent to ${conversion(pageType)}. The hesitant personas are the lever — each is stuck on a nameable thing. The page dossier is TEXT — trust the IMAGES line as fact and never propose adding photos the page already has. ALWAYS write your output in English, regardless of the language of the page — persona names, hurdles, quotes, fixes, everything. You may quote the page's own copy verbatim inside quotation marks.`;
+  const sys = `You are a senior CRO specialist. From the personas' independent verdicts, produce the ranked list of fixes that would win back the most conversions on THIS page. Concrete, page-specific, no generic advice. Rank by effect on intent to ${conversion(pageType)}. The hesitant personas are the lever — each is stuck on a nameable thing. The page dossier is TEXT — trust the IMAGES line as fact and never propose adding photos the page already has. Same for the CONFIRMED PRESENT line: never propose adding a feature it lists (newsletter form, size guide, zoom, reviews, currency localisation). The dossier is a static snapshot from one location — never base a fix on interactive or geo behaviour it can't show (zoom, dropdown contents, auto currency switching, live shipping widgets, which stateful button is visible); if a persona flagged one of those, downgrade it to a "verify manually" note or drop it. Discard persona hurdles that contradict these rules instead of laundering them into fixes. ALWAYS write your output in English, regardless of the language of the page — persona names, hurdles, quotes, fixes, everything. You may quote the page's own copy verbatim inside quotation marks.`;
   const user = `OFFER: ${offer}
 PAGE (${dossier.renderMode} render): ${dossierBlock(dossier).slice(0, 3500)}
 
