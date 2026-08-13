@@ -92,6 +92,7 @@ export default function PlanPage() {
           try { ev = JSON.parse(line.slice(5).trim()); } catch { continue; }
           if (ev.error) { setErr(ev.error); setGenStatus(null); }
           else if (ev.status === "generating_no_makeorbreak") setGenStatus("Generating… (no make-or-break set — plan may be generic)");
+          else if (ev.status === "retrying") setGenStatus("First draft didn't come out clean — writing it again…");
           else if (ev.status === "generating" || ev.status === "writing") setGenStatus(ev.chars ? `Writing the plan… (${ev.chars} chars)` : "Reading your data & writing the plan…");
           else if (ev.done && ev.html) { setHtml(ev.html); setGenStatus(null); setFormOpen(false); }
         }

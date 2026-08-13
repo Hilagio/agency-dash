@@ -47,21 +47,44 @@ export async function POST(req: NextRequest, { params }: Params) {
     async start(controller) {
       try {
         send(controller, { status: inputs.hasMakeOrBreak ? "generating" : "generating_no_makeorbreak" });
-        const anthropicStream = client.messages.stream({
-          model: "claude-opus-4-8",
-          max_tokens: 4096,
-          system: PLAN_SYSTEM,
-          messages: [{ role: "user", content: userMsg }],
-        });
-        let acc = "", ticks = 0;
-        for await (const ev of anthropicStream) {
-          if (ev.type === "content_block_delta" && ev.delta.type === "text_delta") {
-            acc += ev.delta.text;
-            if (++ticks % 12 === 0) send(controller, { status: "writing", chars: acc.length }); // keep-alive
+        // One generation attempt; returns raw text + why the model stopped.
+        const generate = async (extraNudge?: string) => {
+          const anthropicStream = client.messages.stream({
+            model: "claude-opus-4-8",
+            // A full plan (stats + findings + levers + build list + 3 phases +
+            // forecast, often in Dutch) regularly overflowed 4096 tokens — the
+            // JSON got truncated mid-object and parsing failed for users as
+            // "unparseable plan". Big budget + thinking disabled so the whole
+            // budget is output (max_tokens caps thinking + output together).
+            max_tokens: 12_000,
+            thinking: { type: "disabled" },
+            system: PLAN_SYSTEM,
+            messages: [{ role: "user", content: extraNudge ? `${userMsg}\n\n${extraNudge}` : userMsg }],
+          });
+          let acc = "", ticks = 0, stopReason: string | null = null;
+          for await (const ev of anthropicStream) {
+            if (ev.type === "content_block_delta" && ev.delta.type === "text_delta") {
+              acc += ev.delta.text;
+              if (++ticks % 12 === 0) send(controller, { status: "writing", chars: acc.length }); // keep-alive
+            }
+            if (ev.type === "message_delta" && ev.delta.stop_reason) stopReason = ev.delta.stop_reason;
           }
+          return { acc, stopReason };
+        };
+        let { acc, stopReason } = await generate();
+        let plan = extractJson(acc);
+        if (!plan) {
+          // One silent retry instead of bouncing the failure to the user —
+          // with a nudge that names what went wrong the first time.
+          send(controller, { status: "retrying" });
+          ({ acc, stopReason } = await generate(
+            stopReason === "max_tokens"
+              ? "IMPORTANT: your previous attempt exceeded the output limit. Keep every body to ONE tight sentence and stay within the item counts' lower bounds."
+              : "IMPORTANT: your previous attempt was not valid JSON. Return ONLY the JSON object — no prose, no code fences, no trailing commas.",
+          ));
+          plan = extractJson(acc);
         }
-        const plan = extractJson(acc);
-        if (!plan) { send(controller, { error: "The model returned an unparseable plan. Try again." }); controller.close(); return; }
+        if (!plan) { send(controller, { error: `The model returned an unparseable plan (${stopReason === "max_tokens" ? "output limit hit twice" : "invalid JSON twice"}). Try again.` }); controller.close(); return; }
         plan.language = inputs.language;
         plan.client = inputs.account.name;
         const html = renderPlanHtml(plan, inputs.charts);
