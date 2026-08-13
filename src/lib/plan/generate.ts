@@ -39,17 +39,30 @@ export async function buildPlanInputs(accountId: string, orgId: string, langOver
 
   const since = ymd(91), today = new Date().toISOString().slice(0, 10);
   const [mRows, oRows, adRows] = await Promise.all([
-    prisma.metricDaily.findMany({ where: { accountId, date: { gte: since } }, select: { date: true, spend: true, clicks: true, conversions: true, conversionValue: true } }),
+    prisma.metricDaily.findMany({ where: { accountId, date: { gte: since } }, select: { date: true, campaignName: true, spend: true, clicks: true, conversions: true, conversionValue: true } }),
     prisma.orderDaily.findMany({ where: { accountId, date: { gte: since } }, select: { date: true, orders: true, revenue: true } }),
     prisma.productAdsDaily.findMany({ where: { accountId, date: { gte: ymd(31) } }, select: { itemId: true, title: true, spend: true, conversions: true, conversionValue: true } }),
   ]);
 
-  // Per-day metric collapse → windows (ROAS/POAS across horizons).
+  // Brand campaigns (by explicit naming convention only — "Brand"/"Branded"/
+  // "Merk" in the campaign name; matching on the shop name would misfire because
+  // many teams prefix EVERY campaign with the client name). Brand search
+  // inflates account-wide ROAS, so the plan gets both views.
+  const isBrandCampaign = (name: string) => /(^|[^a-z])brand(ed)?([^a-z]|$)|merk(naam)?([^a-z]|$)/i.test(name);
+  const brandNames = new Set<string>();
+
+  // Per-day metric collapse → windows (ROAS/POAS across horizons), account-wide
+  // AND excluding brand campaigns.
   const perDay = new Map<string, { date: string; spend: number; clicks: number; conversions: number; conversionValue: number }>();
+  const perDayNb = new Map<string, { date: string; spend: number; clicks: number; conversions: number; conversionValue: number }>();
   for (const r of mRows) {
     const e = perDay.get(r.date) ?? { date: r.date, spend: 0, clicks: 0, conversions: 0, conversionValue: 0 };
     e.spend += r.spend; e.clicks += r.clicks; e.conversions += r.conversions; e.conversionValue += r.conversionValue;
     perDay.set(r.date, e);
+    if (isBrandCampaign(r.campaignName)) { brandNames.add(r.campaignName); continue; }
+    const n = perDayNb.get(r.date) ?? { date: r.date, spend: 0, clicks: 0, conversions: 0, conversionValue: 0 };
+    n.spend += r.spend; n.clicks += r.clicks; n.conversions += r.conversions; n.conversionValue += r.conversionValue;
+    perDayNb.set(r.date, n);
   }
   const marginPct = ctx?.netMarginPct ?? account.grossMarginPercent ?? null;
   const windows = computeWindows([...perDay.values()], oRows, today, marginPct);
@@ -103,6 +116,12 @@ export async function buildPlanInputs(accountId: string, orgId: string, langOver
   if (targetRoas) D.push(`Target ROAS: ${targetRoas.toFixed(2)}`);
   if (breakEven) D.push(`Break-even ROAS: ${breakEven.toFixed(2)} (margin ${marginPct ? Math.round(marginPct * 100) + "%" : "unknown"})`);
   for (const d of [90, 30, 14]) { const w = win(d); if (w) D.push(`${d}d: spend ${money(w.spend, sym)}, ROAS ${w.roas != null ? w.roas.toFixed(2) : "—"}, POAS ${w.poas != null ? w.poas.toFixed(2) : "—"}`); }
+  if (brandNames.size) {
+    const nbWindows = computeWindows([...perDayNb.values()], [], today, marginPct);
+    const nbWin = (d: number) => nbWindows.find(w => w.days === d);
+    D.push(`\nBrand campaigns detected (${[...brandNames].slice(0, 6).join(", ")}) — account-wide ROAS is inflated by brand search. EXCLUDING brand campaigns:`);
+    for (const d of [90, 30, 14]) { const w = nbWin(d); if (w) D.push(`${d}d excl. brand: spend ${money(w.spend, sym)}, ROAS ${w.roas != null ? w.roas.toFixed(2) : "—"}`); }
+  }
   if (oRows.length) D.push(`Shopify (30d): ${orders30} orders, ${money(rev30, sym)} revenue${blendedMer ? `, blended MER ${blendedMer.toFixed(2)}` : ""}`);
   D.push(`Avg daily revenue: ${dailyRevenue.map(x => `${x.label} ${money(x.value, sym)}`).join(" · ")}`);
   if (conv30 || orders30) D.push(`Reconciliation (30d): ${conv30.toFixed(1)} Ads conversions vs ${orders30} real orders${orders30 && conv30 < orders30 * 0.7 ? " — Ads is UNDER-COUNTING (likely tracking gap)" : ""}`);
@@ -140,7 +159,7 @@ Pick the ARCHETYPE from the data:
 
 The make-or-break factor from the context pack is THE most important input — it must visibly shape the make-or-break section AND the strategy. If it's missing, keep that section honest and general, and note more context is needed.
 
-Rules: real numbers only ("ROAS 1.54 vs break-even 2.0", not "ROAS is low"). Match the client's preferred tone (cautious vs aggressive) from the context. Never recommend raising budget while ROAS is below break-even. Be concrete about the 3 phases (weeks + who does what). End with honest caveats — what you will NOT promise. Write in the requested language (en or nl), in Ecomtrada's direct, confident voice.
+Rules: real numbers only ("ROAS 1.54 vs break-even 2.0", not "ROAS is low"). When "excl. brand" numbers are provided, ground EVERY performance judgement and scaling decision in those (brand search inflates account-wide ROAS) and say explicitly which view a number comes from; account-wide figures are context only. Match the client's preferred tone (cautious vs aggressive) from the context. Never recommend raising budget while ROAS is below break-even. Be concrete about the 3 phases (weeks + who does what). End with honest caveats — what you will NOT promise. Write in the requested language (en or nl), in Ecomtrada's direct, confident voice.
 
 Return ONLY a JSON object (no prose, no code fences) matching this shape:
 {"archetype":"fix_first|scale","subtitle":"goal · market · target ROAS · 90-day period · AM","strategyLead":"1 paragraph, **bold** key phrases","stats":[{"key":"","value":"","sub":"","tone":"grad|good|bad|neutral"}],"makeOrBreakTitle":"","makeOrBreakBody":"","makeOrBreakBullets":["",""],"findings":[{"title":"","body":""}],"levers":[{"title":"","body":""}],"whatWeBuild":[{"title":"","body":""}],"phases":[{"title":"Phase 1 · …","window":"Week 1–2","actions":[{"action":"","who":"Ecomtrada|Client|Together","when":"Week 1"}]}],"forecastLead":"","forecast":[{"label":"","now":"","target":""}],"whatWeNeed":[""],"caveats":"what we will not promise"}
