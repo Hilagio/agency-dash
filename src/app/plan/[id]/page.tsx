@@ -72,14 +72,18 @@ export default function PlanPage() {
 
   async function generate() {
     setErr(null); setHtml(null); setGenStatus("Starting…");
-    // Persist context first so the generation uses the latest.
-    await save();
+    // `finished` guards the stuck state: if the stream dies without a done/error
+    // event (gateway timeout, dropped connection), the button used to stay
+    // disabled forever because genStatus was never cleared.
+    let finished = false;
     try {
+      // Persist context first so the generation uses the latest.
+      await save();
       const r = await fetch(`/api/accounts/${id}/plan`, {
         method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ language: lang }),
       });
-      if (!r.ok || !r.body) { const j = await r.json().catch(() => ({})); setErr(j.error ?? `HTTP ${r.status}`); setGenStatus(null); return; }
+      if (!r.ok || !r.body) { const j = await r.json().catch(() => ({})); setErr(j.error ?? `HTTP ${r.status}`); return; }
       const reader = r.body.getReader(); const dec = new TextDecoder(); let buf = "";
       for (;;) {
         const { value, done } = await reader.read();
@@ -90,14 +94,16 @@ export default function PlanPage() {
           const line = p.trim(); if (!line.startsWith("data:")) continue;
           let ev: { status?: string; chars?: number; done?: boolean; html?: string; error?: string };
           try { ev = JSON.parse(line.slice(5).trim()); } catch { continue; }
-          if (ev.error) { setErr(ev.error); setGenStatus(null); }
+          if (ev.error) { setErr(ev.error); finished = true; }
           else if (ev.status === "generating_no_makeorbreak") setGenStatus("Generating… (no make-or-break set — plan may be generic)");
           else if (ev.status === "retrying") setGenStatus("First draft didn't come out clean — writing it again…");
           else if (ev.status === "generating" || ev.status === "writing") setGenStatus(ev.chars ? `Writing the plan… (${ev.chars} chars)` : "Reading your data & writing the plan…");
-          else if (ev.done && ev.html) { setHtml(ev.html); setGenStatus(null); setFormOpen(false); }
+          else if (ev.done && ev.html) { setHtml(ev.html); setFormOpen(false); finished = true; }
         }
       }
-    } catch (e) { setErr(e instanceof Error ? e.message : "Failed"); setGenStatus(null); }
+      if (!finished) setErr("The connection dropped before the plan finished — hit Generate again.");
+    } catch (e) { setErr(e instanceof Error ? e.message : "Failed"); }
+    finally { setGenStatus(null); }
   }
 
   function exportHtml() {
