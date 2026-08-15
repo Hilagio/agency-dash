@@ -1,0 +1,5 @@
+# Your personal keybinds and screen coordinates — copy config.example.json.
+config.json
+
+.venv/
+__pycache__/
