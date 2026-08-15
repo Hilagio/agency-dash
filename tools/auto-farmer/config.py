@@ -26,7 +26,13 @@ class Bar:
     # for smooth bars). "count" totals every matching sample (best for segmented
     # or pip-style bars).
     mode: str = "contiguous"
+    # Where the fill is anchored, i.e. the end that stays coloured as the bar
+    # drains. Vertical HUD bars are usually "bottom_to_top".
     direction: str = "left_to_right"
+
+    @property
+    def vertical(self) -> bool:
+        return self.direction in ("top_to_bottom", "bottom_to_top")
 
     @property
     def region(self) -> tuple[int, int, int, int]:
@@ -47,10 +53,9 @@ class Bar:
         if mode not in ("contiguous", "count"):
             raise ConfigError(f"{where}: bar mode must be 'contiguous' or 'count'")
         direction = data.get("direction", "left_to_right")
-        if direction not in ("left_to_right", "right_to_left"):
-            raise ConfigError(
-                f"{where}: bar direction must be 'left_to_right' or 'right_to_left'"
-            )
+        directions = ("left_to_right", "right_to_left", "top_to_bottom", "bottom_to_top")
+        if direction not in directions:
+            raise ConfigError(f"{where}: bar direction must be one of {', '.join(directions)}")
         return cls(
             x1=int(data["x1"]),
             y1=int(data["y1"]),
@@ -82,6 +87,9 @@ class Action:
     threshold: float = 0.5
     # Delay the first press by this many seconds after start.
     initial_delay_seconds: float = 0.0
+    # Actions sharing a group name also share a cooldown (see Config.groups),
+    # so three HP potion slots don't all empty into one dip in the bar.
+    group: str = ""
 
     # Runtime state.
     next_ready_at: float = field(default=0.0, repr=False)
@@ -112,6 +120,7 @@ class Action:
             bar=Bar.from_dict(bar, f"{where}.{data['name']}") if bar else None,
             threshold=threshold,
             initial_delay_seconds=float(data.get("initial_delay_seconds", 0.0)),
+            group=str(data.get("group", "")),
         )
 
 
@@ -144,6 +153,8 @@ class Config:
     humanize: Humanize = field(default_factory=Humanize)
     # Stop on their own after this long. 0 = run until stopped.
     max_runtime_minutes: float = 0.0
+    # group name -> seconds every member waits after any one of them fires.
+    groups: dict[str, float] = field(default_factory=dict)
 
     @property
     def all_actions(self) -> list[Action]:
@@ -197,6 +208,14 @@ def load_config(path: str | Path) -> Config:
         ),
     )
 
+    groups = {str(k): float(v) for k, v in data.get("groups", {}).items()}
+    for action in actions + potions:
+        if action.group and action.group not in groups:
+            raise ConfigError(
+                f"action '{action.name}' uses group '{action.group}', "
+                "which is not defined in 'groups'"
+            )
+
     hotkeys = data.get("hotkeys", {})
     return Config(
         actions=actions,
@@ -209,4 +228,5 @@ def load_config(path: str | Path) -> Config:
         pause_hotkey=str(hotkeys.get("pause", "f11")),
         humanize=humanize,
         max_runtime_minutes=float(data.get("max_runtime_minutes", 0.0)),
+        groups=groups,
     )

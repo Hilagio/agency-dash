@@ -118,6 +118,13 @@ class Farmer:
         self.backend.press(action.key, hold)
         action.presses += 1
         action.next_ready_at = now + self.jittered(action.cooldown_seconds)
+        # Hold the rest of the group back too, so a single dip in the bar
+        # doesn't drain every potion slot at once.
+        group_cooldown = self.config.groups.get(action.group)
+        if group_cooldown:
+            for other in self.config.all_actions:
+                if other.group == action.group:
+                    other.next_ready_at = max(other.next_ready_at, now + group_cooldown)
         self.gcd_ready_at = (
             time.monotonic() + self.config.global_cooldown_seconds + action.after_seconds
         )

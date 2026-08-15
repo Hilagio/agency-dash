@@ -21,18 +21,25 @@ BLACK = (10, 10, 10)
 
 
 class FakeImage:
-    """Stands in for the PIL image a screenshot returns."""
+    """Stands in for the PIL image a screenshot returns.
 
-    def __init__(self, pixels: list[tuple[int, int, int]], height: int = 10):
+    `axis` says which coordinate the pixel list runs along: "x" for a
+    horizontal bar, "y" for a vertical one.
+    """
+
+    def __init__(self, pixels: list[tuple[int, int, int]], thickness: int = 10, axis: str = "x"):
         self._pixels = pixels
-        self.width = len(pixels)
-        self.height = height
+        self._axis = axis
+        if axis == "x":
+            self.width, self.height = len(pixels), thickness
+        else:
+            self.width, self.height = thickness, len(pixels)
 
     def convert(self, _mode):
         return self
 
     def getpixel(self, xy):
-        return self._pixels[xy[0]]
+        return self._pixels[xy[0] if self._axis == "x" else xy[1]]
 
 
 def stub_screen(filled: int, total: int = 100, fill=RED, empty=BLACK) -> None:
@@ -75,6 +82,22 @@ def test_right_to_left_bar():
     vision._screenshot = lambda region: FakeImage(pixels)
     bar = make_bar(samples=100, direction="right_to_left")
     assert abs(vision.bar_fill_fraction(bar) - 0.25) < 0.02
+
+
+def test_vertical_bar_drains_from_the_top():
+    """A vertical bar at 40%: top 60% dark, bottom 40% still coloured."""
+    pixels = [BLACK] * 60 + [RED] * 40
+    vision._screenshot = lambda region: FakeImage(pixels, axis="y")
+    bar = make_bar(x2=10, y2=100, samples=100, direction="bottom_to_top")
+    assert bar.vertical
+    assert abs(vision.bar_fill_fraction(bar) - 0.4) < 0.02
+
+
+def test_vertical_bar_anchored_at_the_top():
+    pixels = [RED] * 70 + [BLACK] * 30
+    vision._screenshot = lambda region: FakeImage(pixels, axis="y")
+    bar = make_bar(x2=10, y2=100, samples=100, direction="top_to_bottom")
+    assert abs(vision.bar_fill_fraction(bar) - 0.7) < 0.02
 
 
 def test_tolerance():
@@ -166,6 +189,49 @@ def test_potion_wins_over_rotation():
     ready = [a for a in config.all_actions if a.enabled]
     ready.sort(key=lambda a: (-a.priority, a.next_ready_at))
     assert ready[0] is potion
+
+
+def test_group_holds_the_other_slots_back():
+    """Firing HP slot 1 must delay slots 2 and 3, not just slot 1."""
+    slots = [
+        Action(name=f"hp{i}", key=str(i), cooldown_seconds=30, group="hp potions")
+        for i in (1, 2, 3)
+    ]
+    config = Config(actions=[], potions=slots, groups={"hp potions": 3.0})
+    farmer = Farmer(config, dry_run=True)
+
+    farmer.fire(slots[0], now=100.0)
+    assert slots[1].next_ready_at >= 103.0
+    assert slots[2].next_ready_at >= 103.0
+    # The one that fired keeps its own longer cooldown.
+    assert slots[0].next_ready_at > 125.0
+
+
+def test_group_cooldown_never_shortens_an_existing_wait():
+    slots = [
+        Action(name=f"hp{i}", key=str(i), cooldown_seconds=30, group="hp potions")
+        for i in (1, 2)
+    ]
+    slots[1].next_ready_at = 200.0
+    config = Config(actions=[], potions=slots, groups={"hp potions": 3.0})
+    Farmer(config, dry_run=True).fire(slots[0], now=100.0)
+    assert slots[1].next_ready_at == 200.0
+
+
+def test_config_rejects_an_undefined_group():
+    with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as handle:
+        json.dump(
+            {"actions": [{"name": "a", "key": "1", "cooldown_seconds": 1, "group": "ghost"}]},
+            handle,
+        )
+        path = handle.name
+    try:
+        load_config(path)
+    except ConfigError:
+        return
+    finally:
+        Path(path).unlink()
+    raise AssertionError("an undefined group should have been rejected")
 
 
 def test_jitter_stays_in_bounds():

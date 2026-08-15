@@ -19,6 +19,12 @@ pip install -r requirements.txt
 cp config.example.json config.json
 ```
 
+Two starting points ship with the tool — copy whichever fits to `config.json`:
+
+- `config.example.json` — a generic rotation with a horizontal health bar.
+- `config.aoe-farm.json` — stationary AOE farming: two attack keys on cooldown,
+  three HP potion slots and one MP slot, reading vertical HUD bars.
+
 ## Set it up
 
 1. **Find the window title** (optional but recommended — the bot then only
@@ -43,7 +49,13 @@ cp config.example.json config.json
 
    Hover over the **left edge** of the health bar's coloured fill and note
    `x`, `y` and `rgb` → that's `x1`, `y1` and `color`. Then hover over the
-   **right edge at full health** → `x2`, `y2`. Verify with:
+   **right edge at full health** → `x2`, `y2`.
+
+   For a **vertical** bar, read the **bottom** of the fill and the **top at
+   full health** instead, and set `direction` to `bottom_to_top`. Keep the
+   coordinates a few pixels inside the bar so the border never gets sampled.
+
+   Verify with:
 
    ```bash
    python calibrate.py bar --name "hp potion"
@@ -79,6 +91,7 @@ cp config.example.json config.json
 | `tick_seconds` | How often the loop re-evaluates. `0.05` is plenty. |
 | `max_runtime_minutes` | Auto-stop after this long. `0` = until you stop it. |
 | `hotkeys.stop` / `hotkeys.pause` | Hotkey names, e.g. `f12`, `f9`, `esc`. |
+| `groups` | `{ "hp potions": 2.5 }` — seconds every member of a group waits after any one of them fires. |
 
 **Actions and potions** take the same fields — the only difference is that a
 potion has a `bar` and fires on a condition instead of purely on a timer.
@@ -94,6 +107,7 @@ potion has a `bar` and fires on a condition instead of purely on a timer.
 | `hold_seconds` | Hold the key this long instead of a randomised tap. |
 | `initial_delay_seconds` | Delay the first press after start (handy for buffs). |
 | `threshold` | Potions: fire at or below this fraction, e.g. `0.55` = 55%. |
+| `group` | Share a cooldown with the other actions of that name — see `groups`. Three HP potion slots in one group take turns instead of all emptying into a single dip. |
 
 **Bar** describes the rectangle to read:
 
@@ -103,7 +117,7 @@ potion has a `bar` and fires on a condition instead of purely on a timer.
 | `color` | `[r, g, b]` of the filled part. |
 | `tolerance` | Per-channel wiggle room. Raise it for gradient bars. |
 | `mode` | `contiguous` (default, smooth bars) or `count` (segmented/pip bars). |
-| `direction` | `left_to_right` (default) or `right_to_left` for bars that drain the other way. |
+| `direction` | Which end stays coloured as the bar drains: `left_to_right` (default), `right_to_left`, `bottom_to_top` or `top_to_bottom`. The last two mark the bar as vertical. |
 
 **Humanize** keeps the timing from being perfectly uniform:
 `cooldown_jitter_pct` (±% on every cooldown), `press_duration_range` (how long

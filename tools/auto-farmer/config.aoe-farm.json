@@ -1,0 +1,123 @@
+{
+  "_readme": [
+    "Stationary AOE farming: F1 + 5 on cooldown, 1/2/3 for HP pots, 6 for MP.",
+    "Before running: (1) set window_title_contains, (2) calibrate the two bars",
+    "with 'python calibrate.py pick' — the x/y values below are placeholders,",
+    "(3) set the real cooldowns for 'aoe f1' and 'aoe 5'.",
+    "Copy this file to config.json, which is gitignored."
+  ],
+
+  "backend": "auto",
+  "window_title_contains": "",
+  "tick_seconds": 0.05,
+  "global_cooldown_seconds": 0.25,
+  "max_runtime_minutes": 0,
+
+  "hotkeys": {
+    "stop": "f12",
+    "pause": "f11"
+  },
+
+  "groups": {
+    "hp potions": 2.5,
+    "mp potions": 3.0
+  },
+
+  "humanize": {
+    "cooldown_jitter_pct": 0.07,
+    "press_duration_range": [0.04, 0.09],
+    "breaks": {
+      "enabled": false,
+      "every_minutes_range": [12, 25],
+      "duration_seconds_range": [20, 70]
+    }
+  },
+
+  "actions": [
+    {
+      "name": "aoe f1",
+      "key": "f1",
+      "cooldown_seconds": 2.0,
+      "priority": 20
+    },
+    {
+      "name": "aoe 5",
+      "key": "5",
+      "cooldown_seconds": 1.0,
+      "priority": 10
+    }
+  ],
+
+  "potions": [
+    {
+      "name": "hp pot slot 1",
+      "key": "1",
+      "cooldown_seconds": 6.0,
+      "group": "hp potions",
+      "priority": 100,
+      "threshold": 0.8,
+      "bar": {
+        "x1": 1234,
+        "y1": 1234,
+        "x2": 1240,
+        "y2": 1334,
+        "color": [204, 24, 24],
+        "tolerance": 60,
+        "samples": 40,
+        "mode": "contiguous",
+        "direction": "bottom_to_top"
+      }
+    },
+    {
+      "name": "hp pot slot 2",
+      "key": "2",
+      "cooldown_seconds": 6.0,
+      "group": "hp potions",
+      "priority": 99,
+      "threshold": 0.8,
+      "bar": {
+        "x1": 1234,
+        "y1": 1234,
+        "x2": 1240,
+        "y2": 1334,
+        "color": [204, 24, 24],
+        "tolerance": 60,
+        "direction": "bottom_to_top"
+      }
+    },
+    {
+      "name": "hp pot slot 3",
+      "key": "3",
+      "cooldown_seconds": 6.0,
+      "group": "hp potions",
+      "priority": 98,
+      "threshold": 0.8,
+      "bar": {
+        "x1": 1234,
+        "y1": 1234,
+        "x2": 1240,
+        "y2": 1334,
+        "color": [204, 24, 24],
+        "tolerance": 60,
+        "direction": "bottom_to_top"
+      }
+    },
+    {
+      "name": "mp pot",
+      "key": "6",
+      "cooldown_seconds": 6.0,
+      "group": "mp potions",
+      "priority": 90,
+      "threshold": 0.4,
+      "bar": {
+        "x1": 1264,
+        "y1": 1234,
+        "x2": 1270,
+        "y2": 1334,
+        "color": [36, 80, 224],
+        "tolerance": 60,
+        "direction": "bottom_to_top"
+      }
+    }
+  ]
+}
