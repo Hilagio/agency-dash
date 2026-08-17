@@ -1,59 +1,89 @@
 #!/usr/bin/env bash
 # Drive a BATCHED cron endpoint: call it repeatedly with an increasing offset
-# until it reports {"done":true}. Each call ingests a small slice, so a large
-# portfolio is processed in low-memory chunks instead of one request that OOMs.
+# until the whole portfolio is covered. Each call ingests a small slice, so a
+# large portfolio is processed in low-memory chunks instead of one request that
+# OOMs.
 #
-# The endpoint must accept {days,offset,limit} and return {total,nextOffset,done}.
-# Fails loudly (like cron-call.sh): asserts HTTP 200, rejects /login, retries a
-# transient 5xx per batch. Re-fetching a slice is safe (delete + re-insert).
+# Resilience: a slice that keeps 502-ing (one pathological account can crash the
+# app — this took the nightly down for three days straight) no longer aborts the
+# night. The failed slice is re-walked one account at a time; only the account
+# that still crashes is skipped, with a ::warning naming it (via listOnly), and
+# the sweep continues so signals/briefings still run for everyone else.
+#
+# The endpoint must accept {days,offset,limit} → {total,processed,failed} and
+# {listOnly,offset,limit} → {total,accounts:[{offset,name,googleAdsId}]}.
+# Re-fetching a slice is safe (delete + re-insert). Auth failures exit 1.
 #
 # Usage: cron-batch.sh <url> <days> <limit-per-batch> <per-request-max-seconds>
 set -euo pipefail
 
 URL="$1"; DAYS="${2:-14}"; LIMIT="${3:-10}"; MAXTIME="${4:-300}"
-offset=0
 
-for _ in $(seq 1 500); do   # hard cap on batches (500 * limit accounts)
-  payload="{\"days\":${DAYS},\"offset\":${offset},\"limit\":${LIMIT}}"
-
-  code=""; json=""
-  for attempt in 1 2 3; do
+# POST $1=payload with $2 attempts (default 3). Sets CODE and JSON.
+# Returns 0 on HTTP 200; exits hard on a /login redirect (bad CRON_SECRET).
+post() {
+  local payload="$1" attempts="${2:-3}" attempt resp
+  CODE=""; JSON=""
+  for attempt in $(seq 1 "$attempts"); do
     resp="$(curl -sS -X POST "$URL" \
       -H "Authorization: Bearer ${CRON_SECRET}" \
       -H "Content-Type: application/json" \
       -w $'\n%{http_code}' --max-time "$MAXTIME" -d "$payload" || true)"
-    code="$(printf '%s' "$resp" | tail -n1)"
-    json="$(printf '%s' "$resp" | sed '$d')"
-    case "$json" in
+    CODE="$(printf '%s' "$resp" | tail -n1)"
+    JSON="$(printf '%s' "$resp" | sed '$d')"
+    case "$JSON" in
       *"/login"*) echo "::error::$URL redirected to /login — CRON_SECRET missing or wrong."; exit 1 ;;
     esac
-    [ "$code" = "200" ] && break
-    case "${code:-000}" in
-      5*|000|"") if [ "$attempt" -lt 3 ]; then sleep $((attempt * 15)); continue; fi ;;
+    [ "$CODE" = "200" ] && return 0
+    case "${CODE:-000}" in
+      5*|000|"") if [ "$attempt" -lt "$attempts" ]; then sleep $((attempt * 15)); continue; fi ;;
+      *) return 1 ;;  # 4xx won't fix itself
     esac
-    break
   done
+  return 1
+}
 
-  if [ "$code" != "200" ]; then
-    echo "::error::$URL batch at offset=${offset} returned HTTP ${code:-000}."
-    printf '%s\n' "$json" | head -c 400
-    exit 1
+# Learn the portfolio size up front (no ingest) so even a first-slice crash
+# can't hide the rest of the portfolio.
+post "{\"listOnly\":true,\"offset\":0,\"limit\":1}" 3 || { echo "::error::$URL unreachable (HTTP ${CODE:-000}) — cannot start the sweep."; exit 1; }
+total="$(printf '%s' "$JSON" | jq -r '.total // 0')"
+echo "portfolio: ${total} account(s), batches of ${LIMIT}"
+
+skipped=()
+offset=0
+while [ "$offset" -lt "$total" ]; do
+  if post "{\"days\":${DAYS},\"offset\":${offset},\"limit\":${LIMIT}}"; then
+    processed="$(printf '%s' "$JSON" | jq -r '.processed // 0')"
+    failed="$(printf '%s' "$JSON" | jq -r '.failed // 0')"
+    echo "batch offset=${offset}: processed ${processed}/${total} (failed ${failed})"
+    offset=$((offset + LIMIT))
+  else
+    echo "batch offset=${offset} kept failing (HTTP ${CODE:-000}) — walking this slice one account at a time"
+    end=$((offset + LIMIT)); [ "$end" -gt "$total" ] && end="$total"
+    i="$offset"
+    while [ "$i" -lt "$end" ]; do
+      if post "{\"days\":${DAYS},\"offset\":${i},\"limit\":1}" 2; then
+        echo "  single offset=${i}: ok"
+      else
+        failcode="${CODE:-000}"  # capture before the listOnly lookup overwrites it
+        name="offset ${i}"
+        if post "{\"listOnly\":true,\"offset\":${i},\"limit\":1}" 2; then
+          name="$(printf '%s' "$JSON" | jq -r '.accounts[0].name // "?"') ($(printf '%s' "$JSON" | jq -r '.accounts[0].googleAdsId // "?"'), offset ${i})"
+        fi
+        echo "::warning::ingest SKIPPED ${name} — this account crashes the app (HTTP ${failcode}); its data stays stale until it's fixed."
+        skipped+=("${name}")
+      fi
+      i=$((i + 1))
+      sleep 2
+    done
+    offset="$end"
   fi
-
-  total="$(printf '%s' "$json" | jq -r '.total // 0')"
-  processed="$(printf '%s' "$json" | jq -r '.processed // 0')"
-  next="$(printf '%s' "$json" | jq -r '.nextOffset // 0')"
-  done_flag="$(printf '%s' "$json" | jq -r '.done // false')"
-  failed="$(printf '%s' "$json" | jq -r '.failed // 0')"
-  echo "batch offset=${offset}: processed ${processed}/${total} (failed ${failed}) → next ${next}"
-
-  if [ "$done_flag" = "true" ]; then
-    echo "ingest complete — ${total} account(s)."
-    exit 0
-  fi
-  offset="$next"
   sleep 2
 done
 
-echo "::error::ingest did not finish within the batch cap."
-exit 1
+if [ "${#skipped[@]}" -gt 0 ]; then
+  echo "::warning::ingest finished with ${#skipped[@]} skipped account(s): ${skipped[*]}"
+else
+  echo "ingest complete — ${total} account(s)."
+fi
+exit 0

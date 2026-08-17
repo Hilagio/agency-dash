@@ -40,9 +40,11 @@ jobs:
 
       - name: Ingest Google Ads spine + Shopify orders (last 14 days, in batches)
         run: |
-          # Batched: 10 accounts per request, looped until done — keeps each
-          # request small so a large portfolio can't OOM the container.
-          bash .github/scripts/cron-batch.sh "$APP_URL/api/diagnostics/ingest" 14 10 400
+          # Batched: 5 accounts per request (small batches keep peak memory low),
+          # looped over the whole portfolio. A slice that keeps crashing the app
+          # is walked account-by-account and only the culprit is skipped (with a
+          # warning naming it) — one sick account no longer kills the night.
+          bash .github/scripts/cron-batch.sh "$APP_URL/api/diagnostics/ingest" 14 5 400
 
       - name: Recompute signals (fills the portfolio red/yellow/green + numbers)
         run: |
