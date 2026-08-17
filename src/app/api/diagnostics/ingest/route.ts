@@ -71,11 +71,20 @@ export async function POST(req: NextRequest) {
     const orgIds = creds.map(c => c.organizationId);
     const accounts = await prisma.account.findMany({
       where: { organizationId: { in: orgIds }, active: true, archived: false },
-      select: { id: true, googleAdsId: true, organizationId: true },
+      select: { id: true, name: true, googleAdsId: true, organizationId: true },
       orderBy: { id: "asc" }, // stable order so paging is consistent across calls
     });
     const total = accounts.length;
     const batch = accounts.slice(offset, offset + limit);
+
+    // listOnly: name the accounts in a slice WITHOUT ingesting — the nightly
+    // script uses this to report which account a crashing offset belongs to.
+    if ((body as Record<string, unknown>)?.listOnly) {
+      return NextResponse.json({
+        mode: "cron", total, offset,
+        accounts: batch.map((a, i) => ({ offset: offset + i, name: a.name, googleAdsId: a.googleAdsId })),
+      });
+    }
 
     let metrics = 0, orderDays = 0, failed = 0;
     for (const a of batch) {
