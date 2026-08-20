@@ -18,7 +18,7 @@ name: Nightly data refresh
 
 on:
   schedule:
-    - cron: "0 5 * * *"   # 05:00 UTC daily (~07:00 in NL) — fresh before the team starts
+    - cron: "0 2 * * *"   # 02:00 UTC daily (~04:00 in NL) — well before the team starts, so an ingest hiccup never coincides with the workday
   workflow_dispatch: {}    # allow manual runs from the Actions tab
 
 jobs:
@@ -38,13 +38,14 @@ jobs:
             exit 1
           fi
 
-      - name: Ingest Google Ads spine + Shopify orders (last 14 days, in batches)
+      - name: Ingest Google Ads spine + Shopify orders (last 14 days, one account per request)
         run: |
-          # Batched: 5 accounts per request (small batches keep peak memory low),
-          # looped over the whole portfolio. A slice that keeps crashing the app
-          # is walked account-by-account and only the culprit is skipped (with a
-          # warning naming it) — one sick account no longer kills the night.
-          bash .github/scripts/cron-batch.sh "$APP_URL/api/diagnostics/ingest" 14 5 400
+          # ONE account per request. Batching accounts into a single request
+          # accumulated memory and crashed the container mid-nightly (Railway
+          # "Deploy Crashed", brief downtime) — every account ingests fine solo.
+          # A single account that still crashes is skipped with a warning
+          # naming it; the sweep and the rest of the pipeline continue.
+          bash .github/scripts/cron-batch.sh "$APP_URL/api/diagnostics/ingest" 14 1 400
 
       - name: Recompute signals (fills the portfolio red/yellow/green + numbers)
         run: |
