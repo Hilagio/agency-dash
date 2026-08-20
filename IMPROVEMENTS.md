@@ -506,3 +506,35 @@ the market. (Addresses master-prompt objectives 5 and 7.)
 benchmark stays blocked until GCP project `ecomtrada-webapp` is registered in
 Merchant Center (one-time Google-side action). Catalog data appears for an
 account after its next Shopify sync (nightly, or "Sync orders" on the account).
+
+---
+
+## 2026-08-18 — Reliability round: cron, plan generator, audit honesty
+
+- **Nightly refresh survives heavy accounts** (`.github/scripts/cron-batch.sh`,
+  `/api/diagnostics/ingest`): a batch that keeps 502-ing is re-walked one
+  account at a time and only a genuinely-crashing account is skipped (named
+  via the new `listOnly` lookup). Batches shrunk 10 → 5. First green night
+  (18 Aug) proved the crash was cumulative memory across a batch, not one
+  sick account — every account ingested fine solo.
+- **90-day plan** (`/api/accounts/[id]/plan`, `/plan/[id]`): output budget
+  4096 → 12k tokens with thinking disabled (full plans were truncated
+  mid-JSON → "unparseable plan"), one silent retry that names what went wrong,
+  and the page no longer wedges the Generate button when the stream drops.
+  Plan inputs now split brand campaigns out (Brand/Branded/Merk naming) and
+  the model is instructed to judge performance on the excl.-brand view.
+- **Page audit stops asserting what a snapshot can't see** (`lib/audit`):
+  provable-positive detection (newsletter form, size guide, zoom library,
+  reviews widget, geo/currency localisation, shipping info) as a CONFIRMED
+  PRESENT fact line; footer text preserved past the 9k clip; judges may not
+  report interactive/geo/image-content behaviour as missing or broken.
+- **Account deletion fixed** (`/api/accounts/[id]` DELETE): seven time-series
+  tables without cascade are now cleared in the transaction — any account
+  that had ever pulled data previously failed to delete.
+- **Diagnosis checklist honesty** (`/diagnose/[id]`, `lib/diagnostics/engine`):
+  unverifiable items moved from "What I already checked" to their own
+  "What I couldn't check yet" section; internal playbook refs (§4.9) removed
+  from user-facing copy.
+- **Cockpit**: workspace-rescue banner now also shows in the zero-accounts
+  empty state, and team-workspace members parked in another org are
+  auto-switched into the workspace on load (once per tab).
