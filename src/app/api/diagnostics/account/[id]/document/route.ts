@@ -48,7 +48,9 @@ export async function POST(req: NextRequest, { params }: Params) {
   // Build the grounding context: the conversation + a compact data snapshot.
   const since = ymd(91), end = ymd(1);
   const [msgs, statusRow, mRows, oRows, clientCtx] = await Promise.all([
-    prisma.agentMessage.findMany({ where: { accountId: id }, orderBy: { createdAt: "asc" }, take: 24, select: { role: true, content: true } }),
+    // Newest 24, flipped to chronological — `asc, take` returned the FIRST 24
+    // and made long threads produce documents from stale conversation state.
+    prisma.agentMessage.findMany({ where: { accountId: id }, orderBy: { createdAt: "desc" }, take: 24, select: { role: true, content: true } }).then(r => r.reverse()),
     prisma.accountStatus.findMany({ where: { accountId: id }, orderBy: { computedAt: "desc" }, take: 6 }),
     prisma.metricDaily.findMany({ where: { accountId: id, date: { gte: since } }, select: { date: true, spend: true, clicks: true, conversions: true, conversionValue: true } }),
     prisma.orderDaily.findMany({ where: { accountId: id, date: { gte: since } }, select: { date: true, orders: true, revenue: true } }),

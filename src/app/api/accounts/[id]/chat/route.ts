@@ -387,10 +387,14 @@ export async function POST(req: NextRequest, { params }: Params) {
   // Get or create chat session
   let session;
   if (sessionId) {
+    // NEWEST 30, flipped back to chronological below. (This was `asc, take 30`
+    // — the FIRST 30 messages — so conversations longer than 30 messages were
+    // answered from the start of the thread and forgot every recent answer.)
     session = await prisma.chatSession.findUnique({
       where: { id: sessionId },
-      include: { messages: { orderBy: { createdAt: "asc" }, take: 30 } },
+      include: { messages: { orderBy: { createdAt: "desc" }, take: 30 } },
     });
+    if (session) session.messages.reverse();
   }
   if (!session) {
     session = await prisma.chatSession.create({

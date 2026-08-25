@@ -336,11 +336,24 @@ export async function POST(req: NextRequest, { params }: Params) {
         // 3. Load the persisted conversation (memory) and build the turns. A
         // fresh read with history becomes an UPDATED read that remembers; a
         // follow-up appends the team's context.
-        const priorRaw = await prisma.agentMessage.findMany({
-          where: { accountId: id }, orderBy: { createdAt: "asc" }, take: 12,
+        // NEWEST messages, then flipped back to chronological. (This was
+        // `asc, take` — the FIRST 12 messages — so long threads answered from
+        // the start of the conversation and "forgot" every recent answer,
+        // looping back to already-settled questions.)
+        const priorRaw = (await prisma.agentMessage.findMany({
+          where: { accountId: id }, orderBy: { createdAt: "desc" }, take: 24,
           select: { role: true, content: true },
-        });
-        const memory: Turn[] = priorRaw.map(m => ({ role: m.role === "user" ? "user" : "assistant", content: m.content }));
+        })).reverse();
+        // Char budget: replies here are often full documents — keep the most
+        // recent turns that fit, drop the oldest beyond it.
+        let budget = 80_000;
+        const kept: typeof priorRaw = [];
+        for (let i = priorRaw.length - 1; i >= 0; i--) {
+          budget -= priorRaw[i].content.length;
+          if (budget < 0 && kept.length) break;
+          kept.unshift(priorRaw[i]);
+        }
+        const memory: Turn[] = kept.map(m => ({ role: m.role === "user" ? "user" : "assistant", content: m.content }));
         while (memory.length && memory[memory.length - 1].role === "user") memory.pop(); // keep alternation clean
         const hasMemory = memory.length > 0;
 
