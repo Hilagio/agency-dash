@@ -538,3 +538,23 @@ account after its next Shopify sync (nightly, or "Sync orders" on the account).
 - **Cockpit**: workspace-rescue banner now also shows in the zero-accounts
   empty state, and team-workspace members parked in another org are
   auto-switched into the workspace on load (once per tab).
+
+---
+
+## 2026-08-25 — Monthly client report ("managementrapport")
+
+- New `/report/[id]` (linked from the account header next to the 90-day plan):
+  pick a month + language (NL/EN), generate a client-ready monthly report from
+  live data, preview, export as self-contained HTML (prints cleanly to PDF).
+- `src/lib/report/`: all numbers computed server-side from MetricDaily /
+  OrderDaily / ProductSalesDaily / ProductAdsDaily / SearchTermDaily /
+  DiscountDaily — KPIs, ads-vs-orders reconciliation, campaign table with brand
+  split, search-term winners/leaks, best sellers with matched ad spend,
+  discount codes, previous-period comparison. The model (Opus) writes ONLY the
+  narrative, in plain client language, via the same SSE + silent-retry pattern
+  as the plan.
+- House template in the "managementrapport" style (paper ground, Fraunces
+  headlines, cognac accent) with an auto-generated honest "what we don't know"
+  section that adapts to what's actually connected (no Shopify → all revenue
+  figures flagged as platform-attributed; no search terms past 45d retention;
+  brand campaigns split out; conversion lag on recent days).

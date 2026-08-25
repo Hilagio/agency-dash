@@ -1129,6 +1129,12 @@ export default function DiagnosePage() {
               {shareState === "copying" ? <Loader2 size={13} className="animate-spin" /> : <Share2 size={13} />} Client link
             </button>
           )}
+          <Link href={`/report/${id}`} title="Client-ready monthly report from live data" style={{
+            display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 700, textDecoration: "none",
+            color: "var(--text-2)", background: "var(--surface)", border: "1px solid var(--border-2)", padding: "8px 13px", borderRadius: 8,
+          }}>
+            Monthly report
+          </Link>
           {/* Primary action — the forward step after a diagnosis. */}
           <Link href={`/plan/${id}`} style={{
             display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 700, textDecoration: "none",
