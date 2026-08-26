@@ -1,6 +1,6 @@
 /**
  * Monthly client report — fixed HTML template (the "managementrapport" house
- * style: paper ground, Fraunces headlines, cognac accent). All tables and KPIs
+ * style: paper ground, League Spartan headlines, cognac accent). All tables and KPIs
  * come from computed ReportData; the model's ReportContent only fills the
  * narrative slots. Self-contained HTML: exportable, printable, mailable.
  */
@@ -115,28 +115,28 @@ const CSS = `
 --cognac:#A2542C;--cognac-soft:#F0E2D6;--green:#3F6142;--green-soft:#E2EBE0;--amber:#8A6314;--amber-soft:#F4E9CF;
 --s1:.5rem;--s2:1rem;--s3:1.5rem;--s4:2.5rem;--s5:4rem;--measure:70ch}
 *{box-sizing:border-box}
-body{margin:0;background:var(--paper);color:var(--ink);font-family:'Karla','Segoe UI',Helvetica,sans-serif;font-size:17px;line-height:1.65;-webkit-font-smoothing:antialiased}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:'DM Sans','Segoe UI',Helvetica,sans-serif;font-size:17px;line-height:1.65;-webkit-font-smoothing:antialiased}
 .wrap{max-width:1080px;margin:0 auto;padding:0 var(--s3)}
-h1,h2,h3,h4{font-family:'Fraunces',Georgia,serif;font-weight:500;line-height:1.12;margin:0;letter-spacing:-.015em}
+h1,h2,h3,h4{font-family:'League Spartan','Segoe UI',Helvetica,sans-serif;font-weight:700;line-height:1.12;margin:0;letter-spacing:-.015em}
 p{margin:0 0 var(--s2);max-width:var(--measure)}
 strong{font-weight:600}
 .masthead{border-bottom:1px solid var(--line);background:radial-gradient(120% 90% at 88% -10%,rgba(162,84,44,.10),transparent 60%),linear-gradient(178deg,var(--paper-2),var(--paper));padding:var(--s5) 0 var(--s4)}
 .eyebrow{font-size:.72rem;letter-spacing:.22em;text-transform:uppercase;color:var(--cognac);font-weight:600;margin-bottom:var(--s2)}
 .masthead h1{font-size:clamp(2.2rem,6vw,3.8rem);max-width:18ch}
-.masthead h1 em{font-style:italic;color:var(--cognac)}
+.masthead h1 em{font-style:normal;color:var(--cognac)}
 .dek{margin-top:var(--s3);font-size:1.12rem;color:var(--ink-2);max-width:56ch}
 .meta-line{margin-top:var(--s4);padding-top:var(--s2);border-top:1px solid var(--line);display:flex;flex-wrap:wrap;gap:var(--s3) var(--s4);font-size:.82rem;color:var(--muted);letter-spacing:.04em}
 .meta-line b{display:block;color:var(--ink);font-weight:600;letter-spacing:0;font-size:.95rem}
 section{padding:var(--s5) 0;border-bottom:1px solid var(--line-2)}
 section:last-of-type{border-bottom:0}
 .sec-head{display:flex;gap:var(--s2);align-items:baseline;margin-bottom:var(--s3)}
-.sec-num{font-family:'Fraunces',serif;font-size:.9rem;color:var(--cognac);font-weight:600;padding-top:.35em;min-width:2.2ch}
+.sec-num{font-family:'League Spartan',sans-serif;font-size:.9rem;color:var(--cognac);font-weight:600;padding-top:.35em;min-width:2.2ch}
 h2{font-size:clamp(1.5rem,3.4vw,2.2rem);max-width:24ch}
 h3{font-size:1.2rem;margin:var(--s4) 0 var(--s2)}
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);margin:var(--s3) 0}
 .kpi{background:var(--paper-2);padding:var(--s3)}
 .kpi .lab{font-size:.74rem;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem}
-.kpi .val{font-family:'Fraunces',serif;font-size:2rem;line-height:1;letter-spacing:-.02em}
+.kpi .val{font-family:'League Spartan',sans-serif;font-weight:700;font-size:2rem;line-height:1;letter-spacing:-.02em}
 .kpi .sub{font-size:.82rem;color:var(--muted);margin-top:.45rem}
 .kpi.hi .val{color:var(--cognac)}
 .tablewrap{overflow-x:auto;margin:var(--s3) 0;border:1px solid var(--line);background:var(--paper-2)}
@@ -257,7 +257,7 @@ ${d.previous.shopRevenue != null && d.totals.shopRevenue != null ? cmpRow(t.kSho
   return `<!doctype html><html lang="${d.language}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${esc(d.client)} — ${esc(t.eyebrow)} ${esc(t.monthName(d.month))}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..600&family=Karla:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=League+Spartan:wght@600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>${CSS}</style></head><body>
 <header class="masthead"><div class="wrap">
 <div class="eyebrow">${esc(t.eyebrow)} &middot; ${esc(d.client)}</div>
