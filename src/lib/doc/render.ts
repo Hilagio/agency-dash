@@ -1,7 +1,8 @@
 /**
- * Render a structured DocContent into a standalone, client-ready HTML page in
- * the ecomtrada house style (dark theme, gold→green, the wordmark). Deterministic
- * — the model authors structured content, never HTML, so every doc is on-brand.
+ * Render a structured DocContent into a standalone, client-ready HTML page.
+ * Report docs use the light "managementrapport" paper theme (reads and prints
+ * better); decks keep the dark slide look (gold→green). Deterministic — the
+ * model authors structured content, never HTML, so every doc is on-brand.
  *
  * "doc" flows as a report; "deck" lays each section out as a full-page slide.
  * Both carry print CSS so ⌘P → Save as PDF yields a clean deliverable.
@@ -65,6 +66,55 @@ const CSS = `
   }
 `;
 
+/**
+ * Light "managementrapport" theme for report docs — paper ground, Fraunces
+ * headlines, cognac accent. Reads better on screen and prints/PDFs cleanly;
+ * decks keep the dark slide look. Same class names as the dark CSS, so the
+ * markup below is theme-agnostic.
+ */
+const CSS_LIGHT = `
+  :root{color-scheme:light;--paper:#F6F2EA;--card:#FFFDF9;--ink:#241D18;--ink2:#4A3F36;--dim:#7A6C5F;--cognac:#A2542C;--green:#3F6142;--red:#A33326;--line:#DED5C7;--line2:#EDE6DA;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Karla','Segoe UI',Helvetica,Arial,sans-serif;color:var(--ink);background:var(--paper);line-height:1.65;font-size:16px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .page{max-width:900px;margin:0 auto;}
+  .hdr{padding:52px 46px 30px;border-bottom:1px solid var(--line);background:radial-gradient(120% 90% at 88% -10%,rgba(162,84,44,.10),transparent 60%),linear-gradient(178deg,var(--card),var(--paper));}
+  .brand{font-size:20px;font-weight:800;letter-spacing:-.5px;}.brand .dot{color:var(--cognac);}
+  .eyebrow{margin-top:18px;font-size:11px;text-transform:uppercase;letter-spacing:2.2px;font-weight:700;color:var(--cognac);}
+  .hdr h1{font-family:'Fraunces',Georgia,serif;font-weight:500;font-size:40px;line-height:1.1;margin-top:10px;letter-spacing:-.015em;max-width:20ch;}
+  .hdr .sub{margin-top:14px;font-size:14px;color:var(--ink2);max-width:60ch;}
+  .body{padding:8px 46px 46px;}
+  .sec{margin-bottom:8px;padding:26px 0;border-bottom:1px solid var(--line2);}
+  .sec:last-child{border-bottom:none;}
+  .sec h2{font-family:'Fraunces',Georgia,serif;font-weight:500;font-size:24px;letter-spacing:-.01em;margin:0 0 14px;color:var(--ink);}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:4px;padding:22px 24px;}
+  .lead{font-size:15.5px;line-height:1.65;color:var(--ink2);max-width:70ch;}.lead b{color:var(--ink);font-weight:700;}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);margin:14px 0;}
+  .stat{background:var(--card);padding:16px 18px;border:none;border-radius:0;}
+  .stat .k{font-size:10.5px;color:var(--dim);text-transform:uppercase;letter-spacing:1.3px;}
+  .stat .v{font-family:'Fraunces',Georgia,serif;font-weight:500;font-size:26px;margin-top:6px;letter-spacing:-.02em;}
+  .stat .v.grad{color:var(--cognac);}
+  .stat .v.bad{color:var(--red);}.stat .v.good{color:var(--green);}
+  .stat .s{font-size:11.5px;color:var(--dim);margin-top:4px;}
+  ul{margin:10px 0 4px 2px;list-style:none;}
+  li{padding:5px 0 5px 22px;position:relative;font-size:14.5px;color:var(--ink2);max-width:70ch;}
+  li::before{content:"";position:absolute;left:2px;top:13px;width:6px;height:6px;border-radius:50%;background:var(--cognac);opacity:.8;}
+  li b{color:var(--ink);}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;border:1px solid var(--line);margin-top:12px;background:var(--card);}
+  th,td{padding:10px 14px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line2);}
+  th{color:var(--dim);font-size:10.5px;text-transform:uppercase;letter-spacing:1.1px;font-weight:700;border-bottom:1px solid var(--line);}
+  td{color:var(--ink2);}tr:last-child td{border-bottom:none;}
+  .callout{border-left:3px solid var(--cognac);background:var(--card);padding:14px 18px;font-size:14px;margin-top:14px;color:var(--ink2);}
+  .callout b{color:var(--cognac);}
+  .foot{padding:24px 46px 44px;color:var(--dim);font-size:11.5px;text-align:center;border-top:1px solid var(--line);}.foot .dot{color:var(--cognac);}
+  @media(max-width:640px){.hdr,.body{padding-left:22px;padding-right:22px;}.hdr h1{font-size:30px;}}
+  @page{margin:0;}
+  @media print{
+    body{background:#fff;}
+    .page{max-width:none;}
+    .sec{page-break-inside:avoid;}
+  }
+`;
+
 const statTone = (s?: string) => s === "grad" ? " grad" : s === "bad" ? " bad" : s === "good" ? " good" : "";
 const statGrid = (stats: DocStat[]) =>
   `<div class="stats">${stats.map(s => `<div class="stat"><div class="k">${esc(s.key)}</div><div class="v${statTone(s.tone)}">${esc(s.value)}</div>${s.sub ? `<div class="s">${esc(s.sub)}</div>` : ""}</div>`).join("")}</div>`;
@@ -96,7 +146,10 @@ export function renderDocHtml(doc: DocContent): string {
 
   const foot = `<div class="foot">ecomtrada<span class="dot">.</span> — ${esc(doc.client)}${doc.docType ? ` · ${esc(doc.docType)}` : ""} · generated from live Google Ads + Shopify data, reviewed by your account team</div>`;
 
-  return `<!DOCTYPE html><html lang="${doc.language}"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${esc(doc.client)} — ${esc(doc.docType || doc.title)}</title><style>${CSS}</style></head>
+  // Reports render in the light paper theme (reads + prints better); decks
+  // keep the dark slide look.
+  const fonts = isDeck ? "" : `<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300..700&family=Karla:wght@300;400;500;600;700&display=swap" rel="stylesheet">`;
+  return `<!DOCTYPE html><html lang="${doc.language}"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${esc(doc.client)} — ${esc(doc.docType || doc.title)}</title>${fonts}<style>${isDeck ? CSS : CSS_LIGHT}</style></head>
 <body><div class="page${isDeck ? " deck" : ""}">
   ${isDeck ? `<div class="slide title">${header}</div>` : header}
   ${body}
