@@ -166,5 +166,7 @@ export function renderPlanHtml(plan: PlanContent, charts: PlanCharts): string {
     ${stats}${mob}${findings}${trendSection(charts, t)}${levers}${build}${phases}${forecast}${need}
   </div>
   <div class="foot">ecomtrada<span class="dot">.</span> — ${esc(plan.client)} · 90-day plan · generated from live Google Ads + Shopify data, reviewed by your account team</div>
-</div></body></html>`;
+</div>
+<script type="application/json" id="ecomtrada-plan">${JSON.stringify(plan).replace(/</g, "\\u003c")}</script>
+</body></html>`;
 }

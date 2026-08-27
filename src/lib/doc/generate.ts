@@ -37,6 +37,8 @@ Rules:
 Return ONLY a JSON object (no prose, no code fences) matching this shape:
 ${SHAPE}`;
 
+
+
 function stripFences(s: string): string {
   const t = s.trim();
   if (t.startsWith("```")) return t.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "").trim();

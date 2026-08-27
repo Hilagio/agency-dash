@@ -34,11 +34,30 @@ export async function POST(req: NextRequest, { params }: Params) {
   if (!ctx) return unauthorized();
   const { id } = await params;
 
-  const body = await req.json().catch(() => ({})) as { language?: PlanLanguage };
+  const body = await req.json().catch(() => ({})) as { language?: PlanLanguage; revise?: string; basePlan?: PlanContent; renderOnly?: boolean };
   const inputs = await buildPlanInputs(id, ctx.orgId, body.language === "nl" || body.language === "en" ? body.language : undefined);
   if (!inputs) return forbidden();
 
-  const userMsg = `CLIENT CONTEXT PACK:\n${inputs.contextBlock}\n\nLIVE DATA:\n${inputs.dataBlock}\n\nWrite the 90-day plan for ${inputs.account.name} in ${inputs.language === "nl" ? "Dutch" : "English"}. Return only the JSON object.`;
+  // renderOnly: the block editor deleted/kept parts client-side — re-render the
+  // document from the edited JSON without a model call. Instant and free.
+  if (body.renderOnly && body.basePlan && typeof body.basePlan === "object") {
+    const p = body.basePlan as PlanContent;
+    p.language = inputs.language;
+    p.client = inputs.account.name;
+    return NextResponse.json({ html: renderPlanHtml(p, inputs.charts), plan: p });
+  }
+
+  // Revision mode: the team hands back an existing plan (from state or an
+  // imported export) plus a specific instruction — wrong data, missing context,
+  // sections to drop. The model applies ONLY those changes; everything else
+  // stays verbatim, so a reviewed plan isn't reshuffled by a regeneration.
+  const revise = typeof body.revise === "string" ? body.revise.trim() : "";
+  const basePlan = revise && body.basePlan && typeof body.basePlan === "object" && Array.isArray((body.basePlan as PlanContent).phases)
+    ? body.basePlan as PlanContent : null;
+
+  const userMsg = basePlan
+    ? `EXISTING PLAN (JSON — the team has already reviewed this):\n${JSON.stringify(basePlan)}\n\nFRESH LIVE DATA (for reference — correct figures against this where the instruction says data is wrong):\n${inputs.dataBlock}\n\nCLIENT CONTEXT PACK:\n${inputs.contextBlock}\n\nREQUESTED CHANGES from the team:\n${revise}\n\nApply ONLY the requested changes to the existing plan. Keep every other field, sentence and figure VERBATIM — do not rephrase, reorder or re-balance untouched sections. If the instruction says to delete something, remove it entirely. Return the FULL updated plan as the same JSON shape, in ${inputs.language === "nl" ? "Dutch" : "English"}. Return only the JSON object.`
+    : `CLIENT CONTEXT PACK:\n${inputs.contextBlock}\n\nLIVE DATA:\n${inputs.dataBlock}\n\nWrite the 90-day plan for ${inputs.account.name} in ${inputs.language === "nl" ? "Dutch" : "English"}. Return only the JSON object.`;
 
   const encoder = new TextEncoder();
   const send = (c: ReadableStreamDefaultController, o: unknown) => c.enqueue(encoder.encode(`data: ${JSON.stringify(o)}\n\n`));

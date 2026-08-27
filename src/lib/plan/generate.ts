@@ -139,7 +139,7 @@ export async function buildPlanInputs(accountId: string, orgId: string, langOver
   add("USPs / positioning", ctx?.usps);
   add("Audience nuances", ctx?.audienceNuances);
   add("⭐ MAKE-OR-BREAK factor", ctx?.makeOrBreak);
-  add("Anything else / constraints / stock", ctx?.anythingElse);
+  add("⛔ HARD CONSTRAINTS & extra context (binding — respect every item)", ctx?.anythingElse);
   if (ctx?.netMarginPct) C.push(`Net margin: ${Math.round(ctx.netMarginPct * 100)}%`);
 
   return {
@@ -158,6 +158,8 @@ Pick the ARCHETYPE from the data:
 - "scale": ROAS is at/above target and above break-even, account under-spends or has headroom → the plan LEADS with disciplined scaling + steering on profit (POAS).
 
 The make-or-break factor from the context pack is THE most important input — it must visibly shape the make-or-break section AND the strategy. If it's missing, keep that section honest and general, and note more context is needed.
+
+Every line of the context pack is a BINDING input, not background color. The "HARD CONSTRAINTS & extra context" items are non-negotiable: budget ceilings, no-go's, stock limits, country restrictions and timing anchors (e.g. "leading to Black Friday") must each visibly shape the phases, levers and forecast — and a reader must be able to point at where each constraint landed in the plan. Never propose something a constraint rules out.
 
 Rules: real numbers only ("ROAS 1.54 vs break-even 2.0", not "ROAS is low"). When "excl. brand" numbers are provided, ground EVERY performance judgement and scaling decision in those (brand search inflates account-wide ROAS) and say explicitly which view a number comes from; account-wide figures are context only. Match the client's preferred tone (cautious vs aggressive) from the context. Never recommend raising budget while ROAS is below break-even. Be concrete about the 3 phases (weeks + who does what). End with honest caveats — what you will NOT promise. Write in the requested language (en or nl), in Ecomtrada's direct, confident voice.
 

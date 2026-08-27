@@ -63,8 +63,15 @@ ok("OPPORTUNITY: high-ROAS low-spend fires (bring a win, §5A)", keys.has("high_
 ok("worst severity first (a red leads)", signals[0].severity === "red");
 
 // Guards / correctness.
-ok("reconciliation does NOT false-fire at 10.7% (< 15% threshold)", !keys.has("conversions_vs_orders"));
+ok("reconciliation does NOT false-fire at 10.7%", !keys.has("conversions_vs_orders"));
 ok("but a 20x fake-conversion account DOES fire", conversionsVsOrders(100, 5) !== null);
+// Ads conversions are a subset of total orders: under-counting is the organic
+// share, never a tracking alarm.
+ok("under-counting never fires (95 conv vs 200 orders = organic share)", conversionsVsOrders(95, 200) === null);
+ok("mild over-count under threshold does not fire (110 vs 100)", conversionsVsOrders(110, 100) === null);
+ok("heavy over-count fires red (200 vs 100)", conversionsVsOrders(200, 100)?.severity === "red");
+ok("moderate over-count fires yellow (130 vs 100)", conversionsVsOrders(130, 100)?.severity === "yellow");
+ok("min-sample guard: 8 conv vs 6 orders is noise, not a flag", conversionsVsOrders(8, 6) === null);
 
 // Brand min-sample guard: THE red canary must not fire on a thin, noisy window.
 ok("brand guard suppresses noise (1 conv / 25 clicks → 0)", brandConversionRateDrop({ clicks: 25, conversions: 1 }, { clicks: 20, conversions: 0 }) === null);

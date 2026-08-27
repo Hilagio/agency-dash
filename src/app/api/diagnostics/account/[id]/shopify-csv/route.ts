@@ -10,6 +10,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getAuthContext, unauthorized, forbidden } from "@/lib/auth";
+import { computeAccountSignals } from "@/lib/diagnostics/run-signals";
 import { parseDailySales, parseProductSales, parseDiscounts, detectCsvKind } from "@/lib/diagnostics/shopify-csv";
 
 // Stable synthetic id for CSV-sourced products/variants — ProductSalesDaily
@@ -22,7 +23,13 @@ export const maxDuration = 60;
 type Params = { params: Promise<{ id: string }> };
 
 async function ownedAccount(id: string, orgId: string) {
-  return prisma.account.findFirst({ where: { id, organizationId: orgId }, select: { id: true, currency: true } });
+  return prisma.account.findFirst({
+    where: { id, organizationId: orgId },
+    select: {
+      id: true, currency: true, name: true, roasFloor: true, grossMarginPercent: true,
+      minSpendForEval: true, minConversionsForEval: true, dataVerified: true,
+    },
+  });
 }
 
 export async function GET(_req: Request, { params }: Params) {
@@ -50,6 +57,16 @@ export async function POST(req: Request, { params }: Params) {
   if (!csv.trim()) return NextResponse.json({ error: "No CSV content." }, { status: 400 });
   // "auto" (or no kind): recognise which Shopify report this is from its header,
   // so the team can drop all three exports on the same button.
+
+  // Recompute the diagnosis from the fresh order data so a corrected upload
+  // clears (or raises) flags immediately — the status banner reads the stored
+  // signals, which otherwise only refresh on the nightly run.
+  const recompute = () => computeAccountSignals({
+    id: account.id, name: account.name, roasFloor: account.roasFloor,
+    grossMarginPercent: account.grossMarginPercent, minSpendForEval: account.minSpendForEval,
+    minConversionsForEval: account.minConversionsForEval, dataVerified: account.dataVerified,
+  }).catch(() => null);
+
   const kind = !body.kind || body.kind === "auto" ? detectCsvKind(csv) : body.kind;
   if (kind !== "daily_sales" && kind !== "product_sales" && kind !== "discounts") {
     return NextResponse.json({
@@ -86,6 +103,7 @@ export async function POST(req: Request, { params }: Params) {
       }),
       uploadMark(parsed.rows.length, parsed.rangeStart, parsed.rangeEnd),
     ]);
+    await recompute();
     return NextResponse.json({ ok: true, kind, rows: parsed.rows.length, skipped: parsed.skipped, rangeStart: parsed.rangeStart, rangeEnd: parsed.rangeEnd });
   }
 
@@ -104,6 +122,7 @@ export async function POST(req: Request, { params }: Params) {
       }),
       uploadMark(parsed.rows.length, parsed.rangeStart, parsed.rangeEnd),
     ]);
+    await recompute();
     return NextResponse.json({ ok: true, kind, rows: parsed.rows.length, skipped: parsed.skipped, hasVariants: parsed.hasVariants, rangeStart: parsed.rangeStart, rangeEnd: parsed.rangeEnd });
   }
 
@@ -117,5 +136,6 @@ export async function POST(req: Request, { params }: Params) {
     }),
     uploadMark(parsed.rows.length, parsed.rangeStart, parsed.rangeEnd),
   ]);
+  await recompute();
   return NextResponse.json({ ok: true, kind, rows: parsed.rows.length, skipped: parsed.skipped, rangeStart: parsed.rangeStart, rangeEnd: parsed.rangeEnd });
 }

@@ -257,20 +257,22 @@ function buildChecks(input: DiagnosisInput): CheckRun[] {
   // looks intact" while showing a large Ads-vs-orders gap right above it.
   const mismatch = find(s, "conversions_vs_orders");
   const recon = input.reconciliation;
-  const reconGap = recon && recon.actualOrders > 0
-    ? Math.abs(recon.adsConversions - recon.actualOrders) / recon.actualOrders
+  // Over-counting only: Ads conversions are a subset of total orders, so Ads
+  // reporting fewer is the organic share, not a tracking fault.
+  const overGap = recon && recon.actualOrders > 0
+    ? (recon.adsConversions - recon.actualOrders) / recon.actualOrders
     : null;
-  if (mismatch || (reconGap != null && reconGap >= 0.35)) {
+  if (mismatch || (overGap != null && overGap >= 0.5)) {
     checks.push({
       label: "Tracking vs real orders", result: "flagged",
       detail: recon
-        ? `Ads counted ${Math.round(recon.adsConversions)} conversions against ${recon.actualOrders} real orders (${Math.round((reconGap ?? 0) * 100)}% gap) — steer on nothing else until this is resolved.`
+        ? `Ads counted ${Math.round(recon.adsConversions)} conversions against ${recon.actualOrders} real orders (+${Math.round((overGap ?? 0) * 100)}%) — more conversions than orders exist points at double-counting. Steer on nothing else until this is resolved.`
         : "Ads conversions don't match orders. Steer on nothing else until this is resolved.",
     });
-  } else if (reconGap != null) {
+  } else if (overGap != null) {
     checks.push({
       label: "Tracking vs real orders", result: "ruled_out",
-      detail: `Ads conversions reconcile with real orders (within ${Math.round(reconGap * 100)}%) — tracking looks intact.`,
+      detail: `Ads counted ${Math.round(recon!.adsConversions)} conversions against ${recon!.actualOrders} real orders — consistent with ads driving a share of total sales; no over-counting.`,
     });
   } else {
     checks.push({
