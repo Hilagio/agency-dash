@@ -1333,6 +1333,11 @@ export default function DiagnosePage() {
                   <Sparkles size={14} style={{ color: "var(--accent)" }} />
                   <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, color: "var(--text-muted)" }}>Why this is flagged</span>
                   {briefing.at && <span style={{ fontSize: 11, color: "var(--text-dim)" }}>· noticed {new Date(briefing.at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</span>}
+                  {/* Fixed the cause? Pull fresh data + recompute the diagnosis on the spot. */}
+                  <button onClick={refreshData} disabled={refreshing} title="Pulls fresh data and re-assesses this flag now — use after you've fixed the cause"
+                    style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 7, border: "1px solid var(--border-2)", cursor: refreshing ? "default" : "pointer", background: "var(--surface-2)", color: "var(--text-2)" }}>
+                    {refreshing ? <Loader2 size={11} className="animate-spin" /> : <RefreshCw size={11} />} Fixed it? Re-check
+                  </button>
                 </div>
                 <div style={{ fontSize: 13.5, lineHeight: 1.55, color: "var(--text-2)" }}>{briefing.text}</div>
                 {briefing.worklist && (
