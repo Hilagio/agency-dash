@@ -34,3 +34,19 @@ export interface DocContent {
   subtitle?: string;           // header sub-line (date, scope)
   sections: DocSection[];
 }
+
+/**
+ * One-click "Audit & Growth Plan" preset — mirrors the team's proven audit
+ * layout (executive summary → numbered findings with evidence tables → phased
+ * plan → website recommendations → gated growth → in short) so the deliverable
+ * is duplicatable for any account. The UI passes this as the request.
+ */
+export const AUDIT_REQUEST = `A complete "Google Ads Account Audit & Growth Plan" in this EXACT section order (our house audit layout):
+1. "Executive summary" — the period and spend reviewed, the one-line story of WHY results are what they are, and the reassurance of what is fixable and in what order.
+2. "What we found" — numbered findings, worst first, each as its own section: a short bold claim + evidence in plain client language. Use tables for campaign/geo/search-term evidence with the real numbers. Cover (where the material supports it): conversion tracking state, wasted spend / wrong audience, searches that can't convert, visibility & quality, account structure, and website/landing-page issues.
+3. "The plan" — 3-4 phases with week labels in the heading (e.g. "Phase 1 — Get measurement right · WEEK 1"), 3-5 concrete action bullets each. Foundation first, growth second; measurement fixes always precede any spend.
+4. "Website recommendations (for your team)" — only if site issues came up: concrete trust/conversion fixes the client's own team should make.
+5. "Growth opportunity" — future levers (new markets, budget), explicitly gated behind a healthy foundation — not launch-day activity.
+6. "In short" — a closing summary the client can quote, plus the decision(s) we still need from them as a callout.
+docType must be "Audit & Growth Plan". Title: a human line like "Where your budget went — and how to make it work".`;
+

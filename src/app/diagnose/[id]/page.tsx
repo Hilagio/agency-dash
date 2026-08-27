@@ -17,6 +17,7 @@ import {
   Paperclip, X, FileText, Download, Trash2, Plug, Star, Gauge, Search, ExternalLink, Share2,
 } from "lucide-react";
 import { ProductShoppingScan } from "@/components/ProductShoppingScan";
+import { AUDIT_REQUEST } from "@/lib/doc/types";
 
 interface Attachment { name: string; mediaType: string; data: string; kind: "image" | "document" | "text" }
 interface DocMeta { id: string; title: string; docType: string; format: "doc" | "deck"; language: string; filename: string; createdBy: string | null; createdAt: string }
@@ -1019,14 +1020,14 @@ export default function DiagnosePage() {
 
   // Generate a client-ready brand document (findings / report / deck) from the
   // conversation + data, save it to the library, download it, open a preview.
-  async function generateDocument() {
+  async function generateDocument(preset?: string) {
     if (docBusy) return;
     setDocBusy(true); setDocErr(null);
     try {
       const r = await fetch(`/api/diagnostics/account/${id}/document`, {
         method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ request: docFocus.trim(), format: docFormat, language: docLang }),
+        body: JSON.stringify({ request: preset ?? docFocus.trim(), format: docFormat, language: docLang }),
       });
       const j = await r.json().catch(() => ({}));
       if (!r.ok || !j.html) { setDocErr(j.error ?? `HTTP ${r.status}`); return; }
@@ -1670,8 +1671,14 @@ export default function DiagnosePage() {
                       disabled={docBusy}
                       style={{ flex: 1, fontSize: 12.5, color: "var(--text)", background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: 8, padding: "8px 11px" }}
                     />
-                    <button onClick={generateDocument} disabled={docBusy} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: "#fff", background: "var(--btn-primary, var(--accent))", border: "none", borderRadius: 8, padding: "8px 14px", cursor: docBusy ? "default" : "pointer", whiteSpace: "nowrap" }}>
+                    <button onClick={() => generateDocument()} disabled={docBusy} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: "#fff", background: "var(--btn-primary, var(--accent))", border: "none", borderRadius: 8, padding: "8px 14px", cursor: docBusy ? "default" : "pointer", whiteSpace: "nowrap" }}>
                       {docBusy ? <Loader2 size={13} className="animate-spin" /> : <FileText size={13} />} {docBusy ? "Writing…" : "Generate"}
+                    </button>
+                  </div>
+                  <div style={{ marginTop: 8 }}>
+                    <button onClick={() => generateDocument(AUDIT_REQUEST)} disabled={docBusy} title="One-click full audit + action plan in the house layout — grounded in this account's conversation and live data"
+                      style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11.5, fontWeight: 700, padding: "6px 12px", borderRadius: 7, border: "1px dashed var(--border-3, var(--border-2))", cursor: docBusy ? "default" : "pointer", background: "var(--surface-2)", color: "var(--text-2)" }}>
+                      <FileText size={12} /> Audit &amp; action plan (house layout)
                     </button>
                   </div>
                   {docErr && <div style={{ fontSize: 12, color: "var(--danger)", marginTop: 8 }}>{docErr}</div>}
