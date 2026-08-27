@@ -192,21 +192,26 @@ export function brandConversionRateDrop(before: BrandWindow, after: BrandWindow,
 }
 
 /**
- * Google Ads conversions ≠ actual orders (§4.3/§8). A modest gap is normal —
- * attribution windows, view-through, cross-device — so that's yellow "worth
- * reconciling". Only a large gap (≥35%) is too far apart to steer on: red.
+ * Google Ads conversions vs actual orders (§4.3/§8). Ads-attributed
+ * conversions are a SUBSET of total store orders, so Ads reporting FEWER than
+ * the store is normal — that's the organic/email/direct share, never a
+ * tracking alarm by itself. The tracking smell is OVER-counting: Ads claiming
+ * meaningfully more purchases than the store actually had (page-view
+ * "conversions", duplicate tags). Small absolute numbers are guarded — with
+ * thin volume a handful of lagged conversions swings the ratio wildly.
  */
-export function conversionsVsOrders(adsConversions: number, actualOrders: number, threshold = 0.15): Signal | null {
+export function conversionsVsOrders(adsConversions: number, actualOrders: number, threshold = 0.25): Signal | null {
   if (actualOrders <= 0) return null;
-  const delta = (adsConversions - actualOrders) / actualOrders;
-  if (Math.abs(delta) < threshold) return null;
-  const severe = Math.abs(delta) >= 0.35;
+  const over = (adsConversions - actualOrders) / actualOrders;
+  if (over < threshold) return null;
+  if (actualOrders < 10 && adsConversions - actualOrders < 5) return null; // min-sample guard
+  const severe = over >= 0.5;
   return {
     key: "conversions_vs_orders", kind: "problem",
     severity: severe ? "red" : "yellow",
-    title: "Google Ads conversions don't match orders",
-    detail: `Google Ads reports ${adsConversions.toFixed(1)} vs ${actualOrders.toFixed(1)} actual orders (${delta > 0 ? "+" : ""}${pct(delta)}).${severe ? " Too far apart to steer on — reconcile tracking before acting on ROAS." : " Within the range attribution differences can explain, but worth reconciling."}`,
-    evidence: { adsConversions, actualOrders, delta },
+    title: "Google Ads counts more conversions than real orders",
+    detail: `Google Ads reports ${adsConversions.toFixed(1)} conversions vs ${actualOrders.toFixed(0)} actual orders (+${pct(over)}). Ads conversions should be a share of total orders — counting MORE than exist points at double-counting (page-view conversions, duplicate tags).${severe ? " Too far apart to steer on — reconcile tracking before acting on ROAS." : " Worth reconciling."}`,
+    evidence: { adsConversions, actualOrders, delta: over },
   };
 }
 

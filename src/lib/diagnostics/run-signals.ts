@@ -213,9 +213,12 @@ export async function computeAccountSignals(account: AccountRow, now: Date = new
   // Verified = the Ads conversions actually reconcile with real orders (within
   // tolerance). No order source (no Shopify/CSV) → not verifiable; that's shown
   // in aggregate as "no order data", not as a per-account warning.
+  // Ads conversions are a subset of total orders, so under-counting is normal
+  // (organic share) and does NOT invalidate the data — only heavy OVER-counting
+  // (more conversions than orders exist) does.
   const recon = input.reconciliation;
   const dataVerified = !!recon && recon.actualOrders > 0
-    && Math.abs((recon.adsConversions - recon.actualOrders) / recon.actualOrders) < 0.35;
+    && recon.adsConversions <= recon.actualOrders * 1.5;
 
   await prisma.accountStatus.create({
     data: {

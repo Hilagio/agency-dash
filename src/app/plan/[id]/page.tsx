@@ -45,6 +45,10 @@ export default function PlanPage() {
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [genStatus, setGenStatus] = useState<string | null>(null);
   const [html, setHtml] = useState<string | null>(null);
+  const [plan, setPlan] = useState<Record<string, unknown> | null>(null);
+  const [reviseText, setReviseText] = useState("");
+  const [editMode, setEditMode] = useState(false);
+  const [notes, setNotes] = useState<Record<string, string>>({});
   const [err, setErr] = useState<string | null>(null);
   const [clientName, setClientName] = useState<string>("");
 
@@ -70,8 +74,9 @@ export default function PlanPage() {
     } finally { setSaving(false); }
   }
 
-  async function generate() {
-    setErr(null); setHtml(null); setGenStatus("Starting…");
+  async function generate(reviseInstr?: string) {
+    const base = reviseInstr ? plan : null;
+    setErr(null); setHtml(null); setGenStatus(reviseInstr ? "Applying your changes…" : "Starting…");
     // `finished` guards the stuck state: if the stream dies without a done/error
     // event (gateway timeout, dropped connection), the button used to stay
     // disabled forever because genStatus was never cleared.
@@ -81,7 +86,7 @@ export default function PlanPage() {
       await save();
       const r = await fetch(`/api/accounts/${id}/plan`, {
         method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ language: lang }),
+        body: JSON.stringify(base ? { language: lang, revise: reviseInstr, basePlan: base } : { language: lang }),
       });
       if (!r.ok || !r.body) { const j = await r.json().catch(() => ({})); setErr(j.error ?? `HTTP ${r.status}`); return; }
       const reader = r.body.getReader(); const dec = new TextDecoder(); let buf = "";
@@ -92,18 +97,95 @@ export default function PlanPage() {
         const parts = buf.split("\n\n"); buf = parts.pop() ?? "";
         for (const p of parts) {
           const line = p.trim(); if (!line.startsWith("data:")) continue;
-          let ev: { status?: string; chars?: number; done?: boolean; html?: string; error?: string };
+          let ev: { status?: string; chars?: number; done?: boolean; html?: string; plan?: Record<string, unknown>; error?: string };
           try { ev = JSON.parse(line.slice(5).trim()); } catch { continue; }
           if (ev.error) { setErr(ev.error); finished = true; }
           else if (ev.status === "generating_no_makeorbreak") setGenStatus("Generating… (no make-or-break set — plan may be generic)");
           else if (ev.status === "retrying") setGenStatus("First draft didn't come out clean — writing it again…");
           else if (ev.status === "generating" || ev.status === "writing") setGenStatus(ev.chars ? `Writing the plan… (${ev.chars} chars)` : "Reading your data & writing the plan…");
-          else if (ev.done && ev.html) { setHtml(ev.html); setFormOpen(false); finished = true; }
+          else if (ev.done && ev.html) { setHtml(ev.html); if (ev.plan) setPlan(ev.plan); setReviseText(""); setEditMode(false); setFormOpen(false); finished = true; }
         }
       }
       if (!finished) setErr("The connection dropped before the plan finished — hit Generate again.");
     } catch (e) { setErr(e instanceof Error ? e.message : "Failed"); }
     finally { setGenStatus(null); }
+  }
+
+  // ── Block editor: every plan part becomes a block with delete + a feedback
+  // note. Deletes re-render instantly (no AI); notes are applied in ONE
+  // targeted revision that leaves untouched blocks verbatim.
+  type Block = { path: string; label: string; text: string };
+  /* eslint-disable @typescript-eslint/no-explicit-any */
+  function planBlocks(p: any): Block[] {
+    const out: Block[] = [];
+    const push = (path: string, label: string, text: unknown) => { const t = String(text ?? "").trim(); if (t) out.push({ path, label, text: t }); };
+    push("strategyLead", "Strategy lead", p.strategyLead);
+    (p.stats ?? []).forEach((s: any, i: number) => push(`stats[${i}]`, `Stat · ${s.key ?? i + 1}`, `${s.value ?? ""}${s.sub ? ` — ${s.sub}` : ""}`));
+    push("makeOrBreak", "Make-or-break", `${p.makeOrBreakTitle ?? ""} — ${p.makeOrBreakBody ?? ""}`);
+    (p.findings ?? []).forEach((f: any, i: number) => push(`findings[${i}]`, `Finding ${i + 1}`, `${f.title}: ${f.body}`));
+    (p.levers ?? []).forEach((l: any, i: number) => push(`levers[${i}]`, `Lever ${i + 1}`, `${l.title}: ${l.body}`));
+    (p.whatWeBuild ?? []).forEach((b: any, i: number) => push(`whatWeBuild[${i}]`, `We build ${i + 1}`, `${b.title}: ${b.body}`));
+    (p.phases ?? []).forEach((ph: any, i: number) => {
+      (ph.actions ?? []).forEach((a: any, j: number) => push(`phases[${i}].actions[${j}]`, `${ph.title ?? `Phase ${i + 1}`} · action ${j + 1}`, `${a.action} (${a.who}, ${a.when})`));
+    });
+    (p.forecast ?? []).forEach((r: any, i: number) => push(`forecast[${i}]`, `Forecast · ${r.label ?? i + 1}`, `${r.now} → ${r.target}`));
+    (p.whatWeNeed ?? []).forEach((n: any, i: number) => push(`whatWeNeed[${i}]`, `From the client ${i + 1}`, n));
+    push("caveats", "Caveats", p.caveats);
+    return out;
+  }
+
+  async function applyRenderOnly(p: Record<string, unknown>) {
+    setGenStatus("Updating the document…");
+    try {
+      const r = await fetch(`/api/accounts/${id}/plan`, {
+        method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ language: lang, renderOnly: true, basePlan: p }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (r.ok && j.html) { setPlan(j.plan ?? p); setHtml(j.html); setErr(null); }
+      else setErr(j.error ?? "Couldn't re-render the plan.");
+    } catch (e) { setErr(e instanceof Error ? e.message : "Failed"); }
+    finally { setGenStatus(null); }
+  }
+
+  function deleteBlock(path: string) {
+    if (!plan) return;
+    const p = JSON.parse(JSON.stringify(plan)) as any;
+    const m = path.match(/^(\w+)(?:\[(\d+)\])?(?:\.actions\[(\d+)\])?$/);
+    if (!m) return;
+    const [, field, idx, aIdx] = m;
+    if (aIdx !== undefined && idx !== undefined) (p[field][Number(idx)].actions as unknown[]).splice(Number(aIdx), 1);
+    else if (idx !== undefined) (p[field] as unknown[]).splice(Number(idx), 1);
+    else if (field === "makeOrBreak") { p.makeOrBreakTitle = ""; p.makeOrBreakBody = ""; p.makeOrBreakBullets = []; }
+    else p[field] = "";
+    setNotes(n => { const c = { ...n }; delete c[path]; return c; });
+    applyRenderOnly(p);
+  }
+  /* eslint-enable @typescript-eslint/no-explicit-any */
+
+  function applyNotes() {
+    if (!plan) return;
+    const blocks = planBlocks(plan);
+    const entries = Object.entries(notes).filter(([, v]) => v.trim());
+    if (!entries.length) return;
+    const instr = "Block-specific changes — apply each ONLY to its named block, leave every other block verbatim:\n"
+      + entries.map(([k, v]) => {
+          const b = blocks.find(x => x.path === k);
+          return `- [${b?.label ?? k}] (current: "${(b?.text ?? "").slice(0, 140)}"): ${v.trim()}`;
+        }).join("\n");
+    setNotes({});
+    generate(instr);
+  }
+
+  async function importPlanFile(file: File) {
+    const text = await file.text();
+    const m = text.match(/<script type="application\/json" id="ecomtrada-plan">([\s\S]*?)<\/script>/);
+    if (!m) { setErr("This file has no editable plan data — it was exported before the revision feature. Generate once fresh; new exports are editable."); return; }
+    try {
+      const p = JSON.parse(m[1]) as Record<string, unknown>;
+      setPlan(p); setHtml(text); setErr(null); setFormOpen(false);
+      if (p.language === "nl" || p.language === "en") setLang(p.language as Lang);
+    } catch { setErr("Couldn't read the plan data in this file."); }
   }
 
   function exportHtml() {
@@ -128,14 +210,21 @@ export default function PlanPage() {
               <button key={l} onClick={() => setLang(l)} style={{ fontSize: 12, fontWeight: 600, padding: "4px 10px", borderRadius: 6, border: "none", cursor: "pointer", background: lang === l ? "var(--surface)" : "transparent", color: lang === l ? "var(--text)" : "var(--text-3)" }}>{l.toUpperCase()}</button>
             ))}
           </div>
-          <button onClick={generate} disabled={busy} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600, color: "#fff", background: "var(--accent)", border: "none", borderRadius: 8, padding: "8px 15px", cursor: busy ? "default" : "pointer" }}>
+          <label title="Import an exported 90-day plan to adjust it" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600, color: "var(--text-2)", background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: 8, padding: "8px 13px", cursor: "pointer" }}>
+            Import
+            <input type="file" accept=".html,text/html" style={{ display: "none" }}
+              onChange={e => { const f = e.target.files?.[0]; if (f) importPlanFile(f); e.target.value = ""; }} />
+          </label>
+          <button onClick={() => generate()} disabled={busy} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600, color: "#fff", background: "var(--accent)", border: "none", borderRadius: 8, padding: "8px 15px", cursor: busy ? "default" : "pointer" }}>
             {busy ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />} {html ? "Regenerate" : "Generate plan"}
           </button>
           {html && <button onClick={exportHtml} title="Download HTML" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600, color: "var(--text-2)", background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: 8, padding: "8px 13px", cursor: "pointer" }}><Download size={14} /> Export</button>}
         </div>
       </nav>
 
-      <main style={{ maxWidth: 1180, margin: "0 auto", padding: "20px 24px 80px" }}>
+      <main style={{ maxWidth: 1180, margin: "0 auto", padding: "20px 24px 80px" }}
+        onDragOver={e => e.preventDefault()}
+        onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files?.[0]; if (f && /\.html?$/i.test(f.name)) importPlanFile(f); }}>
         {/* Context Pack */}
         <div style={{ ...card, marginBottom: 16 }}>
           <button onClick={() => setFormOpen(o => !o)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "13px 16px", background: "none", border: "none", cursor: "pointer", color: "var(--text)" }}>
@@ -175,7 +264,51 @@ export default function PlanPage() {
         {err && <div style={{ ...card, padding: "13px 16px", marginBottom: 14, color: "var(--danger)", fontSize: 13 }}>Couldn&rsquo;t generate: {err}</div>}
         {genStatus && <div style={{ ...card, padding: "16px", marginBottom: 14, display: "flex", alignItems: "center", gap: 10, fontSize: 13.5, color: "var(--text-2)" }}><Loader2 size={16} className="animate-spin" style={{ color: "var(--accent)" }} /> {genStatus}</div>}
 
-        {html ? (
+        {html && plan && !genStatus && (
+          <div style={{ ...card, padding: "14px 16px", marginBottom: 14 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700 }}>Adjust this plan</div>
+              <button onClick={() => setEditMode(m => !m)} style={{ fontSize: 11.5, fontWeight: 700, padding: "4px 10px", borderRadius: 7, border: "1px solid var(--border-2)", cursor: "pointer", background: editMode ? "var(--btn-primary, var(--accent))" : "var(--surface-2)", color: editMode ? "#fff" : "var(--text-3)" }}>
+                {editMode ? "Back to preview" : "Edit blocks"}
+              </button>
+              {Object.values(notes).filter(v => v.trim()).length > 0 && (
+                <button onClick={applyNotes} disabled={busy} style={{ fontSize: 11.5, fontWeight: 700, padding: "4px 10px", borderRadius: 7, border: "none", cursor: "pointer", background: "var(--btn-primary, var(--accent))", color: "#fff" }}>
+                  Apply {Object.values(notes).filter(v => v.trim()).length} note{Object.values(notes).filter(v => v.trim()).length === 1 ? "" : "s"}
+                </button>
+              )}
+            </div>
+            <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 8 }}>{editMode ? "Delete a block directly, or leave a note on the blocks that need to change — then apply all notes in one go. Untouched blocks stay word-for-word." : "Describe what's wrong, missing, or should go — only that changes; the rest stays word-for-word. Or use Edit blocks to point at a specific part."}</div>
+            {!editMode && (
+              <div style={{ display: "flex", gap: 8 }}>
+                <textarea value={reviseText} onChange={e => setReviseText(e.target.value)} rows={2} placeholder="What should be different?" style={{ ...inputStyle, flex: 1 }} />
+                <button onClick={() => reviseText.trim() && generate(reviseText.trim())} disabled={busy || !reviseText.trim()}
+                  style={{ alignSelf: "flex-end", display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 700, color: "#fff", background: "var(--btn-primary, var(--accent))", border: "none", borderRadius: 8, padding: "9px 14px", cursor: busy || !reviseText.trim() ? "default" : "pointer", whiteSpace: "nowrap" }}>
+                  <Sparkles size={13} /> Apply changes
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {html && plan && editMode && !genStatus ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {planBlocks(plan).map(b => (
+              <div key={b.path} style={{ ...card, padding: "12px 14px" }}>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "var(--accent)", textTransform: "uppercase", letterSpacing: 0.4, whiteSpace: "nowrap" }}>{b.label}</div>
+                  <div style={{ fontSize: 13, color: "var(--text-2)", flex: 1, lineHeight: 1.45 }}>{b.text.length > 220 ? b.text.slice(0, 220) + "…" : b.text}</div>
+                  <button onClick={() => deleteBlock(b.path)} disabled={busy} title="Delete this block (instant, no AI)" style={{ fontSize: 11.5, fontWeight: 700, padding: "4px 10px", borderRadius: 7, border: "1px solid var(--border-2)", cursor: "pointer", background: "var(--surface-2)", color: "#e5484d", whiteSpace: "nowrap" }}>Delete</button>
+                </div>
+                <input
+                  value={notes[b.path] ?? ""}
+                  onChange={e => setNotes(n => ({ ...n, [b.path]: e.target.value }))}
+                  placeholder="Feedback for this block — what should change here?"
+                  style={{ ...inputStyle, marginTop: 8, fontSize: 12.5, padding: "6px 9px" }}
+                />
+              </div>
+            ))}
+          </div>
+        ) : html ? (
           <div style={{ ...card, overflow: "hidden", padding: 0 }}>
             <iframe title="90-day plan preview" srcDoc={html} style={{ width: "100%", height: "80vh", border: "none", background: "#050806" }} />
           </div>
