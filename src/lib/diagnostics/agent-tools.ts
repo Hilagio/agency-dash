@@ -200,13 +200,17 @@ export async function computeVitals(acc: AgentAccount): Promise<VitalsResult> {
     prisma.metricDaily.aggregate({ where: { accountId: acc.id, date: { gte: d7 } }, _sum: { spend: true, conversions: true } }),
     prisma.orderDaily.aggregate({ where: { accountId: acc.id, date: { gte: d30 } }, _sum: { orders: true, revenue: true } }),
     prisma.orderDaily.aggregate({ where: { accountId: acc.id, date: { gte: d7 } }, _sum: { orders: true, revenue: true } }),
-    prisma.orderDaily.count({ where: { accountId: acc.id, date: { gte: d30 } } }),
+    prisma.orderDaily.aggregate({ where: { accountId: acc.id, date: { gte: d30 } }, _count: true, _max: { date: true } }),
   ]);
 
   const spend30 = m30._sum.spend ?? 0, spend7 = m7._sum.spend ?? 0;
   const conv30 = m30._sum.conversions ?? 0, conv7 = m7._sum.conversions ?? 0;
   const val30 = m30._sum.conversionValue ?? 0;
-  const hasOrderData = orderRows > 0;
+  const hasOrderData = (orderRows._count ?? 0) > 0;
+  // Order-feed coverage: a CSV upload ends where the export ends. Days past it
+  // are missing, not zero — reconciliation is only honest inside the coverage.
+  const orderDataEnd = orderRows._max?.date ?? null;
+  const feedStale = hasOrderData && orderDataEnd != null && orderDataEnd < day(3);
   const orders30 = o30._sum.orders ?? 0, orders7 = o7._sum.orders ?? 0, rev7 = o7._sum.revenue ?? 0;
 
   const checks: VitalCheck[] = [];
@@ -214,8 +218,10 @@ export async function computeVitals(acc: AgentAccount): Promise<VitalsResult> {
   const add = (key: string, label: string, status: VitalStatus, detail: string) => { checks.push({ key, label, status, detail }); if (status === "fail") fails.push(label); };
 
   // 1. TRACKING — can we trust the numbers at all?
-  const reconNote = hasOrderData && orders30 > 0 && conv30 > orders30 * 1.5
-    ? ` Reconciliation: Google shows ${conv30.toFixed(0)} conv/30d vs ${orders30} real orders — possible over-counting.` : "";
+  const reconNote = hasOrderData && !feedStale && orders30 > 0 && conv30 > orders30 * 1.5
+    ? ` Reconciliation: Google shows ${conv30.toFixed(0)} conv/30d vs ${orders30} real orders — possible over-counting.`
+    : feedStale
+      ? ` Order data (CSV) ends ${orderDataEnd} — recent days can't be cross-checked until a fresh export is uploaded; that's a stale file, NOT broken tracking.` : "";
   if (account?.trackingStatus === "broken") add("tracking", "Tracking", "fail", "Flagged BROKEN — fix before trusting any number; every downstream read is unreliable until it is.");
   else if (account?.trackingStatus === "verified") add("tracking", "Tracking", "ok", `Confirmed working.${reconNote}`);
   else add("tracking", "Tracking", "warn", `Not confirmed — verify the primary conversion is a real purchase.${reconNote}`);
@@ -255,7 +261,8 @@ export async function computeVitals(acc: AgentAccount): Promise<VitalsResult> {
 
   // 4. SALES — is the money turning into orders?
   if (hasOrderData) {
-    if (orders7 === 0 && spend7 > 0) add("sales", "Sales", "fail", "Spending but ZERO real orders in 7d — the classic checkout/site/stock break (clicks arriving, till closed).");
+    if (feedStale) add("sales", "Sales", "warn", `Order data (CSV) ends ${orderDataEnd} — the last days are missing from the file, not zero orders. Upload a fresh export to see recent sales; don't read this as a checkout or tracking break.`);
+    else if (orders7 === 0 && spend7 > 0) add("sales", "Sales", "fail", "Spending but ZERO real orders in 7d — the classic checkout/site/stock break (clicks arriving, till closed).");
     else add("sales", "Sales", "ok", `${orders7} real orders/7d (${money(rev7)}); ${orders30} over 30d.`);
   } else {
     if (conv7 === 0 && spend7 > 0) add("sales", "Sales", "fail", "Spending but ZERO conversions in 7d (Google's count — no Shopify to confirm real orders).");
@@ -548,10 +555,10 @@ export async function runAgentTool(name: string, input: Record<string, unknown>,
     const half = Math.min(Math.floor(days / 2), 7);
     const recentStart = new Date(); recentStart.setUTCDate(recentStart.getUTCDate() - half);
     const recentYmd = recentStart.toISOString().slice(0, 10);
-    const [orders, products, adsAgg, discountRows] = await Promise.all([
+    const [orders, products, adsRows, discountRows] = await Promise.all([
       prisma.orderDaily.findMany({ where: { accountId: acc.id, date: { gte: ymd } }, select: { date: true, orders: true, revenue: true, currency: true } }),
       prisma.productSalesDaily.findMany({ where: { accountId: acc.id, date: { gte: ymd } }, select: { date: true, title: true, units: true, revenue: true } }),
-      prisma.metricDaily.aggregate({ where: { accountId: acc.id, date: { gte: ymd } }, _sum: { conversions: true } }),
+      prisma.metricDaily.findMany({ where: { accountId: acc.id, date: { gte: ymd } }, select: { date: true, conversions: true } }),
       prisma.discountDaily.findMany({ where: { accountId: acc.id, date: { gte: ymd } }, select: { date: true, code: true, orders: true, discounted: true, revenue: true } }),
     ]);
     if (!conn && !upload && !orders.length) {
@@ -585,9 +592,19 @@ export async function runAgentTool(name: string, input: Record<string, unknown>,
     const totRev = orders.reduce((s, o) => s + o.revenue, 0);
     const aov = totOrders > 0 ? totRev / totOrders : 0;
 
+    // Anchor every recent-vs-prior comparison to the LAST day the order feed
+    // covers. A CSV that ends a few days back otherwise deflates the "recent"
+    // half with missing days and manufactures a phantom collapse (orders down
+    // 77%, bestsellers at €0) — missing data is not zero orders.
+    const dataEnd = orders.reduce((m, o) => (o.date > m ? o.date : m), "");
+    const anchoredStart = new Date(`${dataEnd}T00:00:00Z`);
+    anchoredStart.setUTCDate(anchoredStart.getUTCDate() - half + 1);
+    const splitYmd = anchoredStart.toISOString().slice(0, 10);
+    void recentYmd;
+
     // Recent half vs the prior half — is the real order flow actually moving?
-    const recent = orders.filter(o => o.date >= recentYmd);
-    const prior = orders.filter(o => o.date < recentYmd);
+    const recent = orders.filter(o => o.date >= splitYmd);
+    const prior = orders.filter(o => o.date < splitYmd);
     const rOrders = recent.reduce((s, o) => s + o.orders, 0);
     const pOrders = prior.reduce((s, o) => s + o.orders, 0);
     const rRev = recent.reduce((s, o) => s + o.revenue, 0);
@@ -607,10 +624,12 @@ export async function runAgentTool(name: string, input: Record<string, unknown>,
 
     // State the reconciliation as a fact for the same window; the agent decides
     // what a gap means (tracking, attribution, demand).
-    const adsConv = Math.round(adsAgg._sum.conversions ?? 0);
+    const adsConv = Math.round(adsRows.filter(r => r.date <= dataEnd).reduce((t, r) => t + r.conversions, 0));
     const gapPct = totOrders > 0 ? Math.round(((adsConv - totOrders) / totOrders) * 100) : null;
+    const yest = new Date(); yest.setUTCDate(yest.getUTCDate() - 1);
+    const staleTail = dataEnd < yest.toISOString().slice(0, 10);
     const reconLine = gapPct != null
-      ? `\nReconciliation (${days}d): Google Ads counted ${adsConv} conversions vs ${totOrders} real Shopify orders (${gapPct === 0 ? "matched" : gapPct < 0 ? `Ads ${Math.abs(gapPct)}% below orders` : `Ads ${gapPct}% above orders`}).`
+      ? `\nReconciliation (through ${dataEnd}, the last day the order data covers): Google Ads counted ${adsConv} conversions vs ${totOrders} real Shopify orders (${gapPct === 0 ? "matched" : gapPct < 0 ? `Ads ${Math.abs(gapPct)}% below orders — normal, ads are a share of total sales` : `Ads ${gapPct}% above orders`}).${staleTail ? ` Days after ${dataEnd} have NO order data (stale export) — never read them as zero orders or a tracking failure; ask for a fresh CSV instead.` : ""}`
       : "";
 
     // Per-product sales, split recent vs prior so we can name what's carrying the
@@ -619,7 +638,7 @@ export async function runAgentTool(name: string, input: Record<string, unknown>,
     for (const p of products) {
       const e = pAgg.get(p.title) ?? { title: p.title, units: 0, revenue: 0, rRev: 0, pRev: 0, rUnits: 0, pUnits: 0 };
       e.units += p.units; e.revenue += p.revenue;
-      if (p.date >= recentYmd) { e.rRev += p.revenue; e.rUnits += p.units; } else { e.pRev += p.revenue; e.pUnits += p.units; }
+      if (p.date >= splitYmd) { e.rRev += p.revenue; e.rUnits += p.units; } else { e.pRev += p.revenue; e.pUnits += p.units; }
       pAgg.set(p.title, e);
     }
     const prods = [...pAgg.values()];
@@ -654,7 +673,7 @@ export async function runAgentTool(name: string, input: Record<string, unknown>,
       for (const d of discountRows) {
         const e = dAgg.get(d.code) ?? { code: d.code, orders: 0, discounted: 0, revenue: 0, rRev: 0, pRev: 0 };
         e.orders += d.orders; e.discounted += d.discounted; e.revenue += d.revenue;
-        if (d.date >= recentYmd) e.rRev += d.revenue; else e.pRev += d.revenue;
+        if (d.date >= splitYmd) e.rRev += d.revenue; else e.pRev += d.revenue;
         dAgg.set(d.code, e);
       }
       const codes = [...dAgg.values()].sort((a, b) => b.revenue - a.revenue).slice(0, 6);

@@ -23,6 +23,10 @@ export interface WindowRow {
   orders: number | null;  // null when no order feed
   revenue: number | null;
   poas: number | null;    // null when no revenue/margin
+  /** Set when the order feed (e.g. a CSV upload) ends BEFORE the window's end:
+   *  orders/revenue/poas cover [start..ordersThrough] only. Days past it are
+   *  missing data, NOT zero orders — never read them as a collapse. */
+  ordersThrough?: string | null;
 }
 
 export interface WindowTrend {
@@ -62,6 +66,10 @@ export function computeWindows(
 ): WindowRow[] {
   const end = minusDays(todayYmd, 1); // yesterday
   const hasOrders = orders.length > 0;
+  // A CSV order feed ends where the export ends. Days past that are MISSING,
+  // not zero orders — summing them as zeros manufactured phantom "collapses"
+  // (orders down 77%, bestsellers at €0) whenever an upload was a few days old.
+  const orderEnd = hasOrders ? orders.reduce((m, o) => (o.date > m ? o.date : m), "") : null;
 
   return horizons.map(h => {
     const start = minusDays(todayYmd, h);
@@ -69,8 +77,12 @@ export function computeWindows(
     const clicks = sumIn(metrics, start, end, m => m.clicks);
     const conversions = sumIn(metrics, start, end, m => m.conversions);
     const conversionValue = sumIn(metrics, start, end, m => m.conversionValue);
-    const revenue = hasOrders ? sumIn(orders, start, end, o => o.revenue) : null;
-    const orderCount = hasOrders ? sumIn(orders, start, end, o => o.orders) : null;
+    const oEnd = orderEnd != null && orderEnd < end ? orderEnd : end;
+    const hasOverlap = hasOrders && oEnd >= start;
+    const revenue = hasOverlap ? sumIn(orders, start, oEnd, o => o.revenue) : null;
+    const orderCount = hasOverlap ? sumIn(orders, start, oEnd, o => o.orders) : null;
+    // POAS compares revenue with the spend over the SAME covered days.
+    const spendForPoas = hasOverlap && oEnd < end ? sumIn(metrics, start, oEnd, m => m.spend) : spend;
     const coverageDays = distinctDates(metrics, start, end);
 
     return {
@@ -81,7 +93,8 @@ export function computeWindows(
       roas: spend > 0 ? conversionValue / spend : null,
       orders: orderCount,
       revenue,
-      poas: revenue != null && marginPct != null && marginPct > 0 && spend > 0 ? (revenue * marginPct) / spend : null,
+      poas: revenue != null && marginPct != null && marginPct > 0 && spendForPoas > 0 ? (revenue * marginPct) / spendForPoas : null,
+      ordersThrough: hasOverlap && oEnd < end ? oEnd : null,
     };
   });
 }
