@@ -268,7 +268,9 @@ async function handle(id: string, orgId: string, userId: string) {
     name: account.name,
     clientName: account.clientName,
     status: (status?.status as "green" | "yellow" | "red") ?? "green",
-    dataVerified: diag?.dataVerified ?? account.dataVerified,
+    // A human verdict outranks the automatic reconciliation: once the team has
+    // confirmed tracking works, stop showing provisional/unverified nags.
+    dataVerified: account.trackingStatus === "verified" ? true : (diag?.dataVerified ?? account.dataVerified),
     computedAt: (status?.computedAt ?? new Date()).toISOString(),
     signals,
     window: diag?.window,
