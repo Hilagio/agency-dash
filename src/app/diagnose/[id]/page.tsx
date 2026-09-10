@@ -384,6 +384,7 @@ export default function DiagnosePage() {
   const [flowData, setFlowData] = useState<{ url: string; bodyTemplate: string; ordersReceived: number; connected: boolean; lastReceivedAt: string | null } | null>(null);
   const [flowLoading, setFlowLoading] = useState(false);
   const [flowCopied, setFlowCopied] = useState<string | null>(null);
+  const [flowTest, setFlowTest] = useState<"idle" | "busy" | "ok" | "fail">("idle");
   // Manual Shopify CSV upload (the no-API fallback).
   const [csvBusy, setCsvBusy] = useState(false);
   const [csvMsg, setCsvMsg] = useState<string | null>(null);
@@ -887,6 +888,23 @@ export default function DiagnosePage() {
     try { const r = await fetch(`/api/diagnostics/account/${id}/flow`, { credentials: "include" }); if (r.ok) setFlowData(await r.json()); }
     catch { /* ignore */ } finally { setFlowLoading(false); }
   }
+  // Fire a harmless test event through the real public endpoint, so the team
+  // can SEE the Flow pipeline work before touching the client's Shopify.
+  async function testFlow() {
+    if (!flowData?.url) return;
+    setFlowTest("busy");
+    try {
+      const key = new URL(flowData.url).searchParams.get("key") ?? "";
+      const r = await fetch(`/api/shopify/flow?key=${encodeURIComponent(key)}`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ test: true }),
+      });
+      const j = await r.json().catch(() => ({}));
+      setFlowTest(r.ok && j.ok ? "ok" : "fail");
+    } catch { setFlowTest("fail"); }
+    setTimeout(() => setFlowTest("idle"), 6000);
+  }
+
   async function regenerateFlow() {
     setFlowLoading(true);
     try { const r = await fetch(`/api/diagnostics/account/${id}/flow`, { method: "POST", credentials: "include" }); if (r.ok) setFlowData(await r.json()); }
@@ -2354,7 +2372,7 @@ export default function DiagnosePage() {
       )}
 
       {shopifyModal && (() => {
-        const SIDEKICK_PROMPT = `Export three CSV reports for the last 90 days, each grouped by day: 1) "Sales over time", 2) "Sales by product variant" (product title, variant title, net quantity, net sales, discounts), 3) "Sales by discount".`;
+        const SIDEKICK_PROMPT = `Export the "Sales over time" report as a CSV: last 90 days, one row per day, with the columns Day, Orders and Net sales.`;
         const methods = [
           { key: "csv" as const, label: "CSV upload", note: "Recommended", enabled: true },
           { key: "flow" as const, label: "Shopify Flow", note: "Free, no app", enabled: true },
@@ -2394,7 +2412,7 @@ export default function DiagnosePage() {
                 {shopifyMethod === "csv" && (
                   <div>
                     <p style={{ fontSize: 12.5, color: "var(--text-2)", lineHeight: 1.6, margin: "0 0 12px" }}>
-                      The fastest way — export CSVs from Shopify and drop them here (several at once is fine; each file is recognised automatically). <strong>“Sales over time”</strong> gives daily orders &amp; revenue; add <strong>“Sales by product variant”</strong> for per-product and per-size sales, and <strong>“Sales by discount”</strong> for which codes drive orders. No app install, no review.
+                      <strong>One file is enough: “Sales over time”</strong> — that&rsquo;s daily orders &amp; revenue, which is all the reconciliation needs. The file just has to contain a <strong>Day</strong> (or Date) column, an <strong>Orders</strong> column and a <strong>Net sales</strong> (or Total sales) column — any Shopify export with those works, whatever the report is called in your admin version. Optional extras, only if you want product/discount depth: “Sales by product variant” and “Sales by discount”. Upload several files at once; each is recognised automatically.
                     </p>
                     <div style={{ background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 10, padding: "12px 14px", marginBottom: 14 }}>
                       <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text)", marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}><Sparkles size={13} style={{ color: "var(--accent)" }} /> Easiest: ask Shopify Sidekick</div>
@@ -2403,7 +2421,7 @@ export default function DiagnosePage() {
                         <code style={{ flex: 1, minWidth: 0, fontSize: 11.5, color: "var(--text)", background: "var(--bg)", border: "1px solid var(--border-2)", borderRadius: 7, padding: "8px 10px", lineHeight: 1.5 }}>{SIDEKICK_PROMPT}</code>
                         <button onClick={copySidekick} style={{ fontSize: 11.5, fontWeight: 700, color: "var(--text-2)", background: "var(--bg)", border: "1px solid var(--border-2)", borderRadius: 7, padding: "8px 12px", cursor: "pointer", flexShrink: 0 }}>{sidekickCopied ? "Copied ✓" : "Copy"}</button>
                       </div>
-                      <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 8 }}>Sidekick generates the CSVs — download them, then upload all of them below. Or do it manually: <strong>Analytics → Reports</strong> → open each report → group by Day → last 90 days → Export.</div>
+                      <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 8 }}>Sidekick generates the CSV — download it and upload it below. Manually: <strong>Analytics → Reports</strong> → open <strong>Sales over time</strong> → set the date range (e.g. last 90 days) → make sure there&rsquo;s one row per day (Day column) → <strong>Export → CSV</strong>. If your admin names reports differently: any export with Day + Orders + Net sales columns is accepted.</div>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                       <button onClick={() => csvInputRef.current?.click()} disabled={csvBusy}
@@ -2450,8 +2468,16 @@ export default function DiagnosePage() {
                           <button onClick={() => copyFlow(flowData.bodyTemplate, "body")} style={{ fontSize: 11.5, fontWeight: 700, color: "var(--text-2)", background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 7, padding: "7px 11px", cursor: "pointer", flexShrink: 0 }}>{flowCopied === "body" ? "Copied ✓" : "Copy"}</button>
                         </div>
                         <ol start={5} style={{ margin: 0, paddingLeft: 18, fontSize: 12.5, color: "var(--text-2)", lineHeight: 1.7 }}>
-                          <li>Turn the workflow <strong>On</strong>. New orders flow in automatically.</li>
+                          <li>Add one request header: <strong>Content-Type</strong> = <strong>application/json</strong>.</li>
+                          <li>Turn the workflow <strong>On</strong>, then in Flow use <strong>Run test</strong> (or place a test order) — the counter above shows every order that lands here.</li>
                         </ol>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 12, paddingLeft: 18, flexWrap: "wrap" }}>
+                          <button onClick={testFlow} disabled={flowTest === "busy"} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 700, color: "var(--text-2)", background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 8, padding: "7px 13px", cursor: flowTest === "busy" ? "default" : "pointer" }}>
+                            {flowTest === "busy" ? <Loader2 size={12} className="animate-spin" /> : <ShieldCheck size={12} />} Test the connection
+                          </button>
+                          {flowTest === "ok" && <span style={{ fontSize: 12, color: "var(--accent)", fontWeight: 700 }}>✓ Endpoint live — orders sent by Flow will land on this account.</span>}
+                          {flowTest === "fail" && <span style={{ fontSize: 12, color: "var(--danger)" }}>Endpoint didn&rsquo;t respond — regenerate the link and try again.</span>}
+                        </div>
                         <div style={{ marginTop: 11, fontSize: 11, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", paddingLeft: 18 }}>
                           <span>Keep this URL private — it’s this account’s key.</span>
                           <button onClick={regenerateFlow} disabled={flowLoading} style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", padding: 0, textDecoration: "underline" }}>Regenerate link</button>

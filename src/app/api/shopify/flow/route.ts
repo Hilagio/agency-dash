@@ -48,6 +48,12 @@ export async function POST(req: NextRequest) {
   const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
   if (!body) return NextResponse.json({ error: "bad json" }, { status: 400 });
 
+  // Test mode: proves the key + endpoint work end-to-end WITHOUT writing an
+  // order. The account page's "Test the connection" button uses this.
+  if (body.test === true || body.test === "true") {
+    return NextResponse.json({ ok: true, test: true, account: account.id });
+  }
+
   // Tolerant extraction — Flow body field names vary by how the merchant set it up.
   const orderId = String(body.id ?? body.order_id ?? body.orderId ?? body.name ?? "").trim();
   if (!orderId) return NextResponse.json({ error: "missing order id" }, { status: 400 });
