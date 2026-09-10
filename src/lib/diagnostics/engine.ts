@@ -61,7 +61,7 @@ export interface DiagnosisInput {
   /** Present only when an order feed exists; drives the tracking check. */
   reconciliation?: { adsConversions: number; actualOrders: number } | null;
   /** Real orders + revenue from Shopify over the window (§4.3). */
-  commerce?: { orders: number; revenue: number; currency?: string } | null;
+  commerce?: { orders: number; revenue: number; currency?: string; dataEnds?: string | null } | null;
   /** Gross margin (0–1) for POAS = gross profit ÷ spend (§4, POAS not ROAS). */
   grossMarginPct?: number | null;
 }
@@ -277,7 +277,9 @@ function buildChecks(input: DiagnosisInput): CheckRun[] {
   } else {
     checks.push({
       label: "Tracking vs real orders", result: "not_available",
-      detail: "No order feed connected yet, so tracking can't be confirmed independently.",
+      detail: input.commerce?.dataEnds
+        ? `Order data (CSV upload) ends ${input.commerce.dataEnds} — too little overlap with the last week to cross-check. Upload a fresh export to re-verify; this is a stale file, not broken tracking.`
+        : "No order feed connected yet, so tracking can't be confirmed independently.",
     });
   }
 
@@ -295,7 +297,9 @@ function buildChecks(input: DiagnosisInput): CheckRun[] {
   if (!input.dataVerified) {
     checks.push({
       label: "Verification against real orders", result: "not_available",
-      detail: "No order feed (Shopify) is connected to compare against, so treat the numbers as provisional until one confirms them.",
+      detail: input.commerce?.dataEnds
+        ? `The uploaded order data ends ${input.commerce.dataEnds}, so recent days can't be verified — upload a fresh CSV export to re-verify. Stale file, not broken tracking.`
+        : "No order feed (Shopify) is connected to compare against, so treat the numbers as provisional until one confirms them.",
     });
   }
 
@@ -393,7 +397,9 @@ export function buildDiagnosis(input: DiagnosisInput): Diagnosis {
     headline: buildHeadline(input),
     unverifiedNote: input.dataVerified
       ? undefined
-      : "Not yet reconciled against real orders — treat the numbers as provisional until an order feed confirms them.",
+      : input.commerce?.dataEnds
+        ? `Order data ends ${input.commerce.dataEnds} — upload a fresh export to verify the days after it.`
+        : "Not yet reconciled against real orders — treat the numbers as provisional until an order feed confirms them.",
     facts: buildFacts(input),
     observations: buildObservations(input.signals, input.currency ?? "€"),
     checksRun: buildChecks(input),

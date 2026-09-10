@@ -84,7 +84,7 @@ export interface AccountSignals {
   signals: Signal[];
 }
 
-export interface CommerceAgg { orders: number; revenue: number; currency: string; }
+export interface CommerceAgg { orders: number; revenue: number; currency: string; dataEnds?: string | null; }
 
 /** SignalInput plus the commerce context we persist for the diagnosis view. */
 export interface AssembledInput {
@@ -109,7 +109,7 @@ export async function assembleSignalInput(account: AccountRow): Promise<Assemble
     prisma.searchTermDaily.findMany({ where: { accountId: account.id, date: { gte: curStart, lte: curEnd } } }),
     prisma.changeEvent.findMany({ where: { accountId: account.id, changedAt: { gte: new Date(curStart) } } }),
     prisma.searchTermDaily.findMany({ where: { accountId: account.id, date: { gte: priStart, lte: priEnd } } }),
-    prisma.orderDaily.findMany({ where: { accountId: account.id, date: { gte: curStart, lte: curEnd } } }),
+    prisma.orderDaily.findMany({ where: { accountId: account.id, date: { gte: ymd(30), lte: curEnd } } }),
   ]);
 
   // Current-window totals.
@@ -151,15 +151,30 @@ export async function assembleSignalInput(account: AccountRow): Promise<Assemble
   const brandAfter = brandAgg(stRows, brandToken);
   const brand = (brandBefore.clicks > 0 && brandAfter.clicks > 0) ? { before: brandBefore, after: brandAfter } : undefined;
 
-  // Commerce reconciliation (§4.3): real Shopify orders vs Ads conversions.
+  // Commerce reconciliation (§4.3): real orders vs Ads conversions — compared
+  // ONLY over the days the order feed actually covers. A CSV upload from a few
+  // days ago ends mid-window; comparing the FULL ads window against a partial
+  // order window made Ads look like it over-counts and raised false "tracking
+  // broken" flags (the Lydia case). Stale feed ≠ broken tracking.
+  const orderEnd = orderRows.length ? orderRows.reduce((m, o) => (o.date > m ? o.date : m), "") : null;
+  const winOrders = orderRows.filter(o => o.date >= curStart && o.date <= curEnd);
+  const overlapEnd = orderEnd && orderEnd < curEnd ? orderEnd : curEnd;
+  const overlapDays = new Set(metrics.filter(m => m.date <= overlapEnd).map(m => m.date)).size;
   const commerce: CommerceAgg | null = orderRows.length
     ? {
-        orders: orderRows.reduce((s, o) => s + o.orders, 0),
-        revenue: orderRows.reduce((s, o) => s + o.revenue, 0),
+        orders: winOrders.reduce((s, o) => s + o.orders, 0),
+        revenue: winOrders.reduce((s, o) => s + o.revenue, 0),
         currency: orderRows[0]?.currency ?? "EUR",
+        dataEnds: orderEnd && orderEnd < curEnd ? orderEnd : null,
       }
     : null;
-  const reconciliation = commerce ? { adsConversions: current.conversions, actualOrders: commerce.orders } : undefined;
+  // Need >=3 overlapping metric days for a reconciliation that means anything.
+  const reconciliation = commerce && orderEnd && overlapEnd >= curStart && overlapDays >= 3
+    ? {
+        adsConversions: metrics.filter(m => m.date <= overlapEnd).reduce((s, m) => s + m.conversions, 0),
+        actualOrders: orderRows.filter(o => o.date >= curStart && o.date <= overlapEnd).reduce((s, o) => s + o.orders, 0),
+      }
+    : undefined;
 
   return {
     input: {
