@@ -17,6 +17,7 @@ import {
   Paperclip, X, FileText, Download, Trash2, Plug, Star, Gauge, Search, ExternalLink, Share2,
 } from "lucide-react";
 import { ProductShoppingScan } from "@/components/ProductShoppingScan";
+import { LivePlanCard } from "@/components/LivePlanCard";
 import { AUDIT_REQUEST } from "@/lib/doc/types";
 
 interface Attachment { name: string; mediaType: string; data: string; kind: "image" | "document" | "text" }
@@ -1342,6 +1343,10 @@ export default function DiagnosePage() {
                 <div style={{ fontSize: 17, fontWeight: 600, lineHeight: 1.4 }}>{diag.headline}</div>
               </div>
             </div>
+
+            {/* Where the 90-day plan stands — day, progress, next step, last
+                change — with one-click routes to the team board. */}
+            <LivePlanCard accountId={id} />
 
             {/* Overnight read — the same opener + next action the cockpit shows, so
                 the reasoning that flagged this account is visible in-account too. */}

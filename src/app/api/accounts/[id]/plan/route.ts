@@ -89,7 +89,12 @@ Rules for the rewrite:
   const basePlan = rewriteBase ?? (revise && body.basePlan && typeof body.basePlan === "object" && Array.isArray((body.basePlan as PlanContent).phases)
     ? body.basePlan as PlanContent : null);
 
-  const userMsg = basePlan
+  // Rewrite-from-progress is a REAL rewrite, not a light edit — it must not
+  // inherit the revision template's "keep everything verbatim" rule, or the
+  // model plays it safe and hands back a near-identical plan.
+  const userMsg = rewriteInstr && basePlan
+    ? `CURRENT LIVE PLAN (JSON):\n${JSON.stringify(basePlan)}\n\nFRESH LIVE DATA (today's figures — the plan's numbers may be stale):\n${inputs.dataBlock}\n\nCLIENT CONTEXT PACK:\n${inputs.contextBlock}\n\n${revise}\n\nThis is a mid-flight rewrite, not a cosmetic edit: keep each DONE action's text character-for-character verbatim, but REWRITE the narrative and everything still ahead — strategyLead, make-or-break, findings, levers, remaining/open actions, week windows and forecast — around the execution state and today's data. The updated plan must read as version 2, picking up from where the team stands now. Return the FULL updated plan as the same JSON shape, in ${inputs.language === "nl" ? "Dutch" : "English"}. Return only the JSON object.`
+    : basePlan
     ? `EXISTING PLAN (JSON — the team has already reviewed this):\n${JSON.stringify(basePlan)}\n\nFRESH LIVE DATA (for reference — correct figures against this where the instruction says data is wrong):\n${inputs.dataBlock}\n\nCLIENT CONTEXT PACK:\n${inputs.contextBlock}\n\nREQUESTED CHANGES from the team:\n${revise}\n\nApply ONLY the requested changes to the existing plan. Keep every other field, sentence and figure VERBATIM — do not rephrase, reorder or re-balance untouched sections. If the instruction says to delete something, remove it entirely. Return the FULL updated plan as the same JSON shape, in ${inputs.language === "nl" ? "Dutch" : "English"}. Return only the JSON object.`
     : `CLIENT CONTEXT PACK:\n${inputs.contextBlock}\n\nLIVE DATA:\n${inputs.dataBlock}\n\nWrite the 90-day plan for ${inputs.account.name} in ${inputs.language === "nl" ? "Dutch" : "English"}. Return only the JSON object.`;
 
