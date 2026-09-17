@@ -10,8 +10,9 @@
 export type PlanLanguage = "en" | "nl";
 export type PlanArchetype = "fix_first" | "scale";
 export type PlanActor = "Ecomtrada" | "Client" | "Together";
-/** first = day 0–90 for a new client · next = the follow-up period (e.g. 90–180) · custom = user-briefed period/focus. */
-export type PlanType = "first" | "next" | "custom";
+/** SOP plan cycles: first = baseline + quick wins (0–90) · next = 90–180 scale/efficiency/expansion ·
+ *  recovery = short sprint to fix critical issues fast · q4 = seasonal growth sprint · custom = user-briefed. */
+export type PlanType = "first" | "next" | "recovery" | "q4" | "custom";
 
 export interface PlanStat {
   key: string;                 // "Tracked ROAS"
@@ -47,6 +48,10 @@ export interface PlanContent {
   goal?: string;
   /** SOP §3: the strategic roadmap — the logic of X now because it enables Y later. */
   pathToGoal?: string[];
+  /** SOP snapshot: what could block progress in this cycle. */
+  mainRisk?: string;
+  /** SOP snapshot: when we decide next (first review moment). */
+  nextReview?: string;
   /** "Where we start" / "The strategy" lead paragraph. */
   strategyLead: string;
   stats: PlanStat[];

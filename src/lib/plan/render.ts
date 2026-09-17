@@ -78,6 +78,8 @@ const CSS = `
   .path li:first-child{border-top:none;}
   .path li::before{content:counter(pth);position:absolute;left:0;top:7px;width:24px;height:24px;border-radius:50%;background:rgba(51,204,128,.14);color:var(--green);font-weight:800;font-size:12px;display:flex;align-items:center;justify-content:center;}
   .ws-note{font-size:12px;color:var(--dim);margin:-6px 0 12px;}
+  .risk-row{display:flex;flex-wrap:wrap;gap:8px 26px;margin-top:16px;padding-top:14px;border-top:1px solid var(--line);font-size:12.5px;color:#dde2de;}
+  .risk-row b{color:var(--gold);}
   .badge{display:inline-block;border-radius:99px;padding:3px 11px;font-size:11px;font-weight:700;white-space:nowrap;}
   .b-ec{background:rgba(51,204,128,.15);color:var(--green);border:1px solid rgba(51,204,128,.4);}
   .b-cl{background:rgba(249,195,31,.13);color:var(--gold);border:1px solid rgba(249,195,31,.4);}
@@ -154,6 +156,7 @@ export function renderPlanHtml(plan: PlanContent, charts: PlanCharts): string {
   const goalSec = (plan.goal || plan.pathToGoal?.length) ? `<div class="sec"><h2>${nl ? "Het doel & de route" : "The goal & the path"}</h2><div class="card">
     ${plan.goal ? `<p class="goal-line">${inline(plan.goal)}</p>` : ""}
     ${plan.pathToGoal?.length ? `<ol class="path">${plan.pathToGoal.map(s => `<li>${inline(s)}</li>`).join("")}</ol>` : ""}
+    ${plan.mainRisk || plan.nextReview ? `<div class="risk-row">${plan.mainRisk ? `<span>⚠ <b>${nl ? "Grootste risico" : "Main risk"}:</b> ${inline(plan.mainRisk)}</span>` : ""}${plan.nextReview ? `<span>📅 <b>${nl ? "Eerste review" : "Next review"}:</b> ${inline(plan.nextReview)}</span>` : ""}</div>` : ""}
   </div></div>` : "";
 
   const mobClass = plan.archetype === "scale" ? "mob scale" : "mob";
