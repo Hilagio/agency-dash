@@ -49,10 +49,13 @@ export default function PlanPage() {
   const [reviseText, setReviseText] = useState("");
   const [editMode, setEditMode] = useState(false);
   const [notes, setNotes] = useState<Record<string, string>>({});
+  const [liveState, setLiveState] = useState<"none" | "busy" | "active">("none");
   const [err, setErr] = useState<string | null>(null);
   const [clientName, setClientName] = useState<string>("");
 
   useEffect(() => {
+    fetch(`/api/accounts/${id}/plan/live`, { credentials: "include" }).then(x => x.ok ? x.json() : null)
+      .then(j => { if (j?.active) setLiveState("active"); }).catch(() => {});
     (async () => {
       const r = await fetch(`/api/accounts/${id}/context`, { credentials: "include" }).then(x => x.ok ? x.json() : null).catch(() => null);
       if (r?.context) { setCtx(r.context); if (r.context.defaultLanguage === "nl") setLang("nl"); }
@@ -177,6 +180,21 @@ export default function PlanPage() {
     generate(instr);
   }
 
+  // Hand the reviewed plan to the team: it becomes the account's LIVE plan and
+  // appears on /plans, where every action is trackable and assignable.
+  async function activateLive() {
+    if (!plan || liveState === "busy") return;
+    setLiveState("busy");
+    try {
+      const r = await fetch(`/api/accounts/${id}/plan/live`, {
+        method: "PUT", credentials: "include", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan }),
+      });
+      setLiveState(r.ok ? "active" : "none");
+      if (!r.ok) setErr((await r.json().catch(() => ({})))?.error ?? "Couldn't activate the plan.");
+    } catch { setLiveState("none"); }
+  }
+
   async function importPlanFile(file: File) {
     const text = await file.text();
     const m = text.match(/<script type="application\/json" id="ecomtrada-plan">([\s\S]*?)<\/script>/);
@@ -218,6 +236,16 @@ export default function PlanPage() {
           <button onClick={() => generate()} disabled={busy} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600, color: "#fff", background: "var(--accent)", border: "none", borderRadius: 8, padding: "8px 15px", cursor: busy ? "default" : "pointer" }}>
             {busy ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />} {html ? "Regenerate" : "Generate plan"}
           </button>
+          {html && plan && (
+            <button onClick={activateLive} disabled={busy || liveState === "busy"} title="Make this the account's live plan — the team tracks and assigns every action on the /plans board"
+              style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600, color: liveState === "active" ? "var(--accent)" : "var(--text-2)", background: "var(--surface)", border: `1px solid ${liveState === "active" ? "color-mix(in srgb, var(--accent) 55%, var(--border-2))" : "var(--border-2)"}`, borderRadius: 8, padding: "8px 13px", cursor: "pointer" }}>
+              {liveState === "busy" ? <Loader2 size={14} className="animate-spin" /> : null}
+              {liveState === "active" ? "Live ✓ — update team board" : "Activate as live plan"}
+            </button>
+          )}
+          {liveState === "active" && (
+            <Link href="/plans" style={{ fontSize: 12.5, fontWeight: 600, color: "var(--accent)", textDecoration: "none" }}>Team board →</Link>
+          )}
           {html && <button onClick={exportHtml} title="Download HTML" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600, color: "var(--text-2)", background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: 8, padding: "8px 13px", cursor: "pointer" }}><Download size={14} /> Export</button>}
         </div>
       </nav>

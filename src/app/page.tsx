@@ -419,6 +419,7 @@ export default function PortfolioHome() {
                 <button onClick={() => setImportOpen(true)} title="Add accounts — pick them straight from the Google Ads MCC" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 34, height: 34, borderRadius: 10, cursor: "pointer", color: "var(--text-3)", background: "var(--surface)", border: "1px solid var(--border)" }}>
                   <Plus size={15} />
                 </button>
+                <Link href="/plans" title="Team board: every live 90-day plan, who's on what, what's next" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", height: 34, padding: "0 13px", borderRadius: 10, fontSize: 12.5, fontWeight: 700, color: "var(--text-3)", background: "var(--surface)", border: "1px solid var(--border)", textDecoration: "none" }}>Plans</Link>
                 <button onClick={() => { setInviteOpen(true); setInviteMsg(null); }} title="Invite a teammate into this workspace" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", height: 34, padding: "0 13px", gap: 6, borderRadius: 10, cursor: "pointer", fontSize: 12.5, fontWeight: 700, color: "var(--text-3)", background: "var(--surface)", border: "1px solid var(--border)" }}>
                   <UserPlus size={14} /> Invite
                 </button>

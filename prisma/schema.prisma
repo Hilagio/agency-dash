@@ -266,6 +266,8 @@ model Account {
 
   // The library of client-ready documents the agent generated for this account.
   generatedDocs GeneratedDoc[]
+  planInstance   PlanInstance?
+
 }
 
 // A saved, client-ready brand document (§agent → files out). The rendered HTML
@@ -614,6 +616,40 @@ model Owner {
   ownershipActions OwnershipAction[]
 
   @@unique([organizationId, name])
+}
+
+// ─── Live 90-day plan (team execution board) ──────────────────────────────────
+// A generated plan becomes the account's ACTIVE plan when the team activates
+// it. The content JSON is the source of truth for structure; per-action state
+// (done/assignee/notes) lives in its own rows so the whole team can work the
+// same plan concurrently and the /plans board reads progress in one query.
+
+model PlanInstance {
+  id        String   @id @default(cuid())
+  accountId String   @unique // one live plan per account
+  account   Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  content   String   // PlanContent JSON (phases/actions — structure only)
+  language  String   @default("en")
+  startedAt DateTime @default(now())
+  createdBy String?
+  updatedAt DateTime @updatedAt
+  states    PlanActionState[]
+}
+
+model PlanActionState {
+  id        String       @id @default(cuid())
+  planId    String
+  plan      PlanInstance @relation(fields: [planId], references: [id], onDelete: Cascade)
+  path      String       // "p<phase>a<action>" — stable key into content
+  status    String       @default("open") // open | busy | done | blocked
+  assignee  String?      // member email
+  note      String?
+  doneAt    DateTime?
+  doneBy    String?
+  updatedAt DateTime     @updatedAt
+
+  @@unique([planId, path])
+  @@index([planId])
 }
 
 model AccountStatus {
