@@ -20,7 +20,9 @@ interface Row {
   totalActions: number; doneActions: number; blockedActions: number; phases: Phase[];
   nextAction: NextAction | null; lastActivityAt: string | null; lastDoneBy: string | null;
   stalled: boolean; assignees: string[];
+  lastUpdate: { at: string; by: string | null; detail: string } | null;
 }
+interface Unplanned { accountId: string; name: string; clientName: string | null }
 interface Member { email: string; name: string; role: string }
 interface LiveAction { action: string; who: string; when: string; deviation?: boolean; deviationReason?: string; addedAt?: string; addedBy?: string; dropped?: boolean; droppedReason?: string }
 interface LivePhase { title: string; window: string; actions: LiveAction[] }
@@ -38,6 +40,7 @@ function ago(iso: string | null): string {
 
 export default function PlansBoardPage() {
   const [rows, setRows] = useState<Row[] | null>(null);
+  const [unplanned, setUnplanned] = useState<Unplanned[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [me, setMe] = useState<string>("");
   const [mineOnly, setMineOnly] = useState(false);
@@ -52,7 +55,7 @@ export default function PlansBoardPage() {
   const load = useCallback(async () => {
     const j = await fetch("/api/diagnostics/plan-board", { credentials: "include" }).then(r => r.ok ? r.json() : null).catch(() => null);
     if (!j) { setErr("Couldn't load the board."); return; }
-    setRows(j.rows); setMembers(j.members ?? []); setMe(j.me ?? "");
+    setRows(j.rows); setUnplanned(j.unplanned ?? []); setMembers(j.members ?? []); setMe(j.me ?? "");
   }, []);
   useEffect(() => { load(); const t = setInterval(load, 60_000); return () => clearInterval(t); }, [load]);
 
@@ -143,11 +146,16 @@ export default function PlansBoardPage() {
               const isOpen = open === r.accountId;
               return (
                 <div key={r.accountId} style={{ ...card, overflow: "hidden", borderColor: r.stalled ? "color-mix(in srgb, var(--danger) 45%, var(--border))" : "var(--border)" }}>
-                  <button onClick={() => openRow(r.accountId)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", background: "none", border: "none", cursor: "pointer", color: "var(--text)", textAlign: "left" }}>
+                  <div role="button" tabIndex={0} onClick={() => openRow(r.accountId)} onKeyDown={e => { if (e.key === "Enter") openRow(r.accountId); }} style={{ width: "100%", display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", cursor: "pointer", color: "var(--text)", textAlign: "left" }}>
                     {isOpen ? <ChevronDown size={15} style={{ flexShrink: 0, color: "var(--text-dim)" }} /> : <ChevronRight size={15} style={{ flexShrink: 0, color: "var(--text-dim)" }} />}
                     <div style={{ minWidth: 170 }}>
                       <div style={{ fontWeight: 700, fontSize: 13.5 }}>{r.clientName || r.name}</div>
-                      <div style={{ fontSize: 11.5, color: "var(--text-muted)" }}>day {Math.min(r.dayInPlan, 90)} of 90 · live since {r.startedAt.slice(0, 10)}{r.createdBy ? ` by ${r.createdBy.split("@")[0]}` : ""} · last activity {ago(r.lastActivityAt)}</div>
+                      <div style={{ fontSize: 11.5, color: "var(--text-muted)" }}>day {Math.min(r.dayInPlan, 90)} of 90 · live since {r.startedAt.slice(0, 10)}{r.createdBy ? ` by ${r.createdBy.split("@")[0]}` : ""}</div>
+                      {r.lastUpdate && (
+                        <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2, maxWidth: 380, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          <span style={{ color: "var(--text-dim)" }}>{ago(r.lastUpdate.at)}</span> · <b>{r.lastUpdate.by ? r.lastUpdate.by.split("@")[0] : "system"}</b> — {r.lastUpdate.detail}
+                        </div>
+                      )}
                     </div>
                     {/* Phase progress segments */}
                     <div style={{ flex: 1, display: "flex", gap: 4, alignItems: "center", minWidth: 120 }}>
@@ -175,7 +183,8 @@ export default function PlansBoardPage() {
                       ) : null}
                     </div>
                     {r.stalled && <span title="Live for over a week with no activity in 7 days" style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11.5, fontWeight: 700, color: "var(--danger)", flexShrink: 0 }}><AlertTriangle size={13} /> stalled</span>}
-                  </button>
+                    <Link href={`/diagnose/${r.accountId}`} onClick={e => e.stopPropagation()} title="Open the account" style={{ fontSize: 12, fontWeight: 700, color: "var(--accent)", textDecoration: "none", flexShrink: 0, padding: "4px 8px" }}>account →</Link>
+                  </div>
 
                   {isOpen && (
                     <div style={{ borderTop: "1px solid var(--border)", padding: "12px 16px 16px 45px" }}>
@@ -249,6 +258,25 @@ export default function PlansBoardPage() {
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {rows && unplanned.length > 0 && !mineOnly && (
+          <div style={{ marginTop: 22 }}>
+            <div style={{ fontSize: 11.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, color: "var(--text-muted)", marginBottom: 8 }}>
+              No live plan yet · {unplanned.length} account{unplanned.length === 1 ? "" : "s"}
+            </div>
+            <div style={{ ...card, padding: "4px 0" }}>
+              {unplanned.map((u, i) => (
+                <div key={u.accountId} style={{ display: "flex", alignItems: "center", gap: 12, padding: "9px 16px", borderBottom: i < unplanned.length - 1 ? "1px solid var(--border-2)" : "none" }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-2)" }}>{u.clientName || u.name}</span>
+                  </div>
+                  <Link href={`/diagnose/${u.accountId}`} style={{ fontSize: 11.5, fontWeight: 600, color: "var(--text-3)", textDecoration: "none" }}>account →</Link>
+                  <Link href={`/plan/${u.accountId}`} style={{ fontSize: 11.5, fontWeight: 700, color: "var(--accent)", textDecoration: "none", border: "1px solid color-mix(in srgb, var(--accent) 40%, var(--border-2))", borderRadius: 7, padding: "4px 10px" }}>Create plan →</Link>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </main>
