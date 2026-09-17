@@ -634,6 +634,19 @@ model PlanInstance {
   createdBy String?
   updatedAt DateTime @updatedAt
   states    PlanActionState[]
+  events    PlanEvent[]
+}
+
+model PlanEvent {
+  id     String       @id @default(cuid())
+  planId String
+  plan   PlanInstance @relation(fields: [planId], references: [id], onDelete: Cascade)
+  at     DateTime     @default(now())
+  by     String?
+  kind   String       // activated | revised | done | reopened | assigned | blocked | unblocked | note | deviation | dropped
+  detail String       // human-readable: what changed, and why (for deviations)
+
+  @@index([planId, at])
 }
 
 model PlanActionState {
