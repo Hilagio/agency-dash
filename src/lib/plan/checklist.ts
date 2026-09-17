@@ -25,7 +25,8 @@ export function renderPlanChecklist(
 ): string {
   const nl = content.language === "nl";
   const stateBy = new Map(states.map(s => [s.path, s]));
-  const day = Math.min(90, Math.max(1, Math.floor((Date.now() - meta.startedAt.getTime()) / 86_400_000) + 1));
+  const hd = content.horizonDays && content.horizonDays > 0 ? Math.round(content.horizonDays) : 90;
+  const day = Math.min(hd, Math.max(1, Math.floor((Date.now() - meta.startedAt.getTime()) / 86_400_000) + 1));
   const today = new Date().toISOString().slice(0, 10);
 
   let total = 0, done = 0;
@@ -50,7 +51,7 @@ export function renderPlanChecklist(
   }).join("");
 
   return `<!doctype html><html lang="${content.language}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${esc(meta.client)} — ${nl ? "90-dagenplan checklist" : "90-Day Plan Checklist"}</title>
+<title>${esc(meta.client)} — ${hd}-${nl ? "dagenplan checklist" : "Day Plan Checklist"}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=League+Spartan:wght@600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -79,10 +80,10 @@ tr.dropped td{color:var(--dim);font-size:11.5px}
 @media print{body{background:#fff}.page{padding:10px 0}h2{page-break-after:avoid}table{page-break-inside:avoid}}
 </style></head><body><div class="page">
 <div class="brand">ecomtrada<b>.</b></div>
-<h1>${esc(meta.client)} — ${nl ? "90-dagenplan voortgang" : "90-Day Plan Progress"}</h1>
-<div class="meta">${nl ? "Plan actief sinds" : "Plan live since"} ${meta.startedAt.toISOString().slice(0, 10)}${meta.createdBy ? ` (${esc(meta.createdBy)})` : ""} · ${nl ? "dag" : "day"} ${day} ${nl ? "van" : "of"} 90 · ${nl ? "stand van" : "status as of"} ${today}</div>
+<h1>${esc(meta.client)} — ${hd}-${nl ? "dagenplan voortgang" : "Day Plan Progress"}</h1>
+<div class="meta">${nl ? "Plan actief sinds" : "Plan live since"} ${meta.startedAt.toISOString().slice(0, 10)}${meta.createdBy ? ` (${esc(meta.createdBy)})` : ""} · ${nl ? "dag" : "day"} ${day} ${nl ? "van" : "of"} ${hd} · ${nl ? "stand van" : "status as of"} ${today}</div>
 <div class="progress"><div class="bar"><div style="width:${total > 0 ? Math.round((done / total) * 100) : 0}%"></div></div><span style="font-size:12px;color:var(--ink2);font-weight:600">${done}/${total}</span></div>
 ${phaseHtml}
-<div class="foot">${nl ? "Automatisch gegenereerd uit het live 90-dagenplan in Ecomtrada AI — statussen, eigenaren en notities zijn de actuele teamstand." : "Generated from the live 90-day plan in Ecomtrada AI — statuses, owners and notes are the team's current state."}</div>
+<div class="foot">${nl ? "Automatisch gegenereerd uit het live plan in Ecomtrada AI — statussen, eigenaren en notities zijn de actuele teamstand." : "Generated from the live plan in Ecomtrada AI — statuses, owners and notes are the team's current state."}</div>
 </div></body></html>`;
 }

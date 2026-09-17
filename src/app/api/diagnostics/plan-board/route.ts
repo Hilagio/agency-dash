@@ -20,6 +20,7 @@ export interface BoardRow {
   startedAt: string;
   createdBy: string | null;
   dayInPlan: number;           // 1-based
+  horizonDays: number;         // plan horizon (default 90)
   language: string;
   totalActions: number;
   doneActions: number;
@@ -98,7 +99,9 @@ export async function GET() {
 
     rows.push({
       accountId: inst.account.id, name: inst.account.name, clientName: inst.account.clientName,
-      startedAt: inst.startedAt.toISOString(), createdBy: inst.createdBy, dayInPlan, language: inst.language,
+      startedAt: inst.startedAt.toISOString(), createdBy: inst.createdBy, dayInPlan,
+      horizonDays: content.horizonDays && content.horizonDays > 0 ? Math.round(content.horizonDays) : 90,
+      language: inst.language,
       totalActions: total, doneActions: done, blockedActions: blocked, phases,
       nextAction: next,
       lastActivityAt: lastState.at?.toISOString() ?? null,

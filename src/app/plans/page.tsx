@@ -16,7 +16,7 @@ import { ArrowLeft, Loader2, ChevronDown, ChevronRight, AlertTriangle, CircleChe
 interface Phase { title: string; window: string; done: number; total: number }
 interface NextAction { path: string; phase: string; action: string; who: string; when: string; assignee: string | null; status: string }
 interface Row {
-  accountId: string; name: string; clientName: string | null; startedAt: string; createdBy: string | null; dayInPlan: number;
+  accountId: string; name: string; clientName: string | null; startedAt: string; createdBy: string | null; dayInPlan: number; horizonDays?: number;
   totalActions: number; doneActions: number; blockedActions: number; phases: Phase[];
   nextAction: NextAction | null; lastActivityAt: string | null; lastDoneBy: string | null;
   stalled: boolean; assignees: string[];
@@ -216,7 +216,7 @@ export default function PlansBoardPage() {
                     {isOpen ? <ChevronDown size={15} style={{ flexShrink: 0, color: "var(--text-dim)" }} /> : <ChevronRight size={15} style={{ flexShrink: 0, color: "var(--text-dim)" }} />}
                     <div style={{ minWidth: 170 }}>
                       <div style={{ fontWeight: 700, fontSize: 13.5 }}>{r.clientName || r.name}</div>
-                      <div style={{ fontSize: 11.5, color: "var(--text-muted)" }}>day {Math.min(r.dayInPlan, 90)} of 90 · live since {r.startedAt.slice(0, 10)}{r.createdBy ? ` by ${r.createdBy.split("@")[0]}` : ""}</div>
+                      <div style={{ fontSize: 11.5, color: "var(--text-muted)" }}>day {Math.min(r.dayInPlan, r.horizonDays ?? 90)} of {r.horizonDays ?? 90} · live since {r.startedAt.slice(0, 10)}{r.createdBy ? ` by ${r.createdBy.split("@")[0]}` : ""}</div>
                       {r.lastUpdate && (
                         <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2, maxWidth: 380, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                           <span style={{ color: "var(--text-dim)" }}>{ago(r.lastUpdate.at)}</span> · <b>{r.lastUpdate.by ? r.lastUpdate.by.split("@")[0] : "system"}</b> — {r.lastUpdate.detail}

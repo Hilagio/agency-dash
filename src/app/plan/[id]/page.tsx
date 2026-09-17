@@ -52,12 +52,14 @@ export default function PlanPage() {
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [liveState, setLiveState] = useState<"none" | "busy" | "active">("none");
   const [liveStart, setLiveStart] = useState<string>(new Date().toISOString().slice(0, 10));
+  const [planType, setPlanType] = useState<"first" | "next" | "custom">("first");
+  const [customBrief, setCustomBrief] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [clientName, setClientName] = useState<string>("");
 
   useEffect(() => {
     fetch(`/api/accounts/${id}/plan/live`, { credentials: "include" }).then(x => x.ok ? x.json() : null)
-      .then(j => { if (j?.active) setLiveState("active"); }).catch(() => {});
+      .then(j => { if (j?.active) { setLiveState("active"); setPlanType("next"); } }).catch(() => {});
     (async () => {
       const r = await fetch(`/api/accounts/${id}/context`, { credentials: "include" }).then(x => x.ok ? x.json() : null).catch(() => null);
       if (r?.context) { setCtx(r.context); if (r.context.defaultLanguage === "nl") setLang("nl"); }
@@ -91,7 +93,7 @@ export default function PlanPage() {
       await save();
       const r = await fetch(`/api/accounts/${id}/plan`, {
         method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(base ? { language: lang, revise: reviseInstr, basePlan: base } : { language: lang }),
+        body: JSON.stringify(base ? { language: lang, revise: reviseInstr, basePlan: base } : { language: lang, planType, customBrief: planType === "custom" ? customBrief : undefined }),
       });
       if (!r.ok || !r.body) { const j = await r.json().catch(() => ({})); setErr(j.error ?? `HTTP ${r.status}`); return; }
       const reader = r.body.getReader(); const dec = new TextDecoder(); let buf = "";
@@ -125,6 +127,8 @@ export default function PlanPage() {
     const out: Block[] = [];
     const push = (path: string, label: string, text: unknown) => { const t = String(text ?? "").trim(); if (t) out.push({ path, label, text: t }); };
     push("strategyLead", "Strategy lead", p.strategyLead);
+    push("goal", "Goal", p.goal);
+    (p.pathToGoal ?? []).forEach((s: any, i: number) => push(`pathToGoal[${i}]`, `Path step ${i + 1}`, s));
     (p.stats ?? []).forEach((s: any, i: number) => push(`stats[${i}]`, `Stat · ${s.key ?? i + 1}`, `${s.value ?? ""}${s.sub ? ` — ${s.sub}` : ""}`));
     push("makeOrBreak", "Make-or-break", `${p.makeOrBreakTitle ?? ""} — ${p.makeOrBreakBody ?? ""}`);
     (p.findings ?? []).forEach((f: any, i: number) => push(`findings[${i}]`, `Finding ${i + 1}`, `${f.title}: ${f.body}`));
@@ -295,6 +299,29 @@ export default function PlanPage() {
                 {!ctx.makeOrBreak?.trim() && <span style={{ fontSize: 11.5, color: "var(--accent-2, #d0972a)" }}>⭐ The make-or-break factor is empty — the plan will be generic without it.</span>}
               </div>
             </div>
+          )}
+        </div>
+
+        {/* Plan type — a first plan, the follow-up period, or a custom brief. */}
+        <div style={{ ...card, padding: "13px 16px", marginBottom: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            <span style={{ fontWeight: 700, fontSize: 13 }}>Plan type</span>
+            {([
+              { v: "first", label: "First plan · day 0–90", hint: "New client — foundation + first growth period" },
+              { v: "next", label: "Follow-up · day 90–180", hint: "Builds on the live plan's progress — next constraint, next level of growth. No restarts." },
+              { v: "custom", label: "Custom", hint: "You define the period and focus in a brief" },
+            ] as { v: "first" | "next" | "custom"; label: string; hint: string }[]).map(o => (
+              <button key={o.v} onClick={() => setPlanType(o.v)} title={o.hint}
+                style={{ fontSize: 12, fontWeight: 700, padding: "6px 12px", borderRadius: 8, cursor: "pointer", border: `1px solid ${planType === o.v ? "color-mix(in srgb, var(--accent) 55%, var(--border-2))" : "var(--border-2)"}`, background: planType === o.v ? "var(--accent-dim)" : "var(--surface-2)", color: planType === o.v ? "var(--accent)" : "var(--text-3)" }}>
+                {o.label}
+              </button>
+            ))}
+            {planType === "next" && liveState !== "active" && <span style={{ fontSize: 11.5, color: "var(--accent-2, #d0972a)" }}>No live plan on this account yet — the follow-up will lean on data only.</span>}
+          </div>
+          {planType === "custom" && (
+            <textarea value={customBrief} onChange={e => setCustomBrief(e.target.value)} rows={3}
+              placeholder="Brief for this plan — period (e.g. 60 days), focus (e.g. Q4/Black Friday push, new market entry), boundaries. This brief is binding for the plan."
+              style={{ width: "100%", marginTop: 10, fontSize: 12.5, padding: "8px 10px", borderRadius: 9, border: "1px solid var(--border-2)", background: "var(--surface-2)", color: "var(--text)", resize: "vertical" }} />
           )}
         </div>
 
