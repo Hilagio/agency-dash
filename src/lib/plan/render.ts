@@ -130,7 +130,7 @@ function trendSection(charts: PlanCharts, t: typeof T["en"]): string {
   if (!roas && !rev) return "";
   return `<div class="sec"><h2>${t.trend}</h2><div class="card">
     <svg viewBox="0 0 820 220" style="width:100%;" xmlns="http://www.w3.org/2000/svg">
-      <text x="60" y="22" fill="#9fb3a8" font-size="13" font-weight="700" font-family="Arial">${esc(t.roasStable)}</text>
+      <text x="60" y="22" fill="#9fb3a8" font-size="13" font-weight="700" font-family="Arial">${esc(charts.roasLabel ?? t.roasStable)}</text>
       ${roas}
       ${rev ? `<text x="450" y="22" fill="#9fb3a8" font-size="13" font-weight="700" font-family="Arial">${esc(t.dayRev)}</text>${rev}` : ""}
     </svg>

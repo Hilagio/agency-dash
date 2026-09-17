@@ -73,6 +73,8 @@ export interface PlanContent {
 export interface PlanCharts {
   /** ROAS across the standard windows, long→short (e.g. 90/30/14d). */
   roasWindows: { label: string; roas: number | null; target?: number | null; breakEven?: number | null }[];
+  /** Chart title override, e.g. "ROAS excl. brand across the windows" when brand campaigns exist. */
+  roasLabel?: string;
   /** Average daily revenue, oldest→newest, to show acceleration/decline. */
   dailyRevenue: { label: string; value: number }[];
   currencySymbol: string;
