@@ -35,6 +35,7 @@ const CONTEXT_QUESTIONS: { key: string; q: string; hint: string }[] = [
   { key: "makeOrBreak", q: "The one make-or-break factor for this client?", hint: "The thing that, if we get it wrong, loses the account." },
   { key: "usps", q: "What makes them different (USPs)?", hint: "Why customers pick them over the competitor ranking next to them." },
   { key: "audienceNuances", q: "Audiences or segments that behave differently?", hint: "Anything the algorithm must learn separately — B2B vs B2C, countries, gift buyers…" },
+  { key: "otherChannels", q: "Advertising on other channels?", hint: "Meta, TikTok, influencers, email… + rough budgets. Explains how much of total revenue Google should claim (paid share, blended MER)." },
   { key: "anythingElse", q: "History & constraints", hint: "When ads started, scale aggressively/cautiously, stock limits, seasonality, margins — anything else that shapes decisions." },
 ];
 // Legacy columns whose content now lives inside a merged question — pulled into

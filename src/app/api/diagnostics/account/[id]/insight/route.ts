@@ -187,8 +187,8 @@ function buildContext(
 interface ClientCtx {
   goal?: string | null; mainKpi?: string | null; targetRoasNote?: string | null;
   strategyPreference?: string | null; usps?: string | null; audienceNuances?: string | null;
-  makeOrBreak?: string | null; anythingElse?: string | null; adsStartedNote?: string | null;
-  netMarginPct?: number | null; breakEvenRoas?: number | null;
+  makeOrBreak?: string | null; otherChannels?: string | null; anythingElse?: string | null;
+  adsStartedNote?: string | null; netMarginPct?: number | null; breakEvenRoas?: number | null;
 }
 
 /** The client's own expectations & context — so the read judges "does this match
@@ -206,6 +206,7 @@ function buildClientBlock(c: ClientCtx | null): string {
   if (c.usps) L.push(`  USPs: ${c.usps}`);
   if (c.audienceNuances) L.push(`  Audience nuances: ${c.audienceNuances}`);
   if (c.adsStartedNote) L.push(`  Ads history: ${c.adsStartedNote}`);
+  if (c.otherChannels) L.push(`  Other paid channels: ${c.otherChannels} — total orders/revenue are driven by ALL channels, so Google's paid share and blended MER must be read in that light.`);
   if (c.anythingElse) L.push(`  Constraints/notes: ${c.anythingElse}`);
   return L.length ? `CLIENT EXPECTATIONS & CONTEXT (judge performance against THIS, not a generic target):\n${L.join("\n")}\n\n` : "";
 }

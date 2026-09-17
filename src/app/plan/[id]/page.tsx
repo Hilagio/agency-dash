@@ -14,7 +14,8 @@ import { ArrowLeft, Loader2, Sparkles, Download, RefreshCw, Star, ChevronDown, C
 type Lang = "en" | "nl";
 interface Ctx {
   amName?: string; goal?: string; mainKpi?: string; targetRoasNote?: string; adsStartedNote?: string;
-  strategyPreference?: string; usps?: string; audienceNuances?: string; makeOrBreak?: string; anythingElse?: string;
+  strategyPreference?: string; usps?: string; audienceNuances?: string; makeOrBreak?: string;
+  otherChannels?: string; anythingElse?: string;
   defaultLanguage?: string; netMarginPct?: number | null; breakEvenRoas?: number | null;
 }
 
@@ -28,6 +29,7 @@ const FIELDS: { key: keyof Ctx; label: string; hint: string; star?: boolean; row
   { key: "usps", label: "What makes this client different? (USPs)", hint: "Positioning", rows: 2 },
   { key: "audienceNuances", label: "Audience nuances the algorithm must learn", hint: "Different buyers per product", rows: 2 },
   { key: "makeOrBreak", label: "⭐ The make-or-break factor", hint: "The client-specific dynamic that decides the strategy — the one field that can't be blank", star: true, rows: 3 },
+  { key: "otherChannels", label: "Advertising on other channels?", hint: "Meta, TikTok, influencers, email… + rough budgets — explains paid share & blended MER", rows: 2 },
   { key: "anythingElse", label: "Anything else? (constraints, stock, no-go's)", hint: "Budget ceiling, countries, restock cadence, limited editions", rows: 2 },
 ];
 
