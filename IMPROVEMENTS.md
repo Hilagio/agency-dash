@@ -558,3 +558,21 @@ account after its next Shopify sync (nightly, or "Sync orders" on the account).
   section that adapts to what's actually connected (no Shopify → all revenue
   figures flagged as platform-attributed; no search terms past 45d retention;
   brand campaigns split out; conversion lag on recent days).
+
+---
+
+## 2026-09-17 — Live 90-day plans: the team execution board
+
+- 90-day plans stop being fire-and-forget documents: **Activate as live
+  plan** on `/plan/[id]` stores the reviewed plan as the account's active
+  plan (migration 0042: `PlanInstance` + per-action `PlanActionState`).
+  Re-activating a revised plan keeps progress for unchanged actions and
+  keeps the original day-count clock.
+- New **`/plans` team board** (linked from the cockpit): every account
+  with a live plan, real-time — day X of 90, progress per phase, the next
+  open action and its owner, last activity, and a **stalled** warning when
+  a live plan has had no activity for 7+ days. Sorted attention-first.
+- Fully interactive for the whole workspace: expand a client → tick
+  actions done (records who), assign teammates per action, leave notes,
+  flag blockers. "My work only" filter per teammate. Board auto-refreshes
+  every minute.
