@@ -86,9 +86,9 @@ Rules for the rewrite:
   // "next" = the follow-up period, built ON TOP of what the previous live plan
   // already achieved; "custom" = the user's own brief (period, focus) is
   // binding. Ignored on revisions/rewrites (those keep their base plan).
-  const planType = body.planType === "next" || body.planType === "custom" ? body.planType : "first";
+  const planType = ["next", "recovery", "q4", "custom"].includes(body.planType ?? "") ? body.planType as "next" | "recovery" | "q4" | "custom" : "first";
   const customBrief = typeof body.customBrief === "string" ? body.customBrief.trim() : "";
-  let typeBlock = `\n\nPLAN TYPE: FIRST plan (day 0–90) for this client. Set "planType":"first" and "horizonDays":90.`;
+  let typeBlock = `\n\nPLAN CYCLE: FIRST plan for this client — baseline + quick wins (day 0–90). Set "planType":"first" and "horizonDays":90.`;
   if (planType === "next" && !body.rewriteFromLive) {
     // Feed the previous period's plan + execution state so the follow-up plan
     // builds on reality instead of re-proposing finished foundation work.
@@ -107,9 +107,13 @@ Rules for the rewrite:
         prev = `\nPREVIOUS PERIOD — goal: ${prevC.goal ?? prevC.subtitle}. Execution state of its actions:\n${lines.join("\n")}`;
       } catch { /* unreadable previous plan — proceed without it */ }
     }
-    typeBlock = `\n\nPLAN TYPE: FOLLOW-UP plan — the NEXT period (day 90–180) for an existing client. Set "planType":"next" and "horizonDays":90. This is NOT a restart: assume the foundation from the previous period stands. Do not re-propose work marked DONE below; carry BLOCKED/OPEN work forward only if it still matters. The story of this plan is the next constraint and the next level of growth (scaling, expansion, new inventory/markets/channels, compounding what works) — measurably beyond the previous period's goal.${prev}`;
+    typeBlock = `\n\nPLAN CYCLE: FOLLOW-UP — the NEXT period (day 90–180): scale, efficiency, expansion. Set "planType":"next" and "horizonDays":90. This is NOT a restart: assume the foundation from the previous period stands. Do not re-propose work marked DONE below; carry BLOCKED/OPEN work forward only if it still matters. The story of this plan is the next constraint and the next level of growth (scaling, expansion, new inventory/markets/channels, compounding what works) — measurably beyond the previous period's goal.${prev}`;
+  } else if (planType === "recovery" && !body.rewriteFromLive) {
+    typeBlock = `\n\nPLAN CYCLE: RECOVERY SPRINT — fix critical issues fast. Set "planType":"recovery" and "horizonDays":30 (or shorter if the brief says so). Ruthless prioritisation: only the actions that stop the bleeding and restore profitable economics make the plan; everything nice-to-have waits for the next cycle. Short review loops (days, not weeks), and the goal is the concrete recovery target (e.g. back above break-even ROAS).${customBrief ? `\nBRIEF FROM THE TEAM (binding):\n${customBrief}` : ""}`;
+  } else if (planType === "q4" && !body.rewriteFromLive) {
+    typeBlock = `\n\nPLAN CYCLE: Q4 SPRINT — prioritise seasonal growth. Set "planType":"q4"; set "horizonDays" to the days remaining in the seasonal window (default 60 if unclear). Everything is ordered around the seasonal peak: inventory and feed readiness first, budget escalation timed to demand, creative/asset refresh for the season, and clear guardrails for peak-week spending. Timing anchors (Black Friday, Sinterklaas, Christmas) get concrete dates.${customBrief ? `\nBRIEF FROM THE TEAM (binding):\n${customBrief}` : ""}`;
   } else if (planType === "custom" && !body.rewriteFromLive) {
-    typeBlock = `\n\nPLAN TYPE: CUSTOM plan. Set "planType":"custom". The brief below is BINDING — it defines the period, focus and boundaries of this plan. If the brief names a period other than 90 days, set "horizonDays" accordingly (in days); otherwise use 90.\nBRIEF FROM THE TEAM:\n${customBrief || "(no brief given — treat as a standard strategic plan)"}`;
+    typeBlock = `\n\nPLAN CYCLE: CUSTOM. Set "planType":"custom". The brief below is BINDING — it defines the period, focus and boundaries of this plan. If the brief names a period other than 90 days, set "horizonDays" accordingly (in days); otherwise use 90.\nBRIEF FROM THE TEAM:\n${customBrief || "(no brief given — treat as a standard strategic plan)"}`;
   }
 
   // Revision mode: the team hands back an existing plan (from state or an

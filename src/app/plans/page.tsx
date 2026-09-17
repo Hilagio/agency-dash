@@ -298,8 +298,8 @@ export default function PlansBoardPage() {
                                   </select>
                                   <select value={st?.status ?? "open"} onChange={e => patchAction(r.accountId, path, { status: e.target.value })} title="Status"
                                     style={{ fontSize: 11, padding: "4px 6px", borderRadius: 7, border: "1px solid var(--border-2)", background: isBlocked ? "var(--danger)" : "var(--surface-2)", color: isBlocked ? "#fff" : st?.status === "busy" ? "var(--accent)" : "var(--text-3)", fontWeight: 700, flexShrink: 0 }}>
-                                    <option value="open">not started</option>
-                                    <option value="busy">in progress</option>
+                                    <option value="open">backlog</option>
+                                    <option value="busy">active now</option>
                                     <option value="done">done</option>
                                     <option value="blocked">blocked</option>
                                   </select>

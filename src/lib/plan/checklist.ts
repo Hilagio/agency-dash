@@ -11,11 +11,12 @@ export interface ChecklistState { path: string; status: string; assignee: string
 const esc = (s: string): string =>
   String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
+// SOP checklist states: Backlog → Active now → Done / learned (+ Blocked).
 const STATUS_LABEL: Record<string, { en: string; nl: string }> = {
   done: { en: "Done", nl: "Afgerond" },
-  busy: { en: "In progress", nl: "Mee bezig" },
+  busy: { en: "Active now", nl: "Actief nu" },
   blocked: { en: "Blocked", nl: "Geblokkeerd" },
-  open: { en: "Not started", nl: "Nog niet gestart" },
+  open: { en: "Backlog", nl: "Backlog" },
 };
 
 export function renderPlanChecklist(
