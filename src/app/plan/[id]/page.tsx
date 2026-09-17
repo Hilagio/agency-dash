@@ -7,7 +7,7 @@
  * analysis; the human supplies the context (esp. the make-or-break factor).
  */
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Loader2, Sparkles, Download, RefreshCw, Star, ChevronDown, ChevronRight, Save } from "lucide-react";
 
@@ -37,6 +37,7 @@ const label: React.CSSProperties = { fontSize: 12, fontWeight: 600, color: "var(
 
 export default function PlanPage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
   const [ctx, setCtx] = useState<Ctx>({});
   const [lang, setLang] = useState<Lang>("en");
   const [loaded, setLoaded] = useState(false);
@@ -193,6 +194,8 @@ export default function PlanPage() {
       });
       setLiveState(r.ok ? "active" : "none");
       if (!r.ok) setErr((await r.json().catch(() => ({})))?.error ?? "Couldn't activate the plan.");
+      // Direct output: land on the team board with this plan expanded.
+      if (r.ok) router.push(`/plans?open=${id}`);
     } catch { setLiveState("none"); }
   }
 
@@ -250,7 +253,7 @@ export default function PlanPage() {
             </button>
           )}
           {liveState === "active" && (
-            <Link href="/plans" style={{ fontSize: 12.5, fontWeight: 600, color: "var(--accent)", textDecoration: "none" }}>Team board →</Link>
+            <Link href={`/plans?open=${id}`} style={{ fontSize: 12.5, fontWeight: 600, color: "var(--accent)", textDecoration: "none" }}>Team board →</Link>
           )}
           {html && <button onClick={exportHtml} title="Download HTML" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600, color: "var(--text-2)", background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: 8, padding: "8px 13px", cursor: "pointer" }}><Download size={14} /> Export</button>}
         </div>

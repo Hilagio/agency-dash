@@ -52,6 +52,8 @@ export default function PlansBoardPage() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [rewriting, setRewriting] = useState<string | null>(null);
+  const [rwStatus, setRwStatus] = useState<string | null>(null);
+  const [rwDone, setRwDone] = useState<string | null>(null); // accountId that just got a fresh rewrite
 
   const load = useCallback(async () => {
     const j = await fetch("/api/diagnostics/plan-board", { credentials: "include" }).then(r => r.ok ? r.json() : null).catch(() => null);
@@ -60,9 +62,17 @@ export default function PlansBoardPage() {
   }, []);
   useEffect(() => { load(); const t = setInterval(load, 60_000); return () => clearInterval(t); }, [load]);
 
+  // Deep link: /plans?open=<accountId> lands with that account's plan expanded —
+  // the account page and the generator route here right after activation.
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get("open");
+    if (id) openRow(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   async function openRow(accountId: string) {
-    if (open === accountId) { setOpen(null); setDetail(null); return; }
-    setOpen(accountId); setDetail(null); setDetailLoading(true);
+    if (open === accountId) { setOpen(null); setDetail(null); setRwDone(null); return; }
+    setOpen(accountId); setDetail(null); setRwDone(null); setDetailLoading(true);
     try {
       const j = await fetch(`/api/accounts/${accountId}/plan/live`, { credentials: "include" }).then(r => r.ok ? r.json() : null);
       if (j?.active && j.content?.phases) {
@@ -128,7 +138,9 @@ export default function PlansBoardPage() {
   // already done — completed work keeps its state and stops being the story.
   async function rewriteFromProgress(accountId: string) {
     if (rewriting) return;
-    setRewriting(accountId);
+    setRewriting(accountId); setRwDone(null); setErr(null);
+    setRwStatus("Reading live data and the team's progress…");
+    let success = false;
     try {
       const r = await fetch(`/api/accounts/${accountId}/plan`, {
         method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
@@ -146,13 +158,23 @@ export default function PlansBoardPage() {
           try {
             const ev = JSON.parse(line.slice(5).trim());
             if (ev.error) { setErr(ev.error); okDone = true; }
-            else if (ev.done) okDone = true;
+            else if (ev.done) { okDone = true; success = true; }
+            else if (ev.status === "writing") setRwStatus(`Writing the updated plan… (${Math.round((ev.chars ?? 0) / 1000)}k chars)`);
+            else if (ev.status === "retrying") setRwStatus("First attempt wasn't valid — retrying…");
+            else if (typeof ev.status === "string") setRwStatus("Re-planning the remaining days around the progress…");
           } catch { /* keep-alive */ }
         }
       }
       if (!okDone) setErr("The connection dropped during the rewrite — check the plan and retry if needed.");
     } catch (e) { setErr(e instanceof Error ? e.message : "Rewrite failed"); }
-    finally { setRewriting(null); reloadDetail(accountId); }
+    finally {
+      setRewriting(null); setRwStatus(null);
+      // Show the updated version right here: keep the row open, refetch the
+      // plan detail, and flag it so the banner marks what just changed.
+      setOpen(accountId);
+      await reloadDetail(accountId);
+      if (success) setRwDone(accountId);
+    }
   }
 
   const shown = (rows ?? []).filter(r => !mineOnly || r.assignees.includes(me) || r.nextAction?.assignee === me);
@@ -232,6 +254,19 @@ export default function PlansBoardPage() {
 
                   {isOpen && (
                     <div style={{ borderTop: "1px solid var(--border)", padding: "12px 16px 16px 45px" }}>
+                      {rewriting === r.accountId && rwStatus && (
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, color: "var(--accent)", fontWeight: 600, padding: "8px 12px", marginBottom: 10, borderRadius: 9, border: "1px solid color-mix(in srgb, var(--accent) 40%, var(--border-2))", background: "color-mix(in srgb, var(--accent) 8%, var(--surface))" }}>
+                          <Loader2 size={13} className="animate-spin" /> {rwStatus}
+                        </div>
+                      )}
+                      {rwDone === r.accountId && (
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, fontWeight: 600, color: "var(--accent)", padding: "8px 12px", marginBottom: 10, borderRadius: 9, border: "1px solid color-mix(in srgb, var(--accent) 40%, var(--border-2))", background: "color-mix(in srgb, var(--accent) 8%, var(--surface))" }}>
+                          <CircleCheck size={14} style={{ flexShrink: 0 }} />
+                          <span style={{ flex: 1 }}>Plan rewritten from progress — this is the updated version. Completed work kept its state; the remaining days were re-planned.</span>
+                          <a href={`/api/accounts/${r.accountId}/plan/live?format=html`} target="_blank" rel="noreferrer" style={{ fontSize: 11.5, fontWeight: 700, color: "var(--accent)", textDecoration: "underline", flexShrink: 0 }}>Open document ↗</a>
+                          <button onClick={() => setRwDone(null)} style={{ background: "none", border: "none", color: "var(--text-dim)", cursor: "pointer", fontSize: 13, padding: 0, flexShrink: 0 }} title="Dismiss">✕</button>
+                        </div>
+                      )}
                       {detailLoading || !detail ? (
                         <div style={{ fontSize: 12.5, color: "var(--text-3)", display: "flex", alignItems: "center", gap: 8, padding: "8px 0" }}><Loader2 size={13} className="animate-spin" /> Loading plan…</div>
                       ) : detail.phases.map((ph, pi) => (
