@@ -18,6 +18,7 @@ export interface BoardRow {
   name: string;
   clientName: string | null;
   startedAt: string;
+  createdBy: string | null;
   dayInPlan: number;           // 1-based
   language: string;
   totalActions: number;
@@ -63,6 +64,7 @@ export async function GET() {
       const acts = ph.actions ?? [];
       let phDone = 0;
       acts.forEach((a, ai) => {
+        if (a.dropped) return; // out of the plan — audit trail only
         total += 1;
         const st = stateByPath.get(`p${pi}a${ai}`);
         if (st?.status === "done") { phDone += 1; done += 1; }
@@ -74,7 +76,7 @@ export async function GET() {
           };
         }
       });
-      return { title: ph.title, window: ph.window, done: phDone, total: acts.length };
+      return { title: ph.title, window: ph.window, done: phDone, total: acts.filter(a => !a.dropped).length };
     });
 
     const lastState = inst.states.reduce<{ at: Date | null; by: string | null }>((acc, s) => {
@@ -89,7 +91,7 @@ export async function GET() {
 
     rows.push({
       accountId: inst.account.id, name: inst.account.name, clientName: inst.account.clientName,
-      startedAt: inst.startedAt.toISOString(), dayInPlan, language: inst.language,
+      startedAt: inst.startedAt.toISOString(), createdBy: inst.createdBy, dayInPlan, language: inst.language,
       totalActions: total, doneActions: done, blockedActions: blocked, phases,
       nextAction: next,
       lastActivityAt: lastState.at?.toISOString() ?? null,

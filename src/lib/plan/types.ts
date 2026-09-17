@@ -20,7 +20,13 @@ export interface PlanStat {
 export interface PlanFinding { title: string; body: string; }
 export interface PlanLever { title: string; body: string; }
 export interface PlanBuildItem { title: string; body: string; }
-export interface PlanPhaseAction { action: string; who: PlanActor; when: string; }
+export interface PlanPhaseAction {
+  action: string; who: PlanActor; when: string;
+  /** Added after activation as a deliberate deviation from the plan. */
+  deviation?: boolean; deviationReason?: string; addedAt?: string; addedBy?: string;
+  /** Dropped from the live plan (kept for the audit trail, excluded from progress). */
+  dropped?: boolean; droppedReason?: string;
+}
 export interface PlanPhase { title: string; window: string; actions: PlanPhaseAction[]; }
 export interface PlanForecastRow { label: string; now: string; target: string; note?: string; }
 
