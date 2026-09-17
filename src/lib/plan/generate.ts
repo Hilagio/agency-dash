@@ -153,6 +153,7 @@ export async function buildPlanInputs(accountId: string, orgId: string, langOver
   add("USPs / positioning", ctx?.usps);
   add("Audience nuances", ctx?.audienceNuances);
   add("⭐ MAKE-OR-BREAK factor", ctx?.makeOrBreak);
+  add("Other paid channels (Meta/TikTok/influencers etc. — total orders & blended MER are driven by ALL of these, so read Google's paid share in that light)", ctx?.otherChannels);
   add("⛔ HARD CONSTRAINTS & extra context (binding — respect every item)", ctx?.anythingElse);
   if (ctx?.netMarginPct) C.push(`Net margin: ${Math.round(ctx.netMarginPct * 100)}%`);
 

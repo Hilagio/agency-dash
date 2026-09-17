@@ -10,7 +10,7 @@ import { getAuthContext, unauthorized, forbidden } from "@/lib/auth";
 export const dynamic = "force-dynamic";
 type Params = { params: Promise<{ id: string }> };
 
-const FIELDS = ["amName", "goal", "mainKpi", "targetRoasNote", "adsStartedNote", "strategyPreference", "usps", "audienceNuances", "makeOrBreak", "anythingElse"] as const;
+const FIELDS = ["amName", "goal", "mainKpi", "targetRoasNote", "adsStartedNote", "strategyPreference", "usps", "audienceNuances", "makeOrBreak", "otherChannels", "anythingElse"] as const;
 
 async function ensureAccount(id: string, orgId: string) {
   return prisma.account.findFirst({ where: { id, organizationId: orgId }, select: { id: true } });

@@ -326,6 +326,7 @@ model ClientContext {
   usps              String? // what makes this client different?
   audienceNuances   String? // audiences the algorithm must learn separately
   makeOrBreak       String? // ⭐ the make-or-break particularity (the key field)
+  otherChannels     String? // other paid channels (Meta, TikTok, influencers…) — frames paid share & MER
   anythingElse      String? // constraints / stock inputs / anything else
 
   // Optional P&L enrichment for exact margin steering (POAS).
