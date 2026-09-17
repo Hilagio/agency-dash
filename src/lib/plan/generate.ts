@@ -70,8 +70,12 @@ export async function buildPlanInputs(accountId: string, orgId: string, langOver
   const targetRoas = account.targetRoas ?? null;
   const breakEven = ctx?.breakEvenRoas ?? (marginPct && marginPct > 0 ? 1 / marginPct : null);
 
+  // The chart must show the SAME view the plan steers on: when brand campaigns
+  // exist, the excl-brand trend (account-wide is brand-inflated context).
+  const nbWindows = brandNames.size ? computeWindows([...perDayNb.values()], [], today, marginPct) : null;
+  const chartWin = (d: number) => (nbWindows ?? windows).find(w => w.days === d);
   const roasWindows = [90, 30, 14].map(d => ({
-    label: `${d}d`, roas: win(d)?.roas ?? null,
+    label: `${d}d`, roas: chartWin(d)?.roas ?? null,
     target: d === 90 ? targetRoas : null, breakEven: d === 90 ? breakEven : null,
   }));
 
@@ -90,7 +94,10 @@ export async function buildPlanInputs(accountId: string, orgId: string, langOver
     { label: language === "nl" ? "laatste 7d" : "last 7d", value: avgDaily(7) },
   ];
 
-  const charts: PlanCharts = { roasWindows, dailyRevenue, currencySymbol: sym };
+  const charts: PlanCharts = {
+    roasWindows, dailyRevenue, currencySymbol: sym,
+    roasLabel: nbWindows ? (language === "nl" ? "ROAS excl. brand over de windows" : "ROAS excl. brand across the windows") : undefined,
+  };
 
   // Winners: top products by ad conversion value (30d).
   const prodAgg = new Map<string, { title: string; spend: number; conv: number; value: number }>();
@@ -116,15 +123,22 @@ export async function buildPlanInputs(accountId: string, orgId: string, langOver
   if (targetRoas) D.push(`Target ROAS: ${targetRoas.toFixed(2)}`);
   if (breakEven) D.push(`Break-even ROAS: ${breakEven.toFixed(2)} (margin ${marginPct ? Math.round(marginPct * 100) + "%" : "unknown"})`);
   for (const d of [90, 30, 14]) { const w = win(d); if (w) D.push(`${d}d: spend ${money(w.spend, sym)}, ROAS ${w.roas != null ? w.roas.toFixed(2) : "—"}, POAS ${w.poas != null ? w.poas.toFixed(2) : "—"}`); }
-  if (brandNames.size) {
-    const nbWindows = computeWindows([...perDayNb.values()], [], today, marginPct);
+  if (nbWindows) {
     const nbWin = (d: number) => nbWindows.find(w => w.days === d);
     D.push(`\nBrand campaigns detected (${[...brandNames].slice(0, 6).join(", ")}) — account-wide ROAS is inflated by brand search. EXCLUDING brand campaigns:`);
     for (const d of [90, 30, 14]) { const w = nbWin(d); if (w) D.push(`${d}d excl. brand: spend ${money(w.spend, sym)}, ROAS ${w.roas != null ? w.roas.toFixed(2) : "—"}`); }
   }
   if (oRows.length) D.push(`Shopify (30d): ${orders30} orders, ${money(rev30, sym)} revenue${blendedMer ? `, blended MER ${blendedMer.toFixed(2)}` : ""}`);
   D.push(`Avg daily revenue: ${dailyRevenue.map(x => `${x.label} ${money(x.value, sym)}`).join(" · ")}`);
-  if (conv30 || orders30) D.push(`Reconciliation (30d): ${conv30.toFixed(1)} Ads conversions vs ${orders30} real orders${orders30 && conv30 < orders30 * 0.7 ? " — Ads is UNDER-COUNTING (likely tracking gap)" : ""}`);
+  // Ads conversions are a SUBSET of total orders (organic, email, social and
+  // brand demand fill the rest). A low paid share is channel mix, never a
+  // tracking fault — only OVER-counting (Ads claiming more than reality) flags.
+  if (orders30 > 0 && conv30 > 0) {
+    const share = Math.round((conv30 / orders30) * 100);
+    D.push(conv30 > orders30 * 1.3
+      ? `Reconciliation (30d): ${conv30.toFixed(0)} Ads conversions vs ${orders30} total orders — Ads claims MORE than reality (over-counting, likely double-counted conversions). Flag this.`
+      : `Channel mix (30d): ${conv30.toFixed(0)} of ${orders30} total orders came via Google Ads (~${share}% paid share; the rest is organic/email/social/brand). This is normal channel mix, NOT a tracking problem — never propose tracking fixes from this number.`);
+  }
   if (winners.length) { D.push(`\nWinners (top products by ad revenue, 30d):`); for (const w of winners) D.push(`  - ${w.title}: ${Math.round(w.conv)} conv, ${money(w.value, sym)} rev, ${money(w.spend, sym)} spend, ROAS ${w.spend > 0 ? (w.value / w.spend).toFixed(2) : "—"}`); }
 
   // ── Context pack block ─────────────────────────────────────────────────────
@@ -162,7 +176,8 @@ THE SOP STRUCTURE the plan must breathe (a stranger to the account must understa
 THE PLAN IS A CHECKLIST WITH PRIORITIES, NOT A TRAIN SCHEDULE (SOP: plan cycles). Phases are PILLARS — parallel workstreams the team ticks off over the cycle, never a rigid week-by-week sequence:
 - Use 3–6 pillars, named for what they are. Standard pillar set (pick the ones this account needs, add account-specific ones where the data demands): Feed optimization · Campaign structure · Budget & scaling · CRO / landing pages · Creative / assets · Client-side actions.
 - Priority is based on impact, urgency, dependencies and client context — NOT on a default week number. Anything that can start immediately starts immediately: feed optimisation, search-term cleanup, negatives are day-one work, NEVER parked at week 4+ because they sit in a later pillar.
-- "window" per pillar is an INDICATIVE emphasis ("from day 1", "continuous", "second half"), never a hard gate. "when" per action is indicative: "vanaf start", "doorlopend", "na review", "zodra X staat" (or English equivalents) — a concrete date only when a real dependency or timing anchor (e.g. Black Friday) demands it, named in the action text.
+- "window" per pillar is an INDICATIVE emphasis, never a hard gate. "when" per action is indicative — a concrete date only when a real dependency or timing anchor (e.g. Black Friday) demands it, named in the action text.
+- EVERY string in the plan is in the requested language — including "window" and "when" labels. English plan: "from start", "continuous", "after review", "once X holds", "first half". Dutch plan: "vanaf start", "doorlopend", "na review", "zodra X staat", "eerste helft". Never mix languages within one plan.
 
 OPERATIONAL HYGIENE IS NOT STRATEGY (SOP: what belongs where). Tracking checks, stock checks, consent-mode plumbing, basic account housekeeping belong in the ops log the platform keeps — NOT as plan actions or fake milestones. If something there is genuinely broken and material, mention it ONCE under whatWeNeed or caveats as a precondition. The plan itself is: goal and guardrails, strategic action checklist, active tests with review dates, progress toward the goal.
 
@@ -176,8 +191,8 @@ The make-or-break factor from the context pack is THE most important input — i
 
 Every line of the context pack is a BINDING input, not background color. The "HARD CONSTRAINTS & extra context" items are non-negotiable: budget ceilings, no-go's, stock limits, country restrictions and timing anchors must each visibly shape the workstreams, levers and forecast — and a reader must be able to point at where each constraint landed. Never propose something a constraint rules out.
 
-Rules: real numbers only ("ROAS 1.54 vs break-even 2.0", not "ROAS is low"). When "excl. brand" numbers are provided, ground EVERY performance judgement and scaling decision in those (brand search inflates account-wide ROAS) and say which view a number comes from; account-wide figures are context only. Match the client's preferred tone (cautious vs aggressive). Never recommend raising budget while ROAS is below break-even. End with honest caveats — what you will NOT promise. Write in the requested language (en or nl), in Ecomtrada's direct, confident voice.
+Rules: real numbers only ("ROAS 1.54 vs break-even 2.0", not "ROAS is low"). When "excl. brand" numbers are provided, ground EVERY performance judgement and scaling decision in those (brand search inflates account-wide ROAS) and say which view a number comes from; account-wide figures are context only. Ads conversions are a SUBSET of total shop orders — a low paid share (Ads orders vs total orders) is normal channel mix, NEVER evidence of broken tracking, and never becomes a finding, stat, risk or action; only explicit over-counting in the data block may be mentioned. Match the client's preferred tone (cautious vs aggressive). Never recommend raising budget while ROAS is below break-even. End with honest caveats — what you will NOT promise. Write in the requested language (en or nl), in Ecomtrada's direct, confident voice.
 
 Return ONLY a JSON object (no prose, no code fences) matching this shape:
-{"archetype":"fix_first|scale","planType":"first|next|recovery|q4|custom","horizonDays":90,"subtitle":"goal · market · target ROAS · period · AM","goal":"one measurable goal for this cycle","pathToGoal":["step 1","step 2"],"mainRisk":"what could block progress this cycle","nextReview":"the first review moment and what we decide there","strategyLead":"1 paragraph, **bold** key phrases","stats":[{"key":"","value":"","sub":"","tone":"grad|good|bad|neutral"}],"makeOrBreakTitle":"","makeOrBreakBody":"","makeOrBreakBullets":["",""],"findings":[{"title":"","body":""}],"levers":[{"title":"","body":""}],"whatWeBuild":[{"title":"","body":""}],"phases":[{"title":"Feed optimization","window":"from day 1 / continuous / …","actions":[{"action":"","who":"Ecomtrada|Client|Together","when":"vanaf start|doorlopend|…"}]}],"forecastLead":"","forecast":[{"label":"","now":"","target":""}],"whatWeNeed":[""],"caveats":"what we will not promise"}
+{"archetype":"fix_first|scale","planType":"first|next|recovery|q4|custom","horizonDays":90,"subtitle":"goal · market · target ROAS · period · AM","goal":"one measurable goal for this cycle","pathToGoal":["step 1","step 2"],"mainRisk":"what could block progress this cycle","nextReview":"the first review moment and what we decide there","strategyLead":"1 paragraph, **bold** key phrases","stats":[{"key":"","value":"","sub":"","tone":"grad|good|bad|neutral"}],"makeOrBreakTitle":"","makeOrBreakBody":"","makeOrBreakBullets":["",""],"findings":[{"title":"","body":""}],"levers":[{"title":"","body":""}],"whatWeBuild":[{"title":"","body":""}],"phases":[{"title":"Feed optimization","window":"indicative emphasis, in the plan language","actions":[{"action":"","who":"Ecomtrada|Client|Together","when":"indicative timing, in the plan language"}]}],"forecastLead":"","forecast":[{"label":"","now":"","target":""}],"whatWeNeed":[""],"caveats":"what we will not promise"}
 Use 4–8 stats, 3–4 findings, 2–3 levers, 4–8 whatWeBuild, 3–6 phases (pillars), 3–5 forecast rows, 3–5 whatWeNeed. Keep bodies tight (1–2 sentences).`;
