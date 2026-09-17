@@ -58,11 +58,19 @@ export async function GET(req: NextRequest, { params }: Params) {
   // activation/revision stamp in the subtitle.
   if (req.nextUrl.searchParams.get("format") === "html" && content) {
     const inputs = await buildPlanInputs(id, ctx.orgId, content.language);
+    const stateBy = new Map(inst.states.map(s => [s.path, s]));
     const printable: PlanContent = {
       ...content,
-      phases: content.phases.map(ph => ({
+      phases: content.phases.map((ph, pi) => ({
         ...ph,
-        actions: (ph.actions ?? []).filter(a => !a.dropped).map(a => a.deviation
+        // Done-state is stamped on ORIGINAL indices (paths key on them), then
+        // dropped actions fall out of the document.
+        actions: (ph.actions ?? []).map((a, ai) => {
+          const st = stateBy.get(`p${pi}a${ai}`);
+          return st?.status === "done"
+            ? { ...a, doneStamp: `${content!.language === "nl" ? "afgerond" : "done"} ${st.doneAt ? st.doneAt.toISOString().slice(0, 10) : ""}${st.doneBy ? ` · ${st.doneBy.split("@")[0]}` : ""}` }
+            : a;
+        }).filter(a => !a.dropped).map(a => a.deviation
           ? { ...a, action: `${a.action} (${content!.language === "nl" ? "toegevoegd" : "added"} ${a.addedAt?.slice(0, 10) ?? ""}${a.deviationReason ? ` — ${a.deviationReason}` : ""})` }
           : a),
       })),

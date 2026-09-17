@@ -70,6 +70,8 @@ const CSS = `
   th{background:#0e1712;color:var(--dim);font-size:10.5px;text-transform:uppercase;letter-spacing:.6px;font-weight:700;}
   td{color:#dde2de;}tr:last-child td{border-bottom:none;}td .g{color:var(--green);font-weight:700;}
   .phase-row td{background:rgba(51,204,128,.08);color:var(--green);font-weight:800;font-size:11px;text-transform:uppercase;letter-spacing:.6px;}
+  .a-done td{opacity:.62;}.a-done s{text-decoration-color:rgba(221,226,222,.55);}
+  .done-stamp{color:var(--green);font-weight:700;font-size:11px;white-space:nowrap;}
   .badge{display:inline-block;border-radius:99px;padding:3px 11px;font-size:11px;font-weight:700;white-space:nowrap;}
   .b-ec{background:rgba(51,204,128,.15);color:var(--green);border:1px solid rgba(51,204,128,.4);}
   .b-cl{background:rgba(249,195,31,.13);color:var(--gold);border:1px solid rgba(249,195,31,.4);}
@@ -146,7 +148,9 @@ export function renderPlanHtml(plan: PlanContent, charts: PlanCharts): string {
   const badge = (who: string) => who === "Client" ? `<span class="badge b-cl">${plan.language === "nl" ? "Klant" : "Client"}</span>` : who === "Together" ? `<span class="badge b-both">${plan.language === "nl" ? "Samen" : "Together"}</span>` : `<span class="badge b-ec">Ecomtrada</span>`;
   const phases = plan.phases.length ? `<div class="sec"><h2>${t.theDays}</h2><table><tbody>
     <tr><th style="width:60%">${t.action}</th><th>${t.who}</th><th>${t.when}</th></tr>
-    ${plan.phases.map(ph => `<tr class="phase-row"><td colspan="3">${esc(ph.title)}${ph.window ? ` · ${esc(ph.window)}` : ""}</td></tr>${ph.actions.map(a => `<tr><td>${inline(a.action)}</td><td>${badge(a.who)}</td><td>${esc(a.when)}</td></tr>`).join("")}`).join("")}
+    ${plan.phases.map(ph => `<tr class="phase-row"><td colspan="3">${esc(ph.title)}${ph.window ? ` · ${esc(ph.window)}` : ""}</td></tr>${ph.actions.map(a => a.doneStamp
+      ? `<tr class="a-done"><td><s>${inline(a.action)}</s> <span class="done-stamp">✓ ${esc(a.doneStamp)}</span></td><td>${badge(a.who)}</td><td>${esc(a.when)}</td></tr>`
+      : `<tr><td>${inline(a.action)}</td><td>${badge(a.who)}</td><td>${esc(a.when)}</td></tr>`).join("")}`).join("")}
     </tbody></table>
     <div class="legend"><span class="badge b-ec">Ecomtrada</span> ${t.weDo} &nbsp; <span class="badge b-cl">${plan.language === "nl" ? "Klant" : "Client"}</span> ${t.youDo} &nbsp; <span class="badge b-both">${plan.language === "nl" ? "Samen" : "Together"}</span> ${t.jointly}</div></div>` : "";
 

@@ -26,6 +26,8 @@ export interface PlanPhaseAction {
   deviation?: boolean; deviationReason?: string; addedAt?: string; addedBy?: string;
   /** Dropped from the live plan (kept for the audit trail, excluded from progress). */
   dropped?: boolean; droppedReason?: string;
+  /** Set only when rendering the live printable version: "afgerond 2026-09-17 · lennard". */
+  doneStamp?: string;
 }
 export interface PlanPhase { title: string; window: string; actions: PlanPhaseAction[]; }
 export interface PlanForecastRow { label: string; now: string; target: string; note?: string; }
