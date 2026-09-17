@@ -51,6 +51,7 @@ export default function PlansBoardPage() {
   const [addReason, setAddReason] = useState<Record<number, string>>({});
   const [detailLoading, setDetailLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [rewriting, setRewriting] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const j = await fetch("/api/diagnostics/plan-board", { credentials: "include" }).then(r => r.ok ? r.json() : null).catch(() => null);
@@ -109,6 +110,49 @@ export default function PlansBoardPage() {
       body: JSON.stringify({ dropAction: { path, reason } }),
     }).catch(() => null);
     reloadDetail(accountId);
+  }
+
+  async function editAction(accountId: string, path: string, a: LiveAction) {
+    const text = window.prompt("Action text:", a.action);
+    if (text === null) return;
+    const when = window.prompt("When (e.g. Week 3):", a.when);
+    if (when === null) return;
+    await fetch(`/api/accounts/${accountId}/plan/live`, {
+      method: "PATCH", credentials: "include", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ editAction: { path, action: text.trim(), when: when.trim() } }),
+    }).catch(() => null);
+    reloadDetail(accountId);
+  }
+
+  // AI rewrite from progress: re-plans the remaining days around what's
+  // already done — completed work keeps its state and stops being the story.
+  async function rewriteFromProgress(accountId: string) {
+    if (rewriting) return;
+    setRewriting(accountId);
+    try {
+      const r = await fetch(`/api/accounts/${accountId}/plan`, {
+        method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rewriteFromLive: true }),
+      });
+      if (!r.ok || !r.body) { setErr("Rewrite failed to start."); return; }
+      const reader = r.body.getReader(); const dec = new TextDecoder(); let buf = ""; let okDone = false;
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buf += dec.decode(value, { stream: true });
+        const parts = buf.split("\n\n"); buf = parts.pop() ?? "";
+        for (const part of parts) {
+          const line = part.trim(); if (!line.startsWith("data:")) continue;
+          try {
+            const ev = JSON.parse(line.slice(5).trim());
+            if (ev.error) { setErr(ev.error); okDone = true; }
+            else if (ev.done) okDone = true;
+          } catch { /* keep-alive */ }
+        }
+      }
+      if (!okDone) setErr("The connection dropped during the rewrite — check the plan and retry if needed.");
+    } catch (e) { setErr(e instanceof Error ? e.message : "Rewrite failed"); }
+    finally { setRewriting(null); reloadDetail(accountId); }
   }
 
   const shown = (rows ?? []).filter(r => !mineOnly || r.assignees.includes(me) || r.nextAction?.assignee === me);
@@ -208,18 +252,24 @@ export default function PlansBoardPage() {
                               return (
                                 <div key={ai} style={{ display: "flex", alignItems: "flex-start", gap: 9, padding: "7px 10px", borderRadius: 9, background: isDone ? "var(--surface-2)" : "var(--surface)", border: `1px solid ${isBlocked ? "color-mix(in srgb, var(--danger) 45%, var(--border-2))" : "var(--border-2)"}`, opacity: isDone ? 0.65 : 1 }}>
                                   <input type="checkbox" checked={isDone} onChange={e => patchAction(r.accountId, path, { status: e.target.checked ? "done" : "open" })} style={{ marginTop: 3, cursor: "pointer" }} title={isDone && st?.doneBy ? `done by ${st.doneBy}` : "Mark done"} />
+                                  {/* status select mirrors the paper checklist: Not started / In progress / Done / Blocked */}
                                   <div style={{ flex: 1, minWidth: 0 }}>
                                     <div style={{ fontSize: 12.5, color: isDone ? "var(--text-muted)" : "var(--text-2)", lineHeight: 1.45, textDecoration: isDone ? "line-through" : "none" }}>{a.action}{a.deviation && <span title={`${a.deviationReason ?? ""} — added ${a.addedAt?.slice(0, 10) ?? ""} by ${a.addedBy ?? ""}`} style={{ marginLeft: 6, fontSize: 9.5, fontWeight: 800, letterSpacing: 0.4, textTransform: "uppercase", color: "var(--accent)", border: "1px solid color-mix(in srgb, var(--accent) 45%, transparent)", borderRadius: 4, padding: "1px 5px" }}>deviation</span>}</div>
-                                    <div style={{ fontSize: 10.5, color: "var(--text-dim)", marginTop: 2 }}>{a.who} · {a.when}{isDone && st?.doneBy ? ` · ✓ ${st.doneBy.split("@")[0]}` : ""}{st?.note ? ` · 📝 ${st.note}` : ""}</div>
+                                    <div style={{ fontSize: 10.5, color: "var(--text-dim)", marginTop: 2 }}>{a.who} · {a.when}{isDone && st?.doneBy ? ` · ✓ ${st.doneBy.split("@")[0]}` : ""}{st?.status === "busy" ? " · ⏳ in progress" : ""}{st?.note ? ` · 📝 ${st.note}` : ""}</div>
                                   </div>
                                   <select value={st?.assignee ?? ""} onChange={e => patchAction(r.accountId, path, { assignee: e.target.value || null })} style={selStyle} title="Assign a teammate">
                                     <option value="">— unassigned —</option>
                                     {members.map(m => <option key={m.email} value={m.email}>{m.name}</option>)}
                                   </select>
-                                  <button onClick={() => patchAction(r.accountId, path, { status: isBlocked ? "open" : "blocked" })} title={isBlocked ? "Unblock" : "Flag as blocked"}
-                                    style={{ fontSize: 10.5, fontWeight: 700, padding: "3px 8px", borderRadius: 6, border: "1px solid var(--border-2)", cursor: "pointer", background: isBlocked ? "var(--danger)" : "var(--surface-2)", color: isBlocked ? "#fff" : "var(--text-3)", flexShrink: 0 }}>
-                                    {isBlocked ? "blocked" : "block"}
-                                  </button>
+                                  <select value={st?.status ?? "open"} onChange={e => patchAction(r.accountId, path, { status: e.target.value })} title="Status"
+                                    style={{ fontSize: 11, padding: "4px 6px", borderRadius: 7, border: "1px solid var(--border-2)", background: isBlocked ? "var(--danger)" : "var(--surface-2)", color: isBlocked ? "#fff" : st?.status === "busy" ? "var(--accent)" : "var(--text-3)", fontWeight: 700, flexShrink: 0 }}>
+                                    <option value="open">not started</option>
+                                    <option value="busy">in progress</option>
+                                    <option value="done">done</option>
+                                    <option value="blocked">blocked</option>
+                                  </select>
+                                  <button onClick={() => editAction(r.accountId, path, a)} title="Edit this action's text or timing"
+                                    style={{ fontSize: 10.5, fontWeight: 700, padding: "3px 8px", borderRadius: 6, border: "1px solid var(--border-2)", cursor: "pointer", background: "var(--surface-2)", color: "var(--text-3)", flexShrink: 0 }}>edit</button>
                                   <button onClick={() => dropDeviation(r.accountId, path, a.action)} title="Drop this action from the plan (with a reason — kept in the history)"
                                     style={{ fontSize: 10.5, fontWeight: 700, padding: "3px 8px", borderRadius: 6, border: "1px solid var(--border-2)", cursor: "pointer", background: "var(--surface-2)", color: "var(--text-dim)", flexShrink: 0 }}>drop</button>
                                 </div>
@@ -236,6 +286,12 @@ export default function PlansBoardPage() {
                       {/* History + print of the current version */}
                       {detail && <div style={{ display: "flex", alignItems: "center", gap: 14, marginTop: 4, marginBottom: 10, flexWrap: "wrap" }}>
                         <a href={`/api/accounts/${r.accountId}/plan/live?format=html`} target="_blank" rel="noreferrer" style={{ fontSize: 12, fontWeight: 700, color: "var(--text-2)", textDecoration: "none", border: "1px solid var(--border-2)", borderRadius: 8, padding: "6px 12px", background: "var(--surface)" }}>Print current plan ↗</a>
+                        <a href={`/api/accounts/${r.accountId}/plan/live?format=checklist`} target="_blank" rel="noreferrer" style={{ fontSize: 12, fontWeight: 700, color: "var(--text-2)", textDecoration: "none", border: "1px solid var(--border-2)", borderRadius: 8, padding: "6px 12px", background: "var(--surface)" }}>Print checklist ↗</a>
+                        <button onClick={() => rewriteFromProgress(r.accountId)} disabled={rewriting !== null}
+                          title="AI re-plans the remaining days around what's already done — completed work keeps its state and stops dominating the plan"
+                          style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 700, color: "#fff", background: "var(--btn-primary, var(--accent))", border: "none", borderRadius: 8, padding: "6px 12px", cursor: rewriting ? "default" : "pointer" }}>
+                          {rewriting === r.accountId ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />} {rewriting === r.accountId ? "Rewriting…" : "Rewrite from progress"}
+                        </button>
                         <button onClick={() => setHistoryOpen(h => !h)} style={{ fontSize: 12, fontWeight: 600, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>
                           {historyOpen ? "Hide history" : `History (${detail.events.length})`}
                         </button>

@@ -20,6 +20,7 @@ import { prisma } from "@/lib/db";
 import { getAuthContext, unauthorized, forbidden } from "@/lib/auth";
 import { buildPlanInputs } from "@/lib/plan/generate";
 import { renderPlanHtml } from "@/lib/plan/render";
+import { renderPlanChecklist } from "@/lib/plan/checklist";
 import type { PlanContent, PlanPhaseAction } from "@/lib/plan/types";
 
 export const dynamic = "force-dynamic";
@@ -44,6 +45,13 @@ export async function GET(req: NextRequest, { params }: Params) {
   if (!inst) return NextResponse.json({ active: false });
   let content: PlanContent | null = null;
   try { content = JSON.parse(inst.content) as PlanContent; } catch { /* corrupt content */ }
+
+  // Printable progress CHECKLIST — the Action/Status/Owner/Notes tables the
+  // team used to maintain by hand in Word, generated from the live state.
+  if (req.nextUrl.searchParams.get("format") === "checklist" && content) {
+    const html = renderPlanChecklist(content, { client: content.client, startedAt: inst.startedAt, createdBy: inst.createdBy, updatedAt: inst.updatedAt }, inst.states);
+    return new NextResponse(html, { headers: { "Content-Type": "text/html; charset=utf-8" } });
+  }
 
   // Printable current version: the plan as it stands today — deviations
   // rendered as part of the phases, dropped actions removed, with an
@@ -78,19 +86,24 @@ export async function PUT(req: NextRequest, { params }: Params) {
   const { id } = await params;
   if (!(await owned(id, ctx.orgId))) return forbidden();
 
-  const body = await req.json().catch(() => ({})) as { plan?: PlanContent };
+  const body = await req.json().catch(() => ({})) as { plan?: PlanContent; startedAt?: string };
   const plan = body.plan;
   if (!plan || !Array.isArray(plan.phases) || !plan.phases.length) {
     return NextResponse.json({ error: "A plan with phases is required." }, { status: 400 });
   }
 
+  // Optional real start date — for plans that were made earlier and are being
+  // brought into the system now, so the 90-day clock reflects reality.
+  const startRaw = typeof body.startedAt === "string" ? new Date(body.startedAt) : null;
+  const startedAt = startRaw && !Number.isNaN(startRaw.getTime()) && startRaw.getTime() <= Date.now() ? startRaw : null;
+
   const existing = await prisma.planInstance.findUnique({ where: { accountId: id }, include: { states: true } });
 
   if (!existing) {
     const created = await prisma.planInstance.create({
-      data: { accountId: id, content: JSON.stringify(plan), language: plan.language ?? "en", createdBy: ctx.email },
+      data: { accountId: id, content: JSON.stringify(plan), language: plan.language ?? "en", createdBy: ctx.email, ...(startedAt ? { startedAt } : {}) },
     });
-    await log(created.id, ctx.email, "activated", "Plan activated as the account's live 90-day plan.");
+    await log(created.id, ctx.email, "activated", `Plan activated as the account's live 90-day plan${startedAt ? ` (plan start date set to ${startedAt.toISOString().slice(0, 10)})` : ""}.`);
     return NextResponse.json({ ok: true, planId: created.id, restoredStates: 0, startedAt: created.startedAt });
   }
 
@@ -111,7 +124,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
     await tx.planActionState.deleteMany({ where: { planId: existing.id } });
     await tx.planInstance.update({
       where: { id: existing.id },
-      data: { content: JSON.stringify(plan), language: plan.language ?? existing.language },
+      data: { content: JSON.stringify(plan), language: plan.language ?? existing.language, ...(startedAt ? { startedAt } : {}) },
     });
     for (let pi = 0; pi < plan.phases.length; pi++) {
       const acts = plan.phases[pi].actions ?? [];
@@ -138,6 +151,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const body = await req.json().catch(() => ({})) as {
     path?: string; status?: string; assignee?: string | null; note?: string | null;
     addAction?: { phase?: number; action?: string; who?: string; when?: string; reason?: string };
+    editAction?: { path?: string; action?: string; when?: string; who?: string };
     dropAction?: { path?: string; reason?: string };
   };
 
@@ -168,6 +182,21 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     await prisma.planInstance.update({ where: { id: inst.id }, data: { content: JSON.stringify(content) } });
     await log(inst.id, ctx.email, "deviation", `Added to "${content.phases[pi].title}": "${text}"${act.deviationReason ? ` — reason: ${act.deviationReason}` : ""}`);
     return NextResponse.json({ ok: true, path: `p${pi}a${content.phases[pi].actions!.length - 1}` });
+  }
+
+  // ── Manual edit: reword an action / change its owner or timing in place.
+  // The path (and therefore its done/assignee state) is unchanged.
+  if (body.editAction) {
+    const path = body.editAction.path ?? "";
+    const act = actionAt(path);
+    if (!act) return NextResponse.json({ error: "action not found" }, { status: 404 });
+    const before = act.action;
+    if (typeof body.editAction.action === "string" && body.editAction.action.trim()) act.action = body.editAction.action.trim();
+    if (typeof body.editAction.when === "string" && body.editAction.when.trim()) act.when = body.editAction.when.trim();
+    if (typeof body.editAction.who === "string" && ["Ecomtrada", "Client", "Together"].includes(body.editAction.who)) act.who = body.editAction.who as PlanPhaseAction["who"];
+    await prisma.planInstance.update({ where: { id: inst.id }, data: { content: JSON.stringify(content) } });
+    await log(inst.id, ctx.email, "edited", before === act.action ? `Edited timing/owner of "${act.action.slice(0, 80)}"` : `Edited: "${before.slice(0, 60)}" → "${act.action.slice(0, 60)}"`);
+    return NextResponse.json({ ok: true });
   }
 
   // ── Deviation: drop an action (kept in the audit trail, out of progress) ───
