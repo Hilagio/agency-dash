@@ -50,6 +50,7 @@ export default function PlanPage() {
   const [editMode, setEditMode] = useState(false);
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [liveState, setLiveState] = useState<"none" | "busy" | "active">("none");
+  const [liveStart, setLiveStart] = useState<string>(new Date().toISOString().slice(0, 10));
   const [err, setErr] = useState<string | null>(null);
   const [clientName, setClientName] = useState<string>("");
 
@@ -188,7 +189,7 @@ export default function PlanPage() {
     try {
       const r = await fetch(`/api/accounts/${id}/plan/live`, {
         method: "PUT", credentials: "include", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan }),
+        body: JSON.stringify({ plan, startedAt: liveStart }),
       });
       setLiveState(r.ok ? "active" : "none");
       if (!r.ok) setErr((await r.json().catch(() => ({})))?.error ?? "Couldn't activate the plan.");
@@ -236,6 +237,11 @@ export default function PlanPage() {
           <button onClick={() => generate()} disabled={busy} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600, color: "#fff", background: "var(--accent)", border: "none", borderRadius: 8, padding: "8px 15px", cursor: busy ? "default" : "pointer" }}>
             {busy ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />} {html ? "Regenerate" : "Generate plan"}
           </button>
+          {html && plan && liveState !== "active" && (
+            <input type="date" value={liveStart} max={new Date().toISOString().slice(0, 10)} onChange={e => setLiveStart(e.target.value)}
+              title="Plan start date — backdate this for an existing plan you're importing, so the 90-day clock reflects reality"
+              style={{ fontSize: 12, padding: "7px 9px", borderRadius: 8, border: "1px solid var(--border-2)", background: "var(--surface-2)", color: "var(--text)" }} />
+          )}
           {html && plan && (
             <button onClick={activateLive} disabled={busy || liveState === "busy"} title="Make this the account's live plan — the team tracks and assigns every action on the /plans board"
               style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600, color: liveState === "active" ? "var(--accent)" : "var(--text-2)", background: "var(--surface)", border: `1px solid ${liveState === "active" ? "color-mix(in srgb, var(--accent) 55%, var(--border-2))" : "var(--border-2)"}`, borderRadius: 8, padding: "8px 13px", cursor: "pointer" }}>

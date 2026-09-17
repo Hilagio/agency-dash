@@ -262,6 +262,26 @@ export async function POST(req: NextRequest, { params }: Params) {
     trackingDirective = `\n\nTEAM-CONFIRMED FACT${who}${when}: Conversion tracking is BROKEN${account.trackingNote ? ` (${account.trackingNote})` : ""}. Every conversion and ROAS figure below is UNRELIABLE and almost certainly understated. The single highest priority is restoring tracking; do NOT draw ROAS/profitability conclusions or recommend bidding/budget changes until it is fixed and clean data re-accrues.`;
   }
 
+  // Live 90-day plan state: what the team already DID must never come back as
+  // a recommendation. The read builds on the plan instead of re-prescribing it.
+  let planDirective = "";
+  try {
+    const inst = await prisma.planInstance.findUnique({ where: { accountId: id }, include: { states: true } });
+    if (inst) {
+      const c = JSON.parse(inst.content) as { phases?: { title: string; actions?: { action: string; dropped?: boolean }[] }[] };
+      const stateBy = new Map(inst.states.map(st => [st.path, st]));
+      const done: string[] = [], open: string[] = [];
+      (c.phases ?? []).forEach((ph, pi) => (ph.actions ?? []).forEach((a, ai) => {
+        if (a.dropped) return;
+        const st = stateBy.get(`p${pi}a${ai}`);
+        if (st?.status === "done") done.push(`"${a.action}" (${st.doneAt ? st.doneAt.toISOString().slice(0, 10) : "done"}${st.doneBy ? `, ${st.doneBy.split("@")[0]}` : ""})`);
+        else open.push(`"${a.action}"`);
+      }));
+      const day = Math.max(1, Math.floor((Date.now() - inst.startedAt.getTime()) / 86_400_000) + 1);
+      planDirective = `\n\nLIVE 90-DAY PLAN (day ${day} of 90):${done.length ? `\nCOMPLETED by the team — treat as finished reality, NEVER recommend, warn about or re-plan any of these again: ${done.slice(0, 15).join("; ")}` : ""}${open.length ? `\nSTILL OPEN — steer advice toward these next steps: ${open.slice(0, 10).join("; ")}` : ""}`;
+    }
+  } catch { /* plan context is best-effort */ }
+
   const encoder = new TextEncoder();
   const send = (c: ReadableStreamDefaultController, o: unknown) => c.enqueue(encoder.encode(`data: ${JSON.stringify(o)}\n\n`));
 
@@ -455,7 +475,7 @@ export async function POST(req: NextRequest, { params }: Params) {
         // campaign structure, search terms, Shopify) — we execute them and feed
         // the results back until it produces its final answer. Pre-tool narration
         // ("let me check…") is reset away; only the final text is shown/persisted.
-        const sysPrompt = (useChatSystem ? SYSTEM_CHAT : SYSTEM) + PPC_OS_SYSTEM_NOTE + AGENT_TOOLS_NOTE + LEADGEN_NOTE + trackingDirective;
+        const sysPrompt = (useChatSystem ? SYSTEM_CHAT : SYSTEM) + PPC_OS_SYSTEM_NOTE + AGENT_TOOLS_NOTE + LEADGEN_NOTE + trackingDirective + planDirective;
         const allTools = [...(ppc.tools ?? []), ...AGENT_TOOLS] as Parameters<typeof client.beta.messages.stream>[0]["tools"];
         const loopMessages = messages.slice();
         const toolAcc = { id: account.id, googleAdsId: account.googleAdsId, organizationId: account.organizationId, currency: account.currency, merchantCenterId: account.merchantCenterId };
