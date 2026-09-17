@@ -28,6 +28,7 @@ export interface BoardRow {
   nextAction: { path: string; phase: string; action: string; who: string; when: string; assignee: string | null; status: string } | null;
   lastActivityAt: string | null; // latest state change
   lastDoneBy: string | null;
+  lastUpdate: { at: string; by: string | null; detail: string } | null; // newest history entry
   stalled: boolean;              // live > 7d and no state change in 7d
   assignees: string[];           // everyone currently assigned to open work
 }
@@ -36,17 +37,23 @@ export async function GET() {
   const ctx = await getAuthContext();
   if (!ctx) return unauthorized();
 
-  const [instances, members] = await Promise.all([
+  const [instances, members, allAccounts] = await Promise.all([
     prisma.planInstance.findMany({
       where: { account: { organizationId: ctx.orgId, archived: false } },
       include: {
         states: true,
+        events: { orderBy: { at: "desc" }, take: 1 },
         account: { select: { id: true, name: true, clientName: true } },
       },
     }),
     prisma.organizationMember.findMany({
       where: { organizationId: ctx.orgId },
       include: { user: { select: { email: true, name: true } } },
+    }),
+    prisma.account.findMany({
+      where: { organizationId: ctx.orgId, archived: false, active: true },
+      select: { id: true, name: true, clientName: true },
+      orderBy: { name: "asc" },
     }),
   ]);
 
@@ -96,6 +103,7 @@ export async function GET() {
       nextAction: next,
       lastActivityAt: lastState.at?.toISOString() ?? null,
       lastDoneBy: lastState.by,
+      lastUpdate: inst.events[0] ? { at: inst.events[0].at.toISOString(), by: inst.events[0].by, detail: inst.events[0].detail } : null,
       stalled: !finished && liveDays > 7 && idleDays > 7,
       assignees: [...new Set(inst.states.filter(s => s.status !== "done" && s.assignee).map(s => s.assignee!))],
     });
@@ -106,8 +114,13 @@ export async function GET() {
     || b.blockedActions - a.blockedActions
     || (a.doneActions / Math.max(1, a.totalActions)) - (b.doneActions / Math.max(1, b.totalActions)));
 
+  const planned = new Set(rows.map(r => r.accountId));
+  const unplanned = allAccounts.filter(a => !planned.has(a.id))
+    .map(a => ({ accountId: a.id, name: a.name, clientName: a.clientName }));
+
   return NextResponse.json({
     rows,
+    unplanned,
     members: members.map(m => ({ email: m.user.email, name: m.user.name || m.user.email.split("@")[0], role: m.role })),
     me: ctx.email,
   });
