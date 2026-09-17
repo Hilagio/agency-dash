@@ -10,6 +10,8 @@
 export type PlanLanguage = "en" | "nl";
 export type PlanArchetype = "fix_first" | "scale";
 export type PlanActor = "Ecomtrada" | "Client" | "Together";
+/** first = day 0–90 for a new client · next = the follow-up period (e.g. 90–180) · custom = user-briefed period/focus. */
+export type PlanType = "first" | "next" | "custom";
 
 export interface PlanStat {
   key: string;                 // "Tracked ROAS"
@@ -38,6 +40,13 @@ export interface PlanContent {
   /** goal · market · target ROAS · period · AM — the header sub-line. */
   subtitle: string;
   archetype: PlanArchetype;
+  planType?: PlanType;
+  /** Plan horizon in days (default 90) — drives "day X of N" everywhere. */
+  horizonDays?: number;
+  /** SOP §2: the measurable goal for this period ("€30k → €60k/month at ROAS ≥ 3.0"). */
+  goal?: string;
+  /** SOP §3: the strategic roadmap — the logic of X now because it enables Y later. */
+  pathToGoal?: string[];
   /** "Where we start" / "The strategy" lead paragraph. */
   strategyLead: string;
   stats: PlanStat[];

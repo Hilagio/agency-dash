@@ -35,7 +35,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   if (!ctx) return unauthorized();
   const { id } = await params;
 
-  const body = await req.json().catch(() => ({})) as { language?: PlanLanguage; revise?: string; basePlan?: PlanContent; renderOnly?: boolean; rewriteFromLive?: boolean };
+  const body = await req.json().catch(() => ({})) as { language?: PlanLanguage; revise?: string; basePlan?: PlanContent; renderOnly?: boolean; rewriteFromLive?: boolean; planType?: string; customBrief?: string };
   const inputs = await buildPlanInputs(id, ctx.orgId, body.language === "nl" || body.language === "en" ? body.language : undefined);
   if (!inputs) return forbidden();
 
@@ -71,14 +71,45 @@ export async function POST(req: NextRequest, { params }: Params) {
       else lines.push(`OPEN: "${a.action}"`);
     }));
     const day = Math.max(1, Math.floor((Date.now() - inst.startedAt.getTime()) / 86_400_000) + 1);
-    rewriteInstr = `REWRITE FROM EXECUTION STATE — we are on DAY ${day} of the 90-day plan. Status of every action:
+    const hd = rewriteBase.horizonDays && rewriteBase.horizonDays > 0 ? Math.round(rewriteBase.horizonDays) : 90;
+    rewriteInstr = `REWRITE FROM EXECUTION STATE — we are on DAY ${day} of the ${hd}-day plan. Status of every action:
 ${lines.join("\n")}
 
 Rules for the rewrite:
 - Work marked DONE is finished reality. Keep each DONE action in its phase with its text VERBATIM (character-for-character — its completion state is keyed on that text), but the plan's story must treat it as completed: no recommendations, warnings or phasing around it anywhere (strategyLead, make-or-break, findings, levers, forecast). One short acknowledgement of what's been completed is enough.
-- Re-plan the REMAINING ~${Math.max(0, 90 - day)} days around the next constraint and GROWTH, using the fresh live data below. Restructure open/future actions and week windows from today onward.
+- Re-plan the REMAINING ~${Math.max(0, hd - day)} days around the next constraint and GROWTH, using the fresh live data below. Restructure open/future actions and their indicative timing from today onward.
 - Remove actions marked DROPPED entirely. Keep BLOCKED actions visible with their blocker.
 - You may add new actions where the data says the growth path needs them.`;
+  }
+
+  // Plan type steers a fresh generation. "first" = new-client day 0–90;
+  // "next" = the follow-up period, built ON TOP of what the previous live plan
+  // already achieved; "custom" = the user's own brief (period, focus) is
+  // binding. Ignored on revisions/rewrites (those keep their base plan).
+  const planType = body.planType === "next" || body.planType === "custom" ? body.planType : "first";
+  const customBrief = typeof body.customBrief === "string" ? body.customBrief.trim() : "";
+  let typeBlock = `\n\nPLAN TYPE: FIRST plan (day 0–90) for this client. Set "planType":"first" and "horizonDays":90.`;
+  if (planType === "next" && !body.rewriteFromLive) {
+    // Feed the previous period's plan + execution state so the follow-up plan
+    // builds on reality instead of re-proposing finished foundation work.
+    let prev = "";
+    const prevInst = await prisma.planInstance.findUnique({ where: { accountId: id }, include: { states: true } });
+    if (prevInst) {
+      try {
+        const prevC = JSON.parse(prevInst.content) as PlanContent;
+        const stBy = new Map(prevInst.states.map(s => [s.path, s]));
+        const lines: string[] = [];
+        prevC.phases.forEach((ph, pi) => (ph.actions ?? []).forEach((a, ai) => {
+          if (a.dropped) return;
+          const st = stBy.get(`p${pi}a${ai}`);
+          lines.push(`${st?.status === "done" ? "DONE" : st?.status === "blocked" ? "BLOCKED" : "OPEN"}: "${a.action}"`);
+        }));
+        prev = `\nPREVIOUS PERIOD — goal: ${prevC.goal ?? prevC.subtitle}. Execution state of its actions:\n${lines.join("\n")}`;
+      } catch { /* unreadable previous plan — proceed without it */ }
+    }
+    typeBlock = `\n\nPLAN TYPE: FOLLOW-UP plan — the NEXT period (day 90–180) for an existing client. Set "planType":"next" and "horizonDays":90. This is NOT a restart: assume the foundation from the previous period stands. Do not re-propose work marked DONE below; carry BLOCKED/OPEN work forward only if it still matters. The story of this plan is the next constraint and the next level of growth (scaling, expansion, new inventory/markets/channels, compounding what works) — measurably beyond the previous period's goal.${prev}`;
+  } else if (planType === "custom" && !body.rewriteFromLive) {
+    typeBlock = `\n\nPLAN TYPE: CUSTOM plan. Set "planType":"custom". The brief below is BINDING — it defines the period, focus and boundaries of this plan. If the brief names a period other than 90 days, set "horizonDays" accordingly (in days); otherwise use 90.\nBRIEF FROM THE TEAM:\n${customBrief || "(no brief given — treat as a standard strategic plan)"}`;
   }
 
   // Revision mode: the team hands back an existing plan (from state or an
@@ -96,7 +127,7 @@ Rules for the rewrite:
     ? `CURRENT LIVE PLAN (JSON):\n${JSON.stringify(basePlan)}\n\nFRESH LIVE DATA (today's figures — the plan's numbers may be stale):\n${inputs.dataBlock}\n\nCLIENT CONTEXT PACK:\n${inputs.contextBlock}\n\n${revise}\n\nThis is a mid-flight rewrite, not a cosmetic edit: keep each DONE action's text character-for-character verbatim, but REWRITE the narrative and everything still ahead — strategyLead, make-or-break, findings, levers, remaining/open actions, week windows and forecast — around the execution state and today's data. The updated plan must read as version 2, picking up from where the team stands now. Return the FULL updated plan as the same JSON shape, in ${inputs.language === "nl" ? "Dutch" : "English"}. Return only the JSON object.`
     : basePlan
     ? `EXISTING PLAN (JSON — the team has already reviewed this):\n${JSON.stringify(basePlan)}\n\nFRESH LIVE DATA (for reference — correct figures against this where the instruction says data is wrong):\n${inputs.dataBlock}\n\nCLIENT CONTEXT PACK:\n${inputs.contextBlock}\n\nREQUESTED CHANGES from the team:\n${revise}\n\nApply ONLY the requested changes to the existing plan. Keep every other field, sentence and figure VERBATIM — do not rephrase, reorder or re-balance untouched sections. If the instruction says to delete something, remove it entirely. Return the FULL updated plan as the same JSON shape, in ${inputs.language === "nl" ? "Dutch" : "English"}. Return only the JSON object.`
-    : `CLIENT CONTEXT PACK:\n${inputs.contextBlock}\n\nLIVE DATA:\n${inputs.dataBlock}\n\nWrite the 90-day plan for ${inputs.account.name} in ${inputs.language === "nl" ? "Dutch" : "English"}. Return only the JSON object.`;
+    : `CLIENT CONTEXT PACK:\n${inputs.contextBlock}\n\nLIVE DATA:\n${inputs.dataBlock}${typeBlock}\n\nWrite the strategic plan for ${inputs.account.name} in ${inputs.language === "nl" ? "Dutch" : "English"}. Return only the JSON object.`;
 
   const encoder = new TextEncoder();
   const send = (c: ReadableStreamDefaultController, o: unknown) => c.enqueue(encoder.encode(`data: ${JSON.stringify(o)}\n\n`));

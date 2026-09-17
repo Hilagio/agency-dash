@@ -15,7 +15,7 @@ interface Action { action: string; who: string; when: string; dropped?: boolean 
 interface LiveResp {
   active: boolean;
   startedAt?: string;
-  content?: { phases?: { title: string; actions?: Action[] }[] };
+  content?: { phases?: { title: string; actions?: Action[] }[]; horizonDays?: number };
   states?: { path: string; status: string; assignee: string | null }[];
   events?: { at: string; by: string | null; detail: string }[];
 }
@@ -58,7 +58,8 @@ export function LivePlanCard({ accountId }: { accountId: string }) {
     if (st?.status === "done") done += 1;
     else if (!next) next = { action: a.action, phase: ph.title, assignee: st?.assignee ?? null };
   }));
-  const day = data.startedAt ? Math.min(90, Math.max(1, Math.floor((Date.now() - new Date(data.startedAt).getTime()) / 86_400_000) + 1)) : 1;
+  const horizon = data.content?.horizonDays && data.content.horizonDays > 0 ? data.content.horizonDays : 90;
+  const day = data.startedAt ? Math.min(horizon, Math.max(1, Math.floor((Date.now() - new Date(data.startedAt).getTime()) / 86_400_000) + 1)) : 1;
   const last = data.events?.[0];
   const finished = total > 0 && done >= total;
 
@@ -66,8 +67,8 @@ export function LivePlanCard({ accountId }: { accountId: string }) {
     <div style={{ ...card, marginTop: 12, padding: "13px 16px" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
         <ClipboardList size={15} style={{ color: "var(--accent)", flexShrink: 0 }} />
-        <span style={{ fontSize: 12.5, fontWeight: 700 }}>Live 90-day plan</span>
-        <span style={{ fontSize: 11.5, color: "var(--text-muted)" }}>day {day} of 90</span>
+        <span style={{ fontSize: 12.5, fontWeight: 700 }}>Live {horizon}-day plan</span>
+        <span style={{ fontSize: 11.5, color: "var(--text-muted)" }}>day {day} of {horizon}</span>
         <div style={{ flex: 1, minWidth: 90, height: 7, borderRadius: 4, background: "var(--surface-2)", border: "1px solid var(--border-2)", overflow: "hidden" }}>
           <div style={{ width: `${total > 0 ? (done / total) * 100 : 0}%`, height: "100%", background: "var(--accent)" }} />
         </div>

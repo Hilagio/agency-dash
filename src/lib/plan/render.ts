@@ -72,6 +72,12 @@ const CSS = `
   .phase-row td{background:rgba(51,204,128,.08);color:var(--green);font-weight:800;font-size:11px;text-transform:uppercase;letter-spacing:.6px;}
   .a-done td{opacity:.62;}.a-done s{text-decoration-color:rgba(221,226,222,.55);}
   .done-stamp{color:var(--green);font-weight:700;font-size:11px;white-space:nowrap;}
+  .goal-line{font-size:17px;font-weight:700;line-height:1.5;color:var(--paper);}.goal-line b{color:var(--gold);}
+  .path{margin:14px 0 0;padding:0;list-style:none;counter-reset:pth;}
+  .path li{counter-increment:pth;position:relative;padding:6px 0 6px 38px;font-size:13.5px;color:#dde2de;border-top:1px solid var(--line);}
+  .path li:first-child{border-top:none;}
+  .path li::before{content:counter(pth);position:absolute;left:0;top:7px;width:24px;height:24px;border-radius:50%;background:rgba(51,204,128,.14);color:var(--green);font-weight:800;font-size:12px;display:flex;align-items:center;justify-content:center;}
+  .ws-note{font-size:12px;color:var(--dim);margin:-6px 0 12px;}
   .badge{display:inline-block;border-radius:99px;padding:3px 11px;font-size:11px;font-weight:700;white-space:nowrap;}
   .b-ec{background:rgba(51,204,128,.15);color:var(--green);border:1px solid rgba(51,204,128,.4);}
   .b-cl{background:rgba(249,195,31,.13);color:var(--gold);border:1px solid rgba(249,195,31,.4);}
@@ -131,10 +137,24 @@ function trendSection(charts: PlanCharts, t: typeof T["en"]): string {
 
 export function renderPlanHtml(plan: PlanContent, charts: PlanCharts): string {
   const t = T[plan.language] ?? T.en;
+  const nl = plan.language === "nl";
+  // Horizon-aware labels: a follow-up or custom plan isn't always 90 days.
+  const hd = plan.horizonDays && plan.horizonDays > 0 ? Math.round(plan.horizonDays) : 90;
+  const planName = nl ? `${hd}-dagen plan` : `${hd}-Day Plan`;
+  const theDays = nl ? `De werkstromen — wat we over de ${hd} dagen afvinken` : `The workstreams — what we tick off over the ${hd} days`;
+  const forecastTitle = nl ? `Waar we mikken op dag ${hd}` : `Where we aim by day ${hd}`;
+  const dayHdr = nl ? `Doel dag ${hd}` : `Day ${hd} target`;
   const statTone = (s?: string) => s === "grad" ? " grad" : s === "bad" ? " bad" : s === "good" ? " good" : "";
   const stats = plan.stats.length ? `<div class="sec"><h2>${t.whereWeStart}</h2>
     <div class="stats">${plan.stats.map(s => `<div class="stat"><div class="k">${esc(s.key)}</div><div class="v${statTone(s.tone)}">${esc(s.value)}</div>${s.sub ? `<div class="s">${esc(s.sub)}</div>` : ""}</div>`).join("")}</div>
     <p class="lead" style="margin-top:14px">${inline(plan.strategyLead)}</p></div>` : `<div class="sec"><h2>${t.whereWeStart}</h2><div class="card"><p class="lead">${inline(plan.strategyLead)}</p></div></div>`;
+
+  // SOP §2 + §3: the measurable goal and the strategic path — a stranger must
+  // see WHAT we're going for and WHY the steps are in this order.
+  const goalSec = (plan.goal || plan.pathToGoal?.length) ? `<div class="sec"><h2>${nl ? "Het doel & de route" : "The goal & the path"}</h2><div class="card">
+    ${plan.goal ? `<p class="goal-line">${inline(plan.goal)}</p>` : ""}
+    ${plan.pathToGoal?.length ? `<ol class="path">${plan.pathToGoal.map(s => `<li>${inline(s)}</li>`).join("")}</ol>` : ""}
+  </div></div>` : "";
 
   const mobClass = plan.archetype === "scale" ? "mob scale" : "mob";
   const mob = `<div class="sec"><div class="${mobClass}"><div class="tag">${t.decides}</div><h3>${esc(plan.makeOrBreakTitle)}</h3><p class="lead" style="font-size:13.7px">${inline(plan.makeOrBreakBody)}</p>${plan.makeOrBreakBullets?.length ? `<ul>${plan.makeOrBreakBullets.map(b => `<li>${inline(b)}</li>`).join("")}</ul>` : ""}</div></div>`;
@@ -146,7 +166,7 @@ export function renderPlanHtml(plan: PlanContent, charts: PlanCharts): string {
   const build = plan.whatWeBuild.length ? `<div class="sec"><h2>${t.weBuild}</h2><div class="findings">${plan.whatWeBuild.map((b, i) => `<div class="find"><h4>${i + 1} · ${esc(b.title)}</h4><p>${inline(b.body)}</p></div>`).join("")}</div></div>` : "";
 
   const badge = (who: string) => who === "Client" ? `<span class="badge b-cl">${plan.language === "nl" ? "Klant" : "Client"}</span>` : who === "Together" ? `<span class="badge b-both">${plan.language === "nl" ? "Samen" : "Together"}</span>` : `<span class="badge b-ec">Ecomtrada</span>`;
-  const phases = plan.phases.length ? `<div class="sec"><h2>${t.theDays}</h2><table><tbody>
+  const phases = plan.phases.length ? `<div class="sec"><h2>${theDays}</h2><p class="ws-note">${nl ? "Werkstromen lopen parallel — dit is een checklist, geen strakke volgorde. Timing is indicatief; alles wat direct kan, start direct." : "Workstreams run in parallel — this is a checklist, not a strict sequence. Timing is indicative; whatever can start immediately, starts immediately."}</p><table><tbody>
     <tr><th style="width:60%">${t.action}</th><th>${t.who}</th><th>${t.when}</th></tr>
     ${plan.phases.map(ph => `<tr class="phase-row"><td colspan="3">${esc(ph.title)}${ph.window ? ` · ${esc(ph.window)}` : ""}</td></tr>${ph.actions.map(a => a.doneStamp
       ? `<tr class="a-done"><td><s>${inline(a.action)}</s> <span class="done-stamp">✓ ${esc(a.doneStamp)}</span></td><td>${badge(a.who)}</td><td>${esc(a.when)}</td></tr>`
@@ -154,22 +174,22 @@ export function renderPlanHtml(plan: PlanContent, charts: PlanCharts): string {
     </tbody></table>
     <div class="legend"><span class="badge b-ec">Ecomtrada</span> ${t.weDo} &nbsp; <span class="badge b-cl">${plan.language === "nl" ? "Klant" : "Client"}</span> ${t.youDo} &nbsp; <span class="badge b-both">${plan.language === "nl" ? "Samen" : "Together"}</span> ${t.jointly}</div></div>` : "";
 
-  const forecast = plan.forecast.length ? `<div class="sec"><h2>${t.forecast}</h2>${plan.forecastLead ? `<p class="lead" style="margin-bottom:10px">${inline(plan.forecastLead)}</p>` : ""}<table><tbody>
-    <tr><th>${t.metric}</th><th>${t.now}</th><th>${t.day90}</th></tr>
+  const forecast = plan.forecast.length ? `<div class="sec"><h2>${forecastTitle}</h2>${plan.forecastLead ? `<p class="lead" style="margin-bottom:10px">${inline(plan.forecastLead)}</p>` : ""}<table><tbody>
+    <tr><th>${t.metric}</th><th>${t.now}</th><th>${dayHdr}</th></tr>
     ${plan.forecast.map(r => `<tr><td>${esc(r.label)}</td><td>${esc(r.now)}</td><td class="g">${esc(r.target)}</td></tr>`).join("")}
     </tbody></table>${plan.caveats ? `<div class="callout">${inline(plan.caveats)}</div>` : ""}</div>` : (plan.caveats ? `<div class="sec"><div class="callout">${inline(plan.caveats)}</div></div>` : "");
 
   const need = plan.whatWeNeed.length ? `<div class="sec"><h2>${t.weNeed}</h2><div class="need"><ul>${plan.whatWeNeed.map(n => `<li>${inline(n)}</li>`).join("")}</ul></div></div>` : "";
 
-  return `<!DOCTYPE html><html lang="${plan.language}"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${esc(plan.client)} — 90-Day Plan</title><style>${CSS}</style></head>
+  return `<!DOCTYPE html><html lang="${plan.language}"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${esc(plan.client)} — ${esc(planName)}</title><style>${CSS}</style></head>
 <body><div class="page">
   <div class="hdr"><div class="brand">ecomtrada<span class="dot">.</span></div>
-    <h1>${esc(plan.client)} — <span class="grad">90-Day Plan</span></h1>
+    <h1>${esc(plan.client)} — <span class="grad">${esc(planName)}</span></h1>
     <div class="sub">${esc(plan.subtitle)}</div></div>
   <div class="body">
-    ${stats}${mob}${findings}${trendSection(charts, t)}${levers}${build}${phases}${forecast}${need}
+    ${stats}${goalSec}${mob}${findings}${trendSection(charts, t)}${levers}${build}${phases}${forecast}${need}
   </div>
-  <div class="foot">ecomtrada<span class="dot">.</span> — ${esc(plan.client)} · 90-day plan · generated from live Google Ads + Shopify data, reviewed by your account team</div>
+  <div class="foot">ecomtrada<span class="dot">.</span> — ${esc(plan.client)} · ${esc(planName.toLowerCase())} · generated from live Google Ads + Shopify data, reviewed by your account team</div>
 </div>
 <script type="application/json" id="ecomtrada-plan">${JSON.stringify(plan).replace(/</g, "\\u003c")}</script>
 </body></html>`;
