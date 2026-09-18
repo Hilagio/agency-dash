@@ -63,7 +63,10 @@ ${opts.context}`;
   const msg = await client.messages
     .stream({
       model: "claude-opus-4-8",
-      max_tokens: 4096,
+      // Headroom for adaptive thinking + a full audit document (which was
+      // squeezed at 4096 — sections came out thin to fit the budget).
+      max_tokens: 12_000,
+      thinking: { type: "adaptive" },
       system: DOC_SYSTEM,
       messages: [{ role: "user", content: user }],
     })

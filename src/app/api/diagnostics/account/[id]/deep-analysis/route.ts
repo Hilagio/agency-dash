@@ -15,6 +15,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { prisma } from "@/lib/db";
 import { getAuthContext, unauthorized, forbidden } from "@/lib/auth";
 import { computeWindows } from "@/lib/diagnostics/windows";
+import { runAgentTool } from "@/lib/diagnostics/agent-tools";
 import { renderDocHtml } from "@/lib/doc/render";
 import type { DocContent, DocLanguage } from "@/lib/doc/types";
 
@@ -58,7 +59,7 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   const account = await prisma.account.findFirst({
     where: { id, organizationId: ctx.orgId },
-    select: { id: true, name: true, clientName: true, currency: true, grossMarginPercent: true, targetRoas: true, businessModel: true, country: true, landingPageUrl: true },
+    select: { id: true, name: true, clientName: true, currency: true, grossMarginPercent: true, targetRoas: true, businessModel: true, country: true, landingPageUrl: true, googleAdsId: true, merchantCenterId: true, organizationId: true },
   });
   if (!account) return forbidden();
 
@@ -114,7 +115,25 @@ export async function POST(req: NextRequest, { params }: Params) {
   if (campaigns.length) {
     L.push(`\nPer campaign (30d) — name: spend · share of spend · conv · conv value · ROAS:`);
     for (const [name, c] of campaigns) L.push(`  - ${name}: ${money(c.spend, cur)} · ${spend30 > 0 ? Math.round((c.spend / spend30) * 100) : 0}% · ${c.conv.toFixed(0)} · ${money(c.value, cur)} · ${c.spend > 0 ? (c.value / c.spend).toFixed(2) : "—"}`);
-    L.push(`(Impression-share and auction data are NOT in this export — do not invent them; name them as a follow-up check where relevant.)`);
+  }
+
+  // Live pulls straight from Google Ads — impression share (lost to rank vs
+  // budget is THE auction diagnostic), campaign structure, and search terms.
+  // Best-effort: a failed pull is named as absent, never invented.
+  if (account.googleAdsId) {
+    const toolAcc = { id: account.id, googleAdsId: account.googleAdsId, organizationId: account.organizationId, currency: account.currency, merchantCenterId: account.merchantCenterId };
+    const pulls = await Promise.allSettled([
+      runAgentTool("get_impression_share", {}, toolAcc),
+      runAgentTool("get_campaign_overview", {}, toolAcc),
+      runAgentTool("get_search_terms", {}, toolAcc),
+    ]);
+    const labels = ["IMPRESSION SHARE (lost to rank vs lost to budget — the auction diagnostic)", "CAMPAIGN STRUCTURE (live)", "SEARCH TERMS (live)"];
+    pulls.forEach((p, i) => {
+      if (p.status === "fulfilled" && p.value && !/^error/i.test(p.value)) L.push(`\n${labels[i]}:\n${p.value.slice(0, 5000)}`);
+      else L.push(`\n${labels[i]}: could not be pulled — treat as unknown, name it as a follow-up check where relevant.`);
+    });
+  } else if (campaigns.length) {
+    L.push(`(Impression-share and auction data are NOT available for this account — do not invent them; name them as a follow-up check where relevant.)`);
   }
   const cc = clientCtx;
   if (cc?.goal) L.push(`\nClient goal: ${cc.goal}`);
