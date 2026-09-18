@@ -55,6 +55,14 @@ Before you ask a human about an off-platform event (a promo, a price or checkout
 
 IF A "LIVE SNAPSHOT" BLOCK IS ALREADY IN THE CONTEXT, its campaign structure, impression share and change history were pulled seconds ago — use them directly and do NOT re-call get_campaign_overview / get_impression_share / get_change_history for the same window. Reach for a tool only for what the snapshot doesn't cover (search terms, Shopify, Slack) or a different look-back.`;
 
+const WEB_RESEARCH_NOTE = `
+LIVE WEB RESEARCH — you also have web_search and web_fetch. Use them when the answer depends on the OUTSIDE view the account data can't show: the client's own product/landing pages (price, promos, shipping, stock/"sold out" status), competitor prices and live discount codes, independent review profiles (Trustpilot rating, one-star themes, reply speed) vs the on-site widget, and marketplace listings carrying the brand name (resellers/counterfeits undercutting inside the client's own Shopping comparison). Rules: name what you checked and today's date with every external claim; if a page can't be reached, say so — NEVER invent a price, rating or listing; account numbers still come from the account data only. Don't research the web for questions the account data already answers.`;
+
+const ACTION_NOTE = `
+ONE-CLICK ACTIONS — the platform can run these for the team at the press of a button. When your answer NATURALLY calls for one (never force it), end your reply with EXACTLY one marker on its own final line: [[action:<id>|<one short sentence saying why, in the reply's language>]]
+ids: deep_analysis (live web research — own pages, competitor prices/promos, review profiles, marketplace listings; propose when the cause likely sits OUTSIDE the ad account), audit_doc (full audit & action plan document), monthly_report (client month report), plan_generate (create or update the 90-day plan), plan_rewrite (AI rewrite of the LIVE plan from the team's progress — when the plan no longer matches reality), refresh_data (pull fresh data & recompute the diagnosis — after something was fixed).
+The marker is machine-read and stripped from your reply — never mention it in prose, never emit more than one.`;
+
 const LEADGEN_NOTE = `
 
 LEAD-GEN / CPA ACCOUNTS — if the account's goal is LEADS (a cost-per-lead / CPA target, not ecommerce ROAS), diagnose a too-high CPA with this exact tree. It runs on your live tools (get_impression_share, get_search_terms, get_campaign_overview) — CALL them, don't guess:
@@ -476,15 +484,21 @@ export async function POST(req: NextRequest, { params }: Params) {
         // campaign structure, search terms, Shopify) — we execute them and feed
         // the results back until it produces its final answer. Pre-tool narration
         // ("let me check…") is reset away; only the final text is shown/persisted.
-        const sysPrompt = (useChatSystem ? SYSTEM_CHAT : SYSTEM) + PPC_OS_SYSTEM_NOTE + AGENT_TOOLS_NOTE + LEADGEN_NOTE + trackingDirective + planDirective;
-        const allTools = [...(ppc.tools ?? []), ...AGENT_TOOLS] as Parameters<typeof client.beta.messages.stream>[0]["tools"];
+        const sysPrompt = (useChatSystem ? SYSTEM_CHAT : SYSTEM) + PPC_OS_SYSTEM_NOTE + AGENT_TOOLS_NOTE + WEB_RESEARCH_NOTE + ACTION_NOTE + LEADGEN_NOTE + trackingDirective + planDirective;
+        // Live web research (server-side): the outside view — the client's own
+        // pages, competitor prices/promos, review profiles, marketplace listings.
+        const webTools = [
+          { type: "web_search_20260209", name: "web_search", max_uses: 8 },
+          { type: "web_fetch_20260209", name: "web_fetch", max_uses: 8, max_content_tokens: 20_000 },
+        ];
+        const allTools = [...(ppc.tools ?? []), ...AGENT_TOOLS, ...webTools] as Parameters<typeof client.beta.messages.stream>[0]["tools"];
         const loopMessages = messages.slice();
         const toolAcc = { id: account.id, googleAdsId: account.googleAdsId, organizationId: account.organizationId, currency: account.currency, merchantCenterId: account.merchantCenterId };
         let finalText = "";
         // Seed with the up-front pulls so the opener's badge shows they were
         // fetched live (the loop dedupes by name if the model pulls again).
         const toolsUsed: { name: string; ok: boolean }[] = [...preToolsUsed];
-        const MAX_STEPS = 6;
+        const MAX_STEPS = 10;
 
         for (let step = 0; step < MAX_STEPS; step++) {
           const anthropicStream = client.beta.messages.stream({
@@ -517,6 +531,10 @@ export async function POST(req: NextRequest, { params }: Params) {
               // reach finalText (we only capture text_delta), so surfacing a
               // status here is safe and shows the agent is actually reasoning.
               send(controller, { status: "Thinking it through…" });
+            } else if (ev.type === "content_block_start" && ev.content_block?.type === "server_tool_use") {
+              const n = ev.content_block.name;
+              send(controller, { status: n === "web_fetch" ? "Reading a live page…" : "Searching the live web…" });
+              if (!toolsUsed.some(t => t.name === n)) toolsUsed.push({ name: n, ok: true });
             } else if (ev.type === "content_block_start" && ev.content_block?.type === "tool_use") {
               send(controller, { status: toolStatusLabel(ev.content_block.name) });
             } else if (ev.type === "content_block_delta" && ev.delta.type === "text_delta") {
@@ -525,6 +543,12 @@ export async function POST(req: NextRequest, { params }: Params) {
             }
           }
           const finalMsg = await anthropicStream.finalMessage();
+          // Server tools can pause a long turn — resume it by appending the
+          // partial assistant content and continuing (no tool results needed).
+          if (finalMsg.stop_reason === "pause_turn") {
+            loopMessages.push({ role: "assistant", content: finalMsg.content });
+            continue;
+          }
           const toolUses = finalMsg.content.filter(b => b.type === "tool_use") as Array<{ id: string; name: string; input: unknown }>;
           if (finalMsg.stop_reason !== "tool_use" || toolUses.length === 0) break;
 
@@ -544,6 +568,14 @@ export async function POST(req: NextRequest, { params }: Params) {
             results.push({ type: "tool_result" as const, tool_use_id: tu.id, content: out });
           }
           loopMessages.push({ role: "user", content: results });
+        }
+        // One-click action proposal: parse the machine marker off the reply,
+        // send it as its own event, and keep the stored message clean.
+        const am = finalText.match(/\[\[action:([a-z_]+)\|([^\]]{1,300})\]\]/i);
+        if (am) {
+          finalText = finalText.replace(/\[\[action:[^\]]*\]\]/gi, "").trim();
+          const allowed = ["deep_analysis", "audit_doc", "monthly_report", "plan_generate", "plan_rewrite", "refresh_data"];
+          if (allowed.includes(am[1])) send(controller, { action: { id: am[1], reason: am[2].trim() } });
         }
         // Surface which live tools actually ran, so a real pull is visible and a
         // fabricated "I pulled…" (with no tools) is obvious.
