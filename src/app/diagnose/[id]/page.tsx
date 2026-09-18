@@ -9,7 +9,7 @@
  * the page. From here you can jump to the full analysis if you want to dig.
  */
 import { useEffect, useRef, useState, memo, Fragment } from "react";
-import { useParams, useSearchParams } from "next/navigation";
+import { useParams, useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft, ArrowUpRight, Loader2, CheckCircle2, AlertTriangle, HelpCircle,
@@ -200,10 +200,15 @@ function renderMarkdown(md: string): React.ReactNode {
   return blocks;
 }
 
+/** Strip the machine action marker (and a partially-streamed tail) from display text. */
+function stripActionMarker(s: string): string {
+  return s.replace(/\[\[action:[^\]]*\]\]/gi, "").replace(/\[\[[^\]]*$/, "").trimEnd();
+}
+
 /** Consume the insight SSE stream, accumulating text and firing handlers. */
 async function consumeInsightStream(
   body: ReadableStream<Uint8Array>,
-  h: { onText: (acc: string) => void; onReset: () => void; onStatus: (s: string) => void; onError: (e: string) => void; onTools?: (t: { name: string; ok: boolean }[]) => void; onSuggestions?: (s: string[]) => void },
+  h: { onText: (acc: string) => void; onReset: () => void; onStatus: (s: string) => void; onError: (e: string) => void; onTools?: (t: { name: string; ok: boolean }[]) => void; onSuggestions?: (s: string[]) => void; onAction?: (a: { id: string; reason: string }) => void },
 ): Promise<string> {
   const reader = body.getReader();
   const decoder = new TextDecoder();
@@ -219,12 +224,13 @@ async function consumeInsightStream(
       if (!line.startsWith("data:")) continue;
       const payload = line.slice(5).trim();
       if (!payload) continue;
-      let ev: { text?: string; error?: string; status?: string; reset?: boolean; toolsUsed?: { name: string; ok: boolean }[]; suggestions?: string[] };
+      let ev: { text?: string; error?: string; status?: string; reset?: boolean; toolsUsed?: { name: string; ok: boolean }[]; suggestions?: string[]; action?: { id: string; reason: string } };
       try { ev = JSON.parse(payload); } catch { continue; }
       if (ev.error) h.onError(ev.error);
       else if (ev.reset) { acc = ""; h.onReset(); }
       else if (ev.toolsUsed) h.onTools?.(ev.toolsUsed);
       else if (ev.suggestions) h.onSuggestions?.(ev.suggestions);
+      else if (ev.action) h.onAction?.(ev.action);
       else if (ev.status) h.onStatus(ev.status);
       else if (ev.text) { acc += ev.text; h.onText(acc); }
     }
@@ -232,7 +238,7 @@ async function consumeInsightStream(
   return acc;
 }
 
-interface Msg { id?: string; role: "assistant" | "user"; content: string; kind?: string; tools?: { name: string; ok: boolean }[] }
+interface Msg { id?: string; role: "assistant" | "user"; content: string; kind?: string; tools?: { name: string; ok: boolean }[]; action?: { id: string; reason: string }; actionState?: "idle" | "running" | "done" | "dismissed" }
 
 // Friendly labels for the live data tools, so a real pull is shown to the team.
 // "3d ago" / "today" — for showing how fresh an uploaded CSV is.
@@ -243,6 +249,8 @@ function agoLabel(iso: string | null): string {
 }
 
 const TOOL_LABELS: Record<string, string> = {
+  web_search: "live web search",
+  web_fetch: "live page read",
   run_healthcheck: "fundamentals check",
   get_impression_share: "impression share",
   get_campaign_overview: "campaign structure",
@@ -353,6 +361,7 @@ function CheckIcon({ result }: { result: CheckRun["result"] }) {
 
 export default function DiagnosePage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
   const search = useSearchParams();
   const [diag, setDiag] = useState<Diagnosis | null>(null);
   const [briefing, setBriefing] = useState<Briefing | null>(null);
@@ -705,7 +714,7 @@ export default function DiagnosePage() {
       }
       await consumeInsightStream(r.body, {
         onReset: () => setLast(""),
-        onText: (acc) => { setInsightStatus(null); setLast(acc); },
+        onText: (acc) => { setInsightStatus(null); setLast(stripActionMarker(acc)); },
         onStatus: (s) => {
           if (s === "refreshing") { setInsightStatus("Pulling the latest Google Ads + Shopify data…"); pulled = true; }
           else if (s === "reading") setInsightStatus("Reading across 7/14/30/60/90-day windows…");
@@ -720,6 +729,13 @@ export default function DiagnosePage() {
           return copy;
         }),
         onSuggestions: (s) => setSuggestions(s),
+        onAction: (a) => setThread(prev => {
+          const copy = prev.slice();
+          for (let i = copy.length - 1; i >= 0; i--) {
+            if (copy[i].role === "assistant") { copy[i] = { ...copy[i], action: a, actionState: "idle" }; break; }
+          }
+          return copy;
+        }),
         onError: (e) => setInsightErr(e),
       });
     } catch (e) {
@@ -1095,6 +1111,56 @@ export default function DiagnosePage() {
       if (!finished) setDocErr("The connection dropped before the analysis finished — try again.");
     } catch (e) { setDocErr(e instanceof Error ? e.message : "Failed"); }
     finally { setDeepStatus(null); }
+  }
+
+  // The AI proposed a one-click action in the chat — the team just presses yes.
+  const ACTION_LABEL: Record<string, string> = {
+    deep_analysis: "Run the deep analysis (live web research)",
+    audit_doc: "Generate the audit & action plan",
+    monthly_report: "Open the monthly report",
+    plan_generate: "Open the plan generator",
+    plan_rewrite: "Rewrite the live plan from progress",
+    refresh_data: "Refresh data & recompute",
+  };
+
+  async function runPlanRewriteInline() {
+    const r = await fetch(`/api/accounts/${id}/plan`, {
+      method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ rewriteFromLive: true }),
+    });
+    if (!r.ok || !r.body) throw new Error("Rewrite failed to start.");
+    const reader = r.body.getReader(); const dec = new TextDecoder(); let buf = ""; let ok = false;
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      const parts = buf.split("\n\n"); buf = parts.pop() ?? "";
+      for (const p of parts) {
+        const line = p.trim(); if (!line.startsWith("data:")) continue;
+        let ev: { error?: string; done?: boolean } | null = null;
+        try { ev = JSON.parse(line.slice(5).trim()); } catch { continue; }
+        if (ev?.error) throw new Error(ev.error);
+        if (ev?.done) ok = true;
+      }
+    }
+    if (!ok) throw new Error("The rewrite didn't complete — check the team board.");
+  }
+
+  async function runProposedAction(idx: number) {
+    const m = thread[idx];
+    if (!m?.action || m.actionState === "running") return;
+    const act = m.action.id;
+    const setState = (s: Msg["actionState"]) => setThread(prev => { const c = prev.slice(); if (c[idx]) c[idx] = { ...c[idx], actionState: s }; return c; });
+    if (act === "monthly_report") { setState("done"); router.push(`/report/${id}`); return; }
+    if (act === "plan_generate") { setState("done"); router.push(`/plan/${id}`); return; }
+    setState("running");
+    try {
+      if (act === "deep_analysis") await generateDeepAnalysis();
+      else if (act === "audit_doc") await generateDocument(AUDIT_REQUEST);
+      else if (act === "refresh_data") await refreshData();
+      else if (act === "plan_rewrite") await runPlanRewriteInline();
+      setState("done");
+    } catch (e) { setState("idle"); setInsightErr(e instanceof Error ? e.message : "The action failed."); }
   }
 
   // Reopen (or re-download) a saved deliverable from the library.
@@ -1813,6 +1879,28 @@ export default function DiagnosePage() {
                                 <Plug size={12} /> {a.label}
                               </button>
                             ))}
+                          </div>
+                        )}
+                        {/* One-click action proposed by the AI — yes or no, that's the flow. */}
+                        {m.action && m.actionState !== "dismissed" && (
+                          <div style={{ marginTop: 9, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", padding: "9px 12px", borderRadius: 10, background: "var(--accent-dim)", border: "1px solid color-mix(in srgb, var(--accent) 30%, var(--border))" }}>
+                            <Sparkles size={13} style={{ color: "var(--accent)", flexShrink: 0 }} />
+                            <span style={{ fontSize: 12, color: "var(--text-2)", flex: 1, minWidth: 180 }}>{m.action.reason}</span>
+                            {m.actionState === "done" ? (
+                              <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 700, color: "var(--accent)" }}>
+                                <CheckCircle2 size={13} /> Done{m.action.id === "plan_rewrite" ? <> — <Link href={`/plans?open=${id}`} style={{ color: "var(--accent)" }}>team board →</Link></> : null}
+                              </span>
+                            ) : m.actionState === "running" ? (
+                              <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600, color: "var(--accent)" }}><Loader2 size={13} className="animate-spin" /> {deepStatus ?? "Running…"}</span>
+                            ) : (
+                              <>
+                                <button onClick={() => runProposedAction(i)} style={{ fontSize: 12, fontWeight: 700, color: "#fff", background: "var(--btn-primary, var(--accent))", border: "none", borderRadius: 999, padding: "5px 15px", cursor: "pointer" }}>
+                                  Yes — {ACTION_LABEL[m.action.id] ?? m.action.id}
+                                </button>
+                                <button onClick={() => setThread(prev => { const c = prev.slice(); if (c[i]) c[i] = { ...c[i], actionState: "dismissed" }; return c; })}
+                                  style={{ fontSize: 12, fontWeight: 600, color: "var(--text-3)", background: "var(--surface-2)", border: "1px solid var(--border-2)", borderRadius: 999, padding: "5px 13px", cursor: "pointer" }}>No</button>
+                              </>
+                            )}
                           </div>
                         )}
                       </div>
