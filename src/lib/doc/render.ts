@@ -122,6 +122,7 @@ const statGrid = (stats: DocStat[]) =>
 function sectionInner(sec: DocContent["sections"][number]): string {
   const parts: string[] = [];
   if (sec.lead) parts.push(`<p class="lead">${inline(sec.lead)}</p>`);
+  if (sec.paras?.length) parts.push(sec.paras.map(p => `<p class="lead" style="margin-top:10px">${inline(p)}</p>`).join(""));
   if (sec.stats?.length) parts.push(statGrid(sec.stats));
   if (sec.bullets?.length) parts.push(`<ul>${sec.bullets.map(b => `<li>${inline(b)}</li>`).join("")}</ul>`);
   if (sec.table?.columns?.length) {
