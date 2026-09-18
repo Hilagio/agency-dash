@@ -20,6 +20,7 @@ export interface DocStat {
 export interface DocSection {
   heading: string;
   lead?: string;               // paragraph (supports **bold**)
+  paras?: string[];            // additional prose paragraphs after the lead (deep analyses)
   bullets?: string[];
   stats?: DocStat[];
   table?: { columns: string[]; rows: string[][] };

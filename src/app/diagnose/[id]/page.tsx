@@ -419,6 +419,7 @@ export default function DiagnosePage() {
   // Brand document generation (§agent → files out).
   const [docOpen, setDocOpen] = useState(false);
   const [docBusy, setDocBusy] = useState(false);
+  const [deepStatus, setDeepStatus] = useState<string | null>(null);
   const [docErr, setDocErr] = useState<string | null>(null);
   const [docFocus, setDocFocus] = useState("");
   const [docFormat, setDocFormat] = useState<"doc" | "deck">("doc");
@@ -1056,6 +1057,44 @@ export default function DiagnosePage() {
       setDocFocus("");
     } catch (e) { setDocErr(e instanceof Error ? e.message : "Failed"); }
     finally { setDocBusy(false); }
+  }
+
+  // Deep analysis: the model researches the LIVE WEB (own product pages,
+  // competitor pricing & promos, Trustpilot, marketplace listings) and connects
+  // it to the campaign numbers — the Cowork-grade client update, in-platform.
+  async function generateDeepAnalysis() {
+    if (docBusy || deepStatus) return;
+    setDeepStatus("Starting the research…"); setDocErr(null);
+    try {
+      const r = await fetch(`/api/diagnostics/account/${id}/deep-analysis`, {
+        method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ language: docLang, request: docFocus.trim() || undefined }),
+      });
+      if (!r.ok || !r.body) { const j = await r.json().catch(() => ({})); setDocErr(j.error ?? `HTTP ${r.status}`); return; }
+      const reader = r.body.getReader(); const dec = new TextDecoder(); let buf = ""; let finished = false;
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buf += dec.decode(value, { stream: true });
+        const parts = buf.split("\n\n"); buf = parts.pop() ?? "";
+        for (const p of parts) {
+          const line = p.trim(); if (!line.startsWith("data:")) continue;
+          let ev: { status?: string; step?: number; chars?: number; done?: boolean; html?: string; filename?: string; saved?: DocMeta | null; error?: string };
+          try { ev = JSON.parse(line.slice(5).trim()); } catch { continue; }
+          if (ev.error) { setDocErr(ev.error); finished = true; }
+          else if (ev.status === "research") setDeepStatus(`Researching the live web… (check ${ev.step ?? "?"}: pages, reviews, competitors)`);
+          else if (ev.status === "writing") setDeepStatus(`Writing the analysis… (${Math.round((ev.chars ?? 0) / 1000)}k chars)`);
+          else if (ev.status === "continuing") setDeepStatus("Long run — continuing the research…");
+          else if (ev.done && ev.html) {
+            deliverHtml(ev.html, ev.filename ?? "deep-analysis.html");
+            if (ev.saved) setLibrary(prev => [ev.saved as DocMeta, ...prev]);
+            setDocFocus(""); finished = true;
+          }
+        }
+      }
+      if (!finished) setDocErr("The connection dropped before the analysis finished — try again.");
+    } catch (e) { setDocErr(e instanceof Error ? e.message : "Failed"); }
+    finally { setDeepStatus(null); }
   }
 
   // Reopen (or re-download) a saved deliverable from the library.
@@ -1704,11 +1743,16 @@ export default function DiagnosePage() {
                       {docBusy ? <Loader2 size={13} className="animate-spin" /> : <FileText size={13} />} {docBusy ? "Writing…" : "Generate"}
                     </button>
                   </div>
-                  <div style={{ marginTop: 8 }}>
-                    <button onClick={() => generateDocument(AUDIT_REQUEST)} disabled={docBusy} title="One-click full audit + action plan in the house layout — grounded in this account's conversation and live data"
+                  <div style={{ marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                    <button onClick={() => generateDocument(AUDIT_REQUEST)} disabled={docBusy || deepStatus !== null} title="One-click full audit + action plan in the house layout — grounded in this account's conversation and live data"
                       style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11.5, fontWeight: 700, padding: "6px 12px", borderRadius: 7, border: "1px dashed var(--border-3, var(--border-2))", cursor: docBusy ? "default" : "pointer", background: "var(--surface-2)", color: "var(--text-2)" }}>
                       <FileText size={12} /> Audit &amp; action plan (house layout)
                     </button>
+                    <button onClick={generateDeepAnalysis} disabled={docBusy || deepStatus !== null} title="The model researches the LIVE WEB — your product pages, competitor prices & promo codes, Trustpilot, marketplace listings under your brand name — and connects it to the campaign numbers. Takes a few minutes."
+                      style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11.5, fontWeight: 700, padding: "6px 12px", borderRadius: 7, border: "1px dashed color-mix(in srgb, var(--accent) 45%, var(--border-2))", cursor: deepStatus ? "default" : "pointer", background: "var(--surface-2)", color: "var(--accent)" }}>
+                      {deepStatus ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />} Deep analysis (live web research)
+                    </button>
+                    {deepStatus && <span style={{ fontSize: 11.5, color: "var(--accent)", fontWeight: 600 }}>{deepStatus}</span>}
                   </div>
                   {docErr && <div style={{ fontSize: 12, color: "var(--danger)", marginTop: 8 }}>{docErr}</div>}
                   <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 8 }}>Downloads an on-brand HTML file (opens in the browser; ⌘P → Save as PDF to share). Every generation is saved to the library below.</div>
