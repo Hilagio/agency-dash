@@ -144,13 +144,15 @@ Rules for the rewrite:
         const generate = async (extraNudge?: string) => {
           const anthropicStream = client.messages.stream({
             model: "claude-opus-4-8",
-            // A full plan (stats + findings + levers + build list + 3 phases +
-            // forecast, often in Dutch) regularly overflowed 4096 tokens — the
-            // JSON got truncated mid-object and parsing failed for users as
-            // "unparseable plan". Big budget + thinking disabled so the whole
-            // budget is output (max_tokens caps thinking + output together).
-            max_tokens: 12_000,
-            thinking: { type: "disabled" },
+            // Big budget: thinking + the full plan JSON (stats + findings +
+            // levers + build list + phases + forecast, often in Dutch) both
+            // count against max_tokens. Truncation here surfaced to users as
+            // "unparseable plan", so keep generous headroom.
+            max_tokens: 20_000,
+            // Adaptive thinking: let the model actually reason through the
+            // strategy (constraint choice, sequencing, what the data supports)
+            // before writing — the biggest single quality lever on this output.
+            thinking: { type: "adaptive" },
             system: PLAN_SYSTEM,
             messages: [{ role: "user", content: extraNudge ? `${userMsg}\n\n${extraNudge}` : userMsg }],
           });

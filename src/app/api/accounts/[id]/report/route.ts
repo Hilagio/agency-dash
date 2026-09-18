@@ -62,8 +62,9 @@ export async function POST(req: NextRequest, { params }: Params) {
         const generate = async (extraNudge?: string) => {
           const s = client.messages.stream({
             model: "claude-opus-4-8",
-            max_tokens: 8_000,
-            thinking: { type: "disabled" },
+            // Headroom for adaptive thinking + the full report JSON.
+            max_tokens: 14_000,
+            thinking: { type: "adaptive" },
             system: REPORT_SYSTEM,
             messages: [{ role: "user", content: extraNudge ? `${userMsg}\n\n${extraNudge}` : userMsg }],
           });
