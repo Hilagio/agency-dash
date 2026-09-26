@@ -54,8 +54,9 @@ export default function PlanPage() {
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [liveState, setLiveState] = useState<"none" | "busy" | "active">("none");
   const [liveStart, setLiveStart] = useState<string>(new Date().toISOString().slice(0, 10));
-  const [planType, setPlanType] = useState<"first" | "next" | "recovery" | "q4" | "custom">("first");
+  const [planType, setPlanType] = useState<"first" | "next" | "recovery" | "q4" | "custom" | "own">("first");
   const [customBrief, setCustomBrief] = useState("");
+  const [ownPlanText, setOwnPlanText] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [clientName, setClientName] = useState<string>("");
 
@@ -85,6 +86,7 @@ export default function PlanPage() {
 
   async function generate(reviseInstr?: string) {
     const base = reviseInstr ? plan : null;
+    if (!base && planType === "own" && !ownPlanText.trim()) { setErr("Paste your own plan first — this mode structures YOUR plan, it doesn't write one."); return; }
     setErr(null); setHtml(null); setGenStatus(reviseInstr ? "Applying your changes…" : "Starting…");
     // `finished` guards the stuck state: if the stream dies without a done/error
     // event (gateway timeout, dropped connection), the button used to stay
@@ -95,7 +97,11 @@ export default function PlanPage() {
       await save();
       const r = await fetch(`/api/accounts/${id}/plan`, {
         method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(base ? { language: lang, revise: reviseInstr, basePlan: base } : { language: lang, planType, customBrief: ["custom", "recovery", "q4"].includes(planType) ? customBrief : undefined }),
+        body: JSON.stringify(base
+          ? { language: lang, revise: reviseInstr, basePlan: base }
+          : planType === "own"
+          ? { language: lang, ownPlan: ownPlanText }
+          : { language: lang, planType, customBrief: ["custom", "recovery", "q4"].includes(planType) ? customBrief : undefined }),
       });
       if (!r.ok || !r.body) { const j = await r.json().catch(() => ({})); setErr(j.error ?? `HTTP ${r.status}`); return; }
       const reader = r.body.getReader(); const dec = new TextDecoder(); let buf = "";
@@ -316,7 +322,8 @@ export default function PlanPage() {
               { v: "recovery", label: "Recovery sprint", hint: "Fix critical issues fast — ~30 days, ruthless prioritisation, short review loops" },
               { v: "q4", label: "Q4 sprint", hint: "Prioritise seasonal growth — everything ordered around the peak, with concrete dates" },
               { v: "custom", label: "Custom", hint: "You define the period and focus in a brief" },
-            ] as { v: "first" | "next" | "recovery" | "q4" | "custom"; label: string; hint: string }[]).map(o => (
+              { v: "own", label: "Own plan · AI structures it", hint: "You write the strategy from real account knowledge — the AI only formats it into the house layout, adding nothing of its own" },
+            ] as { v: "first" | "next" | "recovery" | "q4" | "custom" | "own"; label: string; hint: string }[]).map(o => (
               <button key={o.v} onClick={() => setPlanType(o.v)} title={o.hint}
                 style={{ fontSize: 12, fontWeight: 700, padding: "6px 12px", borderRadius: 8, cursor: "pointer", border: `1px solid ${planType === o.v ? "color-mix(in srgb, var(--accent) 55%, var(--border-2))" : "var(--border-2)"}`, background: planType === o.v ? "var(--accent-dim)" : "var(--surface-2)", color: planType === o.v ? "var(--accent)" : "var(--text-3)" }}>
                 {o.label}
@@ -324,6 +331,11 @@ export default function PlanPage() {
             ))}
             {planType === "next" && liveState !== "active" && <span style={{ fontSize: 11.5, color: "var(--accent-2, #d0972a)" }}>No live plan on this account yet — the follow-up will lean on data only.</span>}
           </div>
+          {planType === "own" && (
+            <textarea value={ownPlanText} onChange={e => setOwnPlanText(e.target.value)} rows={12}
+              placeholder={"Paste your plan here — goal, priorities, action points with owner and timing, tests, what NOT to do. Bullets, prose or a Slack-dump all work.\n\nThe AI only structures it into the house layout: it adds no actions or recommendations of its own, keeps your wording, fills in the real figures from the account data, and lists anything unclear as an open question instead of inventing an answer."}
+              style={{ width: "100%", marginTop: 10, fontSize: 12.5, padding: "10px 12px", borderRadius: 9, border: "1px solid color-mix(in srgb, var(--accent) 40%, var(--border-2))", background: "var(--surface-2)", color: "var(--text)", resize: "vertical", lineHeight: 1.55 }} />
+          )}
           {["custom", "recovery", "q4"].includes(planType) && (
             <textarea value={customBrief} onChange={e => setCustomBrief(e.target.value)} rows={3}
               placeholder={planType === "custom"
