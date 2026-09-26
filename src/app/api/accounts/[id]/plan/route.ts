@@ -12,6 +12,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { prisma } from "@/lib/db";
 import { getAuthContext, unauthorized, forbidden } from "@/lib/auth";
 import { buildPlanInputs, PLAN_SYSTEM } from "@/lib/plan/generate";
+import { runAgentTool } from "@/lib/diagnostics/agent-tools";
 import { renderPlanHtml } from "@/lib/plan/render";
 import type { PlanContent, PlanLanguage } from "@/lib/plan/types";
 
@@ -35,7 +36,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   if (!ctx) return unauthorized();
   const { id } = await params;
 
-  const body = await req.json().catch(() => ({})) as { language?: PlanLanguage; revise?: string; basePlan?: PlanContent; renderOnly?: boolean; rewriteFromLive?: boolean; planType?: string; customBrief?: string };
+  const body = await req.json().catch(() => ({})) as { language?: PlanLanguage; revise?: string; basePlan?: PlanContent; renderOnly?: boolean; rewriteFromLive?: boolean; planType?: string; customBrief?: string; ownPlan?: string };
   const inputs = await buildPlanInputs(id, ctx.orgId, body.language === "nl" || body.language === "en" ? body.language : undefined);
   if (!inputs) return forbidden();
 
@@ -123,6 +124,33 @@ Rules for the rewrite:
   const revise = rewriteInstr || (typeof body.revise === "string" ? body.revise.trim() : "");
   const basePlan = rewriteBase ?? (revise && body.basePlan && typeof body.basePlan === "object" && Array.isArray((body.basePlan as PlanContent).phases)
     ? body.basePlan as PlanContent : null);
+  const ownPlan = typeof body.ownPlan === "string" ? body.ownPlan.trim() : "";
+
+  // Ground the generation in the ACTUAL account, not just the aggregates:
+  // live campaign structure, impression share (lost to rank vs budget) and
+  // search terms straight from Google Ads, plus the team's recent conversation
+  // about this account — that's where the account-specific knowledge lives.
+  // Best-effort: a failed pull is named as unavailable, never invented.
+  if (!body.renderOnly) {
+    const acct = await prisma.account.findFirst({
+      where: { id, organizationId: ctx.orgId },
+      select: { googleAdsId: true, merchantCenterId: true, organizationId: true, currency: true },
+    });
+    if (acct?.googleAdsId) {
+      const toolAcc = { id, googleAdsId: acct.googleAdsId, organizationId: acct.organizationId, currency: acct.currency, merchantCenterId: acct.merchantCenterId };
+      const pulls = await Promise.allSettled([
+        runAgentTool("get_campaign_overview", {}, toolAcc),
+        runAgentTool("get_impression_share", {}, toolAcc),
+        runAgentTool("get_search_terms", {}, toolAcc),
+      ]);
+      const labels = ["LIVE CAMPAIGN STRUCTURE (name campaigns by their REAL names in actions)", "IMPRESSION SHARE (lost to rank vs lost to budget)", "SEARCH TERMS (live — cite real terms in cleanup actions)"];
+      pulls.forEach((p, i) => {
+        if (p.status === "fulfilled" && p.value && !/^error/i.test(p.value)) inputs.dataBlock += `\n\n${labels[i]}:\n${p.value.slice(0, 4500)}`;
+      });
+    }
+    const msgs = await prisma.agentMessage.findMany({ where: { accountId: id }, orderBy: { createdAt: "desc" }, take: 12, select: { role: true, content: true } }).then(r => r.reverse()).catch(() => []);
+    if (msgs.length) inputs.contextBlock += `\n\nTEAM CONVERSATION ABOUT THIS ACCOUNT (recent — real account knowledge; weigh it heavily):\n${msgs.map(m => `${m.role === "assistant" ? "Analyst" : "Team"}: ${m.content.slice(0, 1200)}`).join("\n")}`;
+  }
 
   // Rewrite-from-progress is a REAL rewrite, not a light edit — it must not
   // inherit the revision template's "keep everything verbatim" rule, or the
@@ -131,7 +159,9 @@ Rules for the rewrite:
     ? `CURRENT LIVE PLAN (JSON):\n${JSON.stringify(basePlan)}\n\nFRESH LIVE DATA (today's figures — the plan's numbers may be stale):\n${inputs.dataBlock}\n\nCLIENT CONTEXT PACK:\n${inputs.contextBlock}\n\n${revise}\n\nThis is a mid-flight rewrite, not a cosmetic edit: keep each DONE action's text character-for-character verbatim, but REWRITE the narrative and everything still ahead — strategyLead, make-or-break, findings, levers, remaining/open actions, week windows and forecast — around the execution state and today's data. The updated plan must read as version 2, picking up from where the team stands now. Return the FULL updated plan as the same JSON shape, in ${inputs.language === "nl" ? "Dutch" : "English"}. Return only the JSON object.`
     : basePlan
     ? `EXISTING PLAN (JSON — the team has already reviewed this):\n${JSON.stringify(basePlan)}\n\nFRESH LIVE DATA (for reference — correct figures against this where the instruction says data is wrong):\n${inputs.dataBlock}\n\nCLIENT CONTEXT PACK:\n${inputs.contextBlock}\n\nREQUESTED CHANGES from the team:\n${revise}\n\nApply ONLY the requested changes to the existing plan. Keep every other field, sentence and figure VERBATIM — do not rephrase, reorder or re-balance untouched sections. If the instruction says to delete something, remove it entirely. Return the FULL updated plan as the same JSON shape, in ${inputs.language === "nl" ? "Dutch" : "English"}. Return only the JSON object.`
-    : `CLIENT CONTEXT PACK:\n${inputs.contextBlock}\n\nLIVE DATA:\n${inputs.dataBlock}${typeBlock}\n\nWrite the strategic plan for ${inputs.account.name} in ${inputs.language === "nl" ? "Dutch" : "English"}. Return only the JSON object.`;
+    : ownPlan
+    ? `THE TEAM'S OWN PLAN — the ONLY source of strategy, written by the account manager from real account knowledge:\n${ownPlan}\n\nLIVE DATA (reference only — fill in the real figures the plan refers to, the stats and the forecast baseline; NEVER use it to invent strategy):\n${inputs.dataBlock}\n\nCLIENT CONTEXT PACK:\n${inputs.contextBlock}\n\nSTRUCTURE, DON'T STRATEGIZE. Convert the team's plan into the house JSON format. Every action in your output must come from the team's plan — keep the wording as close to verbatim as possible (tighten grammar only). Do NOT add actions, levers or recommendations of your own. Do NOT reprioritize. Do NOT pad sections the team's plan doesn't support — leave optional fields empty instead. Where a required element is missing or ambiguous (e.g. no measurable goal, no owner on an action), put it in "caveats" as an open question for the team rather than filling the gap yourself. Group actions into pillars matching how the team's plan is organised. Return the FULL plan as the JSON shape, in ${inputs.language === "nl" ? "Dutch" : "English"}. Return only the JSON object.`
+    : `CLIENT CONTEXT PACK:\n${inputs.contextBlock}\n\nLIVE DATA:\n${inputs.dataBlock}${typeBlock}\n\nWrite the strategic plan for ${inputs.account.name} in ${inputs.language === "nl" ? "Dutch" : "English"}. ACTIONS MUST BE ACCOUNT-SPECIFIC: name the real campaigns, real search terms and real products from the data above — an action a competitor's plan could also contain ("optimise the feed") is too generic; say WHICH items, WHICH terms, WHICH campaigns. Return only the JSON object.`;
 
   const encoder = new TextEncoder();
   const send = (c: ReadableStreamDefaultController, o: unknown) => c.enqueue(encoder.encode(`data: ${JSON.stringify(o)}\n\n`));
