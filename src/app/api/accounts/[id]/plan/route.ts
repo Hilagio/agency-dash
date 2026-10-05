@@ -138,10 +138,12 @@ Rules for the rewrite:
     });
     if (acct?.googleAdsId) {
       const toolAcc = { id, googleAdsId: acct.googleAdsId, organizationId: acct.organizationId, currency: acct.currency, merchantCenterId: acct.merchantCenterId };
+      // Each pull is time-boxed: a hung Google call must never pin the request.
+      const boxed = (p: Promise<string>) => Promise.race([p, new Promise<string>((_, rej) => setTimeout(() => rej(new Error("timeout")), 20_000))]);
       const pulls = await Promise.allSettled([
-        runAgentTool("get_campaign_overview", {}, toolAcc),
-        runAgentTool("get_impression_share", {}, toolAcc),
-        runAgentTool("get_search_terms", {}, toolAcc),
+        boxed(runAgentTool("get_campaign_overview", {}, toolAcc)),
+        boxed(runAgentTool("get_impression_share", {}, toolAcc)),
+        boxed(runAgentTool("get_search_terms", {}, toolAcc)),
       ]);
       const labels = ["LIVE CAMPAIGN STRUCTURE (name campaigns by their REAL names in actions)", "IMPRESSION SHARE (lost to rank vs lost to budget)", "SEARCH TERMS (live — cite real terms in cleanup actions)"];
       pulls.forEach((p, i) => {

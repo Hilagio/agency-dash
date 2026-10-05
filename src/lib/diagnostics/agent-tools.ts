@@ -528,6 +528,10 @@ export async function runAgentTool(name: string, input: Record<string, unknown>,
     const rows = await prisma.searchTermDaily.findMany({
       where: { accountId: acc.id, date: { gte: start.toISOString().slice(0, 10) } },
       select: { searchTerm: true, clicks: true, cost: true, conversions: true },
+      // Bounded: a big account over 30d can hold hundreds of thousands of
+      // term-rows — loading them all into one process is how containers die.
+      orderBy: { cost: "desc" },
+      take: 20_000,
     });
     if (!rows.length) return `No stored search-term data for the last ${days} days (the spine may not have it for this account, or it's Performance Max).`;
     const agg = new Map<string, { term: string; clicks: number; cost: number; conv: number }>();
