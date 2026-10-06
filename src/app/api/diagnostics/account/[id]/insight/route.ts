@@ -21,6 +21,8 @@ import { computeAccountSignals } from "@/lib/diagnostics/run-signals";
 import { ppcOsMcp, PPC_OS_SYSTEM_NOTE } from "@/lib/integrations/ppc-os";
 import { fetchConversionFunnel } from "@/lib/integrations/google-ads";
 import { AGENT_TOOLS, runAgentTool, toolStatusLabel } from "@/lib/diagnostics/agent-tools";
+import { renderDocHtml } from "@/lib/doc/render";
+import type { DocContent } from "@/lib/doc/types";
 import type { Signal } from "@/lib/diagnostics/signals";
 
 export const dynamic = "force-dynamic";
@@ -63,8 +65,10 @@ ONE-CLICK ACTIONS — the platform can run these for the team at the press of a 
 ids: deep_analysis (live web research — own pages, competitor prices/promos, review profiles, marketplace listings; propose when the cause likely sits OUTSIDE the ad account), audit_doc (full audit & action plan document), monthly_report (client month report), plan_generate (create or update the 90-day plan), plan_rewrite (AI rewrite of the LIVE plan from the team's progress — when the plan no longer matches reality), refresh_data (pull fresh data & recompute the diagnosis — after something was fixed).
 The marker is machine-read and stripped from your reply — never mention it in prose, never emit more than one.`;
 
-const LEADGEN_NOTE = `
+const FILE_NOTE = `
+FILE DELIVERY — HARD RULES. You CANNOT hand the team a file any other way than the deliver_document tool. Files written in your code sandbox (via the code execution attached to your web tools) NEVER reach the team — that sandbox is invisible to them. Markdown in chat is not a file either. When the team asks for a document, report, audit, PDF or anything "to send the client": call deliver_document with the FULL structured content (it renders in the house style, saves to the account's library and puts a download button right here in the chat; the HTML prints to a perfect PDF). NEVER say a file "is ready", "staat klaar" or "can be downloaded" unless deliver_document just returned success in THIS turn. If it failed, say it failed.`;
 
+const LEADGEN_NOTE = `
 LEAD-GEN / CPA ACCOUNTS — if the account's goal is LEADS (a cost-per-lead / CPA target, not ecommerce ROAS), diagnose a too-high CPA with this exact tree. It runs on your live tools (get_impression_share, get_search_terms, get_campaign_overview) — CALL them, don't guess:
 1. IMPRESSION SHARE. Under ~80% → visibility problem, you're not showing on enough of the searches you bid on → go to 2. 80%+ → go to 4.
 2. IS LOST (BUDGET) vs IS LOST (RANK). Budget bigger → the budget runs out before the day ends: raise the daily budget by the % you're losing, or cut the target CPA so the same money buys more clicks (30% lost → cut tCPA 20-30%; 50% → 40-50%). Rank bigger → go to 3.
@@ -249,7 +253,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   const account = await prisma.account.findFirst({
     where: { id, organizationId: ctx.orgId },
     select: {
-      id: true, name: true, currency: true, googleAdsId: true, organizationId: true,
+      id: true, name: true, clientName: true, currency: true, googleAdsId: true, organizationId: true,
       grossMarginPercent: true, roasFloor: true, minSpendForEval: true, minConversionsForEval: true, dataVerified: true,
       trackingStatus: true, trackingNote: true, trackingSetAt: true, trackingSetBy: true, merchantCenterId: true,
       businessModel: true,
@@ -484,7 +488,7 @@ export async function POST(req: NextRequest, { params }: Params) {
         // campaign structure, search terms, Shopify) — we execute them and feed
         // the results back until it produces its final answer. Pre-tool narration
         // ("let me check…") is reset away; only the final text is shown/persisted.
-        const sysPrompt = (useChatSystem ? SYSTEM_CHAT : SYSTEM) + PPC_OS_SYSTEM_NOTE + AGENT_TOOLS_NOTE + WEB_RESEARCH_NOTE + ACTION_NOTE + LEADGEN_NOTE + trackingDirective + planDirective;
+        const sysPrompt = (useChatSystem ? SYSTEM_CHAT : SYSTEM) + PPC_OS_SYSTEM_NOTE + AGENT_TOOLS_NOTE + WEB_RESEARCH_NOTE + ACTION_NOTE + FILE_NOTE + LEADGEN_NOTE + trackingDirective + planDirective;
         // Live web research (server-side): the outside view — the client's own
         // pages, competitor prices/promos, review profiles, marketplace listings.
         const webTools = [
@@ -559,8 +563,37 @@ export async function POST(req: NextRequest, { params }: Params) {
           const results = [];
           for (const tu of toolUses) {
             let out: string;
-            try { out = await runAgentTool(tu.name, (tu.input ?? {}) as Record<string, unknown>, toolAcc); }
-            catch (e) { out = `Error running ${tu.name}: ${e instanceof Error ? e.message : String(e)}. Tell the team you couldn't fetch this.`; }
+            // deliver_document is the one tool with a side-channel: it renders
+            // + saves the file and tells the UI to show a download button.
+            if (tu.name === "deliver_document") {
+              try {
+                const inp = (tu.input ?? {}) as Partial<DocContent> & { language?: string };
+                const sections = Array.isArray(inp.sections) ? inp.sections.filter(s => s && typeof s.heading === "string") : [];
+                if (!sections.length) throw new Error("no sections provided");
+                const doc: DocContent = {
+                  language: inp.language === "nl" ? "nl" : "en", format: "doc",
+                  client: account.clientName || account.name,
+                  docType: typeof inp.docType === "string" && inp.docType ? inp.docType : "Report",
+                  title: typeof inp.title === "string" && inp.title ? inp.title : `${account.clientName || account.name} — Report`,
+                  subtitle: typeof inp.subtitle === "string" ? inp.subtitle : undefined,
+                  sections,
+                };
+                const docHtml = renderDocHtml(doc);
+                const safe = (account.clientName || account.name).replace(/[^a-z0-9]+/gi, "-").toLowerCase();
+                const filename = `${safe}-${doc.docType.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.html`;
+                const saved = await prisma.generatedDoc.create({
+                  data: { accountId: id, title: doc.title, docType: doc.docType, format: "doc", language: doc.language, filename, html: docHtml, createdBy: ctx.email },
+                  select: { id: true, title: true, docType: true, format: true, language: true, filename: true, createdBy: true, createdAt: true },
+                });
+                send(controller, { docSaved: saved });
+                out = `Document saved and delivered: "${doc.title}" (${filename}). A download button is now visible in the chat and it's in the account's document library. Tell the team it's ready to download right here — it opens as a styled page and prints to PDF via ⌘P.`;
+              } catch (e) {
+                out = `deliver_document FAILED: ${e instanceof Error ? e.message : String(e)}. Tell the team the document could not be created — do NOT claim a file is ready.`;
+              }
+            } else {
+              try { out = await runAgentTool(tu.name, (tu.input ?? {}) as Record<string, unknown>, toolAcc); }
+              catch (e) { out = `Error running ${tu.name}: ${e instanceof Error ? e.message : String(e)}. Tell the team you couldn't fetch this.`; }
+            }
             // "ok" = the source actually returned usable data (not "not connected",
             // empty, or an error) — drives whether the badge reads as data or a gap.
             const ok = !/(not connected|^\s*no\b|error running|couldn'?t|no stored|no data)/i.test(out.split("\n")[0]);

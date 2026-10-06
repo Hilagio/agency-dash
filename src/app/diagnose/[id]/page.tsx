@@ -208,7 +208,7 @@ function stripActionMarker(s: string): string {
 /** Consume the insight SSE stream, accumulating text and firing handlers. */
 async function consumeInsightStream(
   body: ReadableStream<Uint8Array>,
-  h: { onText: (acc: string) => void; onReset: () => void; onStatus: (s: string) => void; onError: (e: string) => void; onTools?: (t: { name: string; ok: boolean }[]) => void; onSuggestions?: (s: string[]) => void; onAction?: (a: { id: string; reason: string }) => void },
+  h: { onText: (acc: string) => void; onReset: () => void; onStatus: (s: string) => void; onError: (e: string) => void; onTools?: (t: { name: string; ok: boolean }[]) => void; onSuggestions?: (s: string[]) => void; onAction?: (a: { id: string; reason: string }) => void; onDocSaved?: (d: DocMeta) => void },
 ): Promise<string> {
   const reader = body.getReader();
   const decoder = new TextDecoder();
@@ -224,13 +224,14 @@ async function consumeInsightStream(
       if (!line.startsWith("data:")) continue;
       const payload = line.slice(5).trim();
       if (!payload) continue;
-      let ev: { text?: string; error?: string; status?: string; reset?: boolean; toolsUsed?: { name: string; ok: boolean }[]; suggestions?: string[]; action?: { id: string; reason: string } };
+      let ev: { text?: string; error?: string; status?: string; reset?: boolean; toolsUsed?: { name: string; ok: boolean }[]; suggestions?: string[]; action?: { id: string; reason: string }; docSaved?: DocMeta };
       try { ev = JSON.parse(payload); } catch { continue; }
       if (ev.error) h.onError(ev.error);
       else if (ev.reset) { acc = ""; h.onReset(); }
       else if (ev.toolsUsed) h.onTools?.(ev.toolsUsed);
       else if (ev.suggestions) h.onSuggestions?.(ev.suggestions);
       else if (ev.action) h.onAction?.(ev.action);
+      else if (ev.docSaved) h.onDocSaved?.(ev.docSaved);
       else if (ev.status) h.onStatus(ev.status);
       else if (ev.text) { acc += ev.text; h.onText(acc); }
     }
@@ -238,7 +239,7 @@ async function consumeInsightStream(
   return acc;
 }
 
-interface Msg { id?: string; role: "assistant" | "user"; content: string; kind?: string; tools?: { name: string; ok: boolean }[]; action?: { id: string; reason: string }; actionState?: "idle" | "running" | "done" | "dismissed" }
+interface Msg { id?: string; role: "assistant" | "user"; content: string; kind?: string; tools?: { name: string; ok: boolean }[]; action?: { id: string; reason: string }; actionState?: "idle" | "running" | "done" | "dismissed"; doc?: DocMeta }
 
 // Friendly labels for the live data tools, so a real pull is shown to the team.
 // "3d ago" / "today" — for showing how fresh an uploaded CSV is.
@@ -251,6 +252,7 @@ function agoLabel(iso: string | null): string {
 const TOOL_LABELS: Record<string, string> = {
   web_search: "live web search",
   web_fetch: "live page read",
+  deliver_document: "document delivered",
   run_healthcheck: "fundamentals check",
   get_impression_share: "impression share",
   get_campaign_overview: "campaign structure",
@@ -736,6 +738,16 @@ export default function DiagnosePage() {
           }
           return copy;
         }),
+        onDocSaved: (d) => {
+          setLibrary(prev => [d, ...prev.filter(x => x.id !== d.id)]);
+          setThread(prev => {
+            const copy = prev.slice();
+            for (let i = copy.length - 1; i >= 0; i--) {
+              if (copy[i].role === "assistant") { copy[i] = { ...copy[i], doc: d }; break; }
+            }
+            return copy;
+          });
+        },
         onError: (e) => setInsightErr(e),
       });
     } catch (e) {
@@ -1879,6 +1891,16 @@ export default function DiagnosePage() {
                                 <Plug size={12} /> {a.label}
                               </button>
                             ))}
+                          </div>
+                        )}
+                        {/* A document the agent delivered in this turn — the real download, right here. */}
+                        {m.doc && (
+                          <div style={{ marginTop: 9, display: "flex", alignItems: "center", gap: 9, padding: "9px 12px", borderRadius: 10, background: "var(--surface-2)", border: "1px solid color-mix(in srgb, var(--accent) 35%, var(--border))" }}>
+                            <FileText size={14} style={{ color: "var(--accent)", flexShrink: 0 }} />
+                            <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-2)", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.doc.title}</span>
+                            <button onClick={() => openSavedDoc(m.doc!.id, m.doc!.filename)} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 700, color: "#fff", background: "var(--btn-primary, var(--accent))", border: "none", borderRadius: 7, padding: "5px 12px", cursor: "pointer", flexShrink: 0 }}>
+                              <Download size={12} /> Download
+                            </button>
                           </div>
                         )}
                         {/* One-click action proposed by the AI — yes or no, that's the flow. */}

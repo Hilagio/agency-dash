@@ -101,6 +101,36 @@ export const AGENT_TOOLS = [
     input_schema: { type: "object", properties: { days: { type: "number", description: "How far back to read the channel, in days (default 30)." } } },
   },
   {
+    name: "deliver_document",
+    description: "THE ONLY WAY to hand the team a downloadable file. Renders your structured content as a client-ready document in the house style, saves it to this account's document library, and puts a download button in the chat. Use it whenever the team asks for a document, report, audit, PDF or 'something I can send the client' — pass the FULL content (every section, every table row, real numbers). Files you write anywhere else (your code sandbox, markdown in chat) NEVER reach the team — never claim a file is ready unless this tool returned success. The document is HTML that prints to a perfect PDF (⌘P).",
+    input_schema: {
+      type: "object",
+      properties: {
+        docType: { type: "string", description: "Short label, e.g. 'Audit & Action Plan'" },
+        title: { type: "string", description: "The headline" },
+        subtitle: { type: "string", description: "One line: scope / period / date" },
+        language: { type: "string", enum: ["en", "nl"], description: "Document language" },
+        sections: {
+          type: "array",
+          description: "3–12 sections in reading order",
+          items: {
+            type: "object",
+            properties: {
+              heading: { type: "string" },
+              lead: { type: "string", description: "Opening paragraph; **bold** allowed" },
+              paras: { type: "array", items: { type: "string" }, description: "Further prose paragraphs" },
+              bullets: { type: "array", items: { type: "string" } },
+              table: { type: "object", properties: { columns: { type: "array", items: { type: "string" } }, rows: { type: "array", items: { type: "array", items: { type: "string" } } } } },
+              callout: { type: "string" },
+            },
+            required: ["heading"],
+          },
+        },
+      },
+      required: ["docType", "title", "language", "sections"],
+    },
+  },
+  {
     name: "consult_playbook",
     description: "OUR agency's Way of Work + playbook AND our full knowledge base — searchable together. The doctrine: the six principles (steer on POAS not ROAS; nine times out of ten it's NOT the ads; scale into demand not past it; concentration vs breadth; one change at a time; read leading signals), the signals we watch, how we build & scale, how we test DEMAND GEN, the exact DIAGNOSIS ORDER when something breaks (metric tree → decompose → overlay changes → buyability → canaries), the pattern library (what a specific IS/CTR/CVR/ROAS/budget/feed combination means), and product segmentation (Heroes/Sidekicks/Zombies/Villains). PLUS the knowledge base: ~90 step-by-step SOPs, ~34 mental models, ~20 checklists, guidelines and theory — so you can pull the exact PROCEDURE or CHECKLIST for a task, or the mental model behind a decision. Consult it when you hit a trigger and want our house stance or our documented method rather than generic advice. Pass the topic in plain words — a decision ('when to raise budget', 'brand conversion rate canary'), a pattern ('zero-conversion spend rot', 'tROAS spend flatlines'), or a task/procedure ('analyze search term reports', 'PMax ecommerce optimization cycle', 'budget allocation mental model', 'set up conversion tracking checklist'). Returns the best-matching section(s), each labelled by type ([SOP]/[Mental model]/[Checklist]/[Playbook]) — apply ONLY where it fits this account and what the data actually shows; method to reason with, not a script to force.",
     input_schema: { type: "object", properties: { topic: { type: "string", description: "What you're deciding, in plain words — the situation or pattern you want our stance on." } }, required: ["topic"] },
@@ -124,6 +154,7 @@ const LABELS: Record<string, string> = {
   get_merchant_center_status: "Checking Merchant Center feed health…",
   get_slack_context: "Reading the client's Slack channel…",
   consult_playbook: "Checking our agency playbook…",
+  deliver_document: "Building the document…",
 };
 export const toolStatusLabel = (name: string) => LABELS[name] ?? `Checking ${name.replace(/_/g, " ")}…`;
 
