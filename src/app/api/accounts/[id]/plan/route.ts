@@ -13,6 +13,7 @@ import { prisma } from "@/lib/db";
 import { getAuthContext, unauthorized, forbidden } from "@/lib/auth";
 import { buildPlanInputs, PLAN_SYSTEM } from "@/lib/plan/generate";
 import { runAgentTool } from "@/lib/diagnostics/agent-tools";
+import { ppcOsMcp, PPC_OS_SYSTEM_NOTE } from "@/lib/integrations/ppc-os";
 import { renderPlanHtml } from "@/lib/plan/render";
 import type { PlanContent, PlanLanguage } from "@/lib/plan/types";
 
@@ -172,29 +173,41 @@ Rules for the rewrite:
     async start(controller) {
       try {
         send(controller, { status: inputs.hasMakeOrBreak ? "generating" : "generating_no_makeorbreak" });
+        // PPC OS knowledge base attached live (when configured): the model can
+        // pull the house methodology (SOPs, mental models, scaling doctrine)
+        // WHILE writing the plan. MCP tool calls run server-side and can pause
+        // long turns — resumed below.
+        const ppc = ppcOsMcp();
         // One generation attempt; returns raw text + why the model stopped.
         const generate = async (extraNudge?: string) => {
-          const anthropicStream = client.messages.stream({
-            model: "claude-opus-4-8",
-            // Big budget: thinking + the full plan JSON (stats + findings +
-            // levers + build list + phases + forecast, often in Dutch) both
-            // count against max_tokens. Truncation here surfaced to users as
-            // "unparseable plan", so keep generous headroom.
-            max_tokens: 20_000,
-            // Adaptive thinking: let the model actually reason through the
-            // strategy (constraint choice, sequencing, what the data supports)
-            // before writing — the biggest single quality lever on this output.
-            thinking: { type: "adaptive" },
-            system: PLAN_SYSTEM,
-            messages: [{ role: "user", content: extraNudge ? `${userMsg}\n\n${extraNudge}` : userMsg }],
-          });
+          const msgs: Array<{ role: "user" | "assistant"; content: unknown }> = [{ role: "user", content: extraNudge ? `${userMsg}\n\n${extraNudge}` : userMsg }];
           let acc = "", ticks = 0, stopReason: string | null = null;
-          for await (const ev of anthropicStream) {
-            if (ev.type === "content_block_delta" && ev.delta.type === "text_delta") {
-              acc += ev.delta.text;
-              if (++ticks % 12 === 0) send(controller, { status: "writing", chars: acc.length }); // keep-alive
+          for (let round = 0; round < 5; round++) {
+            const anthropicStream = client.beta.messages.stream({
+              model: "claude-opus-4-8",
+              // Big budget: thinking + the full plan JSON (stats + findings +
+              // levers + build list + phases + forecast, often in Dutch) both
+              // count against max_tokens. Truncation here surfaced to users as
+              // "unparseable plan", so keep generous headroom.
+              max_tokens: 20_000,
+              // Adaptive thinking: let the model actually reason through the
+              // strategy (constraint choice, sequencing, what the data supports)
+              // before writing — the biggest single quality lever on this output.
+              thinking: { type: "adaptive" },
+              ...(ppc ? { betas: ppc.betas, mcp_servers: ppc.mcp_servers, tools: ppc.tools } : {}),
+              system: PLAN_SYSTEM + (ppc ? `${PPC_OS_SYSTEM_NOTE}\nConsult it for methodology while planning (scaling doctrine, structure, bidding) where it sharpens the plan — but your FINAL output must still be ONLY the JSON object.` : ""),
+              messages: msgs as Parameters<typeof client.beta.messages.stream>[0]["messages"],
+            });
+            for await (const ev of anthropicStream) {
+              if (ev.type === "content_block_delta" && ev.delta.type === "text_delta") {
+                acc += ev.delta.text;
+                if (++ticks % 12 === 0) send(controller, { status: "writing", chars: acc.length }); // keep-alive
+              }
             }
-            if (ev.type === "message_delta" && ev.delta.stop_reason) stopReason = ev.delta.stop_reason;
+            const fm = await anthropicStream.finalMessage();
+            stopReason = fm.stop_reason;
+            if (fm.stop_reason !== "pause_turn") break;
+            msgs.push({ role: "assistant", content: fm.content });
           }
           return { acc, stopReason };
         };
