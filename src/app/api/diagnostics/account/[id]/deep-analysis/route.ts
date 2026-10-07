@@ -17,6 +17,7 @@ import { getAuthContext, unauthorized, forbidden } from "@/lib/auth";
 import { computeWindows } from "@/lib/diagnostics/windows";
 import { runAgentTool } from "@/lib/diagnostics/agent-tools";
 import { renderDocHtml } from "@/lib/doc/render";
+import { ppcOsMcp, PPC_OS_SYSTEM_NOTE } from "@/lib/integrations/ppc-os";
 import type { DocContent, DocLanguage } from "@/lib/doc/types";
 
 export const dynamic = "force-dynamic";
@@ -159,24 +160,30 @@ Research the live web first, then write the client update. Return only the JSON 
     async start(controller) {
       try {
         send(controller, { status: "start" });
-        const tools: Anthropic.Messages.ToolUnion[] = [
+        // PPC OS knowledge base attached live (when configured) next to the web
+        // tools — the analysis can ground its recommendations in the house
+        // methodology, not just generic best practice.
+        const ppc = ppcOsMcp();
+        const tools = [
+          ...(ppc?.tools ?? []),
           { type: "web_search_20260209", name: "web_search", max_uses: 14 },
           { type: "web_fetch_20260209", name: "web_fetch", max_uses: 14, max_content_tokens: 25_000 },
-        ];
-        const messages: Anthropic.MessageParam[] = [{ role: "user", content: userMsg }];
-        let msg: Anthropic.Message | null = null;
+        ] as Parameters<typeof client.beta.messages.stream>[0]["tools"];
+        const messages: Array<{ role: "user" | "assistant"; content: unknown }> = [{ role: "user", content: userMsg }];
+        let msg: Anthropic.Beta.BetaMessage | null = null;
         let researchSteps = 0;
 
         // Server tools can pause long turns (stop_reason "pause_turn") — resume
         // by appending the partial assistant turn and continuing.
         for (let round = 0; round < 8; round++) {
-          const s = client.messages.stream({
+          const s = client.beta.messages.stream({
             model: "claude-opus-4-8",
             max_tokens: 24_000,
             thinking: { type: "adaptive" },
-            system: DEEP_SYSTEM,
+            ...(ppc ? { betas: ppc.betas, mcp_servers: ppc.mcp_servers } : {}),
+            system: DEEP_SYSTEM + (ppc ? `${PPC_OS_SYSTEM_NOTE}\nGround campaign-level recommendations in the PPC OS methodology where it applies.` : ""),
             tools,
-            messages,
+            messages: messages as Parameters<typeof client.beta.messages.stream>[0]["messages"],
           });
           let chars = 0, ticks = 0;
           for await (const ev of s) {
@@ -196,7 +203,7 @@ Research the live web first, then write the client update. Return only the JSON 
         }
         if (!msg) { send(controller, { error: "The analysis never produced a response — try again." }); controller.close(); return; }
 
-        const text = msg.content.filter((b): b is Anthropic.TextBlock => b.type === "text").map(b => b.text).join("");
+        const text = msg.content.filter(b => b.type === "text").map(b => (b as { text: string }).text).join("");
         const a = text.indexOf("{"), b = text.lastIndexOf("}");
         let parsed: Partial<DocContent> | null = null;
         if (a >= 0 && b > a) { try { parsed = JSON.parse(text.slice(a, b + 1)) as Partial<DocContent>; } catch { parsed = null; } }
