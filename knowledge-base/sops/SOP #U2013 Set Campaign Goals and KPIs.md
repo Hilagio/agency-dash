@@ -87,7 +87,7 @@ Conduct a structured conversation with the stakeholder. Questions vary by vertic
 - What margins need to be maintained?
 - How far can we push efficiency vs growth?
 
-For the full question list by vertical, see the source transcript detailed examples in [Goals and KPIs Mental Model](../mental-models/Goals and KPIs Mental Model.md).
+For the full question list by vertical, see [Goals and KPIs Mental Model](../mental-models/Goals and KPIs Mental Model.md).
 
 ### 1.2 Classify the goal
 
@@ -184,8 +184,8 @@ For each candidate campaign type, assess three factors:
 
 | Primary goal | Start with | Add if growth headroom needed |
 |-------------|-----------|------------------------------|
-| Growth + Efficiency | Search, Shopping, PMax | Display, Video, Demand Gen |
-| Growth (primary) | Search, Shopping, PMax | + Display, Video, Demand Gen for reach |
+| Growth + Efficiency | Search, Shopping, PMax | Video, Demand Gen |
+| Growth (primary) | Search, Shopping, PMax | + Video, Demand Gen for reach |
 | Efficiency (primary) | Search, Shopping, PMax | + Remarketing only (no prospecting) |
 
 ### 3.3 Record campaign type selection
@@ -253,7 +253,7 @@ Use available tools to validate feasibility. Check each:
 
 ### 5.2 Red flag check
 
-Confirm none of these red flags exist:
+Confirm every statement below is true:
 
 - [ ] Goal does not assume linear growth with increased budgets
 - [ ] Goal does not require simultaneous growth and efficiency maximization

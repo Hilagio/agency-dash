@@ -1,13 +1,13 @@
 # SOP – Select a Bidding Strategy
 Created: 2026-02-04
-Updated: 2026-02-05
+Updated: 2026-10-05
 
 Agent_Executable: No
 Category: Bidding
 Human_Approval_Required: No
 Primary Outcome: Correct initial bid strategy selected for new campaign based on goals, data readiness, and campaign type
 SOP_ID: SOP_32
-Secondary Outcomes: Clear migration path defined, stakeholders briefed on learning period expectations
+Secondary Outcomes: Clear migration path defined, stakeholders briefed on the learning phase and the post-change wait
 Status: Done
 Domain: Bidding
 Pillar: 9
@@ -46,7 +46,7 @@ Run this SOP when:
 #### Required inputs
 
 - Defined campaign goals and KPIs (from [SOP – Set Campaign Goals and KPIs](../sops/SOP – Set Campaign Goals and KPIs.md))
-- Campaign type determined (Search, Standard Shopping, PMax, Display, Video, Demand Gen)
+- Campaign type determined (Search, Standard Shopping, PMax, Video, Demand Gen)
 - Conversion tracking configured and validated
 - Historical performance data (if available): average CPA, average ROAS, monthly conversion volume
 - Budget allocation for the campaign
@@ -56,7 +56,7 @@ Run this SOP when:
 | Document | Used for |
 |----------|----------|
 | [Bid Strategy Selection Reference](../references/Bid Strategy Selection Reference.md) | Decision trees per campaign type |
-| [Smart Bidding Mechanics Reference](../references/Smart Bidding Mechanics Reference.md) | Understanding strategy mechanics and learning periods |
+| [Smart Bidding Mechanics Reference](../references/Smart Bidding Mechanics Reference.md) | Strategy mechanics, the 7-14 day learning phase, and the 1-2 conversion cycle post-change wait |
 | [Bidding Strategy Mental Model](../mental-models/Bidding Strategy Mental Model.md) | Conceptual framework for bidding decisions |
 | [Goals and KPIs Mental Model](../mental-models/Goals and KPIs Mental Model.md) | Mapping business goals to optimization objectives |
 | [Conversion Volume Thresholds Reference](../references/Conversion Volume Thresholds Reference.md) | Minimum data requirements per strategy |
@@ -123,11 +123,11 @@ Classify the account into one of three states:
 | Data state | Definition | Implication |
 |------------|-----------|-------------|
 | **New account (zero data)** | No historical conversion data in the account | Smart Bidding has no signals to learn from: start with a data-gathering strategy or use Portfolio Bid Strategy to pool signals |
-| **Minimal data (15-29/month)** | 15-29 conversions in the last 30 days for this campaign type | Absolute minimum for conversion-based bidding: expect high volatility, longer learning periods |
-| **Functional data (30-49/month)** | 30-49 conversions in the last 30 days for this campaign type | Smart Bidding can function with moderate stability for Target CPA; Target ROAS still needs more data |
+| **Minimal data (15-29/month)** | 15-29 conversions in the last 30 days for this campaign type | Absolute minimum for conversion-based bidding: expect high volatility and more conversion cycles before the data is clean enough to judge |
+| **Functional data (30-49/month)** | 30-49 conversions in the last 30 days for this campaign type | Smart Bidding can function with moderate stability for Target CPA: Target ROAS still needs more data |
 | **Sufficient data (50+/month)** | 50+ conversions in the last 30 days for this campaign type | Smart Bidding has enough signals for reliable optimization, including Target ROAS |
 
-> ⚠️ **Conversion volume thresholds:** 15/month = absolute minimum (high volatility), 30/month = functional for Target CPA (moderate stability), 50/month = recommended for all strategies including Target ROAS. Below 15, conversion-based strategies will not have enough signal to optimize effectively.
+> ⚠️ **Below 15 conversions per month, conversion-based strategies do not have enough signal to optimize.** Full per-strategy minimums live in [Conversion Volume Thresholds Reference](../references/Conversion Volume Thresholds Reference.md).
 
 ### 2.2 Evaluate targeting familiarity
 
@@ -143,7 +143,7 @@ Unfamiliar targeting increases risk. When combining zero data with unfamiliar ta
 
 ### 2.3 Check niche knowledge
 
-If you have deep knowledge of the niche (expected CPCs, typical conversion rates, competitive landscape), you can set more informed initial targets. If the niche is unfamiliar, rely on broader benchmarks and plan for a longer learning period.
+If you have deep knowledge of the niche (expected CPCs, typical conversion rates, competitive landscape), you can set more informed initial targets. If the niche is unfamiliar, rely on broader benchmarks and expect more conversion cycles before the targets settle.
 
 ### 2.4 Record data readiness assessment
 
@@ -168,7 +168,6 @@ Open the [Bid Strategy Selection Reference](../references/Bid Strategy Selection
 | Search | Search campaign decision tree |
 | Standard Shopping | Shopping campaign decision tree |
 | Performance Max | PMax campaign decision tree |
-| Display | Display campaign decision tree |
 | Video | Video campaign decision tree |
 | Demand Gen | Demand Gen campaign decision tree |
 
@@ -209,6 +208,8 @@ Open Google Ads (or Google Ads Editor) and configure the selected bid strategy f
 3. Set the initial target (if applicable, see 4.2)
 4. Save the configuration
 
+> 💡 **Testing the change instead of committing to it:** on a campaign that meets the minimum sample sizes, select **Save as experiment** in place of **Save**. The new strategy or target runs as a treatment arm against the original campaign (See: [Experiment Configuration Reference](../references/Experiment Configuration Reference.md)).
+
 ### 4.2 Set initial targets
 
 If the selected strategy requires a target (tCPA, tROAS), set it using the following rules:
@@ -221,20 +222,21 @@ If the selected strategy requires a target (tCPA, tROAS), set it using the follo
 | Maximize Conversion Value (no target) | No target needed | Leave target blank |
 | Manual CPC | Set max CPC based on unit economics and expected conversion rate | Max CPA €50, CVR 3%: max CPC = €1.50 |
 
-> ⚠️ **Do not set aggressive targets at launch:** Starting with a target that is significantly better than historical performance forces the algorithm into a constrained learning period. Let it learn at current performance levels first, then tighten targets incrementally.
+> ⚠️ **Do not set aggressive targets at launch:** Starting with a target that is significantly better than historical performance forces the algorithm into a constrained learning phase. Let it learn at current performance levels first, then tighten targets incrementally.
 
 For new accounts with no historical data, use unit economics to calculate your break-even CPA or minimum ROAS, then set the initial target 10-20% more conservative than break-even.
 
-### 4.3 Brief stakeholders on the learning period
+### 4.3 Brief stakeholders on the learning phase and the post-change wait
 
 Communicate the following to relevant stakeholders:
 
 | Topic | What to communicate |
 |-------|-------------------|
 | **Strategy selected** | Name of the strategy and why it was chosen |
-| **Learning period** | Approximately two conversion cycles of volatile performance is expected (See: [Smart Bidding Mechanics Reference](../references/Smart Bidding Mechanics Reference.md)) |
-| **What not to do** | Do not make changes during the learning period (budget changes, targeting changes, bid adjustments) |
-| **When to expect stability** | After the learning period completes, performance should normalize |
+| **Learning phase** | The bid strategy recalibrates for 7-14 days after launch (See: [Smart Bidding Mechanics Reference](../references/Smart Bidding Mechanics Reference.md)) |
+| **Post-change wait** | Performance is judged 1-2 conversion cycles after launch, which on a long conversion cycle runs weeks past the end of the learning phase |
+| **What not to do** | Do not make changes during the learning phase (budget changes, targeting changes, bid adjustments) |
+| **When to expect stability** | Performance normalizes once both clocks have run: the 7-14 day learning phase and 1-2 conversion cycles from launch |
 | **Migration plan** | If starting with a data-gathering strategy, explain the planned migration and timeline |
 
 ### 4.4 Document the migration plan
@@ -254,7 +256,7 @@ If the selected strategy is a data-gathering starting point, document the path f
 - [ ] Bid strategy is set in Google Ads
 - [ ] Initial target is configured (if applicable)
 - [ ] Target is not more aggressive than historical averages
-- [ ] Stakeholders are briefed on the learning period
+- [ ] Stakeholders are briefed on the 7-14 day learning phase and the 1-2 conversion cycle wait
 - [ ] Migration plan is documented (if using data-gathering strategy)
 - [ ] Campaign is not paused or in draft state
 
@@ -268,7 +270,7 @@ This SOP is complete when:
 - [ ] Data readiness assessment is complete
 - [ ] Bid strategy is selected using the decision tree with documented reasoning
 - [ ] Strategy is configured in Google Ads with appropriate initial targets
-- [ ] Stakeholders are briefed on learning period expectations
+- [ ] Stakeholders are briefed on the 7-14 day learning phase and the 1-2 conversion cycle wait
 - [ ] Migration plan is documented (if applicable)
 - [ ] Run the [Bid Strategy Health Checklist](../checklists/Bid Strategy Health Checklist.md) and pass all applicable items
 
@@ -280,8 +282,8 @@ Once the bid strategy is configured and the campaign is live:
 
 | Timeframe | Action |
 |-----------|--------|
-| Days 1-14 | Monitor learning period status. Do not make changes unless critical issues arise. |
-| Day 14+ | Confirm the learning period is complete. Review initial performance against targets. |
+| Days 1-14 (learning phase) | Monitor bid strategy status. Do not make changes unless critical issues arise. |
+| 1-2 conversion cycles from launch | Confirm the learning phase has completed, then review initial performance against targets. |
 | Day 30+ | Evaluate if data-gathering thresholds are met. If yes, execute migration to target strategy. |
 | Ongoing | Monitor bid strategy health using [Bid Strategy Health Checklist](../checklists/Bid Strategy Health Checklist.md) on a regular cadence. |
 
@@ -289,7 +291,7 @@ Once the bid strategy is configured and the campaign is live:
 
 | Issue | Route to |
 |-------|----------|
-| Learning period resets repeatedly | Check for disruptive changes: review [Smart Bidding Mechanics Reference](../references/Smart Bidding Mechanics Reference.md) |
+| Learning phase resets repeatedly | Check for disruptive changes: review [Smart Bidding Mechanics Reference](../references/Smart Bidding Mechanics Reference.md) |
 | Performance significantly worse than expected | Verify conversion tracking, revisit data readiness assessment |
 | Conversion volume drops below minimum threshold | Consider consolidating campaigns, reverting to data-gathering strategy, or pooling into a Portfolio Bid Strategy |
 | Stakeholder wants to override the strategy | Revisit Phase 1 to confirm optimization objectives are still aligned |
@@ -308,7 +310,7 @@ A: If you have sufficient historical data (50+ conversions/month) and a clear CP
 
 **Q: How long should I wait before tightening targets?**
 
-A: Wait at least two full learning periods (14-28 days) after the initial setup before making target adjustments. When tightening, move in increments of 10-15% at a time, and allow a full learning period between each adjustment.
+A: Two clocks start at setup and the longer one governs: the 7-14 day learning phase, and 1-2 conversion cycles before the data is clean enough to judge. Wait for both, then move in increments of 10-15% at a time, waiting for both again between each adjustment.
 
 ---
 
@@ -341,7 +343,7 @@ A: Wait at least two full learning periods (14-28 days) after the initial setup 
 |---------|----------------|--------------|
 | Setting aggressive targets at launch | Wanting to hit ideal CPA/ROAS immediately | Start at or near historical averages, tighten incrementally |
 | Choosing tCPA/tROAS with insufficient data | Skipping the data readiness assessment | Complete Phase 2 before selecting a strategy |
-| Making changes during the learning period | Impatience with volatile early performance | Brief stakeholders upfront, set expectations on the learning period (two conversion cycles) |
+| Making changes during the learning phase | Impatience with volatile early performance | Brief stakeholders upfront on both clocks: a 7-14 day learning phase, then 1-2 conversion cycles from the change before judging performance |
 | No migration plan for data-gathering strategies | Treating the starting strategy as permanent | Always document the target strategy and migration trigger in Phase 4 |
 | Ignoring campaign-type constraints | Assuming all strategies work for all types | Use the campaign-specific decision tree in Phase 3 |
 
@@ -349,8 +351,8 @@ A: Wait at least two full learning periods (14-28 days) after the initial setup 
 
 ### Version details
 
-- **Version:** 1.0
-- **Last Updated:** February 2026
+- **Version:** 3.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

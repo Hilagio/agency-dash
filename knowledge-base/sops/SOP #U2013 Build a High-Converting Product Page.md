@@ -28,7 +28,7 @@ This SOP does **not:**
 - Build dedicated ecommerce LPs for paid campaigns (See: [SOP – Build a High-Converting Ecommerce Landing Page](../sops/SOP – Build a High-Converting Ecommerce Landing Page.md))
 - Optimize cart or checkout flow (See: [SOP – Optimize Cart and Checkout Flow](../sops/SOP – Optimize Cart and Checkout Flow.md))
 - Define the offer (pricing, bundles, shipping policy): the offer must be defined before this SOP runs
-- Cover A/B testing methodology for product pages
+- Cover A/B testing methodology for product pages (See: [SOP – Run a Landing Page A&B Test](../sops/SOP – Run a Landing Page A&B Test.md))
 
 ## When to run this SOP
 
@@ -53,10 +53,9 @@ Run this SOP when:
 
 | Document | Used for |
 |----------|----------|
-| [Ecommerce Conversion Engine Mental Model](../mental-models/Ecommerce Conversion Engine Mental Model.md) | Product page hierarchy and principles |
+| [Ecommerce Conversion Engine Mental Model](../mental-models/Ecommerce Conversion Engine Mental Model.md) | Product page hierarchy, ecommerce conversion principles, product page role |
 | [Ecommerce Page Section Catalog](../catalogs/Ecommerce Page Section Catalog.md) | Section patterns and examples (sections 3.1-3.7) |
 | [Ecommerce Page Quality Checklist](../checklists/Ecommerce Page Quality Checklist.md) | Validation gate |
-| [Ecommerce Conversion Engine Mental Model](../mental-models/Ecommerce Conversion Engine Mental Model.md) | Ecommerce conversion principles and product page role |
 
 ---
 
@@ -117,7 +116,7 @@ Build each section in order. Use the [Ecommerce Page Section Catalog](../catalog
 
 ### 2.1 Section 1: Product identity
 
-This is the first thing the visitor sees. The gallery and title must answer "What is this?" immediately.
+The gallery and title must answer "What is this?" immediately.
 
 1. **Set up the image gallery:** Arrange images in this order: hero product shot, lifestyle/context shot, detail/zoom shots, scale reference, video thumbnail. Ensure gallery supports zoom on desktop and pinch-to-zoom on mobile.
 2. **Write the product title:** Descriptive, includes key attributes (e.g. "Men's Waterproof Trail Running Shoe"). Avoid internal SKU names.
@@ -177,7 +176,7 @@ The CTA section must be the most visually prominent area on the page.
 
 ### 3.1 Write conversion-focused copy
 
-In ecommerce, the product is the pitch. Images, reviews, and specs do the selling. Copy supports but doesn't lead. Apply these principles to all text on the page:
+Apply these principles to all text on the page:
 
 1. **Product title:** Descriptive and benefit-hinting. Not "SKU-12345-BLK" but "Men's Waterproof Trail Shoe".
 2. **Product description:** Benefits before features. Translate every spec into what it means for the visitor.
@@ -257,8 +256,7 @@ Once the product page is live:
 |----------|------|---------|
 | [Ecommerce Page Section Catalog](../catalogs/Ecommerce Page Section Catalog.md) | Catalog | Phase 2 (all sections) |
 | [Ecommerce Page Quality Checklist](../checklists/Ecommerce Page Quality Checklist.md) | Checklist | Phase 4 (validation) |
-| [Ecommerce Conversion Engine Mental Model](../mental-models/Ecommerce Conversion Engine Mental Model.md) | Mental Model | Phase 2 (hierarchy rationale) |
-| [Ecommerce Conversion Engine Mental Model](../mental-models/Ecommerce Conversion Engine Mental Model.md) | Mental Model | Phase 3 (ecommerce copy principles) |
+| [Ecommerce Conversion Engine Mental Model](../mental-models/Ecommerce Conversion Engine Mental Model.md) | Mental Model | Phase 2 (hierarchy rationale), Phase 3 (ecommerce copy principles) |
 
 ---
 

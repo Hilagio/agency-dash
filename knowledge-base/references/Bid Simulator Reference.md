@@ -1,5 +1,6 @@
 # Bid Simulator Reference
 Created: 2026-02-04
+Updated: 2026-10-05
 
 Support_ID: CHEATSHEET_28
 Status: Done
@@ -49,19 +50,14 @@ Documents the bid simulator and Performance Planner tools: what they show, how t
 
 The bid simulator uses your campaign's historical data to estimate what results would look like at different bid targets. It models scenarios across a range of CPA or ROAS/POAS targets and shows projected conversions, conversion value, and cost for each.
 
-### How to access
+### Where it lives
 
-**Campaign-level bid strategy report:**
+| Strategy type | Path to the simulator |
+|--------------|-----------------------|
+| Campaign-level | The "Bid strategy type" column links through to the bid strategy report, which carries the bid simulator section |
+| Portfolio | Tools > Budgets and bidding > Bid strategies, then the strategy's report |
 
-1. Add the "Bid strategy type" column to your campaign view
-2. Click the blue hyperlink on the strategy name
-3. In the bid strategy report, find the bid simulator section
-
-**Portfolio bid strategy report:**
-
-1. Go to Tools > Budgets and Bidding > Bid Strategies
-2. Select the portfolio strategy
-3. View the bid simulator section in the report
+The pull is owned by [SOP - Scale Bids and Budgets](../sops/SOP – Scale Bids and Budgets.md), Phase 2.1.
 
 ### What the simulator shows
 
@@ -88,13 +84,9 @@ The bid simulator uses your campaign's historical data to estimate what results 
 
 The Performance Planner forecasts campaign performance at different budget and target levels over a future period (typically next month or quarter). It uses historical data plus seasonal trends to project outcomes.
 
-### How to access
+### Where it lives
 
-1. Go to Tools > Planning > Performance Planner
-2. Select campaigns to include
-3. Choose a date range (next month, next quarter, custom)
-4. Set target metrics (CPA, ROAS, budget)
-5. Review projections
+Performance Planner sits under Tools > Planning > Performance Planner. A plan takes a campaign selection, a date range (next month, next quarter, or custom), and target metrics (CPA, ROAS, budget). The run is owned by [SOP - Scale Bids and Budgets](../sops/SOP – Scale Bids and Budgets.md), Phase 2.2.
 
 ### What the planner shows
 
@@ -112,12 +104,14 @@ Performance Planner requires:
 
 - Active campaigns with at least 7 days of history
 - Sufficient conversion data (campaigns with very low volume may not be included)
-- Standard campaign types (Search, Shopping, Display, PMax)
+- Supported campaign types (Search, Shopping, PMax)
 
 Performance Planner may not be available for:
 
 - Very new campaigns
 - Campaigns with inconsistent conversion data
+- Video campaigns (not supported for planning)
+- Plans built on impression-share-based metrics (not supported)
 - Some specialized campaign types
 
 ---
@@ -126,14 +120,16 @@ Performance Planner may not be available for:
 
 The profit optimum is the target level where net profit is maximized. It exists because of diminishing returns: each incremental conversion costs more than the last.
 
-### Step-by-step method
+### What the calculation needs
 
-1. **Open bid simulator** for your campaign or portfolio
-2. **Note 5-7 scenarios** at different target levels, spanning from your current target to near-breakeven
-3. **Export to spreadsheet** with columns: Target, Estimated Conversions, Estimated Conversion Value, Estimated Cost
-4. **Calculate net profit** for each row: Conversion Value minus Cost
-5. **Plot the net profit curve** (target on X-axis, net profit on Y-axis)
-6. **Identify the peak:** the target level where net profit is highest
+| Element | Definition |
+|---------|------------|
+| Scenario span | 5-7 simulator scenarios, from the current target down to near-breakeven |
+| Columns per scenario | Target, Estimated Conversions, Estimated Conversion Value, Estimated Cost |
+| Net profit per scenario | Conversion Value minus Cost |
+| The optimum | The peak of the net profit curve plotted against target |
+
+The procedure is owned by [SOP - Scale Bids and Budgets](../sops/SOP – Scale Bids and Budgets.md), Phase 2.3.
 
 ### Example (POAS-based)
 
@@ -162,7 +158,7 @@ For large accounts, automate via the Google Ads API:
 
 ## Limitations and caveats
 
-> ⚠️ **Never take forecasts at face value:** Simulators and planners are directional tools, not guarantees.
+> ⚠️ **Simulators and planners are directional tools, not guarantees.** Every figure below is a projection built on the assumptions in the table.
 
 | Limitation | Impact | Mitigation |
 |-----------|--------|-----------|
@@ -170,7 +166,7 @@ For large accounts, automate via the Google Ads API:
 | **Smooth curves suggest linear growth** | Reality has sharper diminishing returns than shown | Apply a 10-20% haircut to aggressive scenarios |
 | **Does not model ad fatigue** | Assumes consistent CTR and conversion rate at higher volumes | Monitor actual CTR and CR trends when scaling |
 | **Based on historical data** | If recent performance is atypical (sale, outage, new competitor), projections are skewed | Use representative time periods for analysis |
-| **Conversion delay not always factored** | Recent conversion data may be incomplete | Ensure analysis window accounts for your conversion cycle |
+| **Conversion lag not always factored** | Recent conversion data may be incomplete | Ensure analysis window accounts for your conversion cycle |
 | **POAS data interpretation** | Google shows "Target ROAS" in the interface even when using profit tracking | Interpret conversion value as gross profit when POAS is active |
 
 ### When to trust forecasts more
@@ -196,20 +192,20 @@ For large accounts, automate via the Google Ads API:
 | Strategy type | How to access |
 |--------------|---------------|
 | Campaign-level | Add "Bid strategy type" column > click blue strategy link |
-| Portfolio | Tools > Budgets and Bidding > Bid Strategies > select strategy |
+| Portfolio | Tools > Budgets and bidding > Bid strategies > select strategy |
 
 ### Key metrics in the report
 
 | Metric | What it shows |
 |--------|-------------|
-| **Average conversion delay** | Days between click and conversion (equals your conversion cycle) |
+| `Average conversion delay` | Days between click and conversion (equals your conversion cycle) |
 | **Target** | Your current CPA or ROAS/POAS target |
 | **Actual performance** | How close actual CPA/ROAS is to target |
 | **Bid simulator** | Projected scenarios at different targets |
 | **Status** | Learning, Limited, Eligible, etc. |
 | **Conversion projections** | Forward-looking conversion estimates |
 
-> 💡 **The average conversion delay in your bid strategy report tells you your conversion cycle:** Use this to determine how long to wait before evaluating performance after changes and how long to run experiments.
+> 💡 **The average conversion lag in the bid strategy report is the campaign's conversion cycle.** It is the unit the standard post-change wait is counted in (See: [Smart Bidding Mechanics Reference](../references/Smart Bidding Mechanics Reference.md)), and the unit an experiment's runtime is sized against.
 
 ---
 
@@ -219,7 +215,7 @@ For large accounts, automate via the Google Ads API:
 |---------|---------|-----|
 | Taking simulator projections as guarantees | Over-committing to aggressive targets | Use projections as directional input, validate with experiments |
 | Skipping the profit calculation step | Looking only at conversions or ROAS, ignoring net profit | Always calculate net profit = conversion value minus cost |
-| Using incomplete data periods | Conversion delay makes recent data look worse | Exclude the most recent [conversion delay] days from analysis |
+| Using incomplete data periods | Conversion lag makes recent data look worse | Exclude the most recent [conversion lag] days from analysis |
 | Not validating with experiments | Applying optimum targets without testing | Run 50/50 campaign experiment for 30+ days before committing |
 | Ignoring diminishing returns | Assuming linear scaling from simulator output | Plot the full curve, look for where marginal returns flatten |
 | Checking simulator too frequently | Data changes slowly, creates analysis paralysis | Review bi-weekly or monthly, not daily |
@@ -241,8 +237,8 @@ For large accounts, automate via the Google Ads API:
 
 ## Version details
 
-- **Version:** 1.0
-- **Last Updated:** February 2026
+- **Version:** 3.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

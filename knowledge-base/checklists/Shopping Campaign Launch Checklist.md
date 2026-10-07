@@ -1,8 +1,10 @@
 # Shopping Campaign Launch Checklist
 Created: 2026-02-04
+Updated: 2026-08-27
 
 Support_ID: CHECKLIST_21
 Status: Done
+Category: Shopping
 Reference Type: Checklist
 Agent_Readable: No
 Human_Facing: Yes
@@ -75,7 +77,7 @@ Run this checklist:
 - [ ] Conversion tracking implemented
 - [ ] Conversion action using correct value tracking
 - [ ] Sufficient conversion history (30+ conversions for Smart Bidding)
-- [ ] Merchant Center linked in Google Ads
+- [ ] Merchant Center linked in Google Ads, with the link request approved on the receiving account (automatic only when the same person is admin on both)
 - [ ] Billing set up and active
 
 ### Campaign settings (Standard Shopping)
@@ -84,6 +86,7 @@ Run this checklist:
 - [ ] Merchant Center account selected
 - [ ] Target country correct
 - [ ] Campaign priority set (High/Medium/Low based on strategy)
+- [ ] Inventory filter Channel option set deliberately, local product listings serve by default
 - [ ] Network settings configured (Search Partners decision)
 - [ ] Bid strategy selected (Manual CPC, Maximize Clicks, tROAS based on volume)
 - [ ] Daily budget set
@@ -92,8 +95,8 @@ Run this checklist:
 
 - [ ] Campaign type: Performance Max
 - [ ] ZERO creative assets (no headlines, descriptions, images, videos, logos)
-- [ ] Listing groups configured (your only asset)
-- [ ] NO audience signals added (your feed is your targeting)
+- [ ] Listing groups configured
+- [ ] NO audience signals added
 - [ ] Brand exclusions configured (Settings > Other settings)
 - [ ] Final URL expansion: OFF
 - [ ] Bid strategy selected (Maximize Conversion Value, with or without tROAS)
@@ -106,7 +109,7 @@ Run this checklist:
 - [ ] Brand terms identified
 - [ ] Standard Shopping: Brand campaign with Low priority OR brand negatives in generic campaigns
 - [ ] PMax: Brand exclusions added at campaign level
-- [ ] Verification: Test search with brand terms to confirm routing
+- [ ] A brand-term test search routes to the intended campaign
 
 > ↪️ **Brand separation details:** See [Brand Separation Reference](../references/Brand Separation Reference.md).
 
@@ -142,7 +145,7 @@ After enabling the campaign:
 
 - [ ] Campaign shows "Eligible" status
 - [ ] Products approved and serving
-- [ ] Initial impressions/clicks appearing (may take 24-48 hours)
+- [ ] Impressions and clicks are appearing within 48 hours of launch
 - [ ] No unexpected disapprovals
 - [ ] Budget spending as expected
 
@@ -150,11 +153,11 @@ After enabling the campaign:
 
 ## Post-launch monitoring (First 7 days)
 
-- [ ] Daily: Check for new disapprovals
-- [ ] Daily: Monitor spend pacing
-- [ ] Day 3: Review search terms report (add negatives if needed)
-- [ ] Day 7: First performance review
-- [ ] Do NOT make major changes during learning period (2-4 weeks for PMax)
+- [ ] Daily: no new disapprovals
+- [ ] Daily: spend is within 10% of pace
+- [ ] Day 3: every irrelevant search term is added as a negative
+- [ ] Day 7: performance is recorded against the launch baseline
+- [ ] No major change was made during the learning period (2-4 weeks for PMax)
 
 ---
 
@@ -195,8 +198,8 @@ After enabling the campaign:
 
 ## Version details
 
-- **Version:** 1.0
-- **Last Updated:** February 2026
+- **Version:** 3.0
+- **Last Updated:** August 2026
 - **Creator:** Bob Meijer
 
 ---

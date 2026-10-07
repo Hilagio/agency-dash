@@ -1,6 +1,6 @@
 # SOP – Set Up Cart Data and Profit Tracking
 Created: 2026-02-04
-Updated: 2026-04-02
+Updated: 2026-08-27
 
 Agent_Executable: No
 Category: Measurement
@@ -25,8 +25,8 @@ This SOP walks you through configuring cart-level data and cost of goods sold (C
 This SOP does **not:**
 
 - Explain why profit tracking matters (See: [Unit Economics Mental Model](../mental-models/Unit Economics Mental Model.md))
-- Set up basic conversion tracking (See: existing conversion tracking SOP)
-- Configure bidding strategies that use profit data (downstream SOP)
+- Set up basic conversion tracking (See: [SOP – Set Up Google Ads Conversion Tracking](../sops/SOP – Set Up Google Ads Conversion Tracking.md))
+- Configure bidding strategies that use profit data (See: [SOP – Set Up Value-Based Bidding](../sops/SOP – Set Up Value-Based Bidding.md))
 - Cover Google Analytics 4 ecommerce tracking (separate implementation)
 
 ### When to run this SOP
@@ -54,9 +54,9 @@ Run this SOP when:
 
 | Document | Used for |
 |----------|----------|
-| Google Merchant Center feed specifications | Adding cost_of_goods_sold attribute |
-| Google Ads conversion tag documentation | Cart data parameter reference |
-| Google Tag Manager workspace | Tag configuration |
+| [Cart Data and Profit Tracking Reference](../references/Cart Data and Profit Tracking Reference.md) | Cart data parameters and gross profit columns |
+| [Product Feed Data Specification Reference](../references/Product Feed Data Specification Reference.md) | The cost_of_goods_sold attribute format |
+| [Conversion Pixel Reference](../references/Conversion Pixel Reference.md) | Conversion tag configuration |
 
 ---
 
@@ -279,7 +279,7 @@ Once cart data and profit tracking are active:
 
 | Timeframe | Action |
 |-----------|--------|
-| Immediately | Proceed to bidding optimization SOPs using profit-based targets |
+| Immediately | [SOP – Set Up Value-Based Bidding](../sops/SOP – Set Up Value-Based Bidding.md) for profit-based targets |
 | After 7 days | Verify cart data coverage (percentage of conversions with cart data) |
 | After 30 days | Analyze product-level profitability, adjust bidding targets |
 
@@ -332,8 +332,8 @@ A: Yes, for supported platforms. ProfitMetrics handles the data layer, feed inte
 
 ### Version details
 
-- **Version:** 1.0
-- **Last Updated:** February 2026
+- **Version:** 2.0
+- **Last Updated:** August 2026
 - **Creator:** Bob Meijer
 
 ---

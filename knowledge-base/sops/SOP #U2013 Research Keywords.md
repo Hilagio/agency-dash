@@ -1,6 +1,6 @@
 # SOP – Research Keywords
 Created: 2026-02-04
-Updated: 2026-04-02
+Updated: 2026-10-05
 
 SOP_ID: SOP_40
 Status: Done
@@ -15,7 +15,7 @@ Pillar: 7
 
 This SOP produces a comprehensive, de-duplicated keyword list with volume and CPC data from multiple research sources.
 
-> **The big question:** Do I have a complete keyword list that covers all relevant search themes for this business, with enough data to cluster and prioritize?
+> ❓ **The big question:** Do I have a complete keyword list that covers all relevant search themes for this business, with enough data to cluster and prioritize?
 
 This SOP is the **discovery layer:** It feeds directly into keyword clustering and campaign structure decisions downstream.
 
@@ -121,7 +121,7 @@ Create a spreadsheet with these columns:
 
 **Target: 10-30 seed keywords covering all priority products/services.**
 
-> **Verification:** Every priority product/service has at least 2 seed keywords. If not, revisit 1.2.
+> 💡 **Verification:** Every priority product/service has at least 2 seed keywords. If not, revisit 1.2.
 
 ---
 
@@ -160,7 +160,7 @@ Google Keyword Planner is your primary first-party research tool. It offers two 
 
 > 💡 **Run both methods:** Starting with keywords surfaces terms you already know about. Starting with a website surfaces terms you missed, especially from competitor sites.
 
-> **Verification:** You have at least one Keyword Planner export per priority product/service, using both keyword-based and website-based discovery.
+> 💡 **Verification:** You have at least one Keyword Planner export per priority product/service, using both keyword-based and website-based discovery.
 
 ### 2.2 Google Search autocomplete and related searches
 
@@ -173,7 +173,7 @@ For each seed keyword:
 5. Click into "People also ask" boxes and record the questions.
 6. Add all new terms to your raw keyword list.
 
-> **Tip:** Autocomplete surfaces long-tail variations that Keyword Planner often misses. These are real queries people type.
+> 💡 **Tip:** Autocomplete surfaces long-tail variations that Keyword Planner often misses. These are real queries people type.
 
 ### 2.3 SEMrush (or equivalent competitive tool)
 
@@ -200,7 +200,7 @@ For each seed keyword:
 3. Filter to show keywords competitors rank for that you do not.
 4. Export the gap keywords.
 
-> **Verification:** You have exports from Keyword Magic Tool and at least one competitor analysis.
+> 💡 **Verification:** You have exports from Keyword Magic Tool and at least one competitor analysis.
 
 ### 2.4 Keywordtool.io (or equivalent long-tail tool)
 
@@ -211,7 +211,7 @@ For each seed keyword:
 5. Review the generated long-tail variations.
 6. Export all relevant variations.
 
-> **Tip:** This tool generates variations from Google autocomplete data across multiple modifier patterns (questions, prepositions, comparisons). It surfaces intent-rich long-tail keywords.
+> 💡 **Tip:** This tool generates variations from Google autocomplete data across multiple modifier patterns (questions, prepositions, comparisons). It surfaces intent-rich long-tail keywords.
 
 ### 2.5 ChatGPT or AI tools
 
@@ -223,17 +223,17 @@ Use AI to brainstorm angles you missed:
 4. Ask for keywords a competitor in this space would target.
 5. Add any new relevant terms.
 
-> **Warning:** AI-generated keywords need volume validation. Do not add them to the final list without checking actual search volume in Phase 4.
+> ⚠️ **Warning:** AI-generated keywords need volume validation. Do not add them to the final list without checking actual search volume in Phase 4.
 
 ---
 
 ## Phase 3️⃣: Mine Search Term Reports
 
-> **Skip this phase if the account is brand new with no historical data.**
+> ⚠️ **Skip this phase if the account is brand new with no historical data.**
 
 ### 3.1 Pull the Search Term Report
 
-1. Open Google Ads > Reports > Search Terms.
+1. Open Google Ads > Campaigns > Insights and reports > Search terms.
 2. Set date range: last 90 days (or maximum available).
 3. Add columns: Search Term, Impressions, Clicks, Conversions, Conversion Value.
 4. Sort by Conversions (descending).
@@ -255,7 +255,7 @@ Identify search terms that meet these criteria:
 2. Add them to your raw keyword list with the source marked as "STR".
 3. Note conversion data alongside each term for prioritization in clustering.
 
-> **Verification:** All converting search terms not already captured as keywords have been reviewed and relevant ones added.
+> 💡 **Verification:** All converting search terms not already captured as keywords have been reviewed and relevant ones added.
 
 ---
 
@@ -303,14 +303,14 @@ For each keyword, assign one intent label:
 | Informational | Contains "how to", "what is", "guide", "tutorial" | "what is a crm" |
 | Navigational | Contains brand names or specific product names | "salesforce pricing" |
 
-> **Tip:** Focus on transactional and commercial intent keywords for Search campaigns. Flag informational keywords for potential exclusion or separate campaign treatment.
+> 💡 **Tip:** Focus on transactional and commercial intent keywords for Search campaigns. Flag informational keywords for separate campaign treatment.
 
 ### 4.5 Final cleanup
 
 1. Remove keywords with zero search volume (unless they came from the Search Term Report with conversions).
 2. Remove obviously irrelevant terms that slipped through.
 
-> **Verification:** Every keyword in the final list has search volume data, a CPC estimate, and an intent label.
+> 💡 **Verification:** Every keyword in the final list has search volume data, a CPC estimate, and an intent label.
 
 ---
 
@@ -387,13 +387,13 @@ Once the master keyword list is complete:
 
 ### Version details
 
-- **Version:** 1.0
-- **Last Updated:** February 2026
+- **Version:** 3.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---
 
-## Terms of Use
+### Terms of Use
 
 This document is licensed for personal and internal business use only under the PPC Mastery General [Terms & Conditions](https://www.ppcmastery.com/terms-and-conditions). Use it to become better at your job. Don't use it to build things you sell to others.
 
@@ -401,4 +401,4 @@ Violations may be detected through embedded document fingerprints and will be pu
 
 Full terms: https://www.ppcmastery.com/terms-and-conditions
 
-(c) 2026 PPC Mastery B.V. All rights reserved.
+© 2026 PPC Mastery B.V. All rights reserved.

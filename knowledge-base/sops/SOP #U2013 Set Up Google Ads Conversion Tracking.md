@@ -1,5 +1,6 @@
 # SOP – Set Up Google Ads Conversion Tracking
 Created: 2026-02-04
+Updated: 2026-10-05
 
 SOP_ID: SOP_21
 Status: Done
@@ -17,7 +18,6 @@ This SOP sets up Google Ads Conversion Tracking (GACT) from scratch using Google
 
 > ❓ **The big question:** Is your Google Ads account receiving accurate, deduplicated conversion data from every meaningful conversion event on your website?
 
-Conversion tracking is the absolute foundation of Google Ads success. Better data input equals better output: Smart Bidding, targeting, and machine learning products all depend on the quality of your conversion signals.
 
 ---
 
@@ -29,7 +29,7 @@ This SOP does **not:**
 - Set up Enhanced Conversions for additional attribution (See: [SOP – Implement Enhanced Conversions](../sops/SOP – Implement Enhanced Conversions.md))
 - Configure offline conversion imports from CRM (See: [SOP – Set Up Offline Conversion Tracking](../sops/SOP – Set Up Offline Conversion Tracking.md))
 - Teach conversion action configuration decisions (See: [Conversion Action Reference](../references/Conversion Action Reference.md))
-- Cover Consent Mode setup (separate SOP)
+- Cover Consent Mode setup (See: [SOP – Configure Google Consent Mode](../sops/SOP – Configure Google Consent Mode.md))
 
 ### When to run this SOP
 
@@ -92,8 +92,8 @@ Before proceeding, determine your tracking method:
 ### 1.1 Navigate to conversion setup
 
 1. Open Google Ads
-2. Navigate to **Goals > Conversions > Summary**
-3. Click **New conversion action**
+2. Navigate to **Goals > Summary**
+3. Click **Create conversion action**
 4. Select **Website** as the conversion source
 
 ### 1.2 Create each conversion action
@@ -245,10 +245,10 @@ Provide your developer with:
 
 ### 4.1 Configure account-default goals
 
-1. Navigate to **Goals > Conversions > Summary**
+1. Navigate to **Goals > Summary**
 2. Click **Edit goal** on your primary macro conversion's goal category
-3. Select **Use [category] as an account-default goal**
-4. Verify the correct conversion actions are set as primary within that goal category
+3. Expand **Account default** and toggle on **Make this an account-default goal**
+4. Expand **Conversion action optimization** and verify the correct conversion actions are set as Primary within that goal category
 
 ### 4.2 Verify primary and secondary classification
 
@@ -260,10 +260,12 @@ Provide your developer with:
 ### 4.3 Wait and verify
 
 1. Allow 24-48 hours for conversions to appear
-2. Check **Goals > Conversions > Summary** for active status (green dot)
+2. Check **Goals > Summary** for active status (green dot)
 3. Navigate to campaign reports and verify conversions appear in the Conversions column
 4. Segment by **Conversion action** to confirm the correct actions are recording
 5. Cross-check reported conversions against backend data (CRM, ecommerce platform, analytics)
+
+> ⚠️ **"Unverified" or "Inactive" is the normal state for a brand new conversion action.** The status stays there until the first real conversion or a test event reaches Google Ads. Do not rebuild the tag on the strength of that status alone. Trigger a test conversion, then give it 48 hours before you treat it as a fault.
 
 ### 4.4 Final checklist
 
@@ -297,7 +299,7 @@ Once GACT is live and verified:
 | Timeframe | Action |
 | --- | --- |
 | Immediately | [SOP – Implement Enhanced Conversions](../sops/SOP – Implement Enhanced Conversions.md) for better attribution |
-| Immediately | Implement Consent Mode if targeting EU/EEA users |
+| Immediately | [SOP – Configure Google Consent Mode](../sops/SOP – Configure Google Consent Mode.md) if targeting EU/EEA users |
 | If Lead Gen/SaaS | [SOP – Set Up Offline Conversion Tracking](../sops/SOP – Set Up Offline Conversion Tracking.md) |
 | Week 2+ | [SOP – Implement Server-Side Tagging](../sops/SOP – Implement Server-Side Tagging.md) for data accuracy |
 
@@ -309,6 +311,7 @@ Once GACT is live and verified:
 | Duplicate conversions | Check for both GACT and GA4 import counting the same event |
 | Value incorrect | Verify data layer variable mapping |
 | Status shows "No recent conversions" | Allow 48 hours, then re-debug |
+| Status shows "Unverified" or "Inactive" on a new action | Expected until the first conversion or test event arrives, trigger a test conversion and wait 48 hours |
 
 ---
 
@@ -368,8 +371,8 @@ A: Use "One" for lead gen actions where duplicate submissions from the same user
 
 ### Version details
 
-- **Version:** 1.0
-- **Last Updated:** February 2026
+- **Version:** 4.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

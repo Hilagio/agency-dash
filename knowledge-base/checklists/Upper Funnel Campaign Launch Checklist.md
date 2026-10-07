@@ -51,15 +51,15 @@ Run this checklist:
 - [ ] Campaign goal matches business objective (documented objective exists with measurable KPI target)
 - [ ] Campaign type matches goal (Video for awareness, Demand Gen for conversions)
 - [ ] Campaign naming follows account convention
-- [ ] Budget is set and appropriate for audience size
 - [ ] Start and end dates are correct (if applicable)
 
 ### Targeting Configuration
 
 - [ ] Audiences are added with correct targeting mode (Targeting for remarketing, Observation for data collection on prospecting segments)
 - [ ] Audience segments match campaign tier (remarketing, prospecting, or awareness)
-- [ ] Correct expansion feature set: optimized targeting (Video Sales/Leads/Traffic, Demand Gen) or audience expansion (Video Consideration/Awareness)
-- [ ] Expansion feature OFF for remarketing campaigns, intentionally set for prospecting
+- [ ] Correct feature identified per campaign type: optimized targeting (Demand Gen) vs audience expansion (Video reach, Video views)
+- [ ] Expansion feature is OFF on every remarketing campaign
+- [ ] Every prospecting campaign has a documented expansion setting
 - [ ] Audience size is sufficient for delivery (1,000+ users for remarketing, 5,000+ for lookalike seeds)
 - [ ] Geographic targeting is correct
 - [ ] Language targeting is correct
@@ -67,10 +67,10 @@ Run this checklist:
 
 ### Content Targeting (Video, Demand Gen)
 
-- [ ] Placements are vetted and relevant (if using placement targeting)
-- [ ] Topics are appropriate for audience (if using topic targeting)
+- [ ] Every targeted placement has a documented relevance decision (if using placement targeting)
+- [ ] Every targeted topic maps to the product or service category (if using topic targeting)
 - [ ] Content keywords are themed and limited to 5-20 per ad group (if using)
-- [ ] Content targeting and audience targeting are combined intentionally (AND logic understood)
+- [ ] Combining content and audience targeting has a documented decision
 
 ### Exclusions (Mandatory)
 
@@ -83,16 +83,16 @@ Run this checklist:
 
 ### Brand Safety (Mandatory)
 
-- [ ] Sensitive content categories reviewed and exclusions applied
-- [ ] Inventory type set appropriately (Standard minimum for Video)
-- [ ] Digital content labels reviewed (DL-MA excluded for most brands)
+- [ ] Every sensitive content category on the exclusion list is excluded
+- [ ] Inventory type is Moderate or Limited on every Video campaign
+- [ ] DL-MA is excluded, or an exception is documented
 - [ ] Placement exclusion list includes known low-quality sites
 
 ### Creative Assets
 
-- [ ] Sufficient creative variations uploaded (3+ per format)
-- [ ] All required asset sizes included (see Image Creative Reference)
-- [ ] Video lengths appropriate for goal (awareness: <15s, consideration: 15-60s)
+- [ ] At least 3 creative variations are uploaded per format
+- [ ] All required asset sizes are included (See: [Image Creative Reference](../references/Image Creative Reference.md))
+- [ ] Video lengths match the goal: under 15s for awareness, 15-60s for consideration
 - [ ] Creative matches audience temperature (cold audiences see problem/awareness messaging, warm audiences see offer/urgency messaging)
 - [ ] Landing page URLs are correct and working
 - [ ] Call-to-action matches campaign goal
@@ -101,14 +101,16 @@ Run this checklist:
 
 - [ ] Bid strategy matches campaign goal and volume expectations
 - [ ] Target CPA/ROAS is set based on unit economics (if applicable)
+- [ ] Daily budget clears the Demand Gen serving floor: 10x target CPA, minimum €100/day on Maximize conversions
 - [ ] Budget is sufficient to exit learning phase (50+ conversions/month for Demand Gen)
-- [ ] Bid adjustments are set intentionally (if using manual or enhanced strategies)
+- [ ] Every bid adjustment has a documented reason (if using manual bidding)
 
 ### Tracking and Measurement
 
 - [ ] Conversion tracking is verified working
 - [ ] Correct conversion actions are selected for campaign optimization
-- [ ] View-through conversion window is set appropriately
+- [ ] View-through conversion window is set to the documented value for the campaign type
+- [ ] View-through conversion optimization is switched OFF (a new Demand Gen campaign starts with it ON)
 - [ ] Attribution model is consistent with other campaigns
 
 ### Final Verification
@@ -124,18 +126,21 @@ Run this checklist:
 ### Video Campaigns
 
 - [ ] Video format matches campaign subtype (skippable vs. non-skippable)
+- [ ] Headline and description are added to unlock in-feed and Shorts serving
 - [ ] Companion banner uploaded (if applicable)
 - [ ] Frequency capping is set (2-3 impressions/user/day typical)
-- [ ] YouTube channel is linked (for audience building)
+- [ ] YouTube channel is linked
 
 ### Demand Gen Campaigns
 
-- [ ] Both image and video assets included (for maximum reach)
+- [ ] Both image and video assets included
 - [ ] Image and display assets have all asset types for Google Display Network inventory (images, logos, headlines, descriptions)
 - [ ] Lookalike segments use high-quality seed lists: converters or high-value customers, not all visitors (if prospecting)
 - [ ] Lookalike reach is set to Balanced initially (Narrow for tight budgets)
-- [ ] If optimized targeting ON: aware that Google may serve beyond demographic selections
+- [ ] New customer acquisition goal is not combined with Lookalike segments
+- [ ] Every campaign with optimized targeting ON has a documented decision accepting serving outside its demographic selections
 - [ ] Feed is connected for dynamic creative and dynamic remarketing (if ecommerce)
+- [ ] Feed carries at least 4 approved, in-stock products across at least 4 Group IDs (if using a feed)
 - [ ] Frequency management is set (3-5 impressions/user/day typical)
 
 ---
@@ -158,8 +163,8 @@ Run this checklist:
 
 ## Version details
 
-- **Version:** 4.0
-- **Last Updated:** June 2026
+- **Version:** 5.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

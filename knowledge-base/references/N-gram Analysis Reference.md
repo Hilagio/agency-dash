@@ -1,4 +1,4 @@
-﻿# N-gram Analysis Reference
+# N-gram Analysis Reference
 Created: 2026-02-14
 
 Support_ID: REFERENCE_41
@@ -44,7 +44,7 @@ Documents what N-grams are, how to extract them from search term data, how to cl
 | Input data | Search term report export (CSV) with impressions, clicks, cost, conversions, conversion value |
 | Date range | 90-180 days depending on volume (90 minimum, 120 recommended, 180 extended for low-volume accounts) |
 | Output | Two exclusion lists: non-converting N-grams and inefficient N-grams |
-| Exclusion match type | Phrase match for all N-gram exclusions |
+| Exclusion match type | Phrase match for 2-gram and 3-gram exclusions, broad match acceptable for 1-grams |
 | Applies to | Search campaigns, Shopping campaigns, PMax search terms |
 
 > 💡 **Why N-gram analysis matters:** Individual search terms may not have enough volume to evaluate. Aggregating metrics by shared word patterns reveals systemic waste that term-by-term review misses. A single irrelevant bigram can appear across hundreds of search terms.
@@ -68,7 +68,7 @@ An N-gram is a contiguous sequence of N words extracted from a search term. Each
 | 2-gram | Most actionable level: captures intent patterns ("free trial", "how to", "near me") | Requires sufficient search term volume to produce meaningful aggregates |
 | 3-gram | Catching specific irrelevant phrases ("best price guarantee", "do it yourself") | Lower frequency: fewer data points per trigram |
 
-> 💡 **Start with 2-grams:** Bigrams hit the sweet spot between specificity and volume. Run 1-grams second to catch single toxic words. Use 3-grams only when 2-gram analysis surfaces ambiguous patterns that need more context.
+> 💡 **2-grams are the primary level.** Bigrams sit at the sweet spot between specificity and volume. 1-grams come second and catch single toxic words. 3-grams earn their place only where 2-gram analysis surfaces ambiguous patterns that need more context.
 
 ---
 
@@ -168,15 +168,15 @@ The volume filters in Step 5 (100+ impressions, 25+ clicks) are a pre-filter. Th
 | Non-converting | Spend > 2x target CPA (or 2x AOV) with 0 conversions | No additional minimum (spend threshold is the gate) | The 2x spend threshold implicitly requires significant clicks at any reasonable CPC |
 | Inefficient | CPA > 1.75x target or ROAS < 0.7x target | 200+ clicks | Converting N-grams need large sample sizes for reliable CPA/ROAS. At 50 clicks with a 2% conversion rate, a single conversion swing changes CPA dramatically. 200 clicks provides statistical stability. |
 
-> ⚠️ **Do not exclude inefficient N-grams with fewer than 200 clicks:** Small sample sizes produce unreliable CPA/ROAS figures for converting N-grams. An N-gram with 50 clicks and 1 conversion at €50 CPA looks inefficient, but one more conversion drops it to €25 CPA. Wait for 200+ clicks before classifying as inefficient.
+> ⚠️ **The inefficient classification requires 200+ clicks.** Small sample sizes produce unreliable CPA and ROAS figures for converting N-grams. An N-gram with 50 clicks and 1 conversion at €50 CPA reads as inefficient, and one more conversion drops it to €25 CPA.
 
-> ⚠️ **Distinguish between non-converting and inefficient:** Non-converting N-grams are fundamentally irrelevant patterns: they never convert despite sufficient exposure. Inefficient N-grams do convert, just not profitably. This distinction determines which exclusion list they belong to and how often you revisit them.
+> ⚠️ **Non-converting and inefficient are different classes.** Non-converting N-grams are fundamentally irrelevant patterns: they never convert despite sufficient exposure. Inefficient N-grams do convert, just not profitably. The distinction sets which exclusion list they land in and how often that list is revisited.
 
 ---
 
 ## N-gram categorization by type
 
-Beyond performance classification, categorize N-grams by their semantic function:
+Beyond performance classification, N-grams also group by semantic function:
 | Category | Examples | Typical action |
 |----------|---------|----------------|
 | Brand terms | Company name, product line names, branded acronyms | Protect: usually high-performing, route to brand campaigns |
@@ -185,7 +185,7 @@ Beyond performance classification, categorize N-grams by their semantic function
 | Geographic | City names, "near me", state/region names | Location-dependent: valuable if you serve that area, waste if not |
 | Competitor | Competitor brand names, competitor product names | Strategy-dependent: exclude if running non-competitor campaigns |
 
-> 💡 **Build your own categorization.** The categories above are starting points. Every account is different: your product, audience, and competitive landscape determine which N-gram categories matter most. Adapt these categories to match your account's patterns and add new ones as you discover them.
+> 💡 **The categorization is account-specific.** The categories above are starting points. Product, audience, and competitive landscape determine which N-gram categories carry weight in a given account, and new categories surface as the data does.
 
 ---
 
@@ -221,13 +221,13 @@ Both lists must be linked to all relevant campaigns:
 | Search campaigns | Yes | Yes |
 | Shopping campaigns | Yes (if N-grams apply) | Yes (if N-grams apply) |
 | PMax campaigns | Yes | Yes |
-| DSA campaigns | Yes | Yes |
+| Campaigns with final URL expansion | Yes | Yes |
 
 ---
 
 ## Exclusion match type
 
-All N-gram exclusions are added in **phrase match**.
+Multi-word N-gram exclusions are added in **phrase match**. Single-word (1-gram) exclusions can use broad match, where word order carries no meaning.
 | Why phrase match | Explanation |
 |-----------------|-------------|
 | Blocks the word sequence | Prevents any query containing the N-gram phrase in order |
@@ -242,7 +242,7 @@ For the inefficient 2-gram "free trial":
 - Adding `"free trial"` as phrase match negative blocks: "free trial software", "get free trial", "best free trial crm"
 - Does NOT block: "trial free offer" (different order), "free software" (missing "trial"), "trial version" (missing "free")
 
-> ⚠️ **Prefer phrase match for N-gram exclusions:** N-grams are ordered word sequences, and phrase match mirrors this structure. A broad match negative for `free trial` would block any query containing both "free" and "trial" in any order, including "trial-free pricing" where the words carry different meaning. Broad match negatives can be appropriate for single-word (1-gram) exclusions where word order is irrelevant (See: [Negative Keyword Reference](../references/Negative Keyword Reference.md) for match type selection guidance).
+> ⚠️ **Phrase match mirrors N-gram structure.** N-grams are ordered word sequences. A broad match negative for `free trial` blocks any query containing both "free" and "trial" in any order, "trial-free pricing" included, where the words carry different meaning. Broad match negatives fit single-word (1-gram) exclusions, where word order is irrelevant (See: [Negative Keyword Reference](../references/Negative Keyword Reference.md) for match type selection).
 
 ---
 
@@ -261,35 +261,15 @@ For the inefficient 2-gram "free trial":
 | Search campaigns | Yes (primary use case) | Full search term report available |
 | Shopping campaigns | Yes | Search terms available via Shopping search term report |
 | PMax campaigns | Yes | Search term data available in Insights: link exclusion lists directly to PMax campaigns |
-| DSA campaigns | Yes | Search terms available, often higher volume of irrelevant matches |
+| Campaigns with final URL expansion | Yes | Search terms available, often higher volume of irrelevant matches |
 
 ---
 
 ## Bulk operations with Google Ads Editor
 
-Use Google Ads Editor for efficient N-gram exclusion management:
+Google Ads Editor handles N-gram exclusion management at volume. Its **Keywords and targeting** > **Negative keyword lists** view accepts a pasted N-gram list one per line in phrase match format, exports an existing list to CSV for duplicate and conflict review, and its **Campaigns** view carries the list-to-campaign links. All three are staged locally and applied by posting changes.
 
-### Adding N-gram exclusions in bulk
-
-1. Open Google Ads Editor and download the latest account data
-2. Navigate to **Keywords and targeting** > **Negative keyword lists**
-3. Select the target list ("Non-converting N-grams" or "Inefficient N-grams")
-4. Click **Add negative keyword** and paste the N-gram list (one per line, in phrase match format with double quotes)
-5. Post changes to apply
-
-### Exporting existing negative lists for audit
-
-1. In Google Ads Editor, navigate to **Keywords and targeting** > **Negative keyword lists**
-2. Select the list to export
-3. Click **Export** > **Export selected** to CSV
-4. Review for duplicates, conflicts with positive keywords, or outdated exclusions
-
-### Linking lists to campaigns
-
-1. In Google Ads Editor, navigate to **Campaigns**
-2. Select the campaigns to link
-3. Under **Negative keyword lists**, add the relevant lists
-4. Post changes
+> ↪️ **For the execution sequence:** See [SOP – Run N-gram Analysis](../sops/SOP – Run N-gram Analysis.md).
 
 ---
 
@@ -325,8 +305,8 @@ Use Google Ads Editor for efficient N-gram exclusion management:
 
 ## Version details
 
-- **Version:** 2.0
-- **Last Updated:** March 2026
+- **Version:** 3.0
+- **Last Updated:** June 2026
 - **Creator:** Bob Meijer
 
 ---

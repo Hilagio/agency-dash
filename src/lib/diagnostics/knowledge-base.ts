@@ -15,8 +15,9 @@ export interface KbDoc {
   lc: string;       // lower-cased text, precomputed for search
 }
 
-// The reasoning docs the agent benefits from. references/ and catalogs/ are raw
-// reference data, left out of the searchable set for now (add later if useful).
+// The full searchable set — including references (deep how-it-works docs) and
+// catalogs (reusable pattern libraries: headline angles, negatives, LP
+// sections), which power concrete composition work like ad copy.
 const DIRS: Record<string, string> = {
   sops: "SOP",
   "mental-models": "Mental model",
@@ -24,6 +25,8 @@ const DIRS: Record<string, string> = {
   guidelines: "Guideline",
   playbooks: "Playbook",
   theory: "Theory",
+  references: "Reference",
+  catalogs: "Catalog",
 };
 
 let CACHE: KbDoc[] | null = null;

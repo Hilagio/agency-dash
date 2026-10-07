@@ -1,5 +1,6 @@
 # Search Term Report Reference
 Created: 2026-02-04
+Updated: 2026-10-05
 
 Support_ID: CHEATSHEET_30
 Category: Targeting
@@ -12,17 +13,17 @@ Status: Done
 
 ## Purpose
 
-Documents the structure, columns, filters, and access methods for the Google Ads Search Term Report (STR): what data it contains, how to navigate it, and what each field means.
+Documents the structure, columns, filters, and access methods for the Google Ads Search Term Report (STR): what data it contains, where it lives, and what each field means.
 
 ---
 
-## What this reference is / what this is NOT
+## What this reference is / What this is NOT
 
 **This reference:**
 
 - Defines every column available in the Search Term Report
 - Explains search term status values (Added, None, Excluded)
-- Documents how to access, filter, segment, and export STR data
+- Documents where the report lives and which filters, segments and export formats it supports
 - Provides a decision matrix for classifying search terms by performance
 
 **This reference does NOT:**
@@ -38,11 +39,11 @@ Documents the structure, columns, filters, and access methods for the Google Ads
 
 | **Aspect** | **Details** |
 |------------|-------------|
-| **Location** | Google Ads > Campaigns/Ad Groups > Insights and reports > Search terms |
+| **Location** | Google Ads > Campaigns > Insights and reports > Search terms |
 | **Data availability** | Search, Shopping, and Performance Max campaigns |
 | **Default date range** | Last 7 days (adjustable) |
 | **Privacy threshold** | Search terms below Google's privacy threshold are hidden |
-| **Data freshness** | Typically 24-48 hours delayed |
+| **Data freshness** | 24-48 hours delayed |
 | **Export formats** | CSV, Google Sheets, PDF |
 | **API access** | `search_term_view` for Search/Shopping, `campaign_search_term_view` for PMax |
 
@@ -50,21 +51,13 @@ Documents the structure, columns, filters, and access methods for the Google Ads
 
 ---
 
-## How to access the Search Term Report
+## Where the Search Term Report lives
 
-### From the Google Ads UI
+### In the Google Ads UI and Editor
 
-1. Sign in to Google Ads
-2. Navigate to a Search, Shopping, or Performance Max campaign (or stay at account level for all campaigns)
-3. Click **Insights and reports** in the left navigation
-4. Click **Search terms**
+The report sits under Campaigns > Insights and reports > Search terms, at account level or scoped to a single Search, Shopping or Performance Max campaign. Google Ads Editor exposes the same data under Keywords > Search terms, read-only and without filtering.
 
-### From Google Ads Editor
-
-1. Open Google Ads Editor
-2. Select the account
-3. Go to **Keywords** > **Search terms** tab
-4. Data is read-only in Editor: use it for review, not for filtering
+> ↪️ **Pulling the report as part of an analysis pass:** See [SOP – Analyze Search Term Reports](../sops/SOP – Analyze Search Term Reports.md), Phase 1.
 
 ### From the API
 
@@ -164,7 +157,7 @@ Google assigns auto-generated **search categories** that group search terms into
 | **Device** | Computer, mobile, tablet |
 | **Network** | Search partners vs. Google Search |
 
-> 💡 **Combine filters for faster analysis:** Apply "Status = None" + "Conversions > 0" to surface converting search terms not yet added as keywords. Apply "Status = None" + "Cost > X" + "Conversions = 0" to surface waste.
+> 💡 **Two filter combinations do most of the work:** "Status = None" plus "Conversions > 0" surfaces converting search terms not yet added as keywords. "Status = None" plus "Cost > X" plus "Conversions = 0" surfaces waste.
 
 ---
 
@@ -181,11 +174,9 @@ Google assigns auto-generated **search categories** that group search terms into
 
 ### Export for ngram analysis
 
-To perform ngram analysis (breaking search terms into single words, two-word pairs, and three-word groups for pattern detection):
+Ngram analysis breaks search terms into single words, two-word pairs and three-word groups for pattern detection. It reads a full CSV export carrying Search term, Impressions, Clicks, Cost, Conversions and Conversion value, then aggregates metrics per word or phrase.
 
-1. Export the full STR as CSV
-2. Ensure these columns are included: Search term, Impressions, Clicks, Cost, Conversions, Conversion value
-3. Process the CSV with an ngram script or spreadsheet formula to split terms and aggregate metrics per word/phrase
+> ↪️ **Export and preparation procedure:** See [SOP – Run N-gram Analysis](../sops/SOP – Run N-gram Analysis.md), Phase 1.
 
 ---
 
@@ -207,6 +198,8 @@ This matrix classifies search terms by their performance data. It defines what e
 
 > 💡 **This matrix classifies, it does not prescribe:** For execution steps on promoting or negating search terms, use the related SOPs listed below.
 
+> ⚠️ **Long informational queries on broad or keywordless traffic may be serving into AI Overviews.** Matching for ads within AI Overviews uses the query and the Overview's generated content, and the placement gets no segmented reporting, so these terms look loosely matched while the real match was to Overview text you cannot see. One more reason to evaluate informational-looking terms as a class before negating them.
+
 ---
 
 ## Report limitations
@@ -217,6 +210,7 @@ This matrix classifies search terms by their performance data. It defines what e
 | **Data delay** | STR data lags 24-48 hours behind real-time |
 | **No display/video data** | STR is available for Search, Shopping, and Performance Max campaigns only |
 | **Close variants not labeled** | The report does not flag whether a match was a close variant, synonym, or exact match of the keyword |
+| **Approximate terms (AI surfaces)** | For searches from advanced surfaces (Lens, AI Mode, AI Overviews, autocomplete), the term shown in reporting is Google's best approximation of the user's intent, not the verbatim query. AI-based ad group prioritization, not the keyword, decides which ad group serves |
 | **Cross-campaign blind spot** | "Added" status only checks the triggering ad group, not the full account |
 | **Historical data** | Available for up to the last 2 years, depending on account age |
 | **PMax API differs** | PMax search term data requires `campaign_search_term_view` instead of `search_term_view` |
@@ -252,8 +246,8 @@ This matrix classifies search terms by their performance data. It defines what e
 
 ## Version details
 
-- **Version:** 1.0
-- **Last Updated:** February 2026
+- **Version:** 4.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---
@@ -266,4 +260,4 @@ Violations may be detected through embedded document fingerprints and will be pu
 
 Full terms: https://www.ppcmastery.com/terms-and-conditions
 
-(c) 2026 PPC Mastery B.V. All rights reserved.
+© 2026 PPC Mastery B.V. All rights reserved.

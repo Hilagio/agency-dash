@@ -1,6 +1,6 @@
 # SOP – Optimize Audience Performance
 Created: 2026-02-14
-Updated: 2026-04-01
+Updated: 2026-10-05
 
 SOP_ID: SOP_85
 Status: Done
@@ -13,7 +13,7 @@ Pillar: 7
 
 ## Purpose
 
-This SOP runs a structured audience performance review for Display, Video, and Demand Gen campaigns. It evaluates every audience segment by type, removes or adjusts underperformers, scales high-performers, and validates that targeting mode, expansion settings, and list health are aligned with current campaign goals.
+This SOP runs a structured audience performance review for Video and Demand Gen campaigns. It evaluates every audience segment by type, removes or adjusts underperformers, scales high-performers, and validates that targeting mode, expansion settings, and list health are aligned with current campaign goals.
 
 > ❓ **The big question:** Which audience segments are driving efficient conversions, which are wasting spend, and what structural changes will improve audience-level performance?
 
@@ -31,7 +31,7 @@ This SOP does **not:**
 - Route to the correct audience foundation when infrastructure is missing (See: [Expand Audience Reach](../playbooks/Expand Audience Reach.md))
 - Cover Demand Gen-specific optimization beyond audiences (See: [SOP – Run Demand Gen Optimization Cycle](../sops/SOP – Run Demand Gen Optimization Cycle.md))
 
-> ↪️ **Scope boundary:** This SOP optimizes existing audience performance across Display, Video, and Demand Gen. It does not cover PMax, where audiences function as signals and cannot be evaluated at the segment level. For PMax signal quality, run [SOP – Set Up Audience Signals](../sops/SOP – Set Up Audience Signals.md).
+> ↪️ **Scope boundary:** This SOP optimizes existing audience performance across Video and Demand Gen. It does not cover PMax, where audiences function as signals and cannot be evaluated at the segment level. For PMax signal quality, run [SOP – Set Up Audience Signals](../sops/SOP – Set Up Audience Signals.md).
 
 ---
 
@@ -58,10 +58,10 @@ Run immediately (outside cadence) when:
 
 ### Required inputs
 
-- Access to Google Ads account with Display, Video, or Demand Gen campaigns live for 30+ days
+- Access to Google Ads account with Video or Demand Gen campaigns live for 30+ days
 - Documented target KPIs per campaign (CPA, ROAS, or CPL targets)
 - Previous cycle's audience review notes and carry-forward items
-- Audience Manager access for list health review
+- Audience manager access for list health review
 
 ### Reference documents (have open)
 
@@ -186,7 +186,7 @@ Remarketing performance degrades as users move further from their last interacti
 
 | Metric | Healthy | Action needed |
 |--------|---------|---------------|
-| Match rate | 40%+ | Below 29%: add phone and address data |
+| Match rate | 60-80% | Below 60%: add phone and address data |
 | List size (matched) | 1,000+ | Below 1,000: insufficient for reliable delivery |
 | CPA/ROAS vs. campaign avg | At or below campaign average CPA / At or above campaign average ROAS | Above 1.5x CPA / Below 67% ROAS: segment the list by customer value |
 | Last refresh | Within 30 days | Over 30 days: refresh immediately |
@@ -345,16 +345,11 @@ For all segments in Targeting mode, verify alignment:
 |---------------|-------------|--------------------|-|
 | Remarketing | Targeting | OFF | Optimized targeting ON dilutes remarketing precision |
 | Prospecting (conversion goal) | Targeting | Verify ON or OFF is intentional (see Phase 9 for testing) | Leaving ON without measuring its impact |
-| Prospecting (awareness goal) | Targeting | ON | Setting OFF when reach is the goal |
 | Data collection | Observation | N/A | Using Targeting when you want insights across all users |
 
 ### 4.4 Review optimized targeting impact
 
-For campaigns with optimized targeting enabled:
-
-1. Compare performance of your selected audiences vs. the expanded reach Google found
-2. If expanded reach CPA is more than 2x your selected audience CPA, turn optimized targeting OFF
-3. If expanded reach CPA is comparable or better, keep it ON
+For campaigns with optimized targeting enabled, compare the performance of your selected audiences against the expanded reach Google found, then apply the expansion-impact table in 9.2.
 
 > ⚠️ **Optimized targeting can silently shift your audience:** When enabled, Google may spend the majority of your budget outside your selected audiences. Check the audience breakdown regularly, not just campaign-level metrics.
 
@@ -408,7 +403,7 @@ Verify that stacked adjustments do not push actual bids outside your acceptable 
 
 ### 6.1 Review remarketing list sizes
 
-Navigate to Tools > Audience Manager > Your data segments. Check every remarketing list:
+Navigate to Tools > Shared library > Audience manager > Your data segments. Check every remarketing list:
 
 | List size | Status | Action |
 |-----------|--------|--------|
@@ -432,12 +427,11 @@ If a remarketing list's membership duration exceeds your purchase cycle by more 
 
 ### 6.3 Verify Customer Match freshness
 
+Re-run the Customer Match health table in 2.2, then add this check:
+
 | Metric | Healthy | Action needed |
 |--------|---------|---------------|
-| Last upload date | Within 30 days | Over 30 days: schedule refresh immediately |
-| Match rate | 40%+ | Below 29%: add phone and address identifiers |
-| List size (matched) | 1,000+ | Below 1,000: combine CRM sources or wait for growth |
-| Data completeness | Email + phone + address | Email only: add additional identifiers to improve match rate |
+| Data completeness | Email + phone + address | Email only: caps at the 29-62% email baseline, add phone and address |
 
 ### 6.4 Clean up unused lists
 
@@ -470,7 +464,7 @@ Remove or archive audience lists that meet any of these criteria:
 
 ### 7.1 Pull demographic performance data
 
-Navigate to Audiences, keywords, and content > Demographics. Use the same date range as Phase 1 (last 30 days, or 60 days for low-volume campaigns). Review each dimension:
+Navigate to Audiences, keywords, and content > Audiences > Demographics. Use the same date range as Phase 1 (last 30 days, or 60 days for low-volume campaigns). Review each dimension:
 
 | Dimension | Where to find | What to check |
 |-----------|--------------|---------------|
@@ -496,8 +490,8 @@ Flag demographic groups meeting these criteria:
 
 | Bidding type | Available action | How to apply |
 |-------------|-----------------|--------------|
-| Manual CPC | Bid adjustments per demographic group | Audiences, keywords, and content > Demographics > Edit bid adjustment. Adjust in 10-20% increments per cycle |
-| Smart Bidding (tCPA/tROAS) | Exclude underperforming demographic groups | Audiences, keywords, and content > Demographics > Exclude. Bid adjustments do not apply under Smart Bidding |
+| Manual CPC | Bid adjustments per demographic group | Audiences, keywords, and content > Audiences > Demographics > Edit bid adjustment. Adjust in 10-20% increments per cycle |
+| Smart Bidding (tCPA/tROAS) | Exclude underperforming demographic groups | Audiences, keywords, and content > Audiences > Demographics > Exclude. Bid adjustments do not apply under Smart Bidding |
 
 > ⚠️ **Excluding "Unknown" removes 15-30% of inventory:** The "Unknown" segment represents users whose demographic data Google cannot determine. Excluding it significantly reduces your addressable audience. Only exclude after 30+ days of consistently poor performance with sufficient data.
 
@@ -540,7 +534,7 @@ For underperforming combined segments, diagnose component quality:
 
 ### 8.2 Use audience insights for discovery
 
-Navigate to Google Ads > Insights page > Audience insight cards. Review the persona insights table:
+Navigate to Google Ads > Campaigns > Insights and reports > Insights > Audience insight cards. Review the persona insights table:
 
 | Column | What it tells you |
 |--------|-------------------|
@@ -558,7 +552,7 @@ Navigate to Google Ads > Insights page > Audience insight cards. Review the pers
 | 1.5-3x | < 5% | Low priority: monitor in next cycle |
 | < 1.5x | Any | No action: proportional to general population |
 
-Also check Audience Manager > Your data insights for first-party audience performance across campaigns.
+Also check Audience manager > Your data insights for first-party audience performance across campaigns.
 
 ### 8.3 Build new combined segments from insights
 
@@ -573,11 +567,9 @@ When audience insights reveal high-index untargeted segments, build combined seg
 
 > 💡 **Test one new combined segment per cycle:** Adding multiple new audiences simultaneously makes attribution impossible. Test one, measure for 30 days, then test the next.
 
-### 8.4 Content targeting expansion (Display/Video only)
+### 8.4 Content targeting expansion (Video, Demand Gen)
 
-> ⚠️ **Skip this section if you only manage Demand Gen campaigns.** Content targeting is not available in Demand Gen.
-
-If your Display or Video campaigns use only audience targeting with no content targeting, evaluate whether content targeting could complement your existing setup:
+If your Video or Demand Gen campaigns use only audience targeting with no content targeting, evaluate whether content targeting could complement your existing setup. In Demand Gen, content targeting is a secondary layer on top of audience targeting, never standalone.
 
 1. Review audience insights for content themes: which types of content are your converting audiences consuming?
 2. If clear content themes emerge, test adding 3-5 topic categories with AND logic (audience + topics) in a separate ad group
@@ -600,9 +592,7 @@ Review every in-scope campaign and document the current expansion setting:
 
 | Campaign type | Feature name | Where to find |
 |---------------|-------------|---------------|
-| Display | Optimized targeting | Ad group settings |
-| Video (Sales/Leads/Traffic goals) | Optimized targeting | Ad group settings |
-| Video (Consideration/Awareness goals) | Audience expansion | Ad group settings |
+| Video (reach and views goals) | Audience expansion | Ad group settings |
 | Demand Gen | Optimized targeting | Ad group settings |
 
 > ⚠️ **Optimized targeting and audience expansion are different features:** Optimized targeting finds users most likely to convert based on conversion data. Audience expansion finds more users similar to your selected audience for reach. They apply to different campaign types and should not be conflated.
@@ -641,7 +631,7 @@ For campaigns where expansion has never been tested (always ON or always OFF):
 
 > 💡 **Test one campaign at a time:** Stagger expansion tests across campaigns. With 3 campaigns, test Campaign 1 in Cycle 1 (months 1-2), Campaign 2 in Cycle 2 (months 3-4), Campaign 3 in Cycle 3 (months 5-6). Do not enable or disable expansion across all campaigns simultaneously.
 
-For Video campaigns with consideration/awareness goals: test audience expansion using the same methodology. This is a separate feature from optimized targeting and should be tested independently.
+For Video campaigns with reach and views goals: test audience expansion using the same methodology. This is a separate feature from optimized targeting and should be tested independently.
 
 ### 9.4 Optimize signal quality (when expansion is ON)
 
@@ -649,8 +639,6 @@ When optimized targeting is ON, your selected audiences function as signals. Imp
 
 | Campaign type | Signal inputs | How to improve |
 |---------------|-------------|----------------|
-| Display | Audience segments, custom segments, Customer Match, keywords, topics | Replace broad segments with high-performing specific ones. Add converting search terms as keywords. Add relevant topics. |
-| Video (Sales/Leads/Traffic) | Audience segments, custom segments, Customer Match | Replace broad segments with high-performing ones. Placements do NOT serve as signals. |
 | Demand Gen | Audience segments, custom segments, Customer Match | Replace broad segments with highest-LTV Customer Match. Add high-converting keyword custom segments. |
 
 **Phase 9 output:** Expansion settings audit with test plan for untested campaigns.
@@ -706,7 +694,7 @@ After completing the optimization cycle:
 |---------|----------------|--------------|
 | Never reviewing audience performance | "Set and forget" after initial setup | Calendar-block monthly audience reviews |
 | Evaluating audiences with insufficient data | Reacting to 7 days of data | Require 30 days and 50+ clicks minimum before decisions |
-| Keeping stale remarketing lists | Not checking Audience Manager | Run Phase 6 every cycle, verify list sizes and freshness |
+| Keeping stale remarketing lists | Not checking Audience manager | Run Phase 6 every cycle, verify list sizes and freshness |
 | Ignoring observation-mode segments | Adding segments and never analyzing | Set graduation dates: 60 days max in Observation |
 | Applying Search-level CPA expectations to cold audiences | Expecting cold audiences to perform like remarketing | Set separate CPA targets by audience temperature |
 | Stacking too many bid adjustments | Optimizing each lever independently | Monitor combined adjustment effects every cycle |
@@ -730,7 +718,7 @@ After completing the optimization cycle:
 | [Audience Targeting Health Checklist](../checklists/Audience Targeting Health Checklist.md) | Checklist | Validates ongoing targeting health |
 | [Demand Gen Performance Reference](../references/Demand Gen Performance Reference.md) | Reference | Lookalike progression, Demand Gen benchmarks |
 | [Audience Segment Catalog](../catalogs/Audience Segment Catalog.md) | Catalog | Segment selection, combined segments, demographics patterns |
-| [Content Targeting Reference](../references/Content Targeting Reference.md) | Reference | Content targeting specs for Display/Video (Phase 8.4) |
+| [Content Targeting Reference](../references/Content Targeting Reference.md) | Reference | Content targeting specs for Video and Demand Gen (Phase 8.4) |
 | [Expand Audience Reach](../playbooks/Expand Audience Reach.md) | Playbook | Audience foundation routing and expansion decisions |
 | [SOP – Set Up Audience Targeting](../sops/SOP – Set Up Audience Targeting.md) | SOP | Initial audience targeting configuration |
 | [SOP – Set Up Audience Signals](../sops/SOP – Set Up Audience Signals.md) | SOP | PMax signal configuration (separate system) |
@@ -742,8 +730,8 @@ After completing the optimization cycle:
 
 ## Version details
 
-- **Version:** 4.0
-- **Last Updated:** April 2026
+- **Version:** 6.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

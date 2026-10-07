@@ -1,5 +1,6 @@
 # Bid Strategy Health Checklist
 Created: 2026-02-04
+Updated: 2026-08-27
 
 Support_ID: CHECKLIST_17
 Status: Done
@@ -62,11 +63,12 @@ Run this checklist:
 - [ ] Campaign or portfolio has 50+ conversions in the last 30 days (recommended threshold)
 - [ ] Campaign or portfolio has at least 15 conversions in the last 30 days (absolute minimum)
 - [ ] If below minimum: campaigns are consolidated, a Portfolio Bid Strategy is in use to pool data, or a data-gathering strategy (Max Clicks, Manual CPC) is active
+- [ ] Where the Recommendations tab shows no recommended bid target, the campaign is recorded as below volume
 - [ ] Conversion tracking is firing correctly and consistently (no gaps or spikes in data)
 
 ### Learning period status
 
-- [ ] No major changes were made within the last two conversion cycles (strategy switch, target change > 25%, budget change > 30%)
+- [ ] No major changes were made within the last 1-2 conversion cycles (strategy switch, target change > 25%, budget change > 30%, geographic targeting change)
 - [ ] If currently in learning: no further changes are planned until learning completes
 - [ ] Stakeholders have been briefed on expected volatility during learning
 - [ ] Learning period data is excluded from performance evaluations
@@ -82,8 +84,8 @@ Run this checklist:
 ### Budget sufficiency
 
 - [ ] Daily budget is at least 10x the target CPA (for conversion-based strategies)
-- [ ] Daily budget allows for the daily spending limit (2x daily budget) without stakeholder alarm
-- [ ] Search lost IS (budget) is monitored: if high, budget may need increasing
+- [ ] Stakeholders have confirmed the daily spending limit of 2x daily budget
+- [ ] No campaign loses more than 10% impression share to budget
 - [ ] If using shared budgets: no single campaign is consuming the entire pool disproportionately
 
 ### Portfolio bid strategy configuration (if applicable)
@@ -92,13 +94,13 @@ Run this checklist:
 - [ ] All linked campaigns are the same campaign type (Search with Search, Shopping with Shopping)
 - [ ] Maximum CPC cap is OFF unless explicitly justified with documented reasoning
 - [ ] If CPC cap is set: it is at least 3x the average CPC of top converting search terms
-- [ ] If CPC cap is set: a monthly review reminder exists to prevent forgotten caps
-- [ ] Minimum CPC cap is OFF (no justified use case in standard accounts)
+- [ ] If CPC cap is set: a monthly review reminder exists
+- [ ] Minimum CPC cap is OFF
 
 ### Bid adjustments
 
-- [ ] No non-exclusion bid adjustments are set on smart bidding campaigns (they are ignored)
-- [ ] Any device bid adjustments are -100% exclusions only (the only type that works)
+- [ ] No non-exclusion bid adjustments are set on smart bidding campaigns
+- [ ] Any device bid adjustments are -100% exclusions only
 - [ ] Location, schedule, audience, and demographic adjustments are removed or set to 0% on automated strategy campaigns
 
 ### Conversion value rules (if applicable)
@@ -118,7 +120,7 @@ Run this checklist:
 | Volume declining week-over-week | Target may be too aggressive (starvation zone) | Check IS lost to rank, compare target to breakeven | Increase CPA target or decrease ROAS target, check for starvation |
 | High IS lost to budget | Budget insufficient for current targets | Compare daily spend to daily budget | Increase budget, or tighten targets to reduce cost-per-click |
 | High IS lost to rank | Bids not competitive enough | Check CPC trends vs. competition, auction insights | Review if CPC cap is restricting, or increase CPA/decrease ROAS target |
-| Performance volatile after changes | Still in learning period | Check last change date vs. learning period (two conversion cycles) | Wait for learning to complete, do not make additional changes |
+| Performance volatile after changes | Still in learning period | Check last change date vs. learning period (1-2 conversion cycles) | Wait for learning to complete, do not make additional changes |
 | Top keyword CPCs plateau at exact CPC cap | Maximum CPC cap is restricting | Compare cap to top converting term CPCs | Increase cap to 3x average of top terms, or remove |
 | Conversions not reporting | Conversion tracking issue | Check conversion action status, tag firing | Fix tracking (not a bidding issue) |
 | Smart bidding underperforming Manual CPC | Insufficient data for smart bidding | Check 30-day conversion count | Build data first: stay on Manual CPC or Max Clicks until 50+ conversions |
@@ -143,8 +145,8 @@ Run this checklist:
 
 ## Version details
 
-- **Version:** 1.0
-- **Last Updated:** February 2026
+- **Version:** 2.0
+- **Last Updated:** August 2026
 - **Creator:** Bob Meijer
 
 ---

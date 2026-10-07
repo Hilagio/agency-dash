@@ -69,7 +69,7 @@ Documents the Auction Insights report metrics, access methods, interpretation ru
 | 40-80% | Moderate position, room to grow |
 | <40% | Significant missed opportunity |
 
-> ⚠️ **IS changes when targeting changes:** When you change targeting (e.g., exact match to broad match, or expand location targeting), your eligible auction pool changes. IS may drop because the market got bigger, not because you are less competitive. Always check whether targeting changes explain IS movements before investigating other causes.
+> ⚠️ **IS changes when targeting changes:** When you change targeting (e.g., exact match to broad match, or expand location targeting), your eligible auction pool changes. IS may drop because the market got bigger, not because you are less competitive, so a targeting change is the first explanation to rule out for any IS movement.
 
 ### Overlap rate
 
@@ -120,12 +120,9 @@ Documents the Auction Insights report metrics, access methods, interpretation ru
 
 ## Accessing Auction Insights
 
-### From the Google Ads interface
+### Where it lives
 
-1. Navigate to Campaigns, Ad groups, or Keywords
-2. Select the entities you want to analyze
-3. Click the three-dot menu
-4. Select "Auction insights"
+Auction insights opens from the three-dot menu on the Campaigns, Ad groups, or Keywords page, scoped to whichever entities are selected. The analysis procedure is owned by [SOP - Analyze Auction Insights](../sops/SOP – Analyze Auction Insights.md), Phase 1.2.
 
 ### Available segmentation levels
 
@@ -137,9 +134,10 @@ Documents the Auction Insights report metrics, access methods, interpretation ru
 
 ### Time range options
 
-- Supports standard Google Ads date ranges
-- Segment by day, week, month, or quarter
-- Use time segmentation to identify when competitive shifts occurred
+| Option | Detail |
+|--------|--------|
+| Date range | All standard Google Ads date ranges |
+| Segmentation | Day, week, month, or quarter, which is what dates a competitive shift |
 
 ---
 
@@ -147,13 +145,13 @@ Documents the Auction Insights report metrics, access methods, interpretation ru
 
 ### What Auction Insights can tell you
 
-| **Signal** | **Interpretation** | **Possible action** |
+| **Signal** | **Interpretation** | **What it implies** |
 |------------|-------------------|---------------------|
-| New competitor appearing | Someone entered your market or expanded targeting | Monitor impact on your KPIs |
-| Competitor IS increasing | They're spending more or improving Quality Score | Evaluate if your KPIs are affected before reacting |
-| Your outranking share declining | Competitive pressure on bids or QS | Check if CPA/ROAS is still on target |
+| New competitor appearing | Someone entered your market or expanded targeting | Nothing on its own until your KPIs move |
+| Competitor IS increasing | They are spending more or improving Quality Score | Nothing on its own until your KPIs move |
+| Your outranking share declining | Competitive pressure on bids or QS | Relevant only if CPA or ROAS has moved off target |
 | High overlap, low position above | Competitor consistently beside you but not above | Likely similar bid/QS profiles |
-| Competitor disappeared | Paused campaigns, ran out of budget, or changed strategy | Expect possible cost decreases |
+| Competitor disappeared | Paused campaigns, ran out of budget, or changed strategy | Cost pressure on the shared auctions eases |
 
 ### What Auction Insights cannot tell you
 
@@ -164,7 +162,7 @@ Documents the Auction Insights report metrics, access methods, interpretation ru
 | Competitor Quality Score | Not disclosed, only implied by position data |
 | Why a competitor changed | Could be strategy, budget, seasonal, or accidental |
 | Non-overlapping competitors | Only shows competitors in auctions you participated in |
-| Performance Max competitors | AI does not show competitor breakdown in PMax |
+| Performance Max competitors | Google publishes no competitor breakdown for PMax |
 
 ---
 

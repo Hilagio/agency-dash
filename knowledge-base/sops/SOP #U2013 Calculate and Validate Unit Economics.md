@@ -255,7 +255,7 @@ Once unit economics are validated:
 
 | Outcome | Next step |
 |---------|-----------|
-| **Go** | Proceed to *SOP: Set Campaign Goals and KPIs* |
+| **Go** | Proceed to [SOP – Set Campaign Goals and KPIs](../sops/SOP – Set Campaign Goals and KPIs.md) |
 | **Conditional go** | Proceed to goals with conservative targets, schedule monthly review |
 | **No-go** | Present findings to client, recommend business improvements, revisit in 3-6 months |
 

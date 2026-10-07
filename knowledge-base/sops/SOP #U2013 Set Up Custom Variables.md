@@ -1,5 +1,6 @@
 # SOP – Set Up Custom Variables
 Created: 2026-02-04
+Updated: 2026-10-05
 
 Agent_Executable: No
 Category: Measurement
@@ -22,9 +23,9 @@ This SOP walks you through defining custom business variables, implementing them
 
 This SOP does **not:**
 
-- Set up basic conversion tracking (prerequisite: conversion action must already exist)
+- Set up basic conversion tracking (See: [SOP – Set Up Google Ads Conversion Tracking](../sops/SOP – Set Up Google Ads Conversion Tracking.md))
 - Configure conversion adjustments (See: [SOP – Configure Conversion Adjustments](../sops/SOP – Configure Conversion Adjustments.md))
-- Explain how to use custom variable data for bidding decisions (downstream optimization)
+- Explain how to use custom variable data for bidding decisions (See: [Custom Variables Reference](../references/Custom Variables Reference.md))
 - Cover GTM-based implementation (custom variables are NOT available via GTM)
 
 ### When to run this SOP
@@ -52,7 +53,7 @@ Run this SOP when:
 
 | Document | Used for |
 |----------|----------|
-| Google Ads Custom Variables documentation | Variable naming and limits |
+| [Custom Variables Reference](../references/Custom Variables Reference.md) | Variable naming, limits and parameter syntax |
 | Backend/CRM data dictionary | Available business dimensions |
 
 > ⚠️ **Custom variables are NOT available via GTM:** You must use either the gtag.js method or the OCT import method. If your tracking is GTM-only, coordinate with your developer to add gtag parameters.
@@ -156,7 +157,7 @@ If you use Offline Conversion Tracking imports, add columns for each custom vari
 
 ### 2B.2 Prepare the upload file
 
-Your upload template should include:
+The upload template includes these columns:
 
 | Google Click ID | Conversion Name | Conversion Time | Conversion Value | Conversion Currency | cv.lead_score | cv.service_type |
 |----------------|-----------------|-----------------|------------------|--------------------:|---------------|-----------------|
@@ -178,8 +179,8 @@ Your upload template should include:
 ### 3.1 Navigate to Custom Variables
 
 1. Open Google Ads
-2. Go to Tools > Measurement > Conversions
-3. Click "Custom Variables" in the left navigation
+2. Go to Goals > Conversions
+3. Click "Custom variables" in the left navigation
 
 ### 3.2 Create each variable
 
@@ -206,7 +207,7 @@ For each variable from your Phase 1 list:
 
 ### 4.1 Check the Custom Variables page
 
-1. Go to Tools > Measurement > Conversions > Custom Variables
+1. Go to Goals > Conversions > Custom variables
 2. After 24-48 hours, check that recent values appear for each variable
 3. Verify the value distribution looks correct (not all blank, not all the same)
 
@@ -305,8 +306,8 @@ A: Not directly. Custom variables are for reporting segmentation only. Smart Bid
 
 ### Version details
 
-- **Version:** 1.0
-- **Last Updated:** February 2026
+- **Version:** 3.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

@@ -121,7 +121,7 @@ Relevance is not just about integrating keywords in your RSA assets, it's also a
 | --- | --- | --- | --- |
 | **Informational** ("how to", "what is") | Answers | Guide, Definition, Explanation | "Project Management 101 Guide" |
 | **Commercial** ("best", "review", "vs") | Comparison | Differentiators, Social Proof | "Rated #1 by 10,000+ Teams" |
-| **Transactional** ("buy", "price", "demo") | Action | Price, Offer, Speed, CTA | "Start Free Trial — 2 Min Setup" |
+| **Transactional** ("buy", "price", "demo") | Action | Price, Offer, Speed, CTA | "Start Free Trial: 2 Min Setup" |
 
 **Action:** Review your top keywords. What intent category do they fall into? Does your current ad copy match that intent type?
 
@@ -148,7 +148,7 @@ Relevance is not just about integrating keywords in your RSA assets, it's also a
 | --- | --- | --- |
 | Dynamic Keyword Insertion | Keywords are synonyms/variants | [Dynamic Text Reference](../references/Dynamic Text Reference.md) |
 | Keyword-level Ad Customizers | Need different descriptors per keyword | [Keyword Ad Customizer Attribute Catalog](../catalogs/Keyword Ad Customizer Attribute Catalog.md) |
-| Keyword-level Final URLs | Same intent, different landing pages | — |
+| Keyword-level Final URLs | Same intent, different landing pages | |
 | Location Insertion | Location variants | [Dynamic Text Reference](../references/Dynamic Text Reference.md) |
 
 >
@@ -172,9 +172,11 @@ Relevance is not just about integrating keywords in your RSA assets, it's also a
 
 ### 2.2 Query promotion (abbreviated)
 
-**Goal:** Promote search terms as keywords (within the same Ad Group) to enable better Ad Quality diagnostics and DKI effectiveness, without fragmenting data by creating redundant auction entry points.
+**Goal:** Promote search terms as keywords (within the same Ad Group) to enable separate Ad Quality diagnostics and DKI effectiveness, without fragmenting data by creating redundant auction entry points.
 
 > 💡 **Quality Score is based on historical impressions for exact searches of your keyword:** But adding close-variant keywords creates multiple entry points to the same auction → data fragmentation → weaker algorithmic learning. You have to find a balance.
+
+> ⚠️ **Promotion does not raise Quality Score:** Match type is not an input to the Quality Score calculation. Promoting a query at a match type gives it its own keyword-level diagnostics, it does not move the score.
 
 #### The decision filter
 
@@ -194,11 +196,9 @@ Before promoting any search term to the same ad group, ask:
 1. Open **Search Terms Report** for the ad group (Default: Last 30 days. Expand to 90 if low volume).
 2. Filter to **high-signal queries**: Impressions ≥ 50 (lower threshold if low volume).
 3. Apply the decision filter above to each candidate.
-    1. **Yes → Promote** (distinct phrasing worth surfacing via DKI to increase Ad Quality or monitoring separately)
-    - **No → Skip** (close variant that fragments without adding diagnostic or relevance value)
 
 >
-> ↪️ **Note:** For full execution, see: **SOP — Promote Search Terms to Keywords**. This is the abbreviated version for Ad Relevance purposes.
+> ↪️ **Note:** For full execution, see: [SOP – Promote Search Terms to Keywords](../sops/SOP – Promote Search Terms to Keywords.md). This is the abbreviated version for Ad Relevance purposes.
 
 ---
 
@@ -329,7 +329,7 @@ A: Use the Intent Divergence Taxonomy in the [Search Ad Group Structure Mental M
 | SOP | Relationship |
 | --- | --- |
 | [Search Ad Group Structure Mental Model](../mental-models/Search Ad Group Structure Mental Model.md) | Foundational (structure principles, Single Ad Test) |
-| *SOP — Promote Search Terms to Keywords* | Upstream (Phase 2.2 dependency) |
+| [SOP – Promote Search Terms to Keywords](../sops/SOP – Promote Search Terms to Keywords.md) | Upstream (Phase 2.2 dependency) |
 | [SOP – Improve Expected CTR](../sops/SOP – Improve Expected CTR.md)  | Next Phase in QS Playbook |
 | [SOP – Improve Landing Page Experience](../sops/SOP – Improve Landing Page Experience.md) | Last Phase of QS Playbook |
 | [SOP – RSA Testing with The Iteration Loop](../sops/SOP – RSA Testing with The Iteration Loop.md) | Ongoing optimization |

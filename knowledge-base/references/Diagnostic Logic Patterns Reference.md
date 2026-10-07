@@ -12,7 +12,7 @@ Pillar: 0
 
 ## Purpose
 
-Consolidates non-numeric diagnostic logic patterns used across PPCOS skills. This is the companion to the Diagnostic Thresholds Reference (REF_69): where REF_69 defines quantitative triggers (PASS at X%, FAIL at Y%), this reference defines qualitative logic patterns (classification rules, pattern matching, decision trees, skip conditions).
+Consolidates non-numeric diagnostic logic patterns used across PPC OS skills. This is the companion to the Diagnostic Thresholds Reference (REF_69): where REF_69 defines quantitative triggers (PASS at X%, FAIL at Y%), this reference defines qualitative logic patterns (classification rules, pattern matching, decision trees, skip conditions).
 
 ---
 
@@ -27,7 +27,7 @@ Consolidates non-numeric diagnostic logic patterns used across PPCOS skills. Thi
 **This reference does NOT:**
 
 - Replace skill-specific diagnostic-rules files (those contain the full per-check logic)
-- Define numeric thresholds (See: Diagnostic Thresholds Reference, REF_69)
+- Define numeric thresholds (See: [Diagnostic Thresholds Reference](Diagnostic Thresholds Reference.md), REF_69)
 - Explain how to build skills (See: skills/DIAGNOSTIC_RULES_GUIDE.md)
 
 ---
@@ -68,7 +68,7 @@ Used by: AUD-D09, AUD-D10, CB-E12
 
 ### Campaign Naming Pattern
 
-The recommended convention is `{Geo}_{Language}_{Type}_{Theme}_{Modifier}` with underscore delimiter.
+The convention is `{Geo}_{Language}_{Type}_{Theme}_{Modifier}` with an underscore delimiter, owned by [Campaign Naming Convention Reference](Campaign Naming Convention Reference.md).
 
 | Position | Variable | Examples |
 |----------|----------|----------|
@@ -76,7 +76,7 @@ The recommended convention is `{Geo}_{Language}_{Type}_{Theme}_{Modifier}` with 
 | 2 | Language | `NL`, `EN`, `FR`, `DE`, `ALL` |
 | 3 | Campaign type | `Search`, `Pmax`, `Display`, `Shopping`, `YouTube`, `DemandGen` |
 | 4 | Theme/audience | Product category, keyword theme, audience type |
-| 5 | Modifier | `Brand`, `NB`, `DSA`, `Remarketing`, `Prospecting`, `Heroes` |
+| 5 | Modifier | `Brand`, `NB`, `AIMax`, `Remarketing`, `Prospecting`, `Heroes` |
 
 **The check is for CONSISTENCY, not strict adherence.** If an account uses a different but consistent convention, that passes.
 
@@ -87,7 +87,7 @@ The recommended convention is `{Geo}_{Language}_{Type}_{Theme}_{Modifier}` with 
 
 ### Ad Group Naming Pattern
 
-Ad groups should be descriptive of their theme. Flag generic/default names.
+An ad group name is compliant when it describes the ad group's theme. Generic and default names are the failure case.
 
 **Generic name detection patterns:**
 
@@ -205,7 +205,7 @@ Used by: All skills
 |--------|-----------|
 | WEBSITE, APP, CALL_FROM_ADS, STORE, YOUTUBE_HOSTED | Audit normally |
 | GOOGLE_HOSTED | Exclude from scoring. Report as INFO. (Auto-created by Google) |
-| UNKNOWN, UNSPECIFIED | WARN — flag for manual verification |
+| UNKNOWN, UNSPECIFIED | WARN, flagged for manual verification |
 
 ---
 
@@ -241,7 +241,7 @@ SKIP diagnostics are **excluded from the scoring denominator**.
 Score % = (points earned / points possible excluding SKIPs) * 100
 ```
 
-If all checks in a module are SKIP, the module score is "N/A — insufficient data."
+If all checks in a module are SKIP, the module score is "N/A: insufficient data."
 
 ---
 
@@ -255,7 +255,7 @@ Used by: All DIAGNOSE outputs (per SKILL_INTERFACE_CONTRACTS.md)
 | Medium | 0.70-0.89 | Inferred from patterns. Borderline threshold. Heuristic classification (e.g., intent from keyword text). |
 | Low | 0.50-0.69 | Insufficient data for certainty. Cross-referenced from external signals. Best-guess based on naming patterns. |
 
-**Rule:** If confidence < 0.70 on a FAIL finding, downgrade to WARN and add note: "Low confidence — verify manually."
+**Rule:** If confidence < 0.70 on a FAIL finding, downgrade to WARN and add note: "Low confidence: verify manually."
 
 ---
 
@@ -265,16 +265,16 @@ Used by: All skills (documented in diagnostic-rules-shared.md per skill)
 
 | Severity | Points | Criteria | Examples |
 |----------|--------|----------|----------|
-| Critical | 15 | Actively losing money OR broken tracking | Zero-conversion campaign with spend, double-counted conversions, broken GACT tag |
+| Critical | 15 | Actively losing money, broken tracking, or the campaign cannot serve at all | Zero-conversion campaign with spend, double-counted conversions, broken GACT tag, Demand Gen inventory below the serving gate |
 | High | 10 | Significant structural issue OR major missed opportunity | Display Network on Search, no brand separation, targets exceed breakeven |
 | Medium | 5 | Optimization opportunity with measurable impact | Naming inconsistency, SKAG fragmentation, missing ad schedule |
 | Low | 3 | Best practice, polish | Generic ad group names, ad rotation setting, tracking template missing |
 
 **Assignment rules:**
-1. If the issue causes direct money loss → Critical
+1. If the issue causes direct money loss, or stops the campaign serving at all → Critical
 2. If the issue prevents effective optimization → High
 3. If fixing it would improve performance measurably → Medium
-4. If it's about cleanliness/best practice → Low
+4. If it concerns cleanliness or best practice → Low
 
 ---
 
@@ -344,11 +344,15 @@ See the Cross-Skill Routing Table in `skills/SKILL_INTERFACE_CONTRACTS.md` for t
 
 ## Related Documents
 
-- [Diagnostic Thresholds Reference](Diagnostic Thresholds Reference.md) — Numeric PASS/WARN/FAIL thresholds
-- [Conversion Volume Thresholds Reference](Conversion Volume Thresholds Reference.md) — Volume minimums for Smart Bidding
+| Document | Relationship |
+|----------|--------------|
+| [Diagnostic Thresholds Reference](Diagnostic Thresholds Reference.md) | Numeric PASS/WARN/FAIL thresholds |
+| [Conversion Volume Thresholds Reference](Conversion Volume Thresholds Reference.md) | Volume minimums for Smart Bidding |
+| [Campaign Naming Convention Reference](Campaign Naming Convention Reference.md) | The naming convention the compliance check scores against |
 
 ---
 
 ## Version
 
+- v2.0 (2026-06): Updated naming modifier to AIMax (final URL expansion / AI Max for Search)
 - v1.0 (2026-04-02): Initial creation, extracted from 5 built skills

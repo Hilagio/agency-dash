@@ -4,6 +4,7 @@ Updated: 2026-07-13
 
 Support_ID: CHECKLIST_22
 Status: Done
+Category: PMax
 Reference Type: Checklist
 Agent_Readable: No
 Human_Facing: Yes
@@ -53,12 +54,10 @@ Run this checklist:
 
 > ⚠️ **These are non-negotiable:** Without lead quality tracking, PMax will generate low-quality leads.
 
-The key is selecting the RIGHT primary conversion action. PMax optimizes toward your primary action, so choose a downstream quality signal (MQL, SQL, or Closed Deal) rather than raw form submissions.
-
 - [ ] **Primary conversion action** set to a downstream quality signal (MQL, SQL, or Closed Deal)
 - [ ] Offline conversion import configured for downstream signals
-- [ ] Raw web conversions (forms, demos, trials) set as **secondary** (for measurement only)
-- [ ] Conversion values assigned to downstream actions (higher value = higher quality)
+- [ ] Raw web conversions (forms, demos, trials) set as **secondary**
+- [ ] Conversion values assigned to downstream actions
 - [ ] 30+ conversions/month on your **primary** conversion action
 
 **Conversion action setup:**
@@ -103,7 +102,7 @@ The key is selecting the RIGHT primary conversion action. PMax optimizes toward 
 - [ ] Headlines written (minimum 3, recommended 5-11)
 - [ ] Long headlines written (minimum 1, recommended 2-5)
 - [ ] Descriptions written (minimum 2, recommended all 5 slots)
-- [ ] Own videos uploaded in horizontal, square, and vertical orientations (recommended, prevents auto-generated videos, up to 15 videos per orientation)
+- [ ] Own videos uploaded in horizontal, square, and vertical orientations (up to 15 videos per orientation)
 - [ ] Sitelinks prepared (6+)
 - [ ] All assets approved (no policy violations)
 
@@ -128,14 +127,14 @@ The key is selecting the RIGHT primary conversion action. PMax optimizes toward 
 - [ ] Brand Search campaign exists and is protected
 - [ ] Brand exclusions prepared for PMax (cover only Search, Shopping, and YouTube search inventory, supplement with negative keyword lists)
 - [ ] Branded searches mode on AI Max-enabled Search campaigns set to "unbranded only" (or a documented exception)
-- [ ] Verification plan for post-launch brand query check
+- [ ] A post-launch brand query check is scheduled
 
 ### Volume and budget prerequisites
 
-- [ ] 30+ conversions/month on quality signal (to support learning)
-- [ ] Daily budget set (sufficient for learning)
-- [ ] Bid strategy selected appropriate to volume
-- [ ] Learning period expectations set (2-4 weeks)
+- [ ] 30+ conversions per month on the quality signal
+- [ ] Daily budget is at least 10x the target CPA
+- [ ] Bid strategy matches the conversion volume on the primary action
+- [ ] Stakeholders have confirmed the 2-4 week learning period
 
 **Volume check:**
 
@@ -197,12 +196,12 @@ After enabling the campaign:
 
 ## Post-launch monitoring (First 14 days)
 
-- [ ] Day 1-3: Verify impressions appearing, no errors
-- [ ] Day 3: Check asset approval status
-- [ ] Day 7: First performance check (don't optimize yet)
-- [ ] Day 7: Verify no brand queries appearing
-- [ ] Day 14: Initial performance review
-- [ ] Do NOT make major changes during learning period (2-4 weeks)
+- [ ] Day 1-3: impressions are appearing with no errors
+- [ ] Day 3: every asset shows an approved status
+- [ ] Day 7: performance is recorded with no optimization applied
+- [ ] Day 7: no brand queries appear in the search term report
+- [ ] Day 14: performance is recorded against the launch baseline
+- [ ] No major change was made during the learning period (2-4 weeks)
 
 ---
 

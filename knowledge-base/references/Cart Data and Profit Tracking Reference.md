@@ -29,7 +29,7 @@ Documents two complementary ecommerce measurement features: Google's native Conv
 
 **This reference does NOT:**
 
-- Provide step-by-step implementation instructions (See: future SOP: Set Up Cart Data Tracking)
+- Provide step-by-step implementation instructions (See: [SOP - Set Up Cart Data and Profit Tracking](../sops/SOP – Set Up Cart Data and Profit Tracking.md))
 - Cover basic conversion tracking setup (See: [Conversion Action Reference](../references/Conversion Action Reference.md))
 - Explain unit economics calculations (See: [Unit Economics Reference](../references/Unit Economics Reference.md))
 
@@ -54,7 +54,7 @@ Documents two complementary ecommerce measurement features: Google's native Conv
 | `cost_of_goods_sold` | Decimal number + currency code | `15.99 EUR` | Per-product cost in Merchant Center feed |
 | Currency | ISO 4217 code | `EUR`, `USD`, `GBP` | Must match your Merchant Center currency |
 | Decimal separator | Period (.) | `15.99` not `15,99` | Google rejects comma-separated decimals |
-| Update frequency | Reflect current COGS | — | Update when supplier prices change |
+| Update frequency | Reflect current COGS | n/a | Refreshed when supplier prices change |
 
 ---
 
@@ -97,19 +97,13 @@ The purchase event data layer must include:
 | `items[].price` | Number | `49.99` | Yes |
 | `items[].quantity` | Number | `2` | Yes |
 
-### Setup: GTM method
+### GTM configuration surface
 
-1. Ensure your data layer pushes the items array on purchase event
-2. Create GTM variables for `merchant_id`, `feed_country`, `feed_language`
-3. Open your Google Ads Conversion Tracking tag in GTM
-4. Check "Include product-level sales data" checkbox
-5. Map the data source to "Data Layer"
-6. Enter your Merchant Center ID, feed country, and feed language
-7. Publish and verify in conversion diagnostics
+The Google Ads Conversion Tracking tag exposes cart data through the "Include product-level sales data" checkbox, which then takes a data source (Data Layer), a Merchant Center ID, a feed country, and a feed language. Configuring it is owned by [SOP - Set Up Cart Data and Profit Tracking](../sops/SOP – Set Up Cart Data and Profit Tracking.md), Phase 3A.
 
-### Setup: gtag method
+### gtag syntax
 
-Add the items array and merchant parameters to the purchase event snippet:
+The items array and merchant parameters sit on the purchase event snippet. Configuring it is owned by [SOP - Set Up Cart Data and Profit Tracking](../sops/SOP – Set Up Cart Data and Profit Tracking.md), Phase 3B.
 
 ```javascript
 gtag('event', 'purchase', {
@@ -136,19 +130,19 @@ gtag('event', 'purchase', {
 | Cross-sell revenue | `cross_sell_revenue` | Revenue from products not in the clicked Shopping ad |
 | Cross-sell gross profit | `cross_sell_gross_profit` | Gross profit from cross-sold products |
 | Average cart size | `average_cart_size` | Average number of items per order |
-| Lead units sold | `units_sold` | Total product units sold via ad clicks |
+| Units sold | `units_sold` | Total product units sold via ad clicks |
 
 ### COGS in Google Merchant Center
 
-To unlock gross profit metrics, add the `cost_of_goods_sold` attribute to your product feed:
+Gross profit metrics depend on one feed attribute:
 
 | **Feed attribute** | **Format** | **Example** |
 |-------------------|-----------|-------------|
 | `cost_of_goods_sold` | Price with currency | `25.00 USD` |
 
-**Sources for COGS data:** ERP system, inventory management platform, or manual spreadsheet upload via supplemental feed.
+**Sources for COGS data:** ERP system, inventory management platform, or manual spreadsheet upload via supplemental feed. Populating the feed is owned by [SOP - Set Up Cart Data and Profit Tracking](../sops/SOP – Set Up Cart Data and Profit Tracking.md), Phase 2.
 
-> ⚠️ **COGS must be populated for gross profit columns to show data:** If COGS is missing from your feed, you get cart data and cross-sell metrics but not profit metrics. Start with your top 100 SKUs if full-feed COGS is not immediately available.
+> ⚠️ **COGS must be populated for gross profit columns to show data.** A feed without COGS still yields cart data and cross-sell metrics, but no profit metrics. Partial coverage works: the columns populate for whichever SKUs carry the attribute.
 
 ---
 
@@ -213,7 +207,7 @@ ProfitMetrics deduplicates across all three layers automatically.
 | Uniform-margin catalog, want product insights | Cart Data is sufficient |
 | Running Shopping + Search + PMax campaigns | Both for maximum data coverage |
 
-> 💡 **Cart Data and ProfitMetrics serve different purposes and complement each other:** Cart Data gives you product-level insights. ProfitMetrics gives you conversion accuracy and profit-based optimization. Use both for the most complete measurement setup.
+> 💡 **Cart Data and ProfitMetrics serve different purposes and complement each other.** Cart Data supplies product-level insight. ProfitMetrics supplies conversion accuracy and profit-based optimization. Neither substitutes for the other.
 
 ---
 
@@ -221,7 +215,7 @@ ProfitMetrics deduplicates across all three layers automatically.
 
 | **Mistake** | **Problem** | **Fix** |
 |-------------|-------------|---------|
-| Product IDs in data layer don't match feed | Cart Data can't match purchases to products, metrics empty | Verify ID format matches exactly (parent ID vs. variant ID) |
+| Product IDs in data layer do not match feed | Cart Data cannot match purchases to products, metrics empty | Verify ID format matches exactly (parent ID vs. variant ID) |
 | Missing COGS in Merchant Center feed | Gross profit columns show no data | Add `cost_of_goods_sold` attribute to feed |
 | Only using GACT pixel without ProfitMetrics or ECT | 15-30% of conversions lost to ad blockers and cookie deletion | Add ProfitMetrics or implement enhanced conversions manually |
 | Setting ROAS targets based on ProfitMetrics data without adjusting | Targets too low because more conversions are reported | Recalibrate targets: if uplift is 20%, increase target ROAS by ~20% |

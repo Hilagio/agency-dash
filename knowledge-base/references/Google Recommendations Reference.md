@@ -1,5 +1,6 @@
 # Google Recommendations Reference
 Created: 2026-02-11
+Updated: 2026-10-05
 
 Agent_Readable: Yes
 Category: Compliance
@@ -33,7 +34,7 @@ Documents the full taxonomy of Google Ads recommendations, optimization score me
 
 ---
 
-## Recommendation Categories
+## Recommendation categories
 
 Google Ads organizes recommendations into five categories. Each contains multiple individual recommendation types.
 
@@ -43,6 +44,7 @@ Recommendations to improve ad quality, add assets, and optimize ad rotation.
 
 | **Recommendation** | **What Google suggests** |
 |---------------------|--------------------------|
+| Add responsive search ads | Create additional RSAs in ad groups. Google recommends 2-3 per ad group, the OS position is one (see [Google Recommendations Management Guidelines](../guidelines/Google Recommendations Management Guidelines.md)) |
 | Add assets to responsive search ads | Add missing headlines or descriptions |
 | Add call assets | Add phone number to ads |
 | Add callout assets | Add callout text to ads |
@@ -75,7 +77,7 @@ Recommendations to adopt more automated campaign types.
 | Create Performance Max with store goals | Launch PMax for local objectives |
 | Improve Performance Max asset groups | Enhance PMax assets |
 | Target more products with PMax | Expand product coverage in PMax |
-| Upgrade DSA campaigns to PMax | Migrate Dynamic Search campaigns |
+| Upgrade dynamic campaigns to PMax | Migrate dynamic targeting into PMax final URL expansion |
 | Turn on AI Max | Enable AI Max for Search campaigns |
 
 ### 3️⃣ Bidding and Budgets
@@ -99,6 +101,10 @@ Recommendations to adjust bid strategies, targets, and budgets.
 | Use portfolio bid strategy with shared budget | Consolidate bidding across campaigns |
 | Upgrade to data-driven attribution | Switch attribution model |
 
+> ⚠️ **Absent bidding recommendations are not a health signal.** Google calculates no recommended
+> target for a campaign below 7 conversions, so low-volume campaigns simply show nothing here.
+> Read the silence as insufficient data, never as approval of the current target.
+
 ### 4️⃣ Keywords and Targeting
 
 Recommendations to expand reach and refine targeting.
@@ -107,7 +113,7 @@ Recommendations to expand reach and refine targeting.
 |---------------------|--------------------------|
 | Add new keywords | Expand keyword list |
 | Add broad match keywords | Switch to broader matching |
-| Add brand inclusions with broad match | Broad match with brand restrictions |
+| Add brand inclusions with broad match | Opt into AI Max brand inclusions (the controlled Branded searches mode) with broad match |
 | Remove conflicting negative keywords | Fix negatives blocking positive keywords |
 | Remove non-serving keywords | Clean up zero-impression keywords |
 | Remove redundant keywords | Consolidate duplicate keywords |
@@ -115,7 +121,7 @@ Recommendations to expand reach and refine targeting.
 | Create custom audiences | Build custom audience segments |
 | Expand your reach with Search Partners | Enable Search Partner network |
 | Expand your reach with Google Video Partners | Enable video partner network |
-| Use optimized targeting | Enable expanded targeting on Display/Video |
+| Use optimized targeting | Enable expanded targeting on Demand Gen campaigns |
 | Upload Customer Match lists | Add first-party audience data |
 | Refresh Customer Match lists | Update stale audience data |
 | Set up audience sources | Configure remarketing tags |
@@ -138,7 +144,7 @@ Recommendations to fix broken or misconfigured elements.
 
 ---
 
-## Optimization Score
+## Optimization score
 
 ### What it is
 
@@ -165,33 +171,33 @@ Optimization score is Google's estimate of how well your account is set up to pe
 
 ---
 
-## Auto-Apply Settings
+## Auto-apply settings
 
 ### What auto-apply does
 
 When enabled for a recommendation type, Google automatically implements that recommendation without your approval.
 
-### Accessing auto-apply
+### Where auto-apply lives
 
-1. Navigate to Recommendations page
-2. Click "Auto-apply" in the top right
-3. Select which recommendation types to auto-apply
+Auto-apply is configured from the Recommendations page, under the "Auto-apply settings" control in the top right, which lists the recommendation types eligible for automatic application.
 
-### Auto-apply categories
+> ↪️ **For the navigation and audit sequence:** See [SOP – Manage Google Recommendations](../sops/SOP – Manage Google Recommendations.md).
 
-| **Category** | **Risk level** | **Default recommendation** |
-|--------------|---------------|---------------------------|
-| Ads and assets | Medium-High | Disable auto-apply |
-| Automated campaigns | High | Disable auto-apply |
-| Bidding and budgets | High | Disable auto-apply |
-| Keywords and targeting | High | Disable auto-apply |
-| Repairs | Low | Consider enabling selectively |
+### Auto-apply risk by category
 
-> ↪️ **For detailed enable/disable guidance:** See: [Google Recommendations Management Guidelines](../guidelines/Google Recommendations Management Guidelines.md)
+| **Category** | **Risk level** | **Why** |
+|--------------|---------------|---------|
+| Ads and assets | Medium-High | Changes live creative without review |
+| Automated campaigns | High | Creates or converts campaigns, a structural change |
+| Bidding and budgets | High | Moves spend and bid targets directly |
+| Keywords and targeting | High | Alters which queries and audiences are reachable |
+| Repairs | Low | Restores serving on broken configuration |
+
+> ↪️ **For the per-recommendation enable/disable position:** See [Google Recommendations Management Guidelines](../guidelines/Google Recommendations Management Guidelines.md), which owns the stance and mirrors Google's own auto-apply sections.
 
 ---
 
-## Dismiss vs. Apply Workflow
+## Dismiss vs. apply workflow
 
 | **Action** | **What it does** | **Impact on score** |
 |-----------|-----------------|---------------------|
@@ -200,7 +206,7 @@ When enabled for a recommendation type, Google automatically implements that rec
 | **Dismiss all** | Removes all recommendations of a type | Score increases by total point value of dismissed type |
 | **Ignore** | Leave recommendation in the list | Score stays the same |
 
-**Key insight:** Dismissing a recommendation has the same optimization score impact as applying it. You can maintain a high score without implementing recommendations you disagree with.
+**Key insight:** Dismissing a recommendation has the same optimization score impact as applying it, so a high score is reachable without implementing recommendations the account owner disagrees with.
 
 ---
 
@@ -216,8 +222,8 @@ When enabled for a recommendation type, Google automatically implements that rec
 
 ## Version details
 
-- **Version:** 1.0
-- **Last Updated:** February 2026
+- **Version:** 4.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

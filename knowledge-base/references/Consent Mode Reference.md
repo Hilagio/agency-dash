@@ -1,6 +1,6 @@
 # Consent Mode Reference
 Created: 2026-02-04
-Updated: 2026-04-02
+Updated: 2026-10-05
 
 Support_ID: CHEATSHEET_17
 Status: Done
@@ -28,7 +28,7 @@ Documents Google Consent Mode V2 configuration, consent signals, conversion mode
 
 **This reference does NOT:**
 
-- Provide a step-by-step consent mode setup procedure (See: future SOP: Configure Consent Mode)
+- Provide a step-by-step consent mode setup procedure (See: [SOP - Configure Google Consent Mode](../sops/SOP – Configure Google Consent Mode.md))
 - Explain the full measurement maturity roadmap (See: [Measurement Maturity Mental Model](../mental-models/Measurement Maturity Mental Model.md))
 - Cover conversion action configuration settings (See: [Conversion Action Reference](../references/Conversion Action Reference.md))
 
@@ -43,7 +43,7 @@ Documents Google Consent Mode V2 configuration, consent signals, conversion mode
 | `ad_user_data` | Whether user data can be sent to Google for advertising | User data not sent for ad personalization | V2 (required) |
 | `ad_personalization` | Whether user data can be used for remarketing | No personalized ads served | V2 (required) |
 
-> ⚠️ **V2 is mandatory in the EU/EEA since March 2024:** Accounts without Consent Mode V2 lose remarketing audiences and conversion modeling in affected regions. Implement both V2 signals (`ad_user_data` and `ad_personalization`) alongside the original V1 signals.
+> ⚠️ **V2 is mandatory in the EU/EEA.** An account without both V2 signals (`ad_user_data` and `ad_personalization`) alongside the original V1 signals loses remarketing audiences and conversion modeling in the affected regions.
 
 ---
 
@@ -108,6 +108,8 @@ Google uses a four-step statistical model to estimate conversions from users who
 
 Set default consent states directly in the Google Tag on every page.
 
+> ⚠️ **Never rely on Google's implicit defaults.** Without an explicit default, advanced consent mode treats users as consented outside the EEA, Switzerland, and the UK, and denied inside them. Implicit defaults shift over time and compliance is your obligation, not Google's. Set explicit per-region defaults: denied in the EEA/CH/UK, and a deliberate legal decision everywhere else you serve. Note that `ad_storage` also governs Google Ads' use of GA-tag and Firebase cookies and identifiers: set its default to denied to opt out.
+
 ```javascript
 gtag('consent', 'default', {
   'ad_storage': 'denied',
@@ -130,19 +132,22 @@ gtag('consent', 'update', {
 
 **Best for:** Simple implementations without GTM, single-tag setups.
 
-### Method 2: GTM with CMP gallery template (recommended)
+### Method 2: GTM with CMP gallery template
 
-| **Step** | **Action** | **Where** |
-|----------|-----------|-----------|
-| 1 | Enable Consent Overview | GTM Container Settings > Enable consent overview |
-| 2 | Add CMP gallery template | GTM Templates > Search Gallery (e.g., Cookiebot, OneTrust, CookieYes) |
-| 3 | Configure CMP tag | Add CMP tag, set default consent states, map CMP categories to Google signals |
-| 4 | Set trigger | Fire CMP tag on Consent Initialization (fires before All Pages) |
-| 5 | Verify consent overview | Check Consent Overview dashboard to confirm all tags show correct consent requirements |
+The GTM route uses four surfaces:
 
-**Best for:** Most implementations. Recommended for accounts using GTM with multiple tags.
+| Surface | Where | What it holds |
+|---------|-------|---------------|
+| Consent Overview | GTM Container Settings | The per-tag consent requirement dashboard |
+| CMP gallery template | GTM Templates > Search Gallery | Cookiebot, OneTrust, CookieYes, CookieHub, Secure Privacy, Sirdata and others |
+| CMP tag | GTM tag | Default consent states and the mapping from CMP categories to Google signals |
+| Consent Initialization trigger | GTM trigger | Fires the CMP tag before All Pages |
 
-> 💡 **The CMP gallery template handles both default and update calls automatically:** You configure the mapping once, and the template manages consent state changes when users interact with the cookie banner.
+Configuring them is owned by [SOP - Configure Google Consent Mode](../sops/SOP – Configure Google Consent Mode.md), Phase 2.
+
+**Best for:** most implementations, and any account running GTM with multiple tags.
+
+> 💡 **The CMP gallery template handles both default and update calls automatically.** The mapping is configured once, and the template manages consent state changes as users interact with the cookie banner.
 
 ---
 
@@ -150,7 +155,7 @@ gtag('consent', 'update', {
 
 ### Google tags (built-in consent checks)
 
-Google tags (Google Ads conversion tracking, Google Analytics, Floodlight) have built-in consent checks. They automatically read the consent state and adjust behavior. No additional configuration required beyond setting up Consent Mode.
+Google tags (Google Ads conversion tracking, Google Analytics, Floodlight) have built-in consent checks. They read the consent state and adjust behavior on their own, with no configuration beyond Consent Mode itself.
 
 | **Tag type** | **Consent check** | **Additional setup** |
 |--------------|-------------------|---------------------|
@@ -162,7 +167,7 @@ Google tags (Google Ads conversion tracking, Google Analytics, Floodlight) have 
 
 ### Non-Google tags (manual consent checks required)
 
-Non-Google tags (LinkedIn Insight, Meta Pixel, TikTok Pixel) do not read Google Consent Mode signals. You must configure manual consent checks.
+Non-Google tags (LinkedIn Insight, Meta Pixel, TikTok Pixel) do not read Google Consent Mode signals, so their consent checks are manual.
 
 | **Tag type** | **Consent check** | **Setup required** |
 |--------------|-------------------|-------------------|
@@ -173,7 +178,7 @@ Non-Google tags (LinkedIn Insight, Meta Pixel, TikTok Pixel) do not read Google 
 
 ### Cookie Consent Update trigger
 
-For non-Google tags, create a trigger in GTM:
+Non-Google tags need a GTM trigger of their own:
 
 | **Setting** | **Value** |
 |-------------|----------|
@@ -181,7 +186,7 @@ For non-Google tags, create a trigger in GTM:
 | Event name | `cookie_consent_update` |
 | Fires on | All Custom Events |
 
-Assign this trigger as an additional firing trigger on each non-Google tag. This ensures non-Google tags fire (or re-fire) when the user grants consent after the initial page load.
+Added as an additional firing trigger on each non-Google tag, it makes those tags fire (or re-fire) when the user grants consent after the initial page load. Configuring it is owned by [SOP - Configure Google Consent Mode](../sops/SOP – Configure Google Consent Mode.md), Phase 3.3.
 
 ---
 
@@ -191,18 +196,18 @@ Assign this trigger as an additional firing trigger on each non-Google tag. This
 
 | **Method** | **Where** | **What to check** |
 |-----------|----------|-------------------|
-| Conversion action diagnostics | Google Ads > Goals > Conversions > [Action] > Diagnostics | Consent Mode status shows "Active" |
+| Conversion action diagnostics | Google Ads > Goals > Summary > [Action] > Diagnostics | Consent Mode status shows "Active" |
 | GTM Preview mode | GTM > Preview | Consent state changes visible in event timeline |
 | GTM Consent Overview | GTM > Admin > Container Settings > Consent Overview | All tags show correct consent requirements |
 | Browser developer tools | Network tab | Filter for `google` requests, verify `gcs` parameter in requests |
 
 ### Legal requirements
 
-| **Region** | **Requirement** | **Deadline** |
-|-----------|----------------|-------------|
-| EU/EEA | Consent Mode V2 mandatory for Google Ads features | March 2024 (enforced) |
-| UK | Recommended, aligns with ICO guidance | Strongly recommended |
-| Global | Recommended for privacy compliance and data recovery | No deadline, best practice |
+| **Region** | **Requirement** | **Status** |
+|-----------|----------------|-----------|
+| EU/EEA | Consent Mode V2 mandatory for Google Ads features | Enforced |
+| UK | Aligns with ICO guidance | Not enforced |
+| Global | Supports privacy compliance and data recovery | Not enforced |
 
 ---
 
@@ -231,8 +236,8 @@ Assign this trigger as an additional firing trigger on each non-Google tag. This
 
 ## Version details
 
-- **Version:** 2.0
-- **Last Updated:** February 2026
+- **Version:** 4.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

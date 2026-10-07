@@ -1,5 +1,6 @@
 # Smart Bidding Mechanics Reference
 Created: 2026-02-04
+Updated: 2026-08-27
 
 Support_ID: CHEATSHEET_24
 Status: Done
@@ -22,7 +23,7 @@ Documents how smart bidding works under the hood: auction-time bidding, signal p
 
 - Explains how smart bidding sets bids at auction time
 - Documents the 18+ signals smart bidding uses
-- Covers learning periods, conversion cycles, and conversion delay
+- Covers learning periods, conversion cycles, and conversion lag
 - Explains which bid adjustments still work with automated strategies
 - Documents conversion value rules as an alternative to bid adjustments
 
@@ -36,14 +37,16 @@ Documents how smart bidding works under the hood: auction-time bidding, signal p
 
 ## Quick reference: smart bidding strategies
 
-| Strategy | Optimizes for | Has efficiency target | Requires conversion data |
-|----------|--------------|----------------------|------------------------|
-| **Maximize Conversions** | Maximum conversion volume within budget | No | Low bar (can start early) |
-| **Target CPA** | Maximum conversions within a CPA target | Yes (CPA) | 30+ conversions/month (50+ recommended) |
-| **Maximize Conversion Value** | Maximum conversion value within budget | No | Moderate |
-| **Target ROAS** | Maximum conversion value within a ROAS target | Yes (ROAS) | 50+ conversions/month recommended |
+| Strategy | Optimizes for | Has efficiency target |
+|----------|--------------|----------------------|
+| **Maximize Conversions** | Maximum conversion volume within budget | No |
+| **Target CPA** | Maximum conversions within a CPA target | Yes (CPA) |
+| **Maximize Conversion Value** | Maximum conversion value within budget | No |
+| **Target ROAS** | Maximum conversion value within a ROAS target | Yes (ROAS) |
 
-> 💡 **Target CPA and Target ROAS are not separate strategies:** They are Maximize Conversions and Maximize Conversion Value with an optional efficiency target applied. In the Google Ads UI, you enable tCPA by checking "Set a target cost per action" under Maximize Conversions, and tROAS by checking "Set a target return on ad spend" under Maximize Conversion Value.
+Minimum conversion volume per strategy per campaign type lives in [Conversion Volume Thresholds Reference](../references/Conversion Volume Thresholds Reference.md).
+
+> 💡 **Target CPA and Target ROAS use the same bidding as Maximize Conversions and Maximize Conversion Value, with an efficiency target applied.** They appear as standalone strategy selections in the UI. You can pick "Target CPA" or "Target ROAS" directly, or pick Maximize Conversions / Maximize Conversion Value and add the target: both routes configure the same underlying strategy.
 
 ---
 
@@ -73,6 +76,24 @@ This happens billions of times per day across all advertisers globally.
 | **Cross-device tracking** | Not available | Linked via Google accounts |
 | **Compounding risk** | Stacking bid adjustments causes over/under-adjustment | All signals evaluated together |
 | **Speed of adaptation** | Days to weeks lag | Instant adaptation to market changes |
+
+### Marginal cost optimization
+
+Smart bidding does not aim for a flat average cost across every conversion. It evaluates each
+auction and placement separately and buys the cheapest conversions available at that moment.
+This behaviour is strongest on Maximize conversions.
+
+Three consequences follow, and all three are normal rather than faults to diagnose:
+
+| Effect | Why it happens |
+|--------|----------------|
+| Each budget increase buys proportionally less volume | The cheap conversions are bought first, so added spend reaches progressively more expensive auctions |
+| Marginal CPA rises as spend scales | The next conversion costs more than the average of the ones already bought |
+| CPA varies widely across channels and formats | Each surface is priced independently, so a spread is expected rather than a channel-mix problem |
+
+> ⚠️ **Marginal cost comes before channel diagnosis.** A channel sitting well above blended
+> target CPA is not automatically a waste signal. The question the number answers is whether the
+> channel is the marginal buy or a genuine efficiency problem.
 
 ---
 
@@ -126,16 +147,27 @@ Smart bidding learns at the **search query level**, not the keyword level:
 
 ## Learning periods
 
+Two different quantities get called a learning period. This reference keeps them separate.
+
+| Quantity | Value | What it measures | Scales with the conversion cycle |
+|----------|-------|------------------|----------------------------------|
+| **Learning phase** | 7-14 days | How long the algorithm recalibrates after a trigger fires | No. It is a fixed floor and ceiling. |
+| **Post-change wait** | 1-2 conversion cycles | How long you wait before evaluating a change or making the next one | Yes |
+
+Both start at the moment of the change and the longer one governs. On a 21-day conversion cycle the 7-14 day learning phase completes while the post-change wait still has weeks to run. On a 2-day cycle the learning phase is the binding constraint.
+
 ### What triggers a learning period
 
-| Trigger | Typical duration |
-|---------|-----------------|
+| Trigger | Learning phase |
+|---------|----------------|
 | Launching a new campaign | 7-14 days |
 | Switching bid strategy | 7-14 days |
 | Target CPA/ROAS change > 25% | 7-14 days |
-| Major budget change (> 30%) | 3-7 days |
-| Significant targeting changes | 7-14 days |
+| Major budget change (> 30%) | 7-14 days |
+| Geographic targeting change | 7-14 days |
+| Other significant targeting changes | 7-14 days |
 | Adding/removing conversion actions | 7-14 days |
+| Campaign structural change (consolidation or split) | 7-14 days |
 
 ### What happens during learning
 
@@ -150,34 +182,38 @@ Smart bidding learns at the **search query level**, not the keyword level:
 |----|--------|
 | Set expectations with stakeholders before changes | Make additional changes during the learning period |
 | Monitor metrics without reacting | Panic and revert the strategy |
-| Wait at least 7 days, ideally 14 | Evaluate performance during the first week |
+| Let the learning phase run its full 7-14 days | Evaluate performance during the first week |
+| Wait 1-2 conversion cycles from the change date before judging the change | Treat the end of the 7-14 day learning phase as the point where the change can be judged |
 | Exclude learning period data from performance reviews | Use learning period data to judge strategy effectiveness |
 
 ### Avoiding unnecessary learning periods
 
 - Make incremental target changes (10-15% per adjustment, not 25%+)
 - Batch small changes rather than making frequent individual changes
-- Wait one conversion cycle between adjustments
+- Wait 1-2 conversion cycles between adjustments
 - Use campaign experiments for major strategy changes instead of switching directly
 
 ---
 
-## Conversion cycles and conversion delay
+## Conversion cycles and conversion lag
 
 ### Definitions
 
 | Term | Definition |
 |------|-----------|
 | **Conversion cycle** | Average time from click to conversion |
-| **Conversion delay** | How long it takes for conversions to be fully reported and attributed |
+| **Conversion lag** | How long it takes for conversions to be fully reported and attributed |
 | **Conversion by time** | Metric showing when conversions occurred (vs. when the click occurred) |
+
+> 💡 **Google labels this differently in the interface.** The bid strategy report field is called `Average conversion delay`. It is the same thing as conversion lag: quote Google's label when telling someone where to click, and use conversion lag everywhere else.
 
 ### Impact on smart bidding
 
 | Short conversion cycle (1-3 days) | Long conversion cycle (14-30 days) |
 |-----------------------------------|-------------------------------------|
 | Smart bidding adjusts quickly | Smart bidding adjusts slowly |
-| Learning period: 7-10 days | Learning period: 14-30+ days |
+| Learning phase: 7-14 days | Learning phase: 7-14 days |
+| Post-change wait: 1-6 days | Post-change wait: 14-60 days |
 | Recent data heavily weighted | Historical data more heavily weighted |
 | Faster experiment conclusions | Longer experiment durations needed |
 
@@ -188,20 +224,33 @@ Smart bidding applies different weights to data based on your conversion cycle:
 - **Short cycle:** recent performance data is most predictive, weighted heavily
 - **Long cycle:** recent data may not yet show conversions, so historical data is weighted more heavily to avoid overreacting to apparent performance drops
 
-### How to find your conversion delay
+### Where conversion lag is reported
 
-1. Add the "Bid strategy type" column to your campaign view
-2. Click the blue hyperlink for your bid strategy name
-3. View the bid strategy report
-4. Find "Average conversion delay" in the report
+The bid strategy report carries conversion lag in the `Average conversion delay` field, for both standard and portfolio bid strategies.
 
-For portfolio bid strategies: Tools > Budgets and Bidding > Bid Strategies > select strategy.
+> ↪️ **Retrieving the value:** See [SOP – Migrate from Manual to Smart Bidding](../sops/SOP – Migrate from Manual to Smart Bidding.md), step 1.2.
+
+### The standard wait after a change
+
+Wait **1-2 conversion cycles** before evaluating a change or making the next one. This is the
+standard everywhere this knowledge base refers to a post-change wait. It is not the learning phase,
+which runs 7-14 days and does not scale with your conversion cycle.
+
+| Situation | Wait |
+|-----------|------|
+| After a bid strategy switch, target change, budget change or geographic targeting change | 1-2 conversion cycles |
+| Between incremental adjustments | 1-2 conversion cycles |
+| Before excluding learning-period data from analysis | 1-2 conversion cycles from the change date |
+
+One cycle is the floor for complete attribution. Two is the ceiling past which you are spending
+time rather than gaining signal. Convert it to days using your own conversion cycle: a 3-day
+cycle means 3-6 days, a 21-day cycle means 3-6 weeks.
 
 ### Practical rules
 
-- Wait at least one full conversion cycle before evaluating performance after changes
-- Exclude the last [conversion delay] days from performance analysis
-- Schedule performance reviews to account for conversion delay (if 15-day delay, review in week 3 of the month, not week 1)
+- Wait 1-2 conversion cycles before evaluating performance after changes
+- Exclude the last [conversion lag] days from performance analysis
+- Schedule performance reviews to account for conversion lag (if 15-day delay, review in week 3 of the month, not week 1)
 - Use "Conversion by time" metrics for faster directional reads when you cannot wait for full attribution
 
 ---
@@ -218,11 +267,11 @@ For portfolio bid strategies: Tools > Budgets and Bidding > Bid Strategies > sel
 | **Audiences** | Full | Full | Full | Ignored | Ignored | Ignored | Ignored |
 | **Demographics** | Full | Full | Full | Ignored | Ignored | Ignored | Ignored |
 
-> ⚠️ **Do not set bid adjustments on automated strategies:** Smart bidding ignores them. The only exception is -100% device exclusions (removing tablets or mobile entirely). Setting location, schedule, or audience adjustments on Target CPA/ROAS campaigns has zero effect.
+> ⚠️ **Bid adjustments on automated strategies have no effect:** Smart bidding ignores them. The only exception is the -100% device exclusion, which removes tablets or mobile entirely. Location, schedule and audience adjustments on Target CPA/ROAS campaigns change nothing.
 
 ### Exception: Target CPA device adjustments
 
-For Target CPA only, Google allows percentage-based device adjustments. In practice, smart bidding already optimizes across devices, and manual adjustments typically degrade performance. Use only if you have a specific, validated reason.
+For Target CPA only, Google allows percentage-based device adjustments. Smart bidding already optimizes across devices, and manual adjustments typically degrade performance. The stance on when an exception applies lives in [Bidding Configuration Guidelines](../guidelines/Bidding Configuration Guidelines.md).
 
 ---
 
@@ -255,7 +304,7 @@ Conversion value rules adjust the conversion value reported to smart bidding bas
 3. Set the adjustment (multiply by factor or add fixed amount)
 4. Save. Smart bidding (Maximize Conversion Value, Target ROAS) automatically adjusts.
 
-> 💡 **Prioritize robust conversion tracking over value rules:** If you can import real values (deal-specific revenue, order-level gross profit), that is always more accurate than rules-based adjustments.
+> 💡 **Imported real values beat rules-based adjustments:** Deal-specific revenue and order-level gross profit are always more accurate than a value rule inferring the same difference.
 
 ---
 
@@ -264,8 +313,9 @@ Conversion value rules adjust the conversion value reported to smart bidding bas
 | Mistake | Problem | Fix |
 |---------|---------|-----|
 | Setting bid adjustments on automated strategies | Adjustments are ignored, wasted effort | Remove all non-device adjustments on smart bidding campaigns |
-| Making changes during learning period | Disrupts learning, resets the clock | Wait 7-14 days before next change |
-| Evaluating performance within conversion delay window | Incomplete data leads to wrong conclusions | Wait at least one full conversion cycle |
+| Making changes during learning period | Disrupts learning, resets the clock | Let the 7-14 day learning phase finish, then wait 1-2 conversion cycles before the next change |
+| Treating the 7-14 day learning phase and the 1-2 conversion cycle post-change wait as one window | On a long conversion cycle the change gets judged weeks before attribution completes | Track both and act on the longer one |
+| Evaluating performance within conversion lag window | Incomplete data leads to wrong conclusions | Wait 1-2 conversion cycles |
 | Setting CPA/ROAS targets more than 25% from current average | Triggers learning period, may cause volume crash | Adjust in 10-15% increments |
 | Ignoring conversion volume thresholds | Smart bidding underperforms with too little data | Consolidate campaigns, use Portfolio Bid Strategies to pool data, or use lower-funnel conversions |
 | Forgetting to educate stakeholders on learning periods | Panic-driven requests to revert changes | Brief stakeholders before every major change |
@@ -291,8 +341,8 @@ Conversion value rules adjust the conversion value reported to smart bidding bas
 
 ## Version details
 
-- **Version:** 1.0
-- **Last Updated:** February 2026
+- **Version:** 5.0
+- **Last Updated:** August 2026
 - **Creator:** Bob Meijer
 
 ---

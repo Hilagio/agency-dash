@@ -1,5 +1,6 @@
 # Conversion Data Quality Checklist
 Created: 2026-02-04
+Updated: 2026-10-05
 
 Support_ID: CHECKLIST_16
 Status: Done
@@ -56,7 +57,7 @@ Run this checklist:
 
 - [ ] Conversion volume in Google Ads is within 10% of backend data (CRM, ecommerce platform)
 - [ ] Conversion value in Google Ads is within 15% of backend revenue
-- [ ] No duplicate conversions detected (check repeat rate: should be ~1.0 for lead gen, reasonable for ecommerce)
+- [ ] Conversions per interaction is 1.0 for lead gen, or matches the documented repeat-purchase rate for ecommerce
 - [ ] Transaction IDs are unique per conversion (no blanks, no repeated IDs)
 - [ ] No test or internal conversions are polluting production data
 - [ ] Conversion values are dynamic (not all showing the same static value)
@@ -72,26 +73,26 @@ Run this checklist:
 - [ ] Efficiency targets (CPA/ROAS) are calibrated against the over-attribution ratio
 - [ ] View-through conversions are not inflating CPA/ROAS for upper funnel campaigns
 - [ ] Engaged-view conversions are evaluated separately from click-through conversions
-- [ ] Conversion lag is understood (checked via Path Metrics)
-- [ ] Evaluation windows respect conversion lag (do not judge campaigns before lag period has passed)
+- [ ] Average conversion lag is recorded from Path metrics
+- [ ] Every evaluation window is at least as long as the recorded conversion lag
 - [ ] No recently changed attribution settings that could cause data discontinuity
 
 ### Consent and compliance
 
-- [ ] Consent Mode is active (check via Google Ads diagnostics)
+- [ ] Google Ads diagnostics report Consent Mode as active
 - [ ] Conversion modeling is active and showing modeled conversions
-- [ ] Modeling uplift is reasonable (5-20% is normal, not 50%+)
+- [ ] Modeling uplift is between 5% and 20%
 - [ ] CMP (Consent Management Platform) is functional and consent banner displays correctly
 - [ ] Consent banner is accessible on all device types (desktop, mobile, tablet)
 - [ ] No recent CMP updates have broken consent signal flow
-- [ ] Consent denial rate is tracked and within expected range for your region
+- [ ] Consent denial rate is recorded and within the documented range for the region
 
 > 💡 **If modeling uplift exceeds 30%, check your CMP configuration:** A very high modeling percentage often means the consent banner is too aggressive, broken on certain devices, or blocking too many users from granting consent.
 
 ### Enhanced features health
 
 - [ ] Enhanced Conversions diagnostics show healthy status (green check or active)
-- [ ] Enhanced Conversions match rate is acceptable (check diagnostics page)
+- [ ] Enhanced Conversions match rate is 50% or higher
 - [ ] Cart Data columns are populated in reports (ecommerce)
 - [ ] Cart Data shows product-level revenue breakdowns (ecommerce)
 - [ ] New customer segmentation shows data in Conversions reports (if implemented)
@@ -101,19 +102,21 @@ Run this checklist:
 
 ### Data hygiene
 
-- [ ] Conversion Adjustments are being uploaded regularly (ecommerce returns, lead value updates)
+- [ ] Conversion Adjustments were uploaded on schedule for the period (ecommerce returns, lead value updates)
 - [ ] Adjustment upload frequency matches the recommendation (daily for high-return ecommerce, weekly minimum)
 - [ ] No tracking outages occurred without Data Exclusions applied
-- [ ] All past Data Exclusions have correct start/end times and appropriate scope
+- [ ] Every past Data Exclusion has correct start and end times and is scoped to the affected campaigns only
 - [ ] Secondary conversion actions are not accidentally set to Primary
 - [ ] No vanity metrics are set as conversion actions (scroll depth, time on site, bounce rate)
 - [ ] Deprecated or unused conversion actions are paused or removed
 - [ ] GA4 import actions are not double-counting alongside GACT pixel actions
+- [ ] Multi-source conversion actions show no unexplained value divergence between the tag and additional sources
 
 ### Offline Conversion Tracking health (Lead Gen / SaaS)
 
 - [ ] OCT uploads are running on schedule (daily or weekly)
-- [ ] Upload error rate is acceptable (some unmatched records are normal)
+- [ ] Upload latency stays under 7 days from the conversion event
+- [ ] Upload error rate is within the documented limit for the account
 - [ ] CRM pipeline stages still map correctly to Google Ads conversion actions
 - [ ] GCLID capture is still functioning on all form/landing page variants
 - [ ] Conversion values from OCT reflect actual deal values (not stale estimates)
@@ -137,8 +140,8 @@ Run this checklist:
 
 ## Version details
 
-- **Version:** 1.0
-- **Last Updated:** February 2026
+- **Version:** 3.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

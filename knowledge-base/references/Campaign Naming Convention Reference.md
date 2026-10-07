@@ -1,5 +1,6 @@
 # Campaign Naming Convention Reference
 Created: 2026-02-04
+Updated: 2026-06-01
 
 Support_ID: CHEATSHEET_34
 Status: Done
@@ -53,7 +54,7 @@ DE_DE_YouTube_Remarketing
 
 ## Naming convention structure
 
-Build your campaign name from left to right using these five variables in order.
+The name reads left to right through five variables in fixed order.
 
 ### 1. Geographic targeting
 
@@ -65,7 +66,7 @@ Use ISO 3166 Alpha-2 country codes.
 | Multiple countries | `EU`, `Global`, `EMEA` |
 | Region/city-specific | `NL_Amsterdam`, `USA_CA` |
 
-### 2. Language targeting
+### 2. Language
 
 Use ISO 639-1 language codes.
 
@@ -110,7 +111,7 @@ Use modifiers for campaign subtypes or special segmentation.
 |----------|-------------|
 | `Brand` | Brand campaigns |
 | `NB` | Non-branded campaigns |
-| `DSA` | Dynamic Search Ads campaigns |
+| `AIMax` | AI Max for Search campaigns (final URL expansion) |
 | `Competitors` | Competitor targeting campaigns |
 | `Remarketing` | Remarketing campaigns |
 | `Prospecting` | Prospecting/acquisition campaigns |
@@ -124,7 +125,7 @@ Use modifiers for campaign subtypes or special segmentation.
 |---------------|---------------|---------|
 | Search - Brand | `Search_Brand` | `NL_NL_Search_Brand` |
 | Search - Non-branded | `Search_NB` | `NL_NL_Search_NB_CRM` |
-| Search - DSA | `Search_DSA` | `NL_NL_Search_DSA` |
+| Search - AI Max | `Search_AIMax` | `NL_NL_Search_AIMax` |
 | Search - Competitors | `Search_Competitors` | `NL_NL_Search_Competitors` |
 | Performance Max - Full | `Pmax_Full` | `NL_NL_Pmax_Full` |
 | Performance Max - Feed-Only | `Pmax_PLA` | `NL_NL_Pmax_PLA` |
@@ -177,8 +178,8 @@ Use modifiers for campaign subtypes or special segmentation.
 
 ## Version details
 
-- **Version:** 1.0
-- **Last Updated:** February 2026
+- **Version:** 2.0
+- **Last Updated:** June 2026
 - **Creator:** Bob Meijer
 
 ---
@@ -191,4 +192,4 @@ Violations may be detected through embedded document fingerprints and will be pu
 
 Full terms: https://www.ppcmastery.com/terms-and-conditions
 
-(c) 2026 PPC Mastery B.V. All rights reserved.
+© 2026 PPC Mastery B.V. All rights reserved.

@@ -1,10 +1,11 @@
 # Experiment Configuration Reference
 Created: 2026-02-05
+Updated: 2026-10-05
 
 Support_ID: CHEATSHEET_44
 Status: Done
 Category: Operational
-Reference Type: Cheat Sheet
+Reference Type: Cheat Sheets
 Agent_Readable: Yes
 Human_Facing: Yes
 Domain: Testing
@@ -38,8 +39,11 @@ Documents Google Ads experiment types, configuration options, traffic split sett
 | **Type** | **What it tests** | **Traffic split** | **Best for** |
 |----------|-------------------|-------------------|--------------|
 | **Custom experiment** | Any campaign setting | Configurable | Bid strategies, targets, audiences |
+| **AI Max experiment** | AI Max for Search settings (search term matching, final URL expansion, brand controls) | Configurable | AI Max rollout decisions |
 | **Video experiment** | Video creative or targeting | Configurable | Video ad variations |
+| **Demand Gen experiment** | Demand Gen creative, audiences, settings | Configurable | Demand Gen optimization |
 | **Performance Max experiment** | PMax final URL expansion, text | Configurable | PMax optimization settings |
+| **PMax Asset Experiment** | Creative asset sets in PMax (asset set A vs B) | Configurable | PMax creative testing |
 | **Optimize text ads** | RSA headlines/descriptions | Automatic | Ad copy optimization |
 
 ---
@@ -60,6 +64,15 @@ Custom experiments allow A/B testing of campaign-level settings by splitting tra
 | Network settings | Search only vs. Search + Partners |
 | Location targeting | Broad vs. narrow geography |
 
+### Where a custom experiment starts
+
+| **Entry point** | **What it does** |
+|-----------------|------------------|
+| Experiments page | Full setup: pick the base campaign, define the treatment, set split and schedule |
+| **Save as experiment** in the save flow | Turns a pending change into a treatment arm against the original campaign. Offered when saving a bid strategy or target change, a campaign settings change or an ad group change, and when applying a bid or budget recommendation |
+
+Both entry points create the same custom experiment. The configuration rules below apply to either one.
+
 ### Configuration options
 
 | **Setting** | **Options** | **Recommendation** |
@@ -68,6 +81,9 @@ Custom experiments allow A/B testing of campaign-level settings by splitting tra
 | Sync schedule | Daily, Every 12h, Every 6h, Continuous | Daily for most tests |
 | End date | Custom date or ongoing | Set end date based on volume |
 | Goal metric | Primary conversion action | Match your campaign goal |
+| Auto-apply results | On (default), configurable 80-95% confidence | Off: review every winner manually |
+
+> ⚠️ **Turn auto-apply off.** Google defaults experiments to auto-apply the winning arm at a configurable 80-95% confidence threshold. Keep it off. The threshold can trigger before the test has run its full duration (full business cycle plus conversion lag), and it judges the winner on Google's headline metric, not your business KPI (profit, POAS, Net Gain). With auto-apply off, a winning treatment arm is paused at experiment end, so applying the result is a deliberate manual step. That is the point. This mirrors the account-wide position: every change gets manual review before it goes live. (See: [Google Recommendations Management Guidelines](../guidelines/Google Recommendations Management Guidelines.md))
 
 ### Traffic split considerations
 
@@ -88,7 +104,7 @@ Custom experiments allow A/B testing of campaign-level settings by splitting tra
 | **Every 12 hours** | Syncs 2x daily | Standard testing |
 | **Daily** | Syncs once daily | Most experiments |
 
-> ⚠️ **Don't sync during the test unless necessary:** Every sync resets learning. Make your experiment setup complete before launching.
+> ⚠️ **Every sync resets learning.** A syncing change mid-test restarts calibration on the arm it touches, which is why the experiment setup is completed before launch rather than during.
 
 ---
 
@@ -98,8 +114,9 @@ Custom experiments allow A/B testing of campaign-level settings by splitting tra
 
 | **Aspect** | **Behavior** |
 |------------|--------------|
-| Split method | Cookie-based user assignment |
-| Consistency | Same user sees same arm throughout test |
+| Split point | Applied at the eligible-auction level, before targeting and bid filters |
+| Split method | Cookie-based user assignment by default. Search-based is the alternative, see Split-related settings below |
+| Consistency | Under cookie-based assignment, the same user sees the same arm throughout the test |
 | Geographic | Split applies across all locations |
 | Device | Split applies across all devices |
 | Time | Split applies 24/7 |
@@ -118,6 +135,19 @@ Custom experiments allow A/B testing of campaign-level settings by splitting tra
 | Cookie-based | Same user always sees same arm | Most experiments (cleaner data) |
 | Search-based | Each search randomly assigned | High-volume brand campaigns |
 
+### Reading an uneven split
+
+The split governs auction eligibility, not spend. Each arm bids and filters independently after the split is applied, so equal eligibility routinely produces unequal spend. A gap between arms is expected output, not a broken test.
+
+| **Spend deviation between arms** | **Reading** | **Action** |
+|----------------------------------|-------------|-----------|
+| Under 20% | Normal | None. Treat the result as valid |
+| 20% or more | Investigate | Check for arm-specific setting drift, a budget cap, or a bid strategy still calibrating |
+
+> ⚠️ **Never force an even spend split.** Adjusting budgets or bids mid-test to equalize spend selects which auctions each arm enters and biases the comparison. Uneven spend is a consequence of the change under test, so removing it removes the result.
+
+Check over-delivery against **Served Cost** rather than **Billed Cost** in Reports Editor. Billed cost reflects over-delivery credits, which makes an arm look cheaper than it ran.
+
 ---
 
 ## 3️⃣ Statistical Requirements
@@ -131,7 +161,7 @@ Custom experiments allow A/B testing of campaign-level settings by splitting tra
 | 10% improvement | 400-500 | 800-1,000 |
 | 5% improvement | 1,500+ | 3,000+ |
 
-> ⚠️ **Detecting small effects requires massive volume:** If your campaign gets 100 conversions/month, you cannot reliably detect a 5% improvement. Adjust expectations accordingly.
+> ⚠️ **Detecting small effects requires massive volume.** A campaign at 100 conversions/month cannot reliably detect a 5% improvement, and no test duration compensates for that.
 
 ### Confidence levels
 
@@ -145,7 +175,7 @@ Custom experiments allow A/B testing of campaign-level settings by splitting tra
 
 | **Factor** | **Minimum** | **Rationale** |
 |------------|-------------|---------------|
-| Learning period | 2 weeks | Smart Bidding calibration |
+| Learning period | 1-2 weeks (7-14 days) | Smart Bidding calibration |
 | Day-of-week cycle | 1 full week | Covers all 7 days |
 | Business cycle | 1 full cycle | B2B may need 4+ weeks |
 | Conversion lag | + your lag period | Wait for attributed conversions |
@@ -153,7 +183,7 @@ Custom experiments allow A/B testing of campaign-level settings by splitting tra
 **Duration formula:**
 ```
 Test duration = MAX(
-    2 weeks,
+    1-2 weeks (learning period),
     Time to reach sample size,
     Full business cycle
 ) + Conversion lag
@@ -169,6 +199,9 @@ Google Ads shows:
 | Confidence interval | Range of likely true difference |
 | Statistical significance | Whether difference is reliable |
 | Probability to beat baseline | Likelihood treatment > control |
+| Arm-level statistics | Per-arm metrics with p-values (surfaced for AI Max, Video, Demand Gen, and PMax experiment types) |
+
+> 💡 **Read the p-value, not just the label.** Arm-level statistics report a p-value per arm. A p-value below 0.05 maps to the 95% confidence standard. Use it to confirm the "statistically significant" label rather than replace your own duration and sample-size checks.
 
 **Interpreting results:**
 
@@ -176,7 +209,7 @@ Google Ads shows:
 |------------|-------------------|-----------|
 | "Statistically significant" + positive | Treatment is reliably better | Apply treatment |
 | "Statistically significant" + negative | Treatment is reliably worse | Keep control |
-| "Not significant" | Can't distinguish from noise | Extend or end without winner |
+| "Not significant" | Cannot be distinguished from noise | Extend or end without winner |
 
 ---
 
@@ -187,8 +220,7 @@ Google Ads shows:
 | **Testable** | **Options** |
 |--------------|-------------|
 | Final URL expansion | On vs. Off |
-| Text asset automation | On vs. Off |
-| Automatically created assets | On vs. Off |
+| Text asset automation (text customization) | On vs. Off |
 
 **PMax experiment limits:**
 
@@ -196,6 +228,17 @@ Google Ads shows:
 |-----------|-----------|
 | Max experiments per campaign | 1 active |
 | Max campaigns in experiment | 1 |
+
+### Performance Max Asset Experiments
+
+Asset Experiments test creative asset SETS against each other inside one PMax campaign, not just automation toggles. You compare two asset sets and measure against two success metrics, with results on the Experiments page.
+
+| **Testable** | **Options** |
+|--------------|-------------|
+| Creative asset sets | Asset set A vs asset set B (headlines, images, videos, descriptions) |
+| Success metrics | Two metrics tracked side by side (e.g., conversions and conversion value) |
+
+> 💡 **Asset Experiments are the only way to test PMax creative against a real control.** Asset-group duplication measures a different campaign, not a different creative set. As with every experiment type, the read-out holds only at full duration and against the business KPI rather than Google's headline metric.
 
 ### Video experiments
 
@@ -246,6 +289,7 @@ Google Ads shows:
 | **Campaign type** | **Custom experiments** | **Video experiments** | **Ad variations** |
 |-------------------|----------------------|----------------------|-------------------|
 | Search | ✅ | ❌ | ✅ |
+| AI Max (Search) | ✅ | ❌ | ✅ |
 | Shopping | ✅ | ❌ | ❌ |
 | Display | ✅ | ❌ | ❌ |
 | Video | ✅ | ✅ | ❌ |
@@ -264,37 +308,18 @@ Google Ads shows:
 
 ---
 
-## 6️⃣ Experiment Workflow
+## 6️⃣ What a running experiment requires
 
-### Before launching
+The design, setup, launch and conclusion procedure is owned by [SOP - Run a Campaign Experiment](../sops/SOP – Run a Campaign Experiment.md). What a valid experiment requires while it runs:
 
-| **Step** | **Action** |
-|----------|-----------|
-| 1 | Define hypothesis (what you expect and why) |
-| 2 | Choose primary metric for success |
-| 3 | Calculate required sample size |
-| 4 | Determine test duration |
-| 5 | Set up draft campaign with changes |
-| 6 | Review and verify settings |
-
-### During experiment
-
-| **Rule** | **Rationale** |
+| **Condition** | **Why it holds** |
 |----------|---------------|
-| Don't change either arm | Maintains valid comparison |
-| Don't end early (usually) | Random variation creates false signals |
-| Monitor for catastrophic failure | >30% worse may warrant early end |
-| Don't run other experiments on same campaign | Interaction effects |
+| Neither arm changes | A mid-test change makes the two arms differ in more than the variable under test |
+| The test runs its full duration | Random variation produces false winners in short windows |
+| No other experiment runs on the same campaign | Interaction effects are unattributable |
+| Conversion lag is added to the duration before reading | Otherwise the result is judged on incomplete data |
 
-### After experiment
-
-| **Step** | **Action** |
-|----------|-----------|
-| 1 | Wait for full duration + conversion lag |
-| 2 | Check statistical significance |
-| 3 | Review primary AND secondary metrics |
-| 4 | Apply winner OR end without change |
-| 5 | Document results and learnings |
+The one condition that overrides the full-duration rule is catastrophic failure: an arm running more than 30% worse is grounds for ending early.
 
 ---
 
@@ -343,11 +368,20 @@ What are you testing?
 ├─ Campaign settings (bid strategy, targets, audiences)?
 │   └─ Use CUSTOM EXPERIMENT
 │
+├─ AI Max for Search settings (term matching, FUE, brand controls)?
+│   └─ Use AI MAX EXPERIMENT
+│
 ├─ Video creative or video targeting?
 │   └─ Use VIDEO EXPERIMENT
 │
+├─ Demand Gen creative, audiences, or settings?
+│   └─ Use DEMAND GEN EXPERIMENT
+│
 ├─ PMax automation settings?
 │   └─ Use PMAX EXPERIMENT
+│
+├─ PMax creative asset sets?
+│   └─ Use PMAX ASSET EXPERIMENT
 │
 ├─ Ad copy across multiple campaigns?
 │   └─ Use AD VARIATIONS
@@ -364,6 +398,7 @@ What are you testing?
 |-------------|-------------|---------|
 | Ending test early | Random variation creates false winners | Pre-commit to duration |
 | Unequal splits without reason | Slows significance | Use 50/50 unless specific need |
+| Correcting an uneven spend split | Biases which auctions each arm enters | Leave budgets and bids frozen. Under 20% deviation is normal |
 | Testing small effects | Never reaches significance | Focus on 10%+ potential impact |
 | Changing campaign during test | Invalidates results | Freeze all other settings |
 | Ignoring conversion lag | Judging incomplete data | Add lag time to duration |
@@ -381,13 +416,14 @@ What are you testing?
 | [SOP – Run a Campaign Experiment](../sops/SOP – Run a Campaign Experiment.md) | Execution: step-by-step process |
 | [Google Ads Metrics Reference](../references/Google Ads Metrics Reference.md) | Reference: metric definitions |
 | [Bidding Strategy Mental Model](../mental-models/Bidding Strategy Mental Model.md) | Related: bid strategy experiments |
+| [Google Recommendations Management Guidelines](../guidelines/Google Recommendations Management Guidelines.md) | Rationale: the account-wide auto-apply-off position |
 
 ---
 
 ## Version Details
 
-- **Version:** 1.0
-- **Last Updated:** February 2026
+- **Version:** 5.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

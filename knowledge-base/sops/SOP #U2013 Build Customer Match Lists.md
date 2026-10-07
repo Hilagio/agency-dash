@@ -1,5 +1,6 @@
 # SOP – Build Customer Match Lists
 Created: 2026-02-04
+Updated: 2026-10-05
 
 SOP_ID: SOP_13
 Status: Done
@@ -34,7 +35,7 @@ Run this SOP when:
 
 - Setting up Customer Match for the first time
 - Creating a new customer segment list (high-value, churned, etc.)
-- Match rates are below 29% and need troubleshooting
+- Match rates are below 60% and need diagnosis
 - Establishing or updating the list refresh schedule
 - Expanding to multi-identifier uploads for better match rates
 
@@ -112,7 +113,7 @@ For each list, confirm available identifiers:
 | Last name | Yes/No | [%] |
 | Country | Yes/No | [%] |
 
-> 💡 **More identifiers = higher match rates:** Email alone: 29-62% match rate. Add phone: +15-20%. Add address: +10-15% additional. Always upload all available identifiers.
+> 💡 **More identifiers = higher match rates:** Email alone matches 29-62%, which lands below the 60-80% healthy band on its own. Adding phone adds 15-20 points and adding mailing address adds a further 10-15 points, which is how a list reaches 60-80%. Always upload all available identifiers.
 
 #### Step 1.3: Verify consent (EEA requirement)
 
@@ -141,35 +142,42 @@ For European Economic Area customers:
 Google Ads requires specific column headers and formatting:
 | Column header | Format | Example |
 |--------------|--------|---------|
-| `Email` | Lowercase, trimmed | `john@example.com` |
+| `Email` | Trimmed, lowercase, gmail periods stripped | `john@example.com` |
 | `Phone` | E.164 format (country code + number) | `+1234567890` |
 | `First Name` | As-is (Google hashes on upload) | `John` |
 | `Last Name` | As-is | `Smith` |
 | `Country` | ISO 2-letter code | `US`, `NL`, `GB` |
 | `Zip` | As-is | `10001`, `1011 AB` |
+| `User IP address` | IPv4 or IPv6 string, trimmed, never hashed | `192.168.1.1` |
+| `User interaction timestamp` | Earliest and last interaction time from that IP address, never hashed, only valid alongside an IP address | n/a |
+
+> ⚠️ **IP address matching is not available for end users in the EEA, the UK or Switzerland.** For lists covering those regions, the identifiers are email, phone and mailing address.
 
 #### Step 2.3: Pre-hash data (optional)
 
 If uploading via API or if your privacy policy requires pre-hashing:
 | Identifier | Hashing | Pre-processing |
 |-----------|---------|---------------|
-| Email | SHA-256 | Lowercase, trim whitespace first |
-| Phone | SHA-256 | E.164 format first, then hash |
+| Email | SHA-256 | Trim whitespace, lowercase, then strip every period preceding the domain in `gmail.com` and `googlemail.com` addresses |
+| Phone | SHA-256 | E.164 format first (country code followed by the number, no spaces or punctuation), then hash |
 | First/Last name | SHA-256 | Lowercase, trim whitespace first |
 | Address | SHA-256 | Lowercase, remove extra spaces first |
 
-If uploading via Google Ads UI, Google hashes automatically, no pre-hashing needed.
+If uploading via Google Ads UI, Google normalizes and hashes automatically, no pre-hashing needed.
+
+> ⚠️ **Normalize before you hash or the record simply will not match.** `john.smith@gmail.com` and `johnsmith@gmail.com` reach the same mailbox but hash differently. Strip the periods for `gmail.com` and `googlemail.com` only and leave every other domain alone. A pipeline that skips a normalization step produces a quietly low match rate, never an upload error.
 
 #### Step 2.4: Validate file
 
 | Check | Requirement |
 |-------|------------|
-| File format | CSV (UTF-8 encoding) |
+| File format | CSV (UTF-8 encoding, no hidden characters from spreadsheet exports) |
 | File size | Under 5 GB |
 | Minimum records | 1,000+ (for effective matching: 100 absolute minimum) |
-| Column headers | Match Google's expected format exactly |
+| Column headers | Match Google's template exactly, include every template header even if a column is empty |
 | No duplicates | Remove duplicate rows |
 | No empty rows | Remove rows with no identifiers |
+| Membership duration | 540 days maximum: re-upload on a schedule to keep lists from silently expiring |
 
 **Phase 2 output:** Formatted CSV file(s) ready for upload.
 
@@ -181,7 +189,7 @@ If uploading via Google Ads UI, Google hashes automatically, no pre-hashing need
 
 #### Step 3.1: Upload via Google Ads UI
 
-1. Navigate to **Tools & Settings → Audience Manager → Customer lists**
+1. Navigate to **Tools → Shared library → Audience manager → Your data segments**
 2. Click **+ (plus button)** → **Customer list**
 3. Name the list clearly (e.g., "All Customers - Jan 2026")
 4. Select data type: **Upload emails, phones, and/or mailing addresses**
@@ -193,22 +201,22 @@ If uploading via Google Ads UI, Google hashes automatically, no pre-hashing need
 
 After upload (allow 24-48 hours for processing):
 
-1. Return to **Audience Manager → Customer lists**
+1. Return to **Audience manager → Your data segments**
 2. Check the match rate for your uploaded list
 
 | Match rate | Assessment | Action |
 |-----------|-----------|--------|
-| 50%+ | Excellent | Proceed to Phase 4 |
-| 29-49% | Acceptable | Consider adding more identifiers |
-| Below 29% | Poor | Troubleshoot (see Step 3.3) |
+| 60-80% | Healthy | Proceed to Phase 4 |
+| 40-59% | Below the healthy band | Diagnose (see Step 3.3), add identifiers, re-check |
+| Below 40% | Poor | Diagnose and fix before proceeding (see Step 3.3) |
 
-#### Step 3.3: Troubleshoot low match rates
+#### Step 3.3: Diagnose low match rates
 
-If match rate is below 29%:
+If match rate is below 60%:
 | Cause | Fix |
 |-------|-----|
 | Email-only upload | Add phone numbers and mailing addresses |
-| Formatting errors | Check email lowercase, phone E.164 format |
+| Formatting errors | Check email trimmed and lowercased, gmail periods stripped, phone in E.164 format |
 | Old/invalid emails | Clean list, remove bounced emails, outdated records |
 | B2B-heavy list | B2B match rates are naturally lower, add phone/address to compensate |
 | Small list size | Increase list size, match rate improves with scale |
@@ -219,7 +227,7 @@ If match rate is below 29%:
 | Check | Minimum | Recommended |
 |-------|---------|-------------|
 | Matched users | 100 | 1,000+ |
-| List shows "Ready" | Required | — |
+| List shows "Ready" | Required | Required |
 
 If matched users are below 100, the list will not serve. Increase list size or add more identifiers.
 
@@ -244,8 +252,8 @@ If matched users are below 100, the list will not serve. Increase list size or a
 
 | Method | Best for | Setup |
 |--------|---------|-------|
-| **Manual CSV upload** | Small lists, infrequent updates | Re-upload CSV monthly via Audience Manager |
-| **Google Ads API** | Large lists, frequent updates | Engineering team sets up automated uploads |
+| **Manual CSV upload** | Small lists, infrequent updates | Re-upload CSV monthly via Audience manager |
+| **Data Manager API** | Large lists, frequent updates | Engineering team sets up automated uploads |
 | **CRM integration** | Automated sync | Connect CRM (HubSpot, Salesforce, etc.) via Data Manager |
 | **Zapier/Make** | No-code automation | Set up automated trigger on new customer creation |
 
@@ -280,10 +288,10 @@ Run these checks monthly:
 This SOP is complete when:
 
 - [ ] At least one Customer Match list is uploaded and status shows "Ready"
-- [ ] Match rate is 29%+ (or troubleshooting actions documented)
+- [ ] Match rate is 60%+, or the diagnosis of a rate below 60% is documented
 - [ ] Matched user count is 1,000+ (100 minimum for delivery)
 - [ ] Refresh schedule is documented with clear ownership
-- [ ] List is available in Audience Manager for use in campaigns
+- [ ] List is available in Audience manager for use in campaigns
 
 ---
 
@@ -332,7 +340,7 @@ A: Weekly is ideal for active customer lists. Monthly is the minimum. Lists expi
 
 | Failure | Why it happens | How to avoid |
 |---------|---------------|--------------|
-| Match rate below 20% | Email-only upload with B2B data | Upload multiple identifiers (email + phone + address) |
+| Match rate below 60% | Email-only upload, which caps at Google's 29-62% email baseline | Upload multiple identifiers (email + phone + address) |
 | List shows "Not ready" | Under 100 matched users | Increase list size or add more identifiers |
 | List goes stale | No refresh schedule set | Document refresh cadence and assign ownership |
 | Formatting errors on upload | Wrong column headers or data format | Use Google's exact column headers, E.164 phone format |
@@ -343,8 +351,8 @@ A: Weekly is ideal for active customer lists. Monthly is the minimum. Lists expi
 
 ### Version details
 
-- **Version:** 1.0
-- **Last Updated:** January 2026
+- **Version:** 3.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

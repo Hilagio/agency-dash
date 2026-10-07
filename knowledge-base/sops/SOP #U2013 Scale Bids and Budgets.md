@@ -1,6 +1,6 @@
 # SOP – Scale Bids and Budgets
 Created: 2026-02-04
-Updated: 2026-04-02
+Updated: 2026-08-27
 
 Agent_Executable: No
 Category: Bidding
@@ -79,7 +79,7 @@ Run this SOP when:
 
 ### 1.1 Document current performance
 
-Record for the campaign or portfolio you want to scale (last 4 weeks, excluding conversion delay):
+Record for the campaign or portfolio you want to scale (last 4 weeks, excluding conversion lag):
 
 | Metric | Current value |
 |--------|--------------|
@@ -220,7 +220,7 @@ Bid simulator and Performance Planner assume stable conditions. Apply these adju
 For target changes:
 
 1. Adjust target by 10-15% toward your proposed level
-2. Wait one full conversion cycle (check bid strategy report for average conversion delay)
+2. Wait 1-2 conversion cycles (check the bid strategy report for the `Average conversion delay` field)
 3. Evaluate performance
 4. If performance is acceptable, make another 10-15% adjustment
 5. Repeat until reaching the proposed target
@@ -228,18 +228,18 @@ For target changes:
 For budget changes:
 
 1. Increase daily budget by 15-20%
-2. Wait for two conversion cycles for the algorithm to adjust (See: [Smart Bidding Mechanics Reference](../references/Smart Bidding Mechanics Reference.md))
+2. Wait for 1-2 conversion cycles for the algorithm to adjust (See: [Smart Bidding Mechanics Reference](../references/Smart Bidding Mechanics Reference.md))
 3. Evaluate spend rate and performance
 4. If IS lost to budget is still high and performance is acceptable, increase again
 5. Repeat until reaching the proposed budget
 
-> ⚠️ **Budget increases of more than 30% in a single change can trigger a new learning period:** Keep individual budget adjustments under 30% and space them 1-2 weeks apart.
+> ⚠️ **Budget increases of more than 30% in a single change can trigger a new learning period:** Keep individual budget adjustments under 30% and space them 1-2 conversion cycles apart.
 
 ### 3.4 Direct switch method
 
 1. Change the target to the proposed level
 2. If also changing budget: update the daily budget
-3. Monitor closely during the learning period (two conversion cycles)
+3. Monitor closely through the 7-14 day learning phase, then wait 1-2 conversion cycles from the change date before evaluating
 
 ---
 
@@ -249,7 +249,7 @@ For budget changes:
 
 After the experiment completes (30+ days) or the incremental adjustments stabilize:
 
-1. Pull performance data excluding learning period and conversion delay
+1. Pull performance data excluding learning period and conversion lag
 2. Compare to Phase 1 baseline
 
 | Metric | Before | After | Change |
@@ -278,7 +278,7 @@ After 30+ days with statistical significance above 80%:
 
 1. Use conversion value (for value-based strategies) or conversions (for volume strategies) as the primary comparison metric
 2. Use net profit as the secondary metric
-3. Exclude learning period (first two conversion cycles) and conversion delay from analysis
+3. Exclude the first 7-14 days of learning phase data and the conversion lag window from analysis
 4. If experiment wins: apply experiment
 5. If original wins: end experiment, keep original
 
@@ -384,15 +384,15 @@ A: For large accounts, use the Google Ads API to pull bid simulator data weekly,
 | Making large target jumps (>25%) | Impatience, aggressive growth goals | Use 10-15% increments or campaign experiments for large changes |
 | Ignoring diminishing returns | Taking simulator projections at face value | Apply 10-20% haircut, plot the full curve, look for flattening |
 | Scaling without validation | Skipping experiments, applying changes directly | Use campaign experiments for high-stakes or large changes |
-| Not accounting for conversion delay | Evaluating too early with incomplete data | Exclude last [conversion delay] days from all evaluations |
+| Not accounting for conversion lag | Evaluating too early with incomplete data | Exclude last [conversion lag] days from all evaluations |
 | Scaling budget without checking IS metrics | Increasing budget when the issue is targeting, not budget | Check IS lost to budget first, only increase budget if it is the constraint |
 
 ---
 
 ### Version details
 
-- **Version:** 2.0
-- **Last Updated:** April 2026
+- **Version:** 4.0
+- **Last Updated:** August 2026
 - **Creator:** Bob Meijer
 
 ---

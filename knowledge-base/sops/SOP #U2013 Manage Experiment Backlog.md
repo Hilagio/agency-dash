@@ -99,16 +99,6 @@ During every optimization cycle (weekly review, monthly review, Sprint evaluatio
 
 For each idea, capture these fields:
 
-**Status values:**
-
-| Status | Meaning |
-|--------|---------|
-| New | Captured but not yet prioritized |
-| Ready | Prioritized and approved for next available slot |
-| Running | Experiment is live |
-| Complete | Results analyzed and documented |
-| Cancelled | Dropped (reason documented) |
-
 ```
 BACKLOG ENTRY
 =============
@@ -122,6 +112,16 @@ Hypothesis: If we [change X], then [metric Y] will [direction] by [estimated %]
               because [rationale].
 Status: New
 ```
+
+**Status values:**
+
+| Status | Meaning |
+|--------|---------|
+| New | Captured but not yet prioritized |
+| Ready | Prioritized and approved for next available slot |
+| Running | Experiment is live |
+| Complete | Results analyzed and documented |
+| Cancelled | Dropped (reason documented) |
 
 > ⚠️ **Write a proper hypothesis.** "Test new landing page" is not a backlog item. "Switching the Brand campaign landing page from homepage to a dedicated product page will increase CVR by 20% because the current homepage has a 78% bounce rate on Brand traffic" is a backlog item.
 
@@ -199,8 +199,8 @@ Active constraint: [Bucket + metric]
 | Rank | ID | Hypothesis (short) | Bucket | I | C | E | Score | Status |
 |------|----|--------------------|--------|---|---|---|-------|--------|
 | 1    | 12 | mCPC on Brand camp  | Traffic | 3 | 3 | 1 | 9.0  | Ready  |
-| 2    | 08 | New LP for Product  | Conv.  | 3 | 2 | 2 | 3.0  | Ready  |
-| 3    | 15 | Audience expansion  | Traffic | 2 | 2 | 1 | 4.0  | New    |
+| 2    | 15 | Audience expansion  | Traffic | 2 | 2 | 1 | 4.0  | New    |
+| 3    | 08 | New LP for Product  | Conv.  | 3 | 2 | 2 | 3.0  | Ready  |
 | ...  |    |                    |        |   |   |   |       |        |
 ```
 
@@ -227,7 +227,7 @@ For each top-ranked item, confirm it qualifies for a formal experiment using the
 |-------|-------------|----------|
 | High impact? | >10% potential effect on primary KPI | Implement directly, skip experiment |
 | Genuinely uncertain? | Outcome not predictable from existing data | Implement directly, monitor |
-| Sufficient volume? | 100+ conversions/month in target campaign | Make best-judgment decision, monitor |
+| Sufficient volume? | 100+ conversions per arm over the planned test window (See: [Testing and Experimentation Mental Model](../mental-models/Testing and Experimentation Mental Model.md)) | Make best-judgment decision, monitor |
 
 ### 3.3 Select 1-3 experiments
 
@@ -302,6 +302,7 @@ Configuration:
 - Duration: [X] days
 - Start date: [Date]
 - End date: [Date]
+- Auto-apply results: Off (review the winner manually against the business KPI)
 
 Decision rules:
 - If significant + positive: Apply treatment
@@ -512,8 +513,8 @@ After backlog management:
 
 ## Version details
 
-- **Version:** 2.0
-- **Last Updated:** March 2026
+- **Version:** 3.0
+- **Last Updated:** June 2026
 - **Creator:** Bob Meijer
 
 ---

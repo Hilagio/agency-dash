@@ -28,7 +28,7 @@ This SOP does **not:**
 
 - Explain the methodology (See: [Conversion Amplifier Mental Model](../mental-models/Conversion Amplifier Mental Model.md))
 - Explain the page structure logic (See: [LP Hierarchy Mental Model](../mental-models/LP Hierarchy Mental Model.md))
-- Cover A/B testing after launch (See: *Testing Mental Model* [TBD, Phase 6])
+- Cover A/B testing after launch (See: [SOP – Run a Landing Page A&B Test](../sops/SOP – Run a Landing Page A&B Test.md))
 - Cover ongoing LP optimization (See: [SOP – Audit and Optimize an Existing Landing Page](../sops/SOP – Audit and Optimize an Existing Landing Page.md))
 
 ## When to run this SOP
@@ -89,8 +89,6 @@ Before building, determine the primary traffic awareness level. This determines 
 ---
 
 ## Phase 1️⃣: Define the offer
-
-The offer drives everything. If the offer is not compelling, no amount of copy or design fixes the page.
 
 ### 1.1 Complete the Irresistible Offer brief
 

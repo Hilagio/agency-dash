@@ -1,5 +1,6 @@
-﻿# Demand Gen Campaign Health Checklist
+# Demand Gen Campaign Health Checklist
 Created: 2026-02-14
+Updated: 2026-10-05
 
 Support_ID: CHECKLIST_32
 Status: Done
@@ -53,35 +54,51 @@ Run this checklist:
 
 - [ ] Seed audience size meets minimum (1,000+ users, recommended 5,000+)
 - [ ] Lookalike reach setting documented (Narrow/Balanced/Broad)
-- [ ] Lookalike targeting mode checked: suggestion mode (default) vs strict targeting (opt-out)
-- [ ] Optimized Targeting status checked: OFF for remarketing, tested for prospecting
-- [ ] When Optimized Targeting is ON: demographic behavior reviewed (Google may serve beyond demographic selections)
-- [ ] Expansion impact checked via "Total: Expansion and optimized targeting" row (if expansion is ON)
+- [ ] Lookalike targeting mode is recorded as suggestion mode or strict targeting
+- [ ] Optimized Targeting is OFF on every remarketing campaign
+- [ ] Every prospecting campaign has a recorded ON versus OFF comparison for Optimized Targeting
+- [ ] Every campaign with Optimized Targeting ON has a documented decision accepting serving outside its demographic selections
+- [ ] Expanded performance is recorded from the "Total: Expansion and optimized targeting" row (if expansion is ON)
 - [ ] Demographic performance reviewed: no demographic group with CPA > 2x campaign average and 50+ clicks unaddressed
-- [ ] Seed audience quality verified: converters or high-value customers (not all visitors)
-- [ ] Audience freshness checked: seed lists updated within last 90 days
+- [ ] Seed audience contains converters or high-value customers only
+- [ ] Website-visitor seed lists updated within the last 90 days
+- [ ] Customer Match seed lists updated within the last 30 days
+- [ ] No campaign combines a new customer acquisition goal with Lookalike segments
 
 ### Creative health
 
 - [ ] Multiple ad formats active (video + image minimum)
 - [ ] Creative freshness: no creative running unchanged for 60+ days
 - [ ] UGC-style creative tested alongside polished creative
-- [ ] Video creative available (highest engagement format for Demand Gen)
+- [ ] Video creative is uploaded
 - [ ] Carousel ads tested for ecommerce/multi-product offers
 
 ### Placement health
 
-- [ ] Channel allocation reviewed (YouTube/Discover/Gmail/GDN distribution)
-- [ ] No single channel consuming 90%+ of budget without justification
+- [ ] Spend share per channel is recorded (YouTube, Discover, Gmail, GDN)
+- [ ] Every channel consuming 90%+ of budget has a documented decision
 - [ ] Placement exclusions in place (brand safety)
-- [ ] Mobile app placements excluded or monitored
+- [ ] Mobile app placements are excluded, or an exception is documented
+
+### GDN channel health
+
+- [ ] Content category exclusions in place for GDN inventory (parked domains, error pages, made-for-ads sites)
+- [ ] Scammy/suspicious placement exclusions applied to GDN inventory
+- [ ] Domain quality signals are recorded for the top GDN placements (TLD risk patterns, parked domain indicators, MFA site patterns. See [Placement Performance Reference](../references/Placement Performance Reference.md))
+- [ ] GDN placement quality has not worsened versus the prior month
+- [ ] Responsive display creative for GDN configured with quality images
+
+> ↪️ **Image creative validation.** See [Image Creative Quality Checklist](../checklists/Image Creative Quality Checklist.md) for full image quality gates.
 
 ### Bidding health
 
-- [ ] Learning period status checked (2-4 weeks expected)
-- [ ] Conversion volume sufficient (30-50 conversions minimum for stable bidding)
-- [ ] Bidding strategy appropriate for campaign maturity (Max Clicks for launch, tCPA/tROAS for mature)
+- [ ] Every campaign in learning has been in learning for under 4 weeks
+- [ ] Campaign has at least 30 conversions in the last 30 days
+- [ ] Bid strategy matches campaign maturity: Max Clicks at launch, tCPA or tROAS from 30 conversions per month
 - [ ] Targets set to Demand Gen benchmarks (not Search benchmarks)
+- [ ] Daily budget clears the serving floor: 10x target CPA, minimum €100/day on Maximize conversions
+- [ ] No budget or target change was made during the initial learning period
+- [ ] Every budget or target change since launch is within 15% of the prior value
 
 ### Attribution health
 
@@ -89,18 +106,19 @@ Run this checklist:
 - [ ] Google Ads vs. GA4 discrepancy documented (30-50% gap is normal)
 - [ ] View-through conversion tracking enabled but reported separately
 - [ ] View-through not included in primary CPA/ROAS calculations
+- [ ] View-through conversion optimization is switched OFF on every performance and acquisition campaign (a new campaign starts with it ON)
 
 ### Feed integration
 
 - [ ] Product feed connected (for DPA campaigns)
-- [ ] Feed quality verified (same standards as Shopping)
-- [ ] Dynamic remarketing active and performing
+- [ ] Feed passes the [Product Feed Quality Checklist](../checklists/Product Feed Quality Checklist.md)
+- [ ] Dynamic remarketing is active and its CPA is within target
+- [ ] At least 4 approved, in-stock products across at least 4 Group IDs
 
 ### Brand safety
 
-- [ ] Content exclusions configured (sensitive categories)
-- [ ] Inventory type set appropriately (Standard recommended)
-- [ ] Sensitive category exclusions in place
+- [ ] Content exclusions are configured for every sensitive category on the exclusion list
+- [ ] Inventory type is set to Moderate, or an exception is documented
 
 ### Performance benchmarks
 
@@ -125,8 +143,8 @@ Run this checklist:
 
 ## Version details
 
-- **Version:** 2.0
-- **Last Updated:** March 2026
+- **Version:** 5.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

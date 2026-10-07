@@ -1,5 +1,6 @@
 # Universal Campaign Settings Reference
 Created: 2026-02-05
+Updated: 2026-10-05
 
 Support_ID: REFERENCE_37
 Status: Done
@@ -39,7 +40,7 @@ Documents campaign-level settings that apply universally across all Google Ads c
 |---------|---------|---------------------|
 | **Location targeting method** | Presence or interest | Switch to Presence only if location reports show waste |
 | **Location exclusion method** | Presence only | N/A |
-| **Language** | Match ad language | Multi-language markets need separate campaigns |
+| **Language** | Channel-dependent, see Language settings | Not available on Search. Multi-language markets need separate campaigns |
 | **Ad schedule** | All hours, all days | Phone-based lead gen: business hours only |
 | **Device targeting** | All devices | Let Smart Bidding optimize |
 | **Start date** | Launch date | Scheduled launches as needed |
@@ -57,13 +58,9 @@ Documents campaign-level settings that apply universally across all Google Ads c
 | **Presence or interest** | People in, regularly in, or who have shown interest in your location | ✅ Yes |
 | **Presence only** | People physically in or regularly in your location | Use when location reports show waste |
 
-**How to configure:**
+> ↪️ **Where the setting lives and how to change it:** See [SOP – Optimize Geographic Targeting](../sops/SOP – Optimize Geographic Targeting.md), Phase 1.
 
-1. Campaign settings → Locations
-2. Click **Location options**
-3. Select target method
-
-**When to switch to Presence only:**
+**Conditions that indicate Presence only:**
 
 - Location reports show significant spend from users outside your physical target area
 - Non-local traffic converts poorly
@@ -77,7 +74,7 @@ Documents campaign-level settings that apply universally across all Google Ads c
 |--------|----------------|
 | **Presence only** | ✅ Always use this |
 
-Exclusions should always use "Presence only" to block users physically in excluded areas.
+Exclusions use "Presence only", which blocks users physically in the excluded area.
 
 ### Granularity guidelines
 
@@ -88,41 +85,43 @@ Exclusions should always use "Presence only" to block users physically in exclud
 | City/Metro | Local businesses, city-specific offers |
 | Radius | Brick-and-mortar, service-area businesses |
 
-> 💡 **Start broad, narrow with data:** Begin with country-level targeting. Use location reports to identify underperforming regions, then exclude or adjust.
+> 💡 **Granularity narrows with data, not ahead of it:** country-level targeting is the starting point, and location reports are what identify the regions worth excluding or adjusting.
 
 ---
 
 ## Language settings
 
-### How language targeting works
+### Where the language setting applies
 
-Google determines language eligibility based on:
+Language is not a universal campaign setting. It applies to some channels and not others.
 
-- User's Google interface language setting
-- Browser settings
-- Recent browsing behavior
+| Campaign type | Campaign-level language target | How language is determined |
+|---------------|-------------------------------|----------------------------|
+| Search | Not available | Ad creative and landing page language, with ad group prioritization when several are eligible |
+| Standard Shopping | Available | The campaign-level language target |
+| Performance Max, Search inventory | Not applied | Ad creative and landing page language |
+| Performance Max, Shopping inventory | Not applied | Merchant Center data source language and country of sale |
+| Performance Max, YouTube, Display, Discover and Gmail inventory | Available | The campaign-level language target |
+| Demand Gen, Video, Display | Available | The campaign-level language target |
 
-Language targeting does NOT match the language of the search query.
+> ⚠️ **A Performance Max language target does not govern its Search inventory.** The setting still applies to the campaign's YouTube, Display, Discover and Gmail inventory, so it looks like it covers everything. Search traffic in that campaign is matched on creative and landing page language regardless of what the target says.
 
-**Example:** A user with English as their interface language searching in Spanish for "zapatos azules" can still see your English ad.
+### How language matching works where no target applies
 
-### Recommended configuration
-
-| Scenario | Configuration |
-|----------|---------------|
-| Single-language market | Set language to match ad copy |
-| Multi-language market (Belgium, Switzerland, Canada) | Separate campaigns per language |
+Google reads the language of your ad creative and your landing page, checks that the user understands it, and prioritizes at the ad group level when more than one of your ad groups is eligible for the same query. A search term in a clear language prioritizes the ad and landing page that match it. A search term without a clear language, such as a brand name, prioritizes the user's most preferred language. A user searching in one language can still see an ad written in another when Google is confident they understand it.
 
 ### Multi-language markets
 
-For markets with multiple languages:
+For markets with multiple languages (Belgium, Switzerland, Canada):
 
 1. Create separate campaigns per language
 2. Each campaign gets language-appropriate ad copy and landing pages
 3. This enables accurate performance tracking per language segment
 4. Bid strategies optimize independently per language audience
 
-> ⚠️ **Do not add multiple languages to one campaign with single-language ads:** Users seeing ads in a mismatched language will not click, or will bounce.
+Per-language structure matters more where no campaign-level target exists, because the assets are the only language signal you control.
+
+> ⚠️ **Multiple languages in one campaign with single-language ads produce a mismatch:** users served an ad in a language they did not search in either skip it or bounce.
 
 ---
 
@@ -159,10 +158,10 @@ Smart Bidding strategies (Target CPA, Target ROAS, Maximize Conversions, Maximiz
 |---------|----------------|
 | **Devices** | All devices (computers, tablets, mobile) |
 
-Smart Bidding optimizes bids by device automatically. Do not apply manual device bid adjustments unless:
+Smart Bidding optimizes bids by device automatically. Manual device bid adjustments carry an effect in two cases only:
 
-- You have Manual CPC bidding
-- Data clearly shows one device converts significantly worse
+- Manual CPC bidding is in use
+- Data shows one device converting materially worse
 
 ### Device bid adjustments under Smart Bidding
 
@@ -186,7 +185,7 @@ Only the -100% adjustment (complete device removal) is respected by Smart Biddin
 | Limited-time offer | Offer start | Offer end |
 | Testing/experimental | Test start | Test end |
 
-> ⚠️ **Set end dates for promotions at campaign creation:** Do not rely on remembering to pause manually. Forgetting wastes budget.
+> ⚠️ **A promotional campaign without an end date keeps spending:** the end date set at campaign creation is what stops it, since a manual pause depends on someone remembering.
 
 ---
 
@@ -236,16 +235,16 @@ Set at the highest applicable level:
 
 ---
 
-## Configuration verification checklist
+## Expected configuration state
 
-After configuring campaign settings, verify:
+The state each setting is in once a campaign is configured:
 
 | Setting | Expected state |
 |---------|---------------|
 | Location targeting method | Presence or interest (default), or Presence only if justified |
 | Location exclusion method | Presence only |
 | Target locations | Correct geographic areas |
-| Language | Matches ad copy language |
+| Language | Ad copy and landing page are consistently in one language |
 | Ad schedule | All hours, all days (unless exception applies) |
 | Devices | All devices (unless removing one entirely) |
 | End date | No end date for evergreen, set for promotions |
@@ -267,8 +266,8 @@ After configuring campaign settings, verify:
 
 ## Version details
 
-- **Version:** 2.0
-- **Last Updated:** February 2026
+- **Version:** 5.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

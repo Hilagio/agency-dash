@@ -1,5 +1,6 @@
 # SOP – Write Compelling RSAs
 Created: 2026-02-04
+Updated: 2026-10-05
 
 SOP_ID: SOP_5
 Status: Done
@@ -74,7 +75,7 @@ Before assembling, determine your approach:
 | If... | Then... | Additional setup |
 | --- | --- | --- |
 | **Ecommerce with dynamic pricing/inventory** | Plan for Ad Customizers from the start | [SOP – Set Up Dynamic Ad Customizers](../sops/SOP – Set Up Dynamic Ad Customizers.md) |
-| **High keyword variation needing relevance control** | Consider keyword-level customizers | [SOP – Set Up Keyword-Level Ad Customizers](../sops/SOP – Set Up Keyword-Level Ad Customizers.md) |
+| **High keyword variation needing relevance control** | Use keyword-level customizers | [SOP – Set Up Keyword-Level Ad Customizers](../sops/SOP – Set Up Keyword-Level Ad Customizers.md) |
 | **Time-limited promotions with real deadlines** | Use countdown timers | [Dynamic Text Reference](../references/Dynamic Text Reference.md) |
 | **Lead Gen / SaaS with stable offers** | Static RSA is sufficient | This SOP only |
 
@@ -96,24 +97,9 @@ Is pricing/inventory dynamic?
 
 ---
 
-### Why 7-8 headlines (not 15)
-
-More headlines = more combinations = less data per combination = slower learning.
-
-| # Headlines | # 3-Headline combinations | Min. impressions needed |
-| --- | --- | --- |
-| 6 | 120 | 12,000 |
-| 8 | 336 | 33,600 |
-| 15 | 2,730 | 273,000 |
-
-**This SOP targets 7-8 headlines and 2-3 descriptions.** 
-
-This provides enough variety for Google to optimize while generating actionable data for the Iteration Loop (See [SOP – RSA Testing with The Iteration Loop](../sops/SOP – RSA Testing with The Iteration Loop.md).
-
----
-
 ### Execution framework
 
+**This SOP targets 7-8 headlines and 2-3 descriptions.** For why that beats filling all 15 slots, see the FAQ at the end of this document.
 | Phase | Purpose | Output |
 | --- | --- | --- |
 | **Phase 1️⃣: Headlines** | Compose 7-8 headlines covering prioritized angles | 7-8 validated headlines |
@@ -142,7 +128,7 @@ Your [SOP – Craft Your Offer Angles](../sops/SOP – Craft Your Offer Angles.m
 
 **H7 assignment by traffic temperature:**
 
-| Traffic | H7 should be |
+| Traffic | H7 carries |
 | --- | --- |
 | ❄️ Cold | Problem/Pain (second variation) |
 | 🌤️ Warm | USP or Value Prop (second variation) |
@@ -340,6 +326,8 @@ Run through the [Extension Coverage Checklist](../checklists/Extension Coverage 
 6. Set Final URL
 7. Add display path
 
+> ⚠️ **Cross-ad asset borrowing is a reason to keep one RSA per ad group.** When an ad group contains multiple active ads, unused headlines and descriptions from one ad can serve as link-based assets pointing to that donor ad's final URL. With a single RSA there is no donor ad, so every asset-URL pairing stays under your control. If you inherit an ad group with multiple RSAs, check the asset-level report for borrowed assets before consolidating.
+
 ### 4.2 Pinning decisions
 
 > ⚠️ **Default: Don't pin:** Pinning restricts Google's optimization. Only pin when you have a strong structural reason.
@@ -354,11 +342,11 @@ Run through the [Extension Coverage Checklist](../checklists/Extension Coverage 
 | --- | --- |
 | "I want this headline to show more" | Let Google optimize |
 | "This is my best headline" | Test it, don't assume |
-| "I want control" | Pinning usually hurts performance |
+| "I want control" | Pinning removes combinations Google would otherwise test |
 
 ### 4.3 Add extensions
 
-Navigate to Ads & Assets → Assets and add extensions at appropriate levels:
+Navigate to Assets → Assets and add extensions at appropriate levels:
 
 | Level | What to add |
 | --- | --- |
@@ -415,7 +403,13 @@ Once RSA is live and approved:
 
 **Q: Why 7-8 headlines instead of the maximum 15?**
 
-A: More headlines = more combinations = less data per combination = slower learning. With 15 headlines, Google creates 2,730 possible 3-headline combinations. You'd need ~273,000 impressions for meaningful data. With 8 headlines, you need ~33,600. Start lean, experiment with headlines through the Iteration Loop once you have performance data.
+A: More headlines means more combinations, less data per combination, and slower learning. Start lean, then experiment with headlines through [SOP – RSA Testing with The Iteration Loop](../sops/SOP – RSA Testing with The Iteration Loop.md) once you have performance data.
+
+| # Headlines | # 3-headline combinations | Min. impressions needed |
+| --- | --- | --- |
+| 6 | 120 | 12,000 |
+| 8 | 336 | 33,600 |
+| 15 | 2,730 | 273,000 |
 
 **Q: Should I always pin H1?**
 
@@ -423,11 +417,11 @@ A: By default, no. Pin H1 only if your relevance anchor *must* appear in every a
 
 **Q: What if I don't have proof points for all 6 angles?**
 
-A: Go back to [SOP – Craft Your Offer Angles](../sops/SOP – Craft Your Offer Angles.md). If you genuinely can't find proof for an angle (e.g., no social proof exists), skip that slot and double up on your strongest angle. But even better: Run this SOP: [SOP – Create an Irresistible Offer](../sops/SOP – Create an Irresistible Offer.md).
+A: Go back to [SOP – Craft Your Offer Angles](../sops/SOP – Craft Your Offer Angles.md). Where no proof exists for an angle (no social proof, for example), skip that slot and double up on your strongest angle. The durable fix is [SOP – Create an Irresistible Offer](../sops/SOP – Create an Irresistible Offer.md).
 
 **Q: Can I use the same RSA across multiple ad groups?**
 
-A: No, not literally as you’ll sacrifice relevance. To prepare for ad copy testing, you should ideally templatelize your RSAs when applicable. (See: [SOP – RSA Testing with The Iteration Loop](../sops/SOP – RSA Testing with The Iteration Loop.md)).
+A: No. Copying the same RSA into several ad groups sacrifices relevance. Template the RSA structure instead, then fill each slot with the angles for that ad group, which is also what ad copy testing needs (See: [SOP – RSA Testing with The Iteration Loop](../sops/SOP – RSA Testing with The Iteration Loop.md)).
 
 **Q: Should I write descriptions before or after headlines?**
 
@@ -486,8 +480,8 @@ A: 6 headlines (one per core angle) + 2 descriptions + 4 sitelinks + 4 callouts.
 
 ### Version details
 
-- **Version:** 4.0
-- **Last Updated:** January 2026
+- **Version:** 6.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

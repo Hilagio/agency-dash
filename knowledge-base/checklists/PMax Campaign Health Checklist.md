@@ -1,6 +1,6 @@
 # PMax Campaign Health Checklist
 Created: 2026-02-14
-Updated: 2026-07-13
+Updated: 2026-10-05
 
 Support_ID: CHECKLIST_31
 Status: Done
@@ -58,66 +58,67 @@ Run this checklist:
 
 - [ ] Each asset group has minimum required assets (5+ headlines, 5+ descriptions, 5+ images, 1+ logo)
 - [ ] Video count within the cap of 15 videos per orientation (horizontal, square, vertical: minimum 1, maximum 15 each)
-- [ ] Auto-generated assets identified and disabled (especially auto-generated videos)
-- [ ] Text guidelines configured if Text Customization is enabled (term exclusions + messaging restrictions)
+- [ ] Every auto-generated asset is disabled
+- [ ] Text guidelines configured if Text customization is enabled (term exclusions + messaging restrictions)
 - [ ] Visual guidelines configured if Image/Video Enhancement is enabled (brand colors + font)
+- [ ] AI content disclosure labels applied to every AI-generated, AI-edited, and automatically enhanced asset
 - [ ] Asset groups have thematic coherence (not mixing unrelated products/services)
-- [ ] No asset groups with 0 impressions (signal or targeting issue)
+- [ ] No asset group has 0 impressions
 
 #### Asset performance
 
-- [ ] Asset-level performance data reviewed (actual impressions, clicks, conversions per asset)
+- [ ] Impressions, clicks and conversions are recorded per asset
 - [ ] Underperforming assets identified by actual asset-level data (not by Ad Strength)
-- [ ] Ad Strength score ignored (completeness rating, not a performance signal)
+- [ ] No asset decision is based on Ad Strength
 - [ ] Creative diversity maintained across headlines, descriptions, and images
 
 #### Search term quality
 
-- [ ] PMax search term reports reviewed (fully visible, like Search campaign STRs)
-- [ ] Non-converting queries identified and excluded
+- [ ] Search term report is pulled for every PMax campaign
+- [ ] Every non-converting query above the spend threshold is excluded
 - [ ] Brand vs. non-brand query split documented
-- [ ] Query overlap with Search campaigns checked
+- [ ] Query overlap with Search campaigns is recorded
 
 #### Negative keyword management
 
-- [ ] Negative keyword lists linked to PMax campaigns (now supported)
+- [ ] Negative keyword lists linked to PMax campaigns
 - [ ] Non-converting N-gram exclusion list linked
 - [ ] Inefficient N-gram exclusion list linked
-- [ ] Exclusion lists shared with Search campaigns where appropriate
+- [ ] Every exclusion list used by both PMax and Search campaigns is a shared list
 
 #### Channel allocation (Full Assets PMax only, skip for Feed-Only)
 
-- [ ] Spend distribution across Search/Shopping/Display/Video reviewed
+- [ ] Spend share per channel is recorded (Search, Shopping, Display, Video)
 - [ ] No unexpected channel skew (e.g., 80%+ to Display when Shopping expected)
-- [ ] Channel allocation trends documented (compare to prior period)
-- [ ] Search Partner Network and Display Network left on (excluded only if a network is wildly underperforming on sustained data)
+- [ ] Channel allocation is compared against the prior period
+- [ ] Search Partner Network and Display Network are on, or an exclusion is documented against sustained performance data
 
 #### Brand defense
 
-- [ ] Brand term cannibalization from Search campaigns checked
-- [ ] Brand exclusions in place (if applicable), noting they cover only Search, Shopping, and YouTube search inventory
+- [ ] Brand query volume taken from Search campaigns is recorded
+- [ ] Brand exclusions in place (if applicable), supplemented by negative keyword lists for other inventory
 - [ ] Branded searches mode on AI Max-enabled Search campaigns set to "unbranded only" (or a documented exception)
 - [ ] Brand vs. non-brand performance separated in reporting
 
 #### Budget health
 
-- [ ] Budget utilization reviewed
+- [ ] Budget utilization is recorded for every campaign
 - [ ] No unintended budget-limited status on high-performing campaigns
 
 #### Placement health
 
-- [ ] Placement reports reviewed (impression data available)
-- [ ] Suspicious placements identified (bot traffic patterns, irrelevant sites)
+- [ ] Placement report is pulled for every campaign
+- [ ] Every placement showing bot traffic patterns or irrelevant content is excluded
 
 ### Ecommerce-specific checks
 
-- [ ] Feed-Only vs Full Assets setup documented and intentional
-- [ ] Product feed connected and healthy
+- [ ] Feed-Only versus Full Assets setup is documented
+- [ ] Product feed is connected and processing with no errors
 - [ ] Listing group structure aligned with product segmentation
-- [ ] Shopping channel allocation reviewed (for Feed-Only PMax: should be majority Shopping)
+- [ ] Feed-Only PMax campaigns spend the majority of budget on Shopping inventory
 - [ ] Product performance segmentation active (hero/sidekick/villain/zombie), if applicable (See: [Feed Segmentation Catalog](../catalogs/Feed Segmentation Catalog.md))
-- [ ] Zero-click product rate reviewed
-- [ ] Budget fully spending (ecommerce PMax should not be consistently underspending)
+- [ ] Zero-click product rate is recorded
+- [ ] Campaign spends its full daily budget
 
 > ↪️ **Ecommerce PMax structure:** See [PMax Structure Mental Model (Ecommerce)](<../mental-models/PMax Structure Mental Model (Ecommerce).md>) for Feed-Only vs Full Assets decisions and campaign architecture.
 
@@ -128,9 +129,9 @@ Run this checklist:
 - [ ] Conversion values assigned to downstream actions (not just binary 0/1)
 - [ ] Audience signals configured with first-party data (customer lists, website visitors)
 - [ ] Audience signal quality verified: signals match target customer profile
-- [ ] Form submission quality monitored (spam rate, qualification rate)
-- [ ] Budget overspend monitored (lead gen PMax can overspend aggressively without quality signals)
-- [ ] Final URL expansion settings reviewed (OFF if strict LP control needed)
+- [ ] Spam rate and qualification rate are recorded for form submissions
+- [ ] Daily spend stays within the daily spending limit of 2x daily budget
+- [ ] Final URL expansion is OFF, or its setting is documented
 
 > ↪️ **Lead Gen PMax structure:** See [PMax Structure Mental Model (Lead Gen/SaaS)](<../mental-models/PMax Structure Mental Model (Lead Gen-SaaS).md>) for lead quality signal hierarchy and campaign architecture.
 
@@ -152,8 +153,8 @@ Run this checklist:
 
 ## Version details
 
-- **Version:** 6.0
-- **Last Updated:** July 2026
+- **Version:** 7.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

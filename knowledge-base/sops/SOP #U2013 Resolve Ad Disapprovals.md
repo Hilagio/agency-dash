@@ -1,6 +1,6 @@
 # SOP – Resolve Ad Disapprovals
 Created: 2026-02-11
-Updated: 2026-04-02
+Updated: 2026-10-05
 
 Agent_Executable: No
 Category: Compliance
@@ -54,7 +54,7 @@ Run this SOP:
 | Document | Used for |
 |----------|----------|
 | [Post-Launch Monitoring Reference](../references/Post-Launch Monitoring Reference.md) | Disapproval categories |
-| Google Ads Policy Center (support.google.com/adspolicy) | Policy details |
+| Google Ads Policy Center (in-product policy details) | Policy details |
 
 ---
 
@@ -73,7 +73,7 @@ Run this SOP:
 
 ### 1.1 Check ad disapprovals
 
-1. Navigate to Ads & Assets > Ads
+1. Navigate to Campaigns > Ads
 2. Filter by "Policy approval status: Disapproved" and "Policy approval status: Approved (limited)"
 3. Sort by impressions (descending) to prioritize high-impact disapprovals
 4. Record all disapproved ads:
@@ -84,7 +84,7 @@ Run this SOP:
 
 ### 1.2 Check asset disapprovals
 
-1. Navigate to Ads & Assets > Assets
+1. Navigate to Assets > Assets
 2. Filter by "Policy approval status: Disapproved"
 3. Record disapproved assets:
 
@@ -132,7 +132,8 @@ For each disapproved ad, check if the ad group has other eligible ads:
 | Situation | Resolution path |
 |-----------|----------------|
 | Policy violation is legitimate (your ad does violate the policy) | Edit the ad to comply |
-| Policy violation is a false positive (your ad complies with policy) | Appeal the disapproval |
+| Policy violation is a false positive, decision under 6 months old | Appeal the disapproval |
+| Policy violation is a false positive, decision 6 months old or older | No in-account appeal exists. Edit and resubmit for a fresh review |
 | Policy requires certification you don't have | Apply for certification or rewrite without restricted claims |
 | Landing page issue (not ad copy) | Fix the landing page first |
 
@@ -149,9 +150,9 @@ For each disapproved ad, check if the ad group has other eligible ads:
    - Replace the image if it was flagged
    - Update the URL if destination was the issue
 4. Save the new ad
-5. The new ad enters review (typically 1 business day)
+5. The new ad enters review (typically 1 business day, 3-5 business days for Demand Gen ads, up to 7 for complex formats)
 
-> 💡 **Create a new ad rather than editing in place when possible:** This preserves performance data on the original ad and gives you a clean review path.
+> 💡 **Editing an ad replaces it and resets its performance history.** Where the original ad's history matters, leave it paused and build a new compliant ad instead, per 3.3.
 
 ### 3.2 Appeal (for false positives)
 
@@ -166,9 +167,12 @@ For each disapproved ad, check if the ad group has other eligible ads:
 - You have documentation supporting compliance (e.g., trademark authorization)
 
 **When NOT to appeal:**
+- The decision is more than 6 months old. In-account appeals are not available past that point, so fix and resubmit instead
 - Your ad does violate the policy (even if you disagree with the policy)
 - The same ad has been disapproved and appeal denied before
 - The violation is editorial (faster to fix than appeal)
+
+> 💡 **After a failed or duplicate appeal, force a re-crawl instead of re-appealing.** Make a minor edit to the ad text or final URL: the edit resubmits the ad for a fresh review, which resolves stuck disapprovals (especially destination-based ones) faster than a second appeal.
 
 ### 3.3 Replace (when editing is insufficient)
 
@@ -270,6 +274,7 @@ After resolving disapprovals:
 |---------|----------------|--------------|
 | Ignoring "Approved (limited)" status | Seems less urgent than "Disapproved" | Limited status reduces reach, treat as high priority |
 | Appealing when the violation is real | Disagreeing with the policy vs. complying with it | Read the policy fully, edit if the violation is legitimate |
+| Trying to appeal a decision older than 6 months | Appealing is the reflex on any false positive, regardless of age | No in-account appeal exists past 6 months, edit and resubmit for a fresh review |
 | Fixing the ad but not the root cause | Same issue recurs on new ads | Document patterns and apply prevention measures |
 | Not checking asset disapprovals | Only checking ad-level disapprovals | Include sitelinks, callouts, and images in every review |
 | Waiting too long to resolve | "It's just one ad" mindset | High-volume ad disapproval compounds daily, resolve within 24h |
@@ -278,8 +283,8 @@ After resolving disapprovals:
 
 ## Version details
 
-- **Version:** 1.0
-- **Last Updated:** February 2026
+- **Version:** 3.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

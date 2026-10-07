@@ -16,7 +16,7 @@ This SOP extracts N-grams from search term reports, classifies them as non-conve
 
 > ❓ **The big question:** Which word patterns in my search terms are wasting money, and how do I systematically exclude them without killing good traffic?
 
-N-gram analysis surfaces systematic waste invisible at the individual search term level. A single word like "free" might appear across 40 different search terms, each below your spend threshold individually, but collectively burning through hundreds of dollars with zero conversions.
+> ↪️ **Why aggregated patterns beat single-term review.** See [N-gram Analysis Reference](../references/N-gram Analysis Reference.md).
 
 ### What this SOP is NOT
 
@@ -180,11 +180,11 @@ For every N-gram that meets the criteria above:
 
 ### 4.1 Use phrase match for all N-gram exclusions
 
-All N-gram exclusions use **phrase match** (wrap in quotes). Phrase match blocks the exact word sequence while allowing other words before or after. This is more targeted than broad match negative (which blocks any search containing the individual words in any order) and broader than exact match (which only blocks the exact query).
+All N-gram exclusions use **phrase match** (wrap in quotes). See the FAQ below for why, and [Negative Keyword Reference](../references/Negative Keyword Reference.md) for match type rules.
 
 ### 4.2 Add to shared negative keyword lists
 
-1. In Google Ads, navigate to Tools > Shared Library > Negative keyword lists.
+1. In Google Ads, navigate to Tools > Shared library > Exclusion lists > Negative keyword lists.
 2. Create the list "Non-converting N-grams" if it does not exist.
 3. Create the list "Inefficient N-grams" if it does not exist.
 4. Add all Bucket 1 N-grams to the "Non-converting N-grams" list.
@@ -324,8 +324,8 @@ A: SOP – Analyze Search Term Reports handles irrelevant term identification (s
 
 ### Version details
 
-- **Version:** 2.0
-- **Last Updated:** March 2026
+- **Version:** 3.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---
@@ -338,4 +338,4 @@ Violations may be detected through embedded document fingerprints and will be pu
 
 Full terms: https://www.ppcmastery.com/terms-and-conditions
 
-(c) 2026 PPC Mastery B.V. All rights reserved.
+© 2026 PPC Mastery B.V. All rights reserved.

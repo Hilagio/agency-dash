@@ -114,7 +114,7 @@ Run this checklist:
 - [ ] Backend cross-check is planned (Google Ads data vs CRM/backend revenue)
 - [ ] Next goal review date is scheduled
 
-### Red flags (any of these = revisit goals)
+### Red flags cleared (all must be true)
 
 - [ ] Confirmed: Goals do not assume linear growth with increased spend
 - [ ] Confirmed: Goals do not require simultaneous growth and efficiency maximization

@@ -17,8 +17,6 @@ This SOP guides you through a structured performance review that identifies issu
 
 > ❓ **The big question:** What changed this week, why did it change, and what should I do about it?
 
-Weekly reviews prevent small issues from becoming big problems. A consistent review cadence catches trends early and keeps optimization momentum.
-
 ---
 
 ## What this SOP is NOT
@@ -47,7 +45,7 @@ Weekly reviews assume sufficient data. Adjust cadence based on monthly conversio
 | 50-200 | Bi-weekly | Weekly data too noisy for reliable trends |
 | <50 | Monthly | Need aggregation for statistical validity |
 
-> ⚠️ **Low-volume accounts:** If you're running weekly reviews on <50 conversions/month, you're likely reacting to noise. Extend your review window or wait for more data.
+> ⚠️ **Low-volume accounts:** Weekly reviews on under 50 conversions per month react to noise. Extend the review window to monthly.
 
 ---
 
@@ -92,7 +90,7 @@ Before diving into numbers, acknowledge the constraints of weekly data:
 | Documentation | 5 min |
 | **Total** | **30 min** |
 
-> ⚠️ **Time-box your review:** Unlimited data creates unlimited analysis. Stick to 30 minutes for the standard review. Speed up your performance review by having AI do the analysis for you while you're making your morning espresso 😉
+> ⚠️ **Time-box your review to 30 minutes.** Unlimited data creates unlimited analysis.
 
 ---
 
@@ -134,7 +132,7 @@ For each primary KPI, assess status:
 | Status | Meaning |
 |--------|---------|
 | 🟢 Green | On or above target |
-| 🟡 Yellow | Within 10% of target |
+| 🟡 Yellow | Within 10% below target |
 | 🔴 Red | More than 10% below target |
 
 ### 1.3 Check guardrail KPIs
@@ -375,7 +373,7 @@ After weekly review:
 | Issue | Route to |
 |-------|----------|
 | Conversion rate problem | Landing page analysis |
-| Quality Score issues | [SOP – Improve Quality Score](../playbooks/Improve Quality Score.md) |
+| Quality Score issues | [Improve Quality Score](../playbooks/Improve Quality Score.md) |
 | Bid strategy questions | [SOP – Run a Campaign Experiment](../sops/SOP – Run a Campaign Experiment.md) |
 | Budget allocation | Budget reallocation analysis |
 

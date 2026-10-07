@@ -14,7 +14,7 @@ Pillar: 7
 
 ### Purpose
 
-This catalog lists reusable **audience segment configurations** for Display, Video, and Demand Gen campaigns.
+This catalog lists reusable **audience segment configurations** for Video and Demand Gen campaigns.
 
 It covers every segment type available outside Performance Max: remarketing, Customer Match, custom segments, in-market, affinity, life events, lookalikes, and combined segments.
 
@@ -41,25 +41,25 @@ It covers every segment type available outside Performance Max: remarketing, Cus
 
 ### The targeting mindset
 
-Display, Video, and Demand Gen campaigns use **targeting**, not signals. You define who sees your ads. Google delivers within those parameters, unless optimized targeting is enabled, which expands beyond your selections.
+Video and Demand Gen campaigns use **targeting**, not signals. You define who sees your ads, and Google delivers within those parameters. Demand Gen adds optimized targeting, which expands delivery beyond your selections. Its per-scenario stance lives in [Audience Targeting Guidelines](../guidelines/Audience Targeting Guidelines.md).
 
 ### Segment availability by campaign type
 
-| Segment Type | Display | Video | Demand Gen |
-|-------------|---------|-------|------------|
-| Website visitors (remarketing) | ✅ | ✅ | ✅ |
-| Customer Match | ✅ | ✅ | ✅ |
-| YouTube users | ✅ | ✅ | ✅ |
-| App users | ✅ | ✅ | ✅ |
-| Custom segments (keywords) | ✅ | ✅ | ✅ |
-| Custom segments (URLs/apps) | ✅ | ✅ | ✅ |
-| In-market | ✅ | ✅ | ✅ |
-| Affinity | ✅ | ✅ | ✅ |
-| Life events | ✅ | ✅ | ✅ |
-| Detailed demographics | ✅ | ✅ | ✅ |
-| Lookalike segments | ❌ | ❌ | ✅ |
-| Combined segments | ✅ | ✅ | ✅ |
-| Content targeting (topics/placements) | ✅ | ✅ | ❌ |
+| Segment Type | Video | Demand Gen |
+|-------------|-------|------------|
+| Website visitors (remarketing) | ✅ | ✅ |
+| Customer Match | ✅ | ✅ |
+| YouTube users | ✅ | ✅ |
+| App users | ✅ | ✅ |
+| Custom segments (keywords) | ✅ | ✅ |
+| Custom segments (URLs/apps) | ✅ | ✅ |
+| In-market | ✅ | ✅ |
+| Affinity | ✅ | ✅ |
+| Life events | ✅ | ✅ |
+| Detailed demographics | ✅ | ✅ |
+| Lookalike segments | ❌ | ✅ |
+| Combined segments | ✅ | ✅ |
+| Content targeting (topics/placements) | ✅ | ✅ (secondary layer) |
 
 > ↪️ For full specs and limits: See [Audience Targeting Reference](../references/Audience Targeting Reference.md)
 
@@ -67,13 +67,15 @@ Display, Video, and Demand Gen campaigns use **targeting**, not signals. You def
 
 ## Segment selection decision gate
 
-Before selecting segments, determine your campaign goal:
+The campaign goal decides the segment set:
 | If your goal is... | Primary segments | Targeting mode |
 |--------------------|-----------------|----------------|
 | **Remarketing (re-engage known visitors)** | Website visitors, Customer Match, YouTube users | Targeting (restrict delivery to these users) |
-| **Prospecting (find new customers)** | Custom segments, in-market, lookalikes | Targeting + optimized targeting OFF |
-| **Brand awareness** | Affinity, broad in-market, life events | Targeting + optimized targeting ON |
+| **Prospecting (find new customers)** | Custom segments, in-market, lookalikes | Targeting |
+| **Brand awareness** | Affinity, broad in-market, life events | Targeting |
 | **Data collection (learn who converts)** | Any segment | Observation (gather data without restricting) |
+
+> ↪️ **Optimized targeting (Demand Gen) has its own stance per scenario:** See [Audience Targeting Guidelines](../guidelines/Audience Targeting Guidelines.md) for the scenario table that owns it.
 
 > 💡 **Targeting vs. Observation matters:** Targeting mode restricts ad delivery to your selected audiences only. Observation mode shows ads broadly but collects audience performance data. Use observation when you want to learn: use targeting when you know who to reach.
 
@@ -102,17 +104,17 @@ Before selecting segments, determine your campaign goal:
 
 | Vertical | Segment | Window | Campaign type | Why it works |
 |----------|---------|--------|---------------|--------------|
-| Lead Gen | Pricing page visitors | 14 days | Display | High purchase consideration, time-sensitive |
+| Lead Gen | Pricing page visitors | 14 days | Demand Gen | High purchase consideration, time-sensitive |
 | Lead Gen | Case study readers | 30 days | Video | Nurture with deeper content |
-| Lead Gen | Form starters who didn't submit | 7 days | Display | Immediate recovery opportunity |
-| SaaS | Trial users who didn't convert | 14 days | Display, Demand Gen | Re-engage with conversion offer |
+| Lead Gen | Form starters who didn't submit | 7 days | Demand Gen | Immediate recovery opportunity |
+| SaaS | Trial users who didn't convert | 14 days | Demand Gen | Re-engage with conversion offer |
 | SaaS | Feature page viewers | 21 days | Demand Gen | Active evaluation behavior |
-| SaaS | Pricing page visitors | 7 days | Display | Closest to purchase decision |
-| Ecommerce | Cart abandoners | 7 days | Display | Highest-intent recovery |
-| Ecommerce | Product page viewers | 14 days | Display, Demand Gen | Active shopping behavior |
+| SaaS | Pricing page visitors | 7 days | Demand Gen | Closest to purchase decision |
+| Ecommerce | Cart abandoners | 7 days | Demand Gen | Highest-intent recovery |
+| Ecommerce | Product page viewers | 14 days | Demand Gen | Active shopping behavior |
 | Ecommerce | Category browsers | 30 days | Demand Gen | Broad interest re-engagement |
 
-> 💡 **Dynamic remarketing (Display):** For ecommerce, use dynamic remarketing to automatically show ads featuring the specific products a user viewed. Requires a product feed linked to Google Ads.
+> 💡 **Dynamic remarketing (Demand Gen):** For ecommerce, dynamic remarketing serves the specific products a user viewed. It requires a product feed linked to Google Ads.
 
 ---
 
@@ -126,8 +128,8 @@ Before selecting segments, determine your campaign goal:
 
 | Scenario | Configuration | Campaign type | Why it works |
 |----------|--------------|---------------|--------------|
-| Re-engage lapsed customers | Customers inactive 90+ days | Display, Demand Gen | Known relationship reduces acquisition cost |
-| Upsell existing customers | Active customers by product category | Display, Demand Gen | Existing trust lowers conversion barrier |
+| Re-engage lapsed customers | Customers inactive 90+ days | Demand Gen | Known relationship reduces acquisition cost |
+| Upsell existing customers | Active customers by product category | Demand Gen | Existing trust lowers conversion barrier |
 | Exclude existing customers | All customers list → exclusion | All | Prevents spending on already-acquired users |
 | Seed lookalike audiences | High-value customers | Demand Gen | Best customers produce the strongest lookalike models |
 
@@ -136,7 +138,7 @@ Before selecting segments, determine your campaign goal:
 | Vertical | List type | Use case | Why it works |
 |----------|-----------|----------|--------------|
 | Lead Gen | Past clients (12 months) | Win-back campaigns | Known relationship, warm re-engagement |
-| Lead Gen | Qualified leads who didn't close | Nurture via Display | Second-chance conversion |
+| Lead Gen | Qualified leads who didn't close | Nurture via Demand Gen | Second-chance conversion |
 | SaaS | Churned subscribers | Win-back with new feature messaging | Familiar with product, low education cost |
 | SaaS | Free tier users | Upgrade campaigns via Demand Gen | Proven product interest |
 | Ecommerce | One-time buyers | Repeat purchase campaigns | Convert to multi-buyer |
@@ -158,7 +160,7 @@ Before selecting segments, determine your campaign goal:
 |------|--------------|
 | Recommended keywords | 10-15 per segment |
 | Maximum keywords | 50 per segment |
-| Keyword quality | Use high-converting search terms, not broad categories. Source from your Search campaign search term reports: pull terms with 5+ conversions. |
+| Keyword quality | High-converting search terms, not broad categories. Source: Search campaign search term reports, terms with 5+ conversions |
 | Interpretation | Google targets users who searched these terms OR browse related content |
 | Account scope | Custom segments are not shareable across accounts |
 
@@ -187,7 +189,7 @@ Before selecting segments, determine your campaign goal:
 |------|--------------|
 | Recommended URLs | 10-15 per segment |
 | URL behavior | Targets users who BROWSE similar content, does NOT place ads on those sites |
-| URL quality | Use direct competitor URLs and high-authority industry sites |
+| URL quality | Direct competitor URLs and high-authority industry sites |
 | Avoid | Generic sites (google.com, facebook.com), news homepages |
 
 #### Example configurations by vertical
@@ -296,9 +298,10 @@ Before selecting segments, determine your campaign goal:
 | Rule | Specification |
 |------|--------------|
 | Availability | Demand Gen campaigns only |
-| Seed minimum | 1,000+ matched users in the seed list |
+| Seed size | No minimum enforced. Larger, cleaner seeds model better |
 | Reach options | Narrow, Balanced, Broad |
 | Seed quality | Higher-quality seeds (converters, high-LTV customers) produce better lookalikes |
+| Goal compatibility | Incompatible with the Google Ads new customer acquisition goal setting. A campaign using that goal cannot target Lookalike segments |
 
 #### Reach settings
 
@@ -307,6 +310,8 @@ Before selecting segments, determine your campaign goal:
 | Narrow | Smallest | Highest | Efficiency-focused campaigns, limited budget |
 | Balanced | Medium | Medium | Default starting point for most campaigns |
 | Broad | Largest | Lowest | Scale-focused campaigns, large budgets |
+
+Reach settings are suggestions, not hard boundaries: Google can serve to qualified users beyond the selected threshold. Judge the segment by its reported performance, not by targeting intent.
 
 #### Example configurations by vertical
 
@@ -332,11 +337,12 @@ Before selecting segments, determine your campaign goal:
 
 | Rule | Specification |
 |------|--------------|
-| Where to create | Tools & Settings > Audience Manager > Combined segments |
 | Component types | Any segment type: your data, custom, in-market, affinity, life events, detailed demographics |
-| AND condition limit | 3 AND conditions maximum recommended (each AND condition typically reduces audience size by 50-70%) |
-| Testing approach | Test in a separate ad group with optimized targeting OFF before scaling |
-| Audience size check | Verify "Ready" status in Google Ads UI: too many AND conditions can shrink audience below deliverable size |
+| AND condition limit | 3 AND conditions maximum, since each one cuts audience size by 50-70% |
+| Testing approach | A separate ad group with optimized targeting off, before scaling |
+| Audience size floor | Too many AND conditions shrink the audience below deliverable size |
+
+Creation path and the size-status check are in [SOP – Set Up Audience Targeting](../sops/SOP – Set Up Audience Targeting.md).
 
 #### Logic operators
 
@@ -397,7 +403,7 @@ Before selecting segments, determine your campaign goal:
 | Situation | Recommendation |
 |-----------|---------------|
 | "Unknown" performs at or below campaign average | Keep targeted: no action needed |
-| "Unknown" CPA > 2x campaign average for 30+ days | Consider excluding, but understand you will lose 15-30% of available inventory |
+| "Unknown" CPA > 2x campaign average for 30+ days | Exclude, accepting the loss of 15-30% of available inventory |
 | "Unknown" has insufficient data (< 50 clicks) | Do not exclude: let data accumulate |
 | Newly launched campaign | Never exclude "Unknown" at launch: wait 30+ days |
 
@@ -405,7 +411,7 @@ Before selecting segments, determine your campaign goal:
 
 | Vertical | Pattern | Action | Why it works |
 |----------|---------|--------|--------------|
-| B2B / Lead Gen | Age 18-24 rarely converts | Exclude 18-24 (Smart Bidding) or bid down -50% (Manual CPC) | Decision-makers are typically 25+ |
+| B2B / Lead Gen | Age 18-24 rarely converts | Exclude 18-24 (Smart Bidding) or bid down -50% (Manual CPC) | Decision-makers are 25+ |
 | High-value services | Top 10-20% HHI converts at 2x rate | Bid up +30% on top HHI tiers (Manual CPC) | Higher income correlates with service affordability |
 | SaaS | Age 25-44 converts at highest rate | Bid up +20% on 25-44 (Manual CPC) | Core SaaS buyer demographic |
 | Ecommerce (kids products) | Parents with young children convert at 3x rate | Bid up +40% on Parents: 0-1 years, Parents: 1-3 years (Manual CPC) | Direct product-audience fit |
@@ -467,7 +473,7 @@ Before selecting segments, determine your campaign goal:
 ### Version details
 
 - **Version:** 4.0
-- **Last Updated:** April 2026
+- **Last Updated:** February 2026
 - **Creator:** Bob Meijer
 
 ---

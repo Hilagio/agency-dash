@@ -57,7 +57,7 @@ CPI and RPI combine two stages of the funnel into a single metric:
 | **CPI** | Click appeal + conversion effectiveness | Measures the full path: impression → click → conversion. An asset that converts well but rarely gets clicked still scores low. |
 | **RPI** | Click appeal + revenue generation | Same as CPI but weights by revenue, so high-AOV conversions are properly valued |
 
-CPI = CTR × Conversion Rate. It rewards assets that both attract clicks AND convert them.
+CPI = CTR x Conversion Rate. It rewards assets that both attract clicks and convert them.
 
 > ⚠️ **Do not use Google's asset performance labels as your primary decision metric.** They reflect Google's CTR-based optimization, not your business outcomes. An asset labeled "Low" by Google can have the highest CPI in your account.
 
@@ -72,7 +72,7 @@ CPI = CTR × Conversion Rate. It rewards assets that both attract clicks AND con
 | **Ecommerce (basic)** | RPI | Revenue tracked, margins unknown | CPI if revenue tracking is unavailable |
 | **Ecommerce (advanced)** | PPI | Margins known, profit data available | RPI as stepping stone to PPI |
 
-> 💡 **Start with CPI.** Move to RPI when you have reliable conversion value tracking. Move to PPI when you have margin data. Do not wait for perfect data to start measuring.
+> 💡 **The metric follows the data available, and CPI is the entry point.** RPI becomes available with reliable conversion value tracking, PPI with margin data. None of the three requires the next one to be measurable first.
 
 ---
 
@@ -86,7 +86,7 @@ AIS measures how often Google shows a specific asset relative to total ad impres
 | 25-40% | High visibility | Strong rotation position. Expected for top-performing assets. |
 | 15-25% | Moderate | Normal rotation range for most assets. |
 | 5-15% | Low visibility | Google is deprioritizing this asset. Check if CPI/RPI justifies keeping it. |
-| <5% | Near-zero | Asset is effectively not serving. Replace or investigate pinning. |
+| <5% | Near-zero | The asset is effectively not serving, either on merit or because pinning is holding it out of rotation |
 
 ### AIS concentration alerts
 
@@ -171,7 +171,7 @@ Each additional headline exponentially increases the number of combinations Goog
 
 At 7-8 headlines, combination count is manageable (3,500-5,600 minimum impressions). At 15 headlines, most ad groups never accumulate enough data for Google to identify winning combinations.
 
-**Rule: Use 7-8 headlines and 2-3 descriptions.** This concentrates impressions on fewer assets, producing faster and more reliable performance signals.
+**The rule: 7-8 headlines and 2-3 descriptions.** That range concentrates impressions on fewer assets, which produces faster and more reliable performance signals.
 
 ---
 
@@ -220,10 +220,10 @@ Assets degrade over time as audiences see the same messaging repeatedly.
 
 | Data point | Location in Google Ads |
 |-----------|----------------------|
-| Asset-level metrics (impressions, clicks, conversions, cost, value) | Ads & assets > Assets > Performance tab > filter by Headline or Description |
+| Asset-level metrics (impressions, clicks, conversions, cost, value) | Assets > Assets > Performance tab > filter by Headline or Description |
 | Asset Impression Share | Calculate: asset impressions / total ad impressions (from the same report) |
-| Google's performance labels (Low/Good/Best) | Ads & assets > Assets > Performance rating column |
-| Combination report | Ads & assets > Combinations (shows which headline+description pairs served) |
+| Google's performance labels (Low/Good/Best) | Assets > Assets > Performance rating column |
+| Combination report | Campaigns > Ads > [responsive search ad] > Combinations (shows which headline+description pairs served) |
 
 > 💡 **Asset data updates once daily.** Changes to assets will not appear in the performance report until the next day.
 
@@ -257,8 +257,8 @@ Assets degrade over time as audiences see the same messaging repeatedly.
 
 ## Version details
 
-- **Version:** 1.0
-- **Last Updated:** April 2026
+- **Version:** 2.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

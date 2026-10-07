@@ -13,8 +13,6 @@ Pillar: 1
 
 ## Purpose
 
-Great ad copy doesn't come from templates. **It comes from understanding your offer deeply.**
-
 > ❓ **The big question:** What ammunition does your offer give you to work with, and which ammunition matters most for your audience?
 
 This SOP extracts the raw material for your RSA assets and prioritizes it based on who you're talking to. Before writing any headlines or descriptions, you need to know:
@@ -32,7 +30,7 @@ This SOP does **not**:
 - Write headlines (See: [Headline Angle Catalog](../catalogs/Headline Angle Catalog.md))
 - Write descriptions (See: [Description Expansion Catalog](../catalogs/Description Expansion Catalog.md))
 - Compose the full RSA (See: [SOP – Write Compelling RSAs](../sops/SOP – Write Compelling RSAs.md))
-- Validate angle quality (See: [**Offer Angle Quality Checklist**]<!-- TODO: link target missing -->
+- Validate angle quality (See: [Offer Angle Quality Checklist](../checklists/Offer Angle Quality Checklist.md))
 
 ## When to run this SOP
 
@@ -44,7 +42,7 @@ Run this SOP when:
 - Before any RSA composition task
 - As input for the RSA Testing Iteration Loop
 
-> ↪️ **Prerequisite:** Your offer should be solid. If you're unsure, run [SOP – Create an Irresistible Offer](../sops/SOP – Create an Irresistible Offer.md) first.
+> ↪️ **Prerequisite:** The offer must be designed and validated. Run [SOP – Create an Irresistible Offer](../sops/SOP – Create an Irresistible Offer.md) first if it is not.
 
 ---
 
@@ -114,13 +112,14 @@ Based on your awareness stage, determine which angles to **lead with** vs. **sup
 | **Problem/Pain** | ★★★ Lead | ★★ Include | ★ Light |
 | **Value Proposition** | ★★ Include | ★★★ Lead | ★★ Include |
 | **USPs** | ★ Light | ★★★ Lead | ★★★ Lead |
-| **Value Boosters** | — Skip | ★★ Include | ★★★ Lead |
+| **Value Boosters** | Skip | ★★ Include | ★★★ Lead |
 | **Social Proof** | ★ Light | ★★ Include | ★★★ Lead |
-| **Risk Removal** | — Skip | ★★ Include | ★★★ Lead |
+| **Risk Removal** | Skip | ★★ Include | ★★★ Lead |
+
 - **★★★ Lead** = Dedicate multiple headline slots
 - **★★ Include** = At least one headline slot
 - **★ Light** = Optional, in descriptions
-- **— Skip** = Don't emphasize
+- **Skip** = Do not emphasize
 
 **Document your priorities:**
 
@@ -129,7 +128,7 @@ Based on your awareness stage, determine which angles to **lead with** vs. **sup
 | Lead with (★★★) | e.g., "Value Proposition, USPs" |
 | Include (★★) | e.g., "Social Proof, Risk Removal" |
 | Light touch (★) | e.g., "Problem/Pain" |
-| Skip (—) | e.g., "Value Boosters" |
+| Skip | e.g., "Value Boosters" |
 
 > ↪️ **For deeper context on awareness stages**, see: [Awareness Stage Mental Model](../mental-models/Awareness Stage Mental Model.md)
 
@@ -243,9 +242,9 @@ For each of the 6 angles, extract from your offer documentation:
 
 ### 2.2 Validate extraction
 
-Before moving to Phase 3, run all extracted angles through the [**Offer Angle Quality Checklist**]<!-- TODO: link target missing -->.
+Before moving to Phase 3, run all extracted angles through the [Offer Angle Quality Checklist](../checklists/Offer Angle Quality Checklist.md).
 
-> ⚠️ **If any angle fails validation or can't be filled in:** This signals a gap in your offer or in your customer's understanding. See the gap identification table in [**Offer Angle Quality Checklist**]<!-- TODO: link target missing --> for diagnosis and next steps. You may need to return to [SOP – Create an Irresistible Offer](../sops/SOP – Create an Irresistible Offer.md).
+> ⚠️ **If any angle fails validation or can't be filled in:** This signals a gap in your offer or in your customer's understanding. See the gap identification table in [Offer Angle Quality Checklist](../checklists/Offer Angle Quality Checklist.md) for diagnosis and next steps. You may need to return to [SOP – Create an Irresistible Offer](../sops/SOP – Create an Irresistible Offer.md).
 
 ---
 
@@ -257,18 +256,18 @@ Using your Phase 0 priorities, mark each angle:
 
 | Angle | Priority for Your Traffic | # of Headline Slots |
 | --- | --- | --- |
-| Problem/Pain Points | [★★★ / ★★ / ★ / —] | [0-2] |
-| Value Proposition | [★★★ / ★★ / ★ / —] | [1-2] |
-| USPs | [★★★ / ★★ / ★ / —] | [1-2] |
-| Value Boosters | [★★★ / ★★ / ★ / —] | [0-1] |
-| Social Proof | [★★★ / ★★ / ★ / —] | [1-2] |
-| Risk Removal | [★★★ / ★★ / ★ / —] | [1-2] |
+| Problem/Pain Points | [★★★ / ★★ / ★ / Skip] | [0-2] |
+| Value Proposition | [★★★ / ★★ / ★ / Skip] | [1-2] |
+| USPs | [★★★ / ★★ / ★ / Skip] | [1-2] |
+| Value Boosters | [★★★ / ★★ / ★ / Skip] | [0-1] |
+| Social Proof | [★★★ / ★★ / ★ / Skip] | [1-2] |
+| Risk Removal | [★★★ / ★★ / ★ / Skip] | [1-2] |
 
-> ⚠️ **Total headline slots should equal 7-8:** This keeps you testing-ready and avoids data poverty (See [SOP – RSA Testing with The Iteration Loop](../sops/SOP – RSA Testing with The Iteration Loop.md)).
+> ⚠️ **Total headline slots must equal 7-8:** This keeps you testing-ready and avoids data poverty (See [SOP – RSA Testing with The Iteration Loop](../sops/SOP – RSA Testing with The Iteration Loop.md)).
 
 ### 3.2 Final output: Your prioritized angle document
 
-By the end of this SOP, you should have:
+By the end of this SOP you have:
 
 | Section | Contents |
 | --- | --- |
@@ -280,7 +279,7 @@ By the end of this SOP, you should have:
 **Example output structure:**
 
 ```
-CAMPAIGN: Non-brand Search — "CRM software"
+CAMPAIGN: Non-brand Search, "CRM software"
 AWARENESS STAGE: Solution Aware
 TEMPERATURE: 🌤️ Warm
 
@@ -288,7 +287,7 @@ ANGLE PRIORITIES:
 ★★★ Lead: Value Proposition, USPs
 ★★ Include: Social Proof, Risk Removal
 ★ Light: Problem/Pain
-— Skip: Value Boosters
+Skip: Value Boosters
 
 SLOT DISTRIBUTION:
 H1: Relevance Anchor (keyword)
@@ -299,14 +298,15 @@ H5: Risk Removal
 H6: USP (secondary)
 H7: Call-to-Action
 H8: Problem/Pain (optional)
-Extraction examples by vertical
 ```
 
 ---
 
+## Extraction examples by vertical
+
 ### Lead Gen example: Marketing agency
 
-### Phase 0️⃣: Classification
+#### Phase 0️⃣: Classification
 
 | Field | Answer |
 | --- | --- |
@@ -318,7 +318,7 @@ Extraction examples by vertical
 | Light | Problem/Pain |
 | Skip | Value Boosters |
 
-### Phase 2️⃣: Extracted angles
+#### Phase 2️⃣: Extracted angles
 
 | Angle | Extracted | Proof points | Headline-ready phrases |
 | --- | --- | --- | --- |
@@ -329,7 +329,7 @@ Extraction examples by vertical
 | **Social Proof** | 47 SaaS clients, 40% avg CPA reduction, Google Premier Partner | Named case studies | "47 SaaS Clients", "Avg 40% CPA Reduction" |
 | **Risk Removal** | Month-to-month, free audit, performance guarantee | No lock-in | "No Long-Term Contracts", "Free Audit" |
 
-### Phase 3️⃣: Slot distribution
+#### Phase 3️⃣: Slot distribution
 
 | Slot | Angle | Asset |
 | --- | --- | --- |
@@ -345,7 +345,7 @@ Extraction examples by vertical
 
 ### SaaS example: Project management tool
 
-### Phase 0️⃣: Classification
+#### Phase 0️⃣: Classification
 
 | Field | Answer |
 | --- | --- |
@@ -357,12 +357,12 @@ Extraction examples by vertical
 | Light | Problem/Pain |
 | Skip | Value Boosters |
 
-### Phase 2️⃣: Extracted angles
+#### Phase 2️⃣: Extracted angles
 
 | Angle | Extracted | Proof points | Headline-ready phrases |
 | --- | --- | --- | --- |
 | **Problem/Pain** | Projects falling through cracks, no visibility, missed deadlines | "Where's that task?" chaos | "End the Task Chaos", "Stop Missing Deadlines" |
-| **Value Proposition** | Never miss a deadline — PM for remote teams | Real-time visibility | "PM for Remote Teams", "Never Miss a Deadline" |
+| **Value Proposition** | Never miss a deadline, PM for remote teams | Real-time visibility | "PM for Remote Teams", "Never Miss a Deadline" |
 | **USPs** | Built for async/remote, AI prioritization | Only PM tool designed remote-first | "Built for Remote Teams", "AI Task Prioritization" |
 | **Value Boosters** | Unlimited projects, time tracking, 50+ integrations | All-in-one | (Skip for this traffic) |
 | **Social Proof** | 12,000+ teams, 4.8/5 G2, G2 Leader | Named customers | "12,000+ Teams", "4.8/5 on G2" |
@@ -372,7 +372,7 @@ Extraction examples by vertical
 
 ### Ecommerce example: Premium furniture
 
-### Phase 0️⃣: Classification
+#### Phase 0️⃣: Classification
 
 | Field | Answer |
 | --- | --- |
@@ -382,9 +382,9 @@ Extraction examples by vertical
 | Lead with | Value Proposition, USPs |
 | Include | Social Proof, Risk Removal |
 | Light | Problem/Pain |
-| Skip | — |
+| Skip | None |
 
-### Phase 2️⃣: Extracted Angles
+#### Phase 2️⃣: Extracted angles
 
 | **Angle** | **Extracted** | **Proof points** | **Headline-ready phrases** |
 | --- | --- | --- | --- |
@@ -399,15 +399,15 @@ Extraction examples by vertical
 
 ## Validation & definition of done
 
-You've completed this SOP when:
+This SOP is complete when:
 
-- [ ]  Traffic temperature classified (Phase 0)
-- [ ]  Angle priorities set for your traffic (Phase 0)
-- [ ]  All 6 angles documented with proof points (Phase 2)
-- [ ]  Each angle has 2-3 headline-ready phrases (Phase 2)
-- [ ]  Angles validated via [**Offer Angle Quality Checklist**]<!-- TODO: link target missing --> (Phase 2.2)
-- [ ]  Slot distribution mapped (7-8 total) (Phase 3)
-- [ ]  Gaps identified (if any) and flagged
+- [ ] Traffic temperature classified (Phase 0)
+- [ ] Angle priorities set for your traffic (Phase 0)
+- [ ] All 6 angles documented with proof points (Phase 2)
+- [ ] Each angle has 2-3 headline-ready phrases (Phase 2)
+- [ ] Angles validated via [Offer Angle Quality Checklist](../checklists/Offer Angle Quality Checklist.md) (Phase 2.2)
+- [ ] Slot distribution mapped (7-8 total) (Phase 3)
+- [ ] Gaps identified (if any) and flagged
 
 **Exit → Entry Bridge:**
 
@@ -421,7 +421,7 @@ Once your angles are extracted and prioritized, proceed to:
 
 **Q: What if I can't fill an angle category?**
 
-A: That's a signal, but not a failure per se. Either you don't understand your customer well enough (talk to them, read reviews), or your offer has a gap. See the gap identification table in [**Offer Angle Quality Checklist**]<!-- TODO: link target missing --> for diagnosis and next steps.
+A: That's a signal, but not a failure per se. Either you don't understand your customer well enough (talk to them, read reviews), or your offer has a gap. See the gap identification table in [Offer Angle Quality Checklist](../checklists/Offer Angle Quality Checklist.md) for diagnosis and next steps.
 
 **Q: How many headline-ready phrases do I need per angle?**
 
@@ -437,7 +437,7 @@ A: Either segment into separate campaigns/ad groups with different RSAs, or opti
 
 **Q: Can I skip Phase 0 if I already know my audience?**
 
-A: No. Phase 0 isn't about knowing your audience,  it's about classifying this specific traffic source so you prioritize the right angles. The same audience at different awareness stages needs different messaging emphasis.
+A: No. Phase 0 is not about knowing your audience: it is about classifying this specific traffic source so you prioritize the right angles. The same audience at different awareness stages needs different messaging emphasis.
 
 **Q: What if my offer is the same across multiple campaigns?**
 
@@ -453,7 +453,7 @@ A: The 6 angles apply to both. The *proof points* differ. B2B emphasizes ROI, in
 
 | Document | Type | Used for |
 | --- | --- | --- |
-| [**Offer Angle Quality Checklist**]<!-- TODO: link target missing --> | Checklist | Validates angle extraction, identifies gaps |
+| [Offer Angle Quality Checklist](../checklists/Offer Angle Quality Checklist.md) | Checklist | Validates angle extraction, identifies gaps |
 | [Awareness Stage Mental Model](../mental-models/Awareness Stage Mental Model.md)  | Reference | Traffic temperature context |
 | [Headline Angle Catalog](../catalogs/Headline Angle Catalog.md)  | Catalog | Headline patterns by angle type |
 | [Description Expansion Catalog](../catalogs/Description Expansion Catalog.md) | Catalog | Description patterns |

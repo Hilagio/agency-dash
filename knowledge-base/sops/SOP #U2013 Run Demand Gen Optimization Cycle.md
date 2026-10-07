@@ -1,6 +1,6 @@
 # SOP – Run Demand Gen Optimization Cycle
 Created: 2026-02-14
-Updated: 2026-04-01
+Updated: 2026-06-01
 
 SOP_ID: SOP_80
 Status: Done
@@ -33,7 +33,7 @@ This SOP does **not:**
 
 - Demand Gen campaign has been live for 30+ days
 - Bi-weekly or monthly performance review is due
-- Performance is declining after initial learning period
+- Performance is declining after the initial learning phase
 - Before scaling budget on a Demand Gen campaign
 
 ---
@@ -168,11 +168,24 @@ Segment by placement/channel. Check if any single channel consumes >75% of budge
 | 30-60% | Flag for backend validation. |
 | >60% | Shorten view-through window or exclude from bidding. |
 
-### 3.3 Frequency check
+### 3.3 GDN placement check
+
+The Google Display Network serves as a channel inside Demand Gen. When the GDN channel carries meaningful spend, review its placements directly.
+
+1. Filter "Where ads showed" to GDN placements (websites and apps), sort by cost descending
+2. Review the top 50 GDN placements by spend
+
+| Finding | Action |
+|---------|--------|
+| Top GDN placements are relevant, converting, or brand-safe | No action |
+| 1-2 bad placements in top 10 | Exclude them now |
+| 3+ bad placements, or mobile app placements not excluded | Schedule [SOP – Manage Demand Gen and Video Placements](../sops/SOP – Manage Demand Gen and Video Placements.md) |
+
+### 3.4 Frequency check
 
 Monitor frequency metrics. If frequency >5/week with declining CTR: expand audience size or refresh creative.
 
-**Verification:** No channel consuming disproportionate budget with poor CPA. VTC reliance documented.
+**Verification:** No channel consuming disproportionate budget with poor CPA. GDN placements reviewed. VTC reliance documented.
 
 ---
 
@@ -184,7 +197,7 @@ Monitor frequency metrics. If frequency >5/week with declining CTR: expand audie
 |--------|-----------|--------|
 | CTR declining | 2+ consecutive weeks | Queue replacement creative |
 | Frequency rising | >5 impressions/user per 7 days | Add new creative variants |
-| CPA rising, audience stable | CPA up 20%+ over 14 days | Creative is the likely cause |
+| CPA rising, audience stable | CPA up 20%+ over 14 days | Test creative first |
 
 ### 4.2 Refresh process
 
@@ -193,7 +206,16 @@ Monitor frequency metrics. If frequency >5/week with declining CTR: expand audie
 3. Allow 14 days for new assets to gather data
 4. Pause underperforming assets after replacements prove out
 
-### 4.3 Creative testing
+### 4.3 Asset completeness
+
+Strong serving on the GDN channel depends on every asset slot being filled so Google can assemble responsive layouts. For each ad group:
+
+1. Confirm all image slots, headlines, descriptions, and the logo are populated
+2. Replace any image asset running 90+ days without conversions
+
+**Verification:** All asset slots filled. No image asset running 90+ days without conversions.
+
+### 4.4 Creative testing
 
 Test one variable at a time. Minimum 14-day test duration per variable:
 
@@ -223,7 +245,7 @@ Check where the campaign sits on the bidding migration path:
 
 ### 5.2 Target tightening
 
-For campaigns on tCPA/tROAS: tighten in 5-10% increments with 14-day wait between adjustments. Maximum 20% tightening per cycle. If volume drops >30%, loosen by 5%.
+For campaigns on tCPA/tROAS: tighten in 5-10% increments with 14-day wait between adjustments. Maximum 15% tightening per cycle. If volume drops >30%, loosen by 5%.
 
 **Verification:** Bid strategy matches campaign maturity. Target changes documented with rationale.
 
@@ -269,8 +291,10 @@ This SOP is complete when:
 - [ ] Optimized targeting impact measured
 - [ ] Demographics reviewed, outliers flagged
 - [ ] Channel distribution checked, exclusions updated
+- [ ] GDN placements reviewed (escalated to Manage Placements SOP if needed)
 - [ ] VTC reliance assessed
 - [ ] Creative fatigue assessed (monthly)
+- [ ] Asset slots confirmed filled, stale image assets pruned (monthly)
 - [ ] Bidding maturity assessed, migration/tightening documented
 - [ ] Feed health verified (monthly, DPA only)
 - [ ] Brand safety settings confirmed (monthly)
@@ -292,6 +316,7 @@ This SOP is complete when:
 | Issue | Route to |
 |-------|----------|
 | Deep audience optimization | [SOP – Optimize Audience Performance](../sops/SOP – Optimize Audience Performance.md) |
+| Deep placement analysis | [SOP – Manage Demand Gen and Video Placements](../sops/SOP – Manage Demand Gen and Video Placements.md) |
 | Campaign setup issues | [SOP – Launch a Demand Gen Campaign](../sops/SOP – Launch a Demand Gen Campaign.md) |
 | Attribution questions | [Demand Gen Performance Reference](../references/Demand Gen Performance Reference.md) |
 | Bidding strategy selection | [SOP – Select a Bidding Strategy](../sops/SOP – Select a Bidding Strategy.md) |
@@ -308,6 +333,7 @@ This SOP is complete when:
 | [Audience Targeting Reference](../references/Audience Targeting Reference.md) | Reference | Phase 2 |
 | [SOP – Optimize Audience Performance](../sops/SOP – Optimize Audience Performance.md) | SOP | Phase 2 escalation |
 | [Placement Performance Reference](../references/Placement Performance Reference.md) | Reference | Phase 3 |
+| [SOP – Manage Demand Gen and Video Placements](../sops/SOP – Manage Demand Gen and Video Placements.md) | SOP | Phase 3 escalation |
 | [Upper Funnel Campaign Structure Mental Model](../mental-models/Upper Funnel Campaign Structure Mental Model.md) | Mental Model | Strategic context |
 
 ---
@@ -320,7 +346,7 @@ This SOP is complete when:
 | Optimizing before 30 days | Calendar-block first review at day 30 |
 | Changing too many variables at once | One major change per cycle |
 | Ignoring view-through conversions | Always check VTC columns before disabling placements |
-| Tightening bid targets too fast | Max 20% per cycle, 5-10% per step |
+| Tightening bid targets too fast | Max 15% per cycle, 5-10% per step |
 | Using GA4 as source of truth | Use Google Ads for Demand Gen metrics |
 | Leaving optimized targeting ON without measuring | Check expansion row every cycle |
 
@@ -328,8 +354,8 @@ This SOP is complete when:
 
 ## Version details
 
-- **Version:** 4.0
-- **Last Updated:** April 2026
+- **Version:** 5.0
+- **Last Updated:** June 2026
 - **Creator:** Bob Meijer
 
 ---

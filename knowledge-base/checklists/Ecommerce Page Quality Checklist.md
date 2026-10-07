@@ -52,7 +52,7 @@ Select the page-type sections that apply. Run the Cross-page section for every a
 
 ### Performance and mobile
 
-- [ ] Main pages load in under 3 seconds on mobile (test with PageSpeed Insights or WebPageTest)
+- [ ] Main pages load in under 3 seconds on mobile
 - [ ] All pages are fully responsive: no horizontal scrolling, no cut-off content on mobile
 - [ ] Touch targets (buttons, links, form fields) are minimum 44x44px with adequate spacing
 - [ ] Images are optimized: compressed, lazy-loaded below the fold, WebP or modern format
@@ -113,7 +113,7 @@ Select the page-type sections that apply. Run the Cross-page section for every a
 - [ ] Filters are visible by default on desktop (not hidden behind a button)
 - [ ] Applied filters are shown as removable chips/tags
 - [ ] Filters update results dynamically without full page reload
-- [ ] Selecting zero-result filter combinations is prevented or handled gracefully
+- [ ] Zero-result filter combinations are disabled or return an explanatory empty state
 
 ### Product cards
 
@@ -160,7 +160,7 @@ Select the page-type sections that apply. Run the Cross-page section for every a
 - [ ] Customer reviews are present with star ratings, review text, and verified buyer badges
 - [ ] Review sorting/filtering is available: most helpful, most recent, by star, photos only
 - [ ] Customer photos from verified buyers are displayed
-- [ ] Review count is sufficient to be credible (if < 5 reviews, supplement with other trust signals)
+- [ ] Product has 5 or more reviews, or another trust signal stands in their place
 
 ### Product details
 
@@ -243,7 +243,7 @@ Select the page-type sections that apply. Run the Cross-page section for every a
 ### Guest checkout and access
 
 - [ ] Guest checkout is available as the default (no forced registration)
-- [ ] Email address is the first field requested (enables abandoned checkout recovery)
+- [ ] Email address is the first field requested
 - [ ] Returning customer login is available but does not block the guest path
 - [ ] Express checkout options (Apple Pay, Google Pay, Shop Pay) are prominent above the form
 
@@ -262,7 +262,7 @@ Select the page-type sections that apply. Run the Cross-page section for every a
 
 - [ ] Order summary with item thumbnails is visible alongside the form (sidebar on desktop, collapsible on mobile)
 - [ ] Total breakdown shows: subtotal, shipping, tax, discounts, final total
-- [ ] Total matches what was shown on the cart page (no surprises)
+- [ ] Total matches what was shown on the cart page
 
 ### Payment
 

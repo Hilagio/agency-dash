@@ -1,5 +1,6 @@
 # SOP – Run Search Campaign Optimization Cycle
 Created: 2026-02-14
+Updated: 2026-08-14
 
 SOP_ID: SOP_75
 Status: Done
@@ -16,8 +17,6 @@ This SOP is the master optimization routine for Search campaigns. It orchestrate
 
 > ❓ **The big question:** What is the systematic process for optimizing a Search campaign, in what order, and how often?
 
-Most advertisers optimize reactively: they notice a problem and fix it. This SOP replaces reactive optimization with a structured cycle that catches issues early, maintains momentum, and ensures nothing falls through the cracks.
-
 ---
 
 ## What this SOP is NOT
@@ -28,7 +27,7 @@ This SOP does **not:**
 - Duplicate the steps inside referenced SOPs (those SOPs contain the "how")
 - Replace daily health checks (See: [SOP – Run a Daily Account Health Check](../sops/SOP – Run a Daily Account Health Check.md))
 - Replace weekly/monthly performance reviews (See: [SOP – Run a Weekly Performance Review](../sops/SOP – Run a Weekly Performance Review.md))
-- Cover Shopping, PMax, or Display campaigns (each has its own optimization cycle)
+- Cover Shopping, PMax, or Demand Gen/Video campaigns (each has its own optimization cycle)
 
 > ↪️ **Design principle:** This SOP ORCHESTRATES existing SOPs. Each phase references the executing SOP rather than duplicating its steps. If you find yourself reading execution steps here, you are in the wrong document.
 
@@ -203,13 +202,13 @@ Pull asset-level performance data. Evaluate headlines and descriptions using CPI
 
 ### 5.2 Run the Iteration Loop diagnosis
 
-Classify assets into the four performance quadrants (Champions, Hidden Gems, Silent Killers, Trash) and take the appropriate action for each.
+Classify assets into the four performance quadrants (Champions, Hidden Gems, Silent Killers, Underperformers) and take the appropriate action for each.
 
 > ↪️ **Execute via:** [SOP – RSA Testing with The Iteration Loop](../sops/SOP – RSA Testing with The Iteration Loop.md), Pillars 2-4.
 
 ### 5.3 Replace underperformers
 
-Remove Silent Killers immediately. Replace Trash assets with new hypothesis-driven variants. Increase exposure for Hidden Gems.
+Remove Silent Killers immediately. Replace Underperformer assets with new hypothesis-driven variants. Increase exposure for Hidden Gems.
 
 **Output:** Ad variants replaced, learning log updated, next test hypotheses documented.
 
@@ -337,7 +336,7 @@ After completing the optimization cycle:
 | Failure | Why it happens | How to avoid |
 |---------|----------------|--------------|
 | Skipping Phase 1 | "Everything looks fine" assumption | Run the checklist every cycle, no exceptions |
-| Running all 9 phases every cycle | Trying to be thorough | Follow the cadence column: Phases 4, 5, 7, 8 are not weekly tasks |
+| Running all 9 phases every cycle | Trying to be thorough | Follow the cadence in each phase heading: Phases 4, 5, 7, 8 are not weekly tasks |
 | Optimizing Creative while Measurement is broken | Ignoring bucket hierarchy | Always classify issues by Five Buckets before acting |
 | Making bid changes and ad changes in the same cycle | Confounding variables | Separate bid changes (Phase 6) from ad changes (Phase 5) by at least one cycle |
 | No carry-forward list | Relying on memory | Phase 9 is mandatory, not optional |
@@ -370,8 +369,8 @@ After completing the optimization cycle:
 
 ## Version details
 
-- **Version:** 2.0
-- **Last Updated:** March 2026
+- **Version:** 3.0
+- **Last Updated:** August 2026
 - **Creator:** Bob Meijer
 
 ---

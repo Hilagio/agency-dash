@@ -1,5 +1,6 @@
 # SOP – Manage Google Recommendations
 Created: 2026-02-11
+Updated: 2026-10-05
 
 Agent_Executable: No
 Category: Compliance
@@ -68,12 +69,12 @@ Run this SOP:
 
 ---
 
-## Phase 1️⃣: Auto-Apply Audit (3 min)
+## Phase 1️⃣: Auto-apply audit (3 min)
 
 ### 1.1 Check auto-apply settings
 
 1. Navigate to Recommendations page
-2. Click "Auto-apply" (top right)
+2. Click the "Auto-apply settings" tab
 3. Verify status against the guideline:
 
 | Category | Expected status |
@@ -98,7 +99,7 @@ Run this SOP:
 
 ---
 
-## Phase 2️⃣: Review by Category (15 min)
+## Phase 2️⃣: Review by category (15 min)
 
 ### 2.1 Review Repairs first
 
@@ -110,7 +111,7 @@ Repairs are the most likely to be genuinely useful. Review each:
 
 **Apply repairs when:** The fix is straightforward and the issue is real (disapproved ads, missing conversion parameters, conflicting negatives).
 
-**Dismiss repairs when:** The "issue" is intentional (e.g., ad group with no keywords in a DSA campaign).
+**Dismiss repairs when:** The "issue" is intentional (e.g., a keywordless ad group running final URL expansion).
 
 ### 2.2 Review Bidding and Budgets
 
@@ -146,11 +147,11 @@ Evaluate each recommendation against your current strategy:
 
 ### 2.5 Review Automated Campaigns
 
-**Default action: Dismiss all:** Creating new campaign types (Performance Max, AI Max) is a strategic decision, not an auto-apply action.
+**Default action: Dismiss all:** Creating a Performance Max campaign is a strategic decision, not an auto-apply action. The same applies to the "Turn on AI Max" card: AI Max is a feature set on an existing Search campaign, and new Search campaigns already have it on.
 
 ---
 
-## Phase 3️⃣: Score Management (5 min)
+## Phase 3️⃣: Score management (5 min)
 
 ### 3.1 Check current optimization score
 
@@ -179,14 +180,14 @@ Dismissing a recommendation increases your optimization score by the same amount
 ### 4.1 Record monthly recommendation log
 
 ```
-Recommendation Review — [Month Year]
+Recommendation Review: [Month Year]
 Account: [Name]
 
 AUTO-APPLY STATUS: All disabled / [Issues found]
 
 RECOMMENDATIONS REVIEWED: [Count]
-- Applied: [Count] — [Brief list]
-- Dismissed: [Count] — [Brief list]
+- Applied: [Count], [Brief list]
+- Dismissed: [Count], [Brief list]
 - Left for next month: [Count]
 
 OPTIMIZATION SCORE: ___% → ___%
@@ -257,8 +258,8 @@ After recommendation review:
 
 ## Version details
 
-- **Version:** 1.0
-- **Last Updated:** February 2026
+- **Version:** 4.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

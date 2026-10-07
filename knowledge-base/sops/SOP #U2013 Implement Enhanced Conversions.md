@@ -17,7 +17,7 @@ This SOP implements Enhanced Conversions to send hashed first-party data (email,
 
 > ❓ **The big question:** Are you recovering the conversions that Enhanced Conversions can attribute by matching hashed user data to Google accounts?
 
-Enhanced Conversions recovers conversions that otherwise go unattributed, particularly from mid and upper funnel campaigns like Display, YouTube, and Demand Gen. Uplifts of 15-25% in attributed conversions are common after implementation.
+Enhanced Conversions recovers conversions that otherwise go unattributed, particularly from mid and upper funnel campaigns like Display, YouTube, and Demand Gen. Uplift varies by campaign type (See: [Enhanced Conversions Reference](../references/Enhanced Conversions Reference.md)).
 
 ---
 
@@ -198,9 +198,9 @@ Send the developer:
 
 ### 3.1 Turn on Enhanced Conversions
 
-1. Navigate to **Goals > Settings** (or **Measurement > Conversions > Settings**)
+1. Navigate to **Goals > Conversions > Conversion settings**
 2. Find **Enhanced conversions**
-3. Click **Turn on**
+3. Check **Turn on enhanced conversions**
 4. Select your implementation method:
 
 | Method | Select |
@@ -212,7 +212,7 @@ Send the developer:
 
 ### 3.2 Verify account-level setting
 
-1. Return to **Goals > Settings**
+1. Return to **Goals > Conversions > Conversion settings**
 2. Confirm Enhanced Conversions shows as **On**
 3. Confirm the correct implementation method is selected
 
@@ -222,8 +222,8 @@ Send the developer:
 
 ### 4.1 Check conversion action diagnostics
 
-1. Navigate to **Goals > Conversions > Summary**
-2. Click on a conversion action that has Enhanced Conversions configured
+1. Navigate to **Goals > Summary**
+2. Click the conversion action you want to inspect
 3. Click **Diagnostics**
 4. Check the Enhanced Conversions status:
 
@@ -304,7 +304,7 @@ A: Email alone is sufficient for most implementations. Adding phone number incre
 
 **Q: What uplift should I expect?**
 
-A: Uplifts vary by campaign type and audience. Expect 15-25% more attributed conversions for upper funnel campaigns (Display, Video, Demand Gen). Bottom funnel Search campaigns see smaller uplifts (5-10%) since click-based attribution already captures most conversions.
+A: Uplift varies by campaign type. Upper funnel campaigns gain the most, bottom funnel Search the least, because click-based attribution already captures most Search conversions. The per-campaign-type uplift table is in [Enhanced Conversions Reference](../references/Enhanced Conversions Reference.md).
 
 **Q: Is Enhanced Conversions the same as Enhanced Conversions for Leads (EC4L)?**
 
@@ -346,8 +346,8 @@ A: No. Enhanced Conversions improves web conversion attribution by matching user
 
 ### Version details
 
-- **Version:** 1.0
-- **Last Updated:** February 2026
+- **Version:** 2.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

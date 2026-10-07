@@ -1,5 +1,6 @@
 # Product Feed Data Specification Reference
 Created: 2026-02-04
+Updated: 2026-10-05
 
 Support_ID: REFERENCE_12
 Status: Done
@@ -41,13 +42,13 @@ Documents all product feed attributes, their specifications, syntax, and require
 | Description | `[description]` | Required | 5,000 |
 | Link | `[link]` | Required | 2,000 |
 | Image link | `[image_link]` | Required | 2,000 |
-| Price | `[price]` | Required | — |
-| Availability | `[availability]` | Required | — |
+| Price | `[price]` | Required | n/a |
+| Availability | `[availability]` | Required | n/a |
 | Brand | `[brand]` | Required* | 70 |
 | GTIN | `[gtin]` | Recommended | 14 |
 | MPN | `[mpn]` | Conditional | 70 |
-| Condition | `[condition]` | Required for used/refurbished | — |
-| Google product category | `[google_product_category]` | Optional | — |
+| Condition | `[condition]` | Required for used/refurbished | n/a |
+| Google product category | `[google_product_category]` | Optional | n/a |
 | Product type | `[product_type]` | Recommended | 750 |
 | Custom label 0–4 | `[custom_label_0-4]` | Optional | 100 |
 
@@ -198,6 +199,7 @@ Documents all product feed attributes, their specifications, syntax, and require
 | **Formats** | JPEG, WebP, PNG, GIF, BMP, TIFF |
 | **Max file size** | 16MB |
 | **Max resolution** | 64 megapixels |
+| **Min resolution** | 500 x 500 pixels |
 | **Min recommended** | 1500 x 1500 pixels |
 
 **Rules:**
@@ -222,9 +224,10 @@ Documents all product feed attributes, their specifications, syntax, and require
 |-------------------|-------------|
 | **Status** | Recommended |
 | **Character limit** | 2,000 |
-| **Max images** | 1 per product |
+| **Max images** | 5 per product |
+| **Multiple values** | Submit as comma-separated values in text data sources |
 | **Min resolution** | 600 x 600 pixels |
-| **Aspect ratio** | Between 2:0 and 2:3 |
+| **Aspect ratio** | Between 2:0 and 2:3, quoted as Google publishes it. 2:0 is undefined and Google has not corrected it |
 | **Use for** | Product in real-world context, colorful backgrounds |
 
 ### 3D model link [virtual_model_link]
@@ -234,6 +237,7 @@ Documents all product feed attributes, their specifications, syntax, and require
 | **Status** | Recommended for eligible products |
 | **Availability** | US only |
 | **Categories** | Shoes, apparel, home goods |
+| **Destinations** | Free listings only |
 | **Formats** | .gltf, .glb |
 | **Max size** | 15MB (10MB recommended) |
 
@@ -362,6 +366,7 @@ Documents all product feed attributes, their specifications, syntax, and require
 | **Status** | Recommended |
 | **Character limit** | 750 |
 | **Format** | Breadcrumb with ` > ` separator |
+| **Multiple values** | Submit as comma-separated values, each wrapped in quotes |
 | **Example** | `Photography > Lenses > SLR Lenses` |
 
 **Use for:** Campaign organization, listing group structure, improved query matching.
@@ -430,7 +435,7 @@ Documents all product feed attributes, their specifications, syntax, and require
 **Rules:**
 - No color codes (#fff000)
 - No "multicolor" or "see image"
-- Use standard color names in title for findability
+- Standard color names only
 
 ### Size [size]
 
@@ -481,9 +486,11 @@ Documents all product feed attributes, their specifications, syntax, and require
 
 | **Specification** | **Details** |
 |-------------------|-------------|
-| **Status** | Recommended (especially for PMax, Demand Gen) |
-| **Character limit** | 150 (65 recommended) |
+| **Status** | Recommended for Performance Max visual surfaces (YouTube, Discover) and Demand Gen |
+| **Spec ceiling** | 150 |
+| **Write to** | Under 40 characters, 65 maximum |
 | **Use case** | Browse-oriented surfaces where users scroll quickly |
+| **No effect on** | Search ads and product listing ads, which use the full title |
 
 ### Condition [condition]
 
@@ -523,7 +530,9 @@ Documents all product feed attributes, their specifications, syntax, and require
 | **Specification** | **Details** |
 |-------------------|-------------|
 | **Status** | Recommended |
-| **Sub-attributes** | section_name (optional, 140 chars), attribute_name (required, 140 chars), attribute_value (required, 1000 chars) |
+| **Sub-attributes** | section_name (optional), attribute_name (required), attribute_value (required) |
+| **Character limit** | 1–150 per detail |
+| **Repeated** | Up to 100 details per product |
 | **Format (text)** | `Section:Attribute:Value,Section:Attribute:Value` |
 
 ### Product highlight [product_highlight]
@@ -545,7 +554,7 @@ Documents all product feed attributes, their specifications, syntax, and require
 | **Specification** | **Details** |
 |-------------------|-------------|
 | **Status** | Optional |
-| **Values** | `Shopping_ads`, `Display_ads`, `Local_inventory_ads`, `Free_listings`, `Free_local_listings`, `Cloud_retail`, `Local_cloud_retail` |
+| **Values** | `Shopping_ads`, `Display_ads`, `Local_inventory_ads`, `Free_listings`, `Free_local_listings`, `Cloud_retail`, `Local_cloud_retail`, `Youtube_affiliate`, `Youtube_merchandise` |
 | **Use case** | Prevent products from appearing on specific destinations |
 
 ### Included destination [included_destination]
@@ -554,6 +563,7 @@ Documents all product feed attributes, their specifications, syntax, and require
 |-------------------|-------------|
 | **Status** | Optional |
 | **Values** | Same as excluded_destination |
+| **Prerequisite** | Enable the Dynamic Remarketing add-on in Merchant Center before including `Display_ads`. Display ads built by Performance Max are already in Dynamic Remarketing. |
 | **Note** | Excluded takes precedence over included |
 
 ### Pause [pause]
@@ -655,8 +665,8 @@ Documents all product feed attributes, their specifications, syntax, and require
 
 ## Version details
 
-- **Version:** 1.0
-- **Last Updated:** February 2026
+- **Version:** 4.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

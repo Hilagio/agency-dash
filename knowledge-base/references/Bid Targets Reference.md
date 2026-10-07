@@ -30,8 +30,8 @@ Documents the formulas and calculation methods for deriving CPA, ROAS, and POAS 
 **This reference does NOT:**
 
 - Explain unit economics concepts or how to gather inputs (See: [Unit Economics Mental Model](../mental-models/Unit Economics Mental Model.md) and [Unit Economics Reference](../references/Unit Economics Reference.md))
-- Cover bid strategy selection or when to use Target CPA vs. Target ROAS (See: [Bidding Strategy Mental Model](../mental-models/Bidding Strategy Mental Model.md))
-- Provide step-by-step execution for setting targets in Google Ads (See: [Smart Bidding Mechanics Reference](../references/Smart Bidding Mechanics Reference.md))
+- Cover bid strategy selection or when to use Target CPA vs. Target ROAS (See: [Bid Strategy Selection Reference](../references/Bid Strategy Selection Reference.md))
+- Provide step-by-step execution for setting targets in Google Ads (See: [SOP - Calculate Bid Targets](../sops/SOP – Calculate Bid Targets.md))
 - Explain budget allocation or pacing (See: [Budget Pacing Reference](../references/Budget Pacing Reference.md))
 - Cover bid scaling tactics (See: [Bid Scaling Mental Model](../mental-models/Bid Scaling Mental Model.md))
 
@@ -154,7 +154,7 @@ Target CPA (any step)     = Breakeven CPA (same step) x PAR
 | Target CPA: Closed Deal | €1,500 x 0.25 | €375 |
 | Target ROAS | (1 / 0.50) / 0.25 | 800% |
 
-> ⚠️ **Choose the right funnel complexity:** Use the simplest model that matches your actual sales process. A 4-step model is only needed if you track MQL and SQL as distinct stages with known conversion rates. If you only track leads and closed deals, use the 2-step method.
+> ⚠️ **The model matches the sales process, not the ambition.** The 4-step model requires MQL and SQL tracked as distinct stages with known conversion rates. An account tracking only leads and closed deals is a 2-step funnel.
 
 ---
 
@@ -247,7 +247,7 @@ Includes all order expenses plus return rate, resale rate, and return-related co
 | Breakeven ROAS | 1 / Effective Margin | 1 / 0.316 = 316% |
 | Target ROAS | Breakeven ROAS / PAR | 316% / 0.50 = 632% |
 
-> ⚠️ **Use the Advanced method for high-return categories:** Fashion, footwear, and electronics often have return rates of 20-40%. Ignoring return costs in these categories leads to ROAS targets that appear profitable but destroy margin.
+> ⚠️ **High-return categories need the Advanced method.** Fashion, footwear, and electronics often carry return rates of 20-40%, and a ROAS target that omits return costs there appears profitable while destroying margin.
 
 ---
 
@@ -268,29 +268,26 @@ When gross profit equals ad spend, the result is 100%. At that point, all profit
 | 200% | 100% profit on ad spend | €100 |
 | 250% | 150% profit on ad spend | €150 |
 
-### How to set POAS targets
+### What a POAS target depends on
 
-POAS targets do not use the manual breakeven calculator because profitability is already computed at the order level. Instead:
+POAS targets do not use the manual breakeven calculator, because profitability is already computed at the order level. What they do depend on:
 
-1. Implement profit tracking (import gross profit as conversion value)
-2. Track both revenue and profit as separate conversion actions (revenue as secondary, profit as primary)
-3. Gather at least 100 conversions to establish your average POAS
-4. Set your target POAS based on your growth and efficiency goals
-5. Validate using Performance Planner or bid simulators
+| Dependency | Detail |
+|------------|--------|
+| Profit tracking | Gross profit imported as conversion value |
+| Conversion action split | Revenue and profit tracked separately, profit as primary and revenue as secondary |
+| Data floor | At least 100 conversions before an average POAS is established |
+| The target itself | Set from growth and efficiency goals, then validated in Performance Planner or a bid simulator |
+
+Setting them is owned by [SOP - Calculate Bid Targets](../sops/SOP – Calculate Bid Targets.md), Phase 3.4.
 
 ### The profit optimum
 
-The profit optimum is the POAS target that maximizes total net profit (not POAS percentage). Finding it requires running multiple forecast scenarios:
+The profit optimum is the POAS target that maximizes total net profit, not POAS percentage. The curve follows a predictable shape: close to 100% POAS (breakeven) produces high volume but zero profit, and a high POAS target produces high per-order profit but starves volume. The maximum net profit sits between these extremes.
 
-1. Use the Performance Planner or bid simulator to generate forecasts at different POAS targets
-2. Export the data: for each scenario, record the target POAS, estimated cost, and estimated conversion value (gross profit)
-3. Calculate net profit for each scenario: Conversion Value - Cost
-4. Plot net profit against POAS target
-5. The peak of the curve is your profit optimum
+The scenario method that locates the peak is documented in [Bid Simulator Reference](../references/Bid Simulator Reference.md) and executed in [SOP - Scale Bids and Budgets](../sops/SOP – Scale Bids and Budgets.md), Phase 2.3.
 
-The curve follows a predictable shape: too close to 100% POAS (breakeven) produces high volume but zero profit. Too high a POAS target produces high per-order profit but starves volume. The maximum net profit sits between these extremes.
-
-> 💡 **Always validate the profit optimum with experiments:** Performance Planner forecasts assume stable conditions. Run a 50/50 campaign experiment at the suggested profit optimum POAS target before committing to the change.
+> 💡 **A forecast optimum is not a validated optimum.** Performance Planner assumes stable conditions, so the peak it produces holds only until a 50/50 campaign experiment confirms it.
 
 ### POAS advantages over ROAS
 
@@ -333,11 +330,11 @@ Zero profit       Moderate profit      Severe volume loss
 
 The right PAR depends on your Google Ads goals, specifically the balance between your growth goal and your efficiency goal.
 
-**When growth is the primary goal:** Start with the growth target (e.g., 3,000 sales/month). Use Performance Planner to find what efficiency target allows you to hit that volume. Calculate the implied PAR. If PAR exceeds 80%, your unit economics may not support the growth target.
+**When growth is the primary goal:** the growth target (for example 3,000 sales/month) is the fixed input, Performance Planner supplies the efficiency target that reaches that volume, and PAR falls out of the pair. An implied PAR above 80% means the unit economics do not support the growth target.
 
-**When efficiency is the primary goal:** Start with the efficiency target (e.g., 250% ROAS). Use Performance Planner to verify the resulting volume meets your secondary growth goal. Calculate the implied PAR. If volumes fall short, increase PAR (loosen efficiency) until growth goals are met.
+**When efficiency is the primary goal:** the efficiency target (for example 250% ROAS) is the fixed input, Performance Planner supplies the resulting volume, and PAR again falls out of the pair. Volume short of the secondary growth goal means PAR has to rise, loosening efficiency, until the goal is met.
 
-> ⚠️ **Always have both growth and efficiency goals:** Steering blindly on efficiency alone risks starvation. Steering blindly on growth alone risks unprofitable spend. The PAR exists to balance them.
+> ⚠️ **PAR only resolves with both a growth goal and an efficiency goal.** Efficiency alone risks starvation, growth alone risks unprofitable spend, and PAR is the variable that trades one against the other.
 
 ### PAR formula per target type
 
@@ -371,15 +368,19 @@ The Target ROAS for a VBB strategy uses the same calculator as standard Lead Gen
 
 The difference is what the conversion value represents. In standard bidding, conversion value is a static average. In VBB, conversion value reflects the actual deal value (or customer lifetime value) uploaded through OCT.
 
-### Experimenting with VBB
+### The VBB experiment
 
-Run a 50/50 campaign experiment comparing your current Target CPA strategy against a Target ROAS (VBB) strategy:
+A 50/50 campaign experiment comparing a Target CPA strategy against a Target ROAS (VBB) strategy holds only under these conditions:
 
-1. Use the same conversion action in both arms (closed deals with dynamic values)
-2. Set the experiment Target ROAS at or below the average ROAS your Target CPA campaign achieved in the past 4 weeks
-3. Run for at least 30 days uninterrupted
-4. Monitor the average ROAS in your control arm: if it deviates from the experiment Target ROAS, the test becomes unfair
-5. Evaluate on conversion value (not conversion count): VBB should deliver more total conversion value at comparable efficiency
+| Condition | Detail |
+|-----------|--------|
+| Conversion action | The same one in both arms (closed deals with dynamic values) |
+| Experiment Target ROAS | At or below the average ROAS the Target CPA campaign achieved in the past 4 weeks |
+| Runtime | At least 30 days uninterrupted |
+| Control arm drift | Average ROAS in the control arm deviating from the experiment Target ROAS makes the comparison unfair |
+| Read-out metric | Conversion value, not conversion count |
+
+Running it is owned by [SOP - Set Up Value-Based Bidding](../sops/SOP – Set Up Value-Based Bidding.md), Phase 4.2.
 
 > 💡 **VBB does not always outperform Target CPA:** If the experiment shows no improvement, continue with Target CPA for your lowest-funnel conversion action. Test again when conversion volume or value distribution changes.
 
@@ -395,26 +396,22 @@ Run a 50/50 campaign experiment comparing your current Target CPA strategy again
 | **Bid Simulator** | Active campaigns with sufficient impression data | Comparing scenarios at different target levels |
 | **Historical data** | 3+ months of campaign history | Gauging achievable ranges when forecast tools are unavailable |
 
-### Validation process
+### What validation converges on
 
-1. Calculate your breakeven points and targets using the formulas above
-2. Open Performance Planner for the upcoming quarter
-3. Input your Target CPA or Target ROAS
-4. Check if projected volume meets your growth goals
-5. If volume falls short: increase PAR (loosen targets) and re-forecast
-6. If volume exceeds goals with room to spare: decrease PAR (tighten targets) to increase profitability
-7. Repeat until you find the PAR that balances growth and efficiency
+Validation is a loop on PAR: a target that falls short of the growth goal needs a higher PAR (looser target), and one that clears the goal with room to spare supports a lower PAR (tighter target, more profit retained). The loop ends at the PAR that balances both. The procedure is owned by [SOP - Calculate Bid Targets](../sops/SOP – Calculate Bid Targets.md), Phase 4.
 
 ### When forecast tools are unavailable
 
-If Performance Planner and bid simulator data are not available (new campaigns, low volume, or limited history):
+New campaigns, low volume, and limited history all put Performance Planner and bid simulator data out of reach. What remains:
 
-- Review the last 3-6 months of performance data
-- Compare year-over-year data for seasonal context
-- Check impression share metrics to estimate headroom
-- Monitor results closely and adjust targets within the first 2-4 weeks based on actual performance
+| Substitute input | What it gives |
+|------------------|---------------|
+| Last 3-6 months of performance data | The achievable range |
+| Year-over-year comparison | Seasonal context |
+| Impression share metrics | An estimate of remaining headroom |
+| The first 2-4 weeks of live results | The correction signal, since the target is unvalidated at launch |
 
-> ⚠️ **Do not take forecasts at face value:** Performance Planner assumes stable conditions: no increased competition, no conversion rate changes, no market saturation. Use forecasts as directional guidance, not guaranteed outcomes.
+> ⚠️ **Forecasts are directional guidance, not guaranteed outcomes.** Performance Planner assumes stable conditions: no increased competition, no conversion rate changes, no market saturation.
 
 ---
 
@@ -466,4 +463,4 @@ Violations may be detected through embedded document fingerprints and will be pu
 
 Full terms: https://www.ppcmastery.com/terms-and-conditions
 
-(c) 2026 PPC Mastery B.V. All rights reserved.
+© 2026 PPC Mastery B.V. All rights reserved.

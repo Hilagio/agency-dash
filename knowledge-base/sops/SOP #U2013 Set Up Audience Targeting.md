@@ -1,6 +1,6 @@
 # SOP – Set Up Audience Targeting
 Created: 2026-02-04
-Updated: 2026-02-05
+Updated: 2026-10-05
 
 SOP_ID: SOP_12
 Status: Done
@@ -14,7 +14,7 @@ Pillar: 7
 
 ### Purpose
 
-This SOP configures **audience targeting for Display, Video, or Demand Gen campaigns** with correct segment selection, targeting mode, expansion settings, and exclusions.
+This SOP configures **audience targeting for Video or Demand Gen campaigns** with correct segment selection, targeting mode, expansion settings, and exclusions.
 
 > ❓ **The big question:** Does this campaign target the right audience segments with the correct targeting mode, expansion settings, and exclusions for its goal?
 
@@ -33,7 +33,7 @@ This SOP does **not:**
 
 Run this SOP when:
 
-- Setting up a new Display, Video, or Demand Gen campaign
+- Setting up a new Video or Demand Gen campaign
 - Adding audience targeting to an existing campaign
 - Restructuring audience targeting during campaign audits
 - Launching lookalike segments in Demand Gen
@@ -44,7 +44,7 @@ Run this SOP when:
 
 #### Required inputs
 
-- Campaign type determined (Display, Video, or Demand Gen)
+- Campaign type determined (Video or Demand Gen)
 - Campaign goal defined (remarketing, prospecting, awareness, or data collection)
 - Access to Google Ads account
 - Google Tag installed and firing (for remarketing segments)
@@ -62,17 +62,17 @@ Run this SOP when:
 
 ### Decision gate: Campaign type determines available features
 
-| Feature | Display | Video | Demand Gen |
-|---------|---------|-------|------------|
-| Remarketing segments | ✅ | ✅ | ✅ |
-| Customer Match | ✅ | ✅ | ✅ |
-| Custom segments | ✅ | ✅ | ✅ |
-| In-market / Affinity | ✅ | ✅ | ✅ |
-| Lookalike segments | ❌ | ❌ | ✅ |
-| Content targeting (topics/placements) | ✅ | ✅ | ❌ |
-| Optimized targeting | ✅ | ✅ | ✅ |
-| Targeting vs. Observation mode | ✅ | ✅ | ❌ |
-| Dynamic remarketing | ✅ | ✅ | ❌ |
+| Feature | Video | Demand Gen |
+|---------|-------|------------|
+| Remarketing segments | ✅ | ✅ |
+| Customer Match | ✅ | ✅ |
+| Custom segments | ✅ | ✅ |
+| In-market / Affinity | ✅ | ✅ |
+| Lookalike segments | ❌ | ✅ |
+| Content targeting (topics/placements) | ✅ | ✅ (secondary layer) |
+| Optimized targeting | ❌ | ✅ |
+| Targeting vs. Observation mode | ✅ | ❌ |
+| Dynamic remarketing | ✅ | ✅ (product feed required) |
 
 Confirm your campaign type, then proceed to Phase 1.
 
@@ -95,13 +95,13 @@ Confirm your campaign type, then proceed to Phase 1.
 
 #### Step 1.2: Select temperature approach
 
-| Goal | Temperature focus | Segment types |
+| Campaign tier | Temperature focus | Segment types |
 |------|------------------|---------------|
 | Remarketing | 🔥 Hot + 🌡️ Warm | Cart/form abandoners, product viewers, all visitors, Customer Match |
 | Prospecting | ❄️ Cool + ❄️ Cold | Custom segments, in-market, lookalikes |
 | Awareness | ❄️ Cold + 🧊 Coldest | Affinity, life events, broad in-market |
 
-**Phase 1 output:** Campaign goal classified, temperature approach selected.
+**Phase 1 output:** Campaign tier classified, temperature approach selected.
 
 ---
 
@@ -142,11 +142,11 @@ For awareness campaigns:
 
 > ↪️ **Browse segment names:** See [Audience Segments Reference](../references/Audience Segments Reference.md) for the full list of in-market, affinity, and life event segments available in Google Ads.
 
-#### Step 2.2: Consider combined segments
+#### Step 2.2: Add combined segments (optional)
 
-If you need sharper targeting, create combined segments:
+Where a single segment is too broad, create a combined segment:
 
-1. Navigate to **Audience Manager → Combined segments → New combined segment**
+1. Navigate to **Audience manager → Combined segments → New combined segment**
 2. Use AND logic to layer segments: e.g., In-market (CRM software) AND Custom segment (CRM keywords)
 3. Use NOT logic to exclude: e.g., AND NOT existing customers
 
@@ -165,7 +165,7 @@ If you need sharper targeting, create combined segments:
 
 **Goal:** Set the correct targeting mode and optimized targeting/expansion settings.
 
-#### Step 3.1: Set targeting mode (Display/Video only)
+#### Step 3.1: Set targeting mode (Video only)
 
 | Mode | Effect | When to use |
 |------|--------|-------------|
@@ -181,29 +181,28 @@ If you need sharper targeting, create combined segments:
 | Campaign goal | Optimized targeting | Rationale |
 |--------------|-------------------|-----------|
 | Remarketing (strict) | OFF | Preserve audience restriction |
-| Prospecting (conversions) | ON | Let Google find additional converters |
+| Prospecting (conversions) | Test ON vs OFF | Measure expansion CPA before committing. Run 14+ days ON, compare to OFF |
 | Brand awareness | ON | Maximize qualified reach |
 
 1. Navigate to ad group settings → Optimized targeting
 2. Toggle ON or OFF based on the table above
 3. If ON: provide your audience segments as "hints", Google will find similar users
 
-> ⚠️ **Optimized targeting overrides your selections:** When enabled, Google may reduce or stop showing ads to your selected audiences if it finds better-performing users elsewhere. Keep it OFF when audience precision matters more than volume.
+> ⚠️ **Optimized targeting serves beyond your selected segments:** When enabled, Google reduces or stops showing ads to your selected audiences if it finds better-performing users elsewhere. Keep it OFF when audience precision matters more than volume.
 
 #### Step 3.3: Configure audience expansion (Video only)
 
-For Video campaigns with brand consideration or awareness goals:
+For Video campaigns on reach and views goals:
 
 1. Navigate to ad group settings → Audience expansion
-2. Set expansion level based on reach goals
-3. Expansion finds users similar to your selected audience, broader than targeting, narrower than no audience
+2. Set expansion ON, unless budget is limited and you need controlled reach, in which case set it OFF and use specific placements (See: [Audience Targeting Guidelines](../guidelines/Audience Targeting Guidelines.md))
 
 #### Step 3.4: Review Demand Gen demographic expansion
 
 For Demand Gen campaigns:
 
-1. Check if demographic expansion is enabled (may override demographic selections)
-2. Restrict to age/gender only if demographic precision is critical (may limit performance)
+1. Check whether optimized targeting is ON, which lets Google serve beyond your demographic selections
+2. Review demographic performance after enabling, and restrict to age and gender in ad group settings only when a group crosses the outlier threshold in Demographic Optimization (See: [Audience Targeting Guidelines](../guidelines/Audience Targeting Guidelines.md))
 
 **Phase 3 output:** Targeting mode and expansion settings configured for each ad group.
 
@@ -225,7 +224,7 @@ For Demand Gen campaigns:
 2. Add relevant exclusion segments
 3. Verify exclusions don't conflict with targeting (e.g., don't exclude the audience you're targeting)
 
-#### Step 4.2: Set content exclusions (Display/Video only)
+#### Step 4.2: Set content exclusions (Video only, Demand Gen uses account-level content suitability)
 
 1. Navigate to campaign → Content → Exclusions
 2. Exclude brand-unsafe categories:
@@ -234,7 +233,7 @@ For Demand Gen campaigns:
    - Adult content (unless relevant)
 3. Exclude irrelevant placements (known low-quality sites/apps)
 
-#### Step 4.3: Set frequency capping (Display/Video only)
+#### Step 4.3: Set frequency capping (Video only)
 
 1. Navigate to campaign settings → Frequency capping
 2. Set impression caps based on campaign type:
@@ -264,7 +263,7 @@ This SOP is complete when:
 - [ ] Targeting mode is set correctly (Targeting or Observation)
 - [ ] Optimized targeting is ON or OFF per goal
 - [ ] Exclusions are configured (converters, customers, content)
-- [ ] Frequency capping is set (Display/Video)
+- [ ] Frequency capping is set (Video)
 - [ ] [Audience Targeting Launch Checklist](../checklists/Audience Targeting Launch Checklist.md) passes
 
 ---
@@ -314,15 +313,15 @@ A: Yes, but set different exclusions per campaign to avoid overlap. Remarketing 
 | Leaving optimized targeting ON for remarketing | Not checking default settings | Verify setting per ad group after setup |
 | No exclusions configured | Oversight during setup | Always run Phase 4 before launching |
 | Overlapping audiences across campaigns | No isolation strategy | Use exclusions to separate remarketing from prospecting |
-| Lookalike seed list too small | Using all visitors as seed | Seed with converters or high-value customers (1,000+ minimum) |
+| Lookalike seed list too small | Using all visitors as seed | Seed with converters or high-value customers, quality over size |
 | Adding every available in-market segment | More = better thinking | Select 1-3 most relevant categories only |
 
 ---
 
 ### Version details
 
-- **Version:** 2.0
-- **Last Updated:** January 2026
+- **Version:** 4.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

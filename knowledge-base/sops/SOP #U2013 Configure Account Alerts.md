@@ -74,7 +74,7 @@ Run this SOP:
 
 ### 1.1 Create overspend alert
 
-1. Navigate to Tools & Settings > Bulk Actions > Rules
+1. Navigate to Tools > Bulk actions > Rules
 2. Click "+ Campaign rule"
 3. Configure:
 
@@ -168,7 +168,7 @@ Run this SOP:
 |---------|-------|
 | Rule type | Send email |
 | Apply to | All enabled campaigns |
-| Condition 1 | Cost/conv. > [2x target CPA] |
+| Condition 1 | Cost / conv. > [2x target CPA] |
 | Condition 2 | Conversions >= 5 |
 | Using data from | Last 14 days |
 | Frequency | Weekly |
@@ -194,7 +194,7 @@ Run this SOP:
 
 ### 4.1 Create ad disapproval alert
 
-1. Navigate to Tools & Settings > Bulk Actions > Rules
+1. Navigate to Tools > Bulk actions > Rules
 2. Click "+ Ad rule"
 3. Configure:
 
@@ -228,7 +228,7 @@ Run this SOP:
 
 ### 5.1 Review all rules
 
-1. Navigate to Tools & Settings > Bulk Actions > Rules
+1. Navigate to Tools > Bulk actions > Rules
 2. Verify all created rules show "Enabled" status
 3. Confirm email recipients are correct for each rule
 4. Run "Preview results" on each rule to verify they match expected entities
@@ -262,7 +262,7 @@ This SOP is complete when:
 - [ ] Budget alerts configured (overspend, underspend, budget-limited)
 - [ ] Conversion alerts configured (zero conversions, volume drops)
 - [ ] Cost efficiency alerts configured (CPA, CPC)
-- [ ] Disapproval alerts configured (ads, assets)
+- [ ] Disapproval and delivery alerts configured (ad disapproval, zero-impression ad groups)
 - [ ] All rules verified with "Preview results"
 - [ ] Alert Configuration Checklist passed
 - [ ] Alert inventory documented
@@ -323,8 +323,8 @@ After alert configuration:
 
 ## Version details
 
-- **Version:** 1.0
-- **Last Updated:** February 2026
+- **Version:** 2.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

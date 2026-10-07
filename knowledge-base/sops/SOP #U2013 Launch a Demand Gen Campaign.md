@@ -1,6 +1,6 @@
 # SOP – Launch a Demand Gen Campaign
 Created: 2026-02-05
-Updated: 2026-04-01
+Updated: 2026-10-05
 
 SOP_ID: SOP_57
 Status: Done
@@ -51,7 +51,7 @@ Run this SOP when:
 - Landing page URL
 - Budget allocation (minimum for 50+ conversions/month)
 
-> ⚠️ **Verify conversion tracking before campaign creation:** Demand Gen optimizes for selected conversions. Confirm your primary conversion action is firing correctly in Google Ads → Tools & Settings → Conversions.
+> ⚠️ **Verify conversion tracking before campaign creation:** Demand Gen optimizes for selected conversions. Confirm your primary conversion action is firing correctly in Google Ads → Goals → Conversions.
 
 ### Reference documents (have open)
 
@@ -165,6 +165,8 @@ For prospecting campaigns:
 
 > 💡 **Seed quality matters more than reach setting:** Start with Balanced and invest in seed quality first. See [Audience Targeting Reference](../references/Audience Targeting Reference.md) for lookalike configuration details.
 
+> ⚠️ **Never combine a new customer acquisition goal with Lookalike segments.** The two optimization signals pull against each other and delivery degrades. Pick one per campaign.
+
 ### 2.4 Additional prospecting options
 
 | Audience type | Example | When to add |
@@ -203,6 +205,48 @@ At the ad group level, you can control which channels your ads serve on:
 - GDN
 
 > 💡 **Use separate ad groups to test different channel combinations:** This provides clearer performance data per channel.
+
+#### Serving GDN inventory through Demand Gen
+
+The Google Display Network is served through Demand Gen, including a GDN-exclusive serving option when you want that inventory only.
+
+To serve a Demand Gen ad group on GDN inventory only:
+
+1. Open the ad group channel settings (section 2.6 above)
+2. Choose **Specific channels**
+3. Deselect every channel except **GDN**
+4. Save the ad group
+
+| Goal | Channel setting |
+|------|-----------------|
+| Reach all Google surfaces | All Google channels |
+| Restrict to display inventory only | Specific channels, GDN only |
+
+> 💡 **Isolate GDN in its own ad group.** Use a dedicated GDN-only ad group when you want display-style placement reach without mixing it into YouTube, Discover, and Gmail performance data.
+
+#### GDN content exclusions (when serving GDN)
+
+When an ad group serves GDN inventory, apply placement and content exclusions to protect brand safety and spend:
+
+1. Exclude mobile apps unless the campaign is app-focused
+2. Exclude parked domains and error pages
+3. Exclude made-for-kids content
+4. Exclude known low-quality sites
+5. Confirm account-level content suitability in **Tools → Content suitability**, with sensitive categories excluded and inventory type set to Limited (recommended) or Moderate
+
+> ↪️ **For exclusion settings.** See [Content Exclusion Guidelines](../guidelines/Content Exclusion Guidelines.md).
+
+#### Frequency capping (when serving GDN)
+
+GDN inventory serves repeated impressions, so cap frequency to prevent ad fatigue. Set a custom limit under campaign settings, Additional settings, Frequency management:
+
+| Campaign tier | Daily cap | Weekly cap |
+|---------------|-----------|------------|
+| Remarketing | 5-7 | 15-20 |
+| Prospecting | 3-5 | 10-15 |
+| Expansion | 2-3 | 7-10 |
+
+> ↪️ **For frequency management details.** See [Frequency Capping Reference](../references/Frequency Capping Reference.md).
 
 ### 2.7 Set Target CPA/ROAS at ad group level (optional)
 
@@ -287,6 +331,11 @@ For Ecommerce remarketing:
 3. Ensure feed has required attributes:
    - id, title, description
    - image_link, price, link
+4. Confirm at least 4 approved, in-stock products spread across at least 4 Group IDs
+
+> ⚠️ **Feed depth gates serving.** Product-driven formats stop serving when approved in-stock
+> inventory falls below 4 products across 4 Group IDs. Check this before launch and again after any
+> feed change or stock movement.
 
 **Verification:** Both image and video assets uploaded, all required text assets filled, and ad preview renders correctly across YouTube, Discover, and Gmail placements.
 
@@ -308,28 +357,44 @@ For Ecommerce remarketing:
 2. For Maximize Clicks: Optionally set a Target CPC cap
 3. For Maximize Conversions: Optionally set Target CPA
 4. For Maximize Conversion Value: Optionally set Target ROAS
+5. Switch view-through conversion optimization OFF at the campaign level. A new Demand Gen campaign starts with it ON (See: [Demand Gen Performance Reference](../references/Demand Gen Performance Reference.md))
 
 ### 4.2 Set budget
 
-Calculate recommended budget:
+Two constraints apply. Calculate both and budget to the higher figure.
+
+**Serving requirement, daily.** Demand Gen needs a daily budget of at least 10 times your target
+CPA, with a floor of €100 per day when using Maximize conversions. Below that, delivery is
+throttled and the campaign never reaches a stable read.
+
+**Volume requirement, monthly.** Budget must support 50 conversions per ad group per month for the
+data to be readable.
 
 ```
-Recommended Budget = 50 conversions × Target CPA
+Daily floor       = max(10 × Target CPA, €100)
+Monthly volume    = 50 conversions × Target CPA
+Budget            = whichever is higher, expressed per day
 ```
 
-**Example:** If Target CPA is €20, recommended monthly budget is €1,000 (€33/day)
+**Example:** at a €20 target CPA the daily floor is €200 and the monthly volume requirement is
+€1,000, which is €33 per day. The daily floor governs, so budget €200 per day.
 
-**From a ROAS perspective:** If targeting 400% ROAS and €10,000/month revenue goal, budget = €2,500/month (€83/day)
+**From a ROAS perspective:** If targeting 400% ROAS and €10,000/month revenue goal, budget =
+€2,500/month (€83/day). Check that figure against the daily floor and raise it if it falls short.
+
+> ⚠️ **The daily floor is a serving gate, not a recommendation.** A budget that satisfies the
+> monthly volume target but sits under the daily floor produces a campaign that underdelivers and
+> never generates the volume you sized it for.
 
 | If expected conversions are... | Then... |
 |-------------------------------|---------|
 | 50+ per ad group | ✅ Proceed |
-| 30-50 per ad group | ⚠️ Consider consolidating |
+| 30-49 per ad group | ⚠️ Consolidate ad groups |
 | <30 per ad group | ❌ Consolidate or increase budget |
 
 > ↪️ **For volume thresholds:** See [Conversion Volume Thresholds Reference](../references/Conversion Volume Thresholds Reference.md).
 
-**Verification:** Bid strategy set with appropriate target, and daily budget supports 50+ conversions per month.
+**Verification:** Bid strategy set with appropriate target, and daily budget clears both the daily serving floor and the 50 conversions per month volume requirement.
 
 ---
 
@@ -376,6 +441,8 @@ Add at campaign level:
 | 7 days | Conversion volume vs expectations |
 | 14 days | Efficiency, adjust targeting if needed |
 | 30 days | Full performance review, expand or scale |
+
+> ⚠️ **Edit pace is governed by Google's 15% Rule.** See [Campaign Scaling Mental Model](../mental-models/Campaign Scaling Mental Model.md) for the cadence. Larger edits restart stabilization and push a readable result further out.
 
 > ↪️ **For complete monitoring guidance:** See [Post-Launch Monitoring Reference](../references/Post-Launch Monitoring Reference.md).
 
@@ -438,6 +505,8 @@ This SOP is complete when:
 | [Universal Campaign Settings Reference](../references/Universal Campaign Settings Reference.md) | Reference | Phase 1 |
 | [Audience Targeting Reference](../references/Audience Targeting Reference.md) | Reference | Phase 2 |
 | [Network Selection Reference](../references/Network Selection Reference.md) | Reference | Phase 2 (channel selection) |
+| [Content Exclusion Guidelines](../guidelines/Content Exclusion Guidelines.md) | Guideline | Phase 2 (GDN serving) |
+| [Frequency Capping Reference](../references/Frequency Capping Reference.md) | Reference | Phase 2 (GDN serving) |
 | [Post-Launch Monitoring Reference](../references/Post-Launch Monitoring Reference.md) | Reference | Phase 6 |
 | [Image Creative Reference](../references/Image Creative Reference.md) | Reference | Phase 3 |
 | [Video Creative Reference](../references/Video Creative Reference.md) | Reference | Phase 3 |
@@ -450,15 +519,15 @@ This SOP is complete when:
 |-----|--------------|
 | [SOP – Set Up Audience Targeting](../sops/SOP – Set Up Audience Targeting.md) | Upstream (audience creation) |
 | [SOP – Build Customer Match Lists](../sops/SOP – Build Customer Match Lists.md) | Upstream (seed audience creation) |
-| [SOP – Launch a Display Campaign](../sops/SOP – Launch a Display Campaign.md) | Parallel (alternative channel) |
 | [SOP – Launch a Video Campaign](../sops/SOP – Launch a Video Campaign.md) | Parallel (awareness-only alternative) |
+| [Content Exclusion Guidelines](../guidelines/Content Exclusion Guidelines.md) | Brand safety for GDN serving |
 
 ---
 
 ## Version details
 
-- **Version:** 5.0
-- **Last Updated:** April 2026
+- **Version:** 8.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

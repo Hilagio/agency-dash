@@ -60,13 +60,13 @@ Run this checklist:
 
 ### Situational extensions
 
-- [ ]  Promotion: Evaluated; if active sale exists → extension created with dates configured
-- [ ]  Price: Evaluated; if pricing is competitive → 3-8 items with accurate pricing
-- [ ]  Call: Evaluated; if phone leads valuable → extension with scheduling and reporting
-- [ ]  Location: Evaluated; if physical locations matter → GBP linked and verified
-- [ ]  Lead Form: Evaluated; if lead gen primary and volume trade-off acceptable → testing
-- [ ]  Message: Evaluated; if conversational sales fits → asset created, no platform in headlines
-- [ ]  App: Evaluated; if downloads strategic and won't cannibalize web → asset created
+- [ ]  Promotion: an active sale has a promotion asset with dates configured, or no active sale exists
+- [ ]  Price: competitive pricing has a price asset with 3-8 accurate items, or a no-fit decision is documented
+- [ ]  Call: valuable phone leads have a call asset with scheduling and reporting, or a no-fit decision is documented
+- [ ]  Location: physical locations have a verified GBP linked, or a no-fit decision is documented
+- [ ]  Lead Form: lead gen as primary goal has a lead form asset in test, or a no-fit decision is documented
+- [ ]  Message: conversational sales has a message asset with no platform name in headlines, or a no-fit decision is documented
+- [ ]  App: strategic downloads have an app asset that does not cannibalize web, or a no-fit decision is documented
 
 ### Non-duplication
 
@@ -77,7 +77,7 @@ Run this checklist:
 ### Technical status
 
 - [ ]  All extensions show "Approved" status
-- [ ]  No "Limited" or "Disapproved" without investigation
+- [ ]  Every asset with "Limited" or "Disapproved" status has a documented decision
 - [ ]  Promotion extensions have correct date ranges
 
 ---
@@ -86,7 +86,7 @@ Run this checklist:
 
 | Document | Relationship |
 | --- | --- |
-| [Extension Coverage Checklist](../checklists/Extension Coverage Checklist.md) | Provides content options for each extension type |
+| [Extension Leverage Catalog](../catalogs/Extension Leverage Catalog.md) | Provides content options for each extension type |
 | [Automated Assets Control Guidelines](../guidelines/Automated Assets Control Guidelines.md) | Settings for Google-generated assets |
 | [SOP – Write Compelling RSAs](../sops/SOP – Write Compelling RSAs.md) | RSA creation workflow |
 

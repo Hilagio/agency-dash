@@ -28,7 +28,7 @@ It is the *result* of Google gaining confidence that:
 
 This playbook **does not contain tactics**. It tells you **which constraint to fix first** and routes you to the correct SOP.
 
-> Never work on more than **one QS component at the same time**. Fix the upstream constraint, then move forward.
+> ⚠️ **Never work on more than one QS component at the same time.** Fix the upstream constraint, then move forward.
 
 ---
 
@@ -42,7 +42,7 @@ Use impression-weighted QS to create a personalized priority list, so you can fo
 
 Sort descending. Work on the highest-priority keyword/ad group first.
 
-> Do not run this playbook on dozens of keywords at once. Fix one theme → validate → replicate.
+> ⚠️ **Do not run this playbook on dozens of keywords at once.** Fix one theme → validate → replicate.
 
 ---
 
@@ -65,7 +65,7 @@ Does Google believe your ad **meaningfully matches the user's intent**?
 | Ad Relevance = *Below Average* | **STOP:** Run [SOP – Improve Ad Relevance](../sops/SOP – Improve Ad Relevance.md)  |
 | Ad Relevance = *Average* or *Above Average* | **PASS:** Proceed to Phase 2 |
 
-> Ad Relevance is a **structural** issue. You fix the foundation (ad group structure, keyword-to-ad alignment) before testing creative angles.
+> 💡 **Ad Relevance is a structural issue.** Fix the foundation (ad group structure, keyword-to-ad alignment) before testing creative angles.
 
 ---
 
@@ -81,7 +81,7 @@ Does Google expect users to **click your ad more often than competitors**?
 - CTR stagnates despite relevance fixes
 - Competitors have stronger offers/proof in their ads
 
-> Google's auction and competitive metrics impact your CTR. Compare **apples to apples**. **** Check Auction Insights for context.
+> 💡 **Compare apples to apples.** Google's auction and competitive metrics impact your CTR. Check Auction Insights for context.
 
 ### Decision
 
@@ -90,7 +90,7 @@ Does Google expect users to **click your ad more often than competitors**?
 | Expected CTR = *Below Average* | **STOP:** Run [SOP – Improve Expected CTR](../sops/SOP – Improve Expected CTR.md)  |
 | Expected CTR = *Average* or *Above Average* | **PASS:** Proceed to Phase 3 |
 
-> Expected CTR is a **competitiveness** issue. Focus on message strength (benefits, social proof, CTAs, differentiation), not just relevance.
+> 💡 **Expected CTR is a competitiveness issue.** Focus on message strength (benefits, social proof, CTAs, differentiation), not just relevance.
 
 ---
 
@@ -202,10 +202,10 @@ This playbook routes to the following SOPs:
 
 This playbook is complete when:
 
-- [ ]  All three QS components are **Average or Above Average**
-- [ ]  Quality Score ≥ 7/10 (stable for 14+ days)
-- [ ]  CPC has stabilized or decreased
-- [ ]  Impression Share (Rank) improved without bid inflation
+- [ ] All three QS components are **Average or Above Average**
+- [ ] Quality Score ≥ 7/10 (stable for 14+ days)
+- [ ] CPC has stabilized or decreased
+- [ ] Impression Share (Rank) improved without bid inflation
 
 **At this point:**
 

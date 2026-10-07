@@ -105,7 +105,7 @@ Run this checklist:
 - [ ] No keyword appears in more than one ad group (unless intentionally segmented by match type with documented reasoning)
 - [ ] No keyword is duplicated across campaigns targeting the same geographic region
 - [ ] Close variants are consolidated: singular/plural, common misspellings, and reordered words do not exist as separate keywords
-- [ ] If running both Search and DSA campaigns: keyword-targeted terms are excluded from DSA
+- [ ] If running final URL expansion alongside keywords: keyword-covered landing pages are constrained via campaign URL exclusions, not duplicated as expansion targets
 
 ---
 
@@ -125,8 +125,8 @@ Run this checklist:
 
 ## Version details
 
-- **Version:** 1.0
-- **Last Updated:** February 2026
+- **Version:** 2.0
+- **Last Updated:** June 2026
 - **Creator:** Bob Meijer
 
 ---
@@ -139,4 +139,4 @@ Violations may be detected through embedded document fingerprints and will be pu
 
 Full terms: https://www.ppcmastery.com/terms-and-conditions
 
-(c) 2026 PPC Mastery B.V. All rights reserved.
+© 2026 PPC Mastery B.V. All rights reserved.

@@ -1,6 +1,6 @@
 # SOP – Launch PMax for Lead Gen/SaaS
 Created: 2026-02-04
-Updated: 2026-02-05
+Updated: 2026-10-05
 
 SOP_ID: SOP_54
 Status: Done
@@ -110,7 +110,7 @@ Before creating the campaign, determine your structure:
 
 ### 1.2 Verify conversion tracking
 
-1. Go to **Tools & Settings** → **Conversions**
+1. Go to **Goals** → **Summary**
 2. Verify your quality conversion (MQL, SQL, or revenue) is:
    - Status: Active
    - Recording conversions in last 7 days
@@ -248,7 +248,7 @@ For multi-asset-group structure:
 
 | Scenario | Strategy | Target |
 |----------|----------|--------|
-| 30-50 conversions/month | Maximize Conversions | Optional Target CPA |
+| 30-49 conversions/month | Maximize Conversions | Optional Target CPA |
 | 50+ conversions/month | Maximize Conversion Value | Optional Target ROAS (if tracking values) |
 
 **Configuration:**
@@ -430,8 +430,8 @@ A: Wait 30 days minimum. Learning period is 2-4 weeks. Evaluate conversion quali
 
 ## Version details
 
-- **Version:** 4.0
-- **Last Updated:** March 2026
+- **Version:** 5.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

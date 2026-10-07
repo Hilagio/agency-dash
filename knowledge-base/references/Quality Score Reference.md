@@ -1,5 +1,6 @@
 # Quality Score Reference
 Created: 2026-02-04
+Updated: 2026-08-27
 
 Support_ID: CHEATSHEET_32
 Status: Done
@@ -12,7 +13,7 @@ Agent_Readable: Yes
 
 ## Purpose
 
-Documents how Quality Score works as a diagnostic tool: its three components, the Ad Rank formula, scoring mechanics, update frequencies, and what QS does and does not influence. Use this reference to understand the system before routing to the correct fix.
+Documents how Quality Score works as a diagnostic tool: its three components, the Ad Rank formula, scoring mechanics, update frequencies, and what QS does and does not influence.
 
 ---
 
@@ -68,7 +69,7 @@ QS is not a simple average across keywords. Keywords with more impressions carry
 
 `Priority Score = (10 - Quality Score) x Impressions`
 
-Sort descending. The highest-priority keyword is the one with the worst QS and the most impressions: fixing it yields the largest impact.
+Sorted descending, the highest-priority keyword is the one with the worst QS and the most impressions, where a fix yields the largest impact.
 
 ### Exact-match basis
 
@@ -78,7 +79,8 @@ This means:
 
 - A broad match keyword's QS reflects performance on its literal text as an exact match
 - A keyword with few exact-match impressions may show "Not enough data" for QS
-- Match type changes alone do not improve QS
+- Match type is not a Quality Score input, so changing it never moves the score
+- Broadening a match type lets the keyword enter more auctions, which changes the mix of queries sitting behind the same score
 
 ---
 
@@ -181,13 +183,9 @@ If your Ad Rank falls below the threshold, your ad does not enter the auction at
 
 ---
 
-## How to view Quality Score in Google Ads
+## Quality Score columns
 
-### Enabling QS columns
-
-1. Navigate to **Keywords** tab in your campaign or ad group
-2. Click **Columns** > **Modify columns**
-3. Under **Quality Score**, add these columns:
+Quality Score data sits in the Keywords view under Columns > Modify columns > Quality Score. The extraction path per component is in the "Before you start" section of each component SOP.
 
 | Column | What it shows |
 |--------|--------------|
@@ -243,6 +241,7 @@ The sequence is fixed: Ad Relevance before Expected CTR before Landing Page Expe
 ## QS trend interpretation
 
 Historical QS data enables period-over-period analysis to detect improving, stable, or declining quality.
+
 ### How to read QS trends
 
 QS is a relative metric: it compares your performance against competitors in the same auctions. A QS change can mean your quality changed, your competitors' quality changed, or both.
@@ -261,7 +260,7 @@ QS is a relative metric: it compares your performance against competitors in the
 |-----------|----------|-----|
 | Keyword has >1,000 impressions/month | Yes | Sufficient data for stable QS calculation |
 | Keyword has 100-1,000 impressions/month | Somewhat | QS may lag or fluctuate: confirm trends over 3+ periods |
-| Keyword has <100 impressions/month | No | QS is essentially random at this volume: do not make decisions based on it |
+| Keyword has <100 impressions/month | No | QS is essentially random at this volume and carries no decision value |
 | QS change coincides with ad copy change | Yes (for Expected CTR, Ad Relevance) | Likely caused by your change: evaluate whether to keep or revert |
 | QS change coincides with LP change | Yes (for LP Experience, after 2-4 week lag) | LP Experience updates slowly: wait 3-4 weeks before concluding |
 | QS change with no changes on your side | Investigate | Likely competitive: check Auction Insights for new entrants or competitor improvements |
@@ -281,6 +280,7 @@ Calculate per reporting period (weekly or biweekly) and plot the trend. A sustai
 ## Competitive context and Quality Score
 
 QS does not exist in a vacuum. It is a relative measure against competitors in the same auctions.
+
 ### QS and Auction Insights correlation
 
 When QS declines coincide with competitive changes, the root cause is external, not internal:
@@ -330,7 +330,7 @@ Some QS fluctuations are seasonal and expected:
 | Industry-specific peaks | QS pressure during peak demand periods | Same mechanism as holidays but industry-specific |
 | Summer slowdowns | QS may improve slightly | Less competition in some verticals |
 
-Do not react to seasonal QS dips with structural changes. Wait 2-4 weeks post-season to see if QS recovers before intervening.
+A structural change made in response to a seasonal QS dip acts against a moving benchmark. Recovery shows within 2-4 weeks of the season ending.
 
 ---
 
@@ -365,8 +365,8 @@ Do not react to seasonal QS dips with structural changes. Wait 2-4 weeks post-se
 
 ## Version details
 
-- **Version:** 2.0
-- **Last Updated:** March 2026
+- **Version:** 3.0
+- **Last Updated:** August 2026
 - **Creator:** Bob Meijer
 
 ---
@@ -379,4 +379,4 @@ Violations may be detected through embedded document fingerprints and will be pu
 
 Full terms: https://www.ppcmastery.com/terms-and-conditions
 
-(c) 2026 PPC Mastery B.V. All rights reserved.
+© 2026 PPC Mastery B.V. All rights reserved.

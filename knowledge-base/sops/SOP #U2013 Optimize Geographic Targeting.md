@@ -1,5 +1,6 @@
 # SOP – Optimize Geographic Targeting
 Created: 2026-02-14
+Updated: 2026-10-05
 
 SOP_ID: SOP_71
 Status: Done
@@ -14,7 +15,7 @@ Pillar: 7
 
 This SOP analyzes geographic performance data and applies location bid adjustments or exclusions to concentrate spend in high-performing areas and reduce waste in underperforming ones.
 
-> **The big question:** Which locations are delivering profitable conversions, and which are draining budget without results?
+> ❓ **The big question:** Which locations are delivering profitable conversions, and which are draining budget without results?
 
 ---
 
@@ -73,7 +74,7 @@ Run immediately when cost-per-conversion varies more than 50% across locations, 
 
 ### 1.1 Verify location targeting settings
 
-Navigate to Campaign settings > Locations > Location options (advanced). Confirm the "Target" setting. The recommended default is **Presence or interest: People in, regularly in, or who have shown interest in your targeted locations**. Performance data should determine whether to restrict to "Presence" only.
+Navigate to Campaign settings > Locations > Location options. Confirm the "Include" setting. The recommended default is **Presence or interest: People in, regularly in, or who've shown interest in your included locations**. Performance data should determine whether to restrict to "Presence" only.
 
 > ⚠️ **Local businesses only:** For businesses where customers must be physically present (restaurants, retail, local services), use **Presence only** to avoid showing ads to users who cannot visit. For all other businesses, start with "Presence or interest" and let location performance data guide any restriction (see section 1.3).
 
@@ -153,7 +154,7 @@ Before acting on individual locations, look for regional clusters (adjust at reg
 
 ### 3.2 Apply bid modifiers (Manual CPC only)
 
-**Tier 1 (high-performing):** Navigate to campaign > Locations. Set positive modifiers:
+**Tier 1 (high-performing):** Navigate to campaign > Audiences, keywords, and content > Locations. Set positive modifiers:
 
 | Performance level | Modifier |
 | --- | --- |
@@ -175,7 +176,9 @@ For first-round adjustments, start at the lower end. Do not exceed +/-30% until 
 
 ### 3.3 Apply exclusions
 
-For Tier 3 locations, navigate to campaign > Locations > Excluded tab and add the exclusion. Before excluding, verify the location has spent 2x+ target CPA with zero conversions, the pattern persists across 2+ analysis periods, and the exclusion does not block a significant portion of the addressable market.
+For Tier 3 locations, navigate to campaign > Audiences, keywords, and content > Locations > Excluded tab and add the exclusion. Before excluding, verify the location has spent 2x+ target CPA with zero conversions, the pattern persists across 2+ analysis periods, and the exclusion does not block a significant portion of the addressable market. Set the exclusion method per [Universal Campaign Settings Reference](../references/Universal Campaign Settings Reference.md).
+
+> ⚠️ **A geographic targeting change triggers a bid-strategy learning phase:** On Smart Bidding campaigns, an exclusion starts the 7-14 day learning phase, and the 1-2 conversion cycle post-change wait runs alongside it from the same moment. The longer clock governs the review date in 4.1. See [Smart Bidding Mechanics Reference](../references/Smart Bidding Mechanics Reference.md).
 
 ### 3.4 Document all changes
 
@@ -283,8 +286,8 @@ This SOP is complete when:
 
 ## Version details
 
-- **Version:** 2.0
-- **Last Updated:** March 2026
+- **Version:** 4.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---
@@ -297,4 +300,4 @@ Violations may be detected through embedded document fingerprints and will be pu
 
 Full terms: https://www.ppcmastery.com/terms-and-conditions
 
-(c) 2026 PPC Mastery B.V. All rights reserved.
+© 2026 PPC Mastery B.V. All rights reserved.

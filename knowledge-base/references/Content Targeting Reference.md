@@ -1,10 +1,11 @@
 # Content Targeting Reference
 Created: 2026-02-05
+Updated: 2026-10-05
 
 Support_ID: CHEATSHEET_41
 Status: Done
 Category: Operational
-Reference Type: Cheat Sheet
+Reference Type: Cheat Sheets
 Agent_Readable: Yes
 Human_Facing: Yes
 Domain: Upper Funnel
@@ -12,7 +13,7 @@ Pillar: 7
 
 ## Purpose
 
-Documents content targeting options (placements, topics, keywords) and content exclusions for Display and Video campaigns, covering WHERE ads appear rather than WHO sees them.
+Documents content targeting options (placements, topics, keywords) and content exclusions for Video and Demand Gen campaigns, covering WHERE ads appear rather than WHO sees them. In Demand Gen, content targeting is a secondary layer on top of audience targeting, never standalone. Placement and topic exclusion syntax also applies to the account-level exclusions used by Demand Gen and PMax.
 
 ---
 
@@ -23,14 +24,13 @@ Documents content targeting options (placements, topics, keywords) and content e
 - Documents placement targeting types and formats
 - Explains topic and keyword content targeting
 - Explains content exclusion types (recommended settings in [Content Exclusion Guidelines](../guidelines/Content Exclusion Guidelines.md))
-- Covers Display and Video campaign content controls
+- Covers Video and Demand Gen campaign content controls and account-level exclusion syntax
 
 **This reference does NOT:**
 
 - Cover audience targeting (See: [Audience Targeting Reference](../references/Audience Targeting Reference.md))
 - Explain audience signals for PMax (See: [Audience Signals Reference](../references/Audience Signals Reference.md))
-- Provide campaign setup steps (See: [SOP – Launch a Display Campaign](../sops/SOP – Launch a Display Campaign.md))
-- Cover Demand Gen (Demand Gen does not support content targeting)
+- Provide campaign setup steps (See: [SOP – Launch a Demand Gen Campaign](../sops/SOP – Launch a Demand Gen Campaign.md))
 
 ---
 
@@ -38,10 +38,10 @@ Documents content targeting options (placements, topics, keywords) and content e
 
 | **Type** | **What it controls** | **Available in** | **Precision** |
 |----------|---------------------|------------------|---------------|
-| **Placements** | Specific sites, apps, YouTube channels/videos | Display, Video | Highest |
-| **Topics** | Google's predefined content categories | Display, Video | Medium |
-| **Keywords** | Pages containing specific terms | Display, Video | Medium-Low |
-| **Content exclusions** | Categories, labels, types to avoid | Display, Video | N/A (exclusion) |
+| **Placements** | Specific sites, apps, YouTube channels/videos | Video, Demand Gen | Highest |
+| **Topics** | Google's predefined content categories | Video, Demand Gen | Medium |
+| **Keywords** | Pages containing specific terms | Video, Demand Gen | Medium-Low |
+| **Content exclusions** | Categories, labels, types to avoid | Video, Demand Gen (account level) | N/A (exclusion) |
 
 > ⚠️ **Content targeting ≠ Audience targeting:** Content targeting controls WHERE ads appear. Audience targeting controls WHO sees them. They can be combined (AND logic) or used independently.
 
@@ -59,11 +59,11 @@ Restricts ad delivery to specific websites, apps, YouTube channels, or individua
 
 | **Type** | **Format** | **Example** | **Available in** |
 |----------|------------|-------------|------------------|
-| Website | Domain or URL | `nytimes.com` or `nytimes.com/section/business` | Display |
+| Website | Domain or URL | `nytimes.com` or `nytimes.com/section/business` | Demand Gen |
 | YouTube channel | Channel URL | `youtube.com/c/channelname` | Video |
 | YouTube video | Video URL | `youtube.com/watch?v=VIDEO_ID` | Video |
-| Mobile app | App name or package ID | `com.spotify.music` | Display |
-| App category | Category selection | Games > Puzzle | Display |
+| Mobile app | App name or package ID | `com.spotify.music` | Demand Gen |
+| App category | Category selection | Games > Puzzle | Demand Gen |
 
 ### Placement syntax
 
@@ -86,9 +86,8 @@ Restricts ad delivery to specific websites, apps, YouTube channels, or individua
 
 | **Method** | **How** | **Best for** |
 |------------|---------|--------------|
-| Placement report | Reports > Where ads showed > Placements | Finding new placements from automatic |
+| Placement report | Insights and reports > When and where ads showed > Where ads showed | Finding new placements from automatic |
 | Manual research | Industry sites, competitor analysis | High-control campaigns |
-| Display Planner | Tools > Display Planner | Discovering reach by placement |
 | YouTube search | Search relevant terms on YouTube | Video placement discovery |
 
 ### Placement best practices
@@ -231,35 +230,43 @@ Prevent ads from appearing on specific content types, categories, or individual 
 | **Topic exclusions** | Content categories | Ad group, Campaign |
 | **Keyword exclusions** | Pages with specific terms | Ad group, Campaign |
 | **Content suitability** | Sensitive content categories | Account |
-| **Inventory type** | Standard/Limited/Expanded | Campaign |
+| **Inventory type** | Maximum/Moderate/Limited | Campaign |
+
+The levels are not additive. Account-level placement exclusions override the campaign and ad group levels, and exclusions set on a manager account are inherited by every account beneath it.
 
 ### Content suitability settings (Account level)
 
-| **Category** | **Default** | **Recommendation** |
-|--------------|-------------|-------------------|
-| Tragedy and conflict | Excluded | Keep excluded |
-| Sensitive social issues | Excluded | Keep excluded |
-| Profanity and rough language | Included | Exclude for most brands |
-| Sexually suggestive content | Excluded | Keep excluded |
-| Sensational and shocking | Excluded | Keep excluded |
+| **Category** | **Default** |
+|--------------|-------------|
+| Tragedy and conflict | Excluded |
+| Sensitive social issues | Excluded |
+| Profanity and rough language | Included |
+| Sexually suggestive content | Excluded |
+| Sensational and shocking | Excluded |
+
+Which of these to change is owned by [Content Exclusion Guidelines](../guidelines/Content Exclusion Guidelines.md).
 
 ### Inventory type (Video campaigns)
 
-| **Type** | **Content included** | **Recommendation** |
-|----------|---------------------|-------------------|
-| **Expanded** | All monetizable content | Avoid (includes sensitive) |
-| **Standard** | Excludes most sensitive | Default for most |
-| **Limited** | Only vetted content | Premium brands, strict requirements |
+| **Type** | **Content included** |
+|----------|---------------------|
+| **Maximum** | All monetizable content, sensitive content included |
+| **Moderate** | Excludes most sensitive content. This is the Google default |
+| **Limited** | Only content reviewed against Google's strictest standards |
+
+Which type to select is owned by [Content Exclusion Guidelines](../guidelines/Content Exclusion Guidelines.md).
 
 ### Digital content labels
 
-| **Label** | **Content type** | **Action** |
-|-----------|-----------------|-----------|
-| DL-G | General audiences | Include |
-| DL-PG | Parental guidance | Include (usually) |
-| DL-T | Teen | Review based on brand |
-| DL-MA | Mature audiences | Exclude (usually) |
-| Not yet labeled | Unclassified | Exclude for safety |
+| **Label** | **Content type** |
+|-----------|-----------------|
+| DL-G | General audiences |
+| DL-PG | Parental guidance |
+| DL-T | Teen |
+| DL-MA | Mature audiences |
+| Not yet labeled | Content Google has not classified |
+
+Which labels to exclude is owned by [Content Exclusion Guidelines](../guidelines/Content Exclusion Guidelines.md).
 
 ### Mandatory exclusions (all campaigns)
 
@@ -310,7 +317,7 @@ Prevent ads from appearing on specific content types, categories, or individual 
 | Contextual boost | Audience + Topics | Medium |
 | Maximum precision | Audience + Placements | Lowest |
 
-> 💡 **AND logic restricts reach significantly:** Every layer you add reduces eligible impressions. Use only when precision justifies lower volume.
+> 💡 **AND logic restricts reach significantly.** Every added layer reduces eligible impressions, so precision and volume trade against each other directly.
 
 ---
 
@@ -340,7 +347,7 @@ Do you know exactly where you want to appear?
 
 ## Content targeting as an expansion lever
 
-If your Display or Video campaigns currently use only audience targeting with no content targeting, content targeting is an untapped optimization lever. Adding contextual signals can improve relevance and open new inventory.
+A Video or Demand Gen campaign running audience targeting alone leaves content targeting unused. Contextual signals layered on top change both relevance and the inventory the campaign is eligible for.
 
 ### When to test content targeting
 
@@ -368,7 +375,7 @@ If your Display or Video campaigns currently use only audience targeting with no
 | Your niche is not covered by Google's topic taxonomy | Keywords (content) | Fills gaps in predefined categories |
 | No clear content fit | Skip content targeting | Audience-only targeting is the right approach |
 
-> ↪️ **Content targeting optimization in the cycle:** See [SOP – Run Display & Video Campaign Optimization Cycle](../sops/SOP – Run Display & Video Campaign Optimization Cycle.md) Phase 3.5 for the recurring review process.
+> ↪️ **Content targeting optimization in the cycle:** See [SOP – Run Demand Gen Optimization Cycle](../sops/SOP – Run Demand Gen Optimization Cycle.md) for the recurring review process.
 
 ---
 
@@ -393,7 +400,7 @@ If your Display or Video campaigns currently use only audience targeting with no
 | [Content Exclusion Guidelines](../guidelines/Content Exclusion Guidelines.md) | Guideline: recommended exclusion settings |
 | [Audience Targeting Reference](../references/Audience Targeting Reference.md) | Companion: audience-based targeting |
 | [Upper Funnel Campaign Structure Mental Model](../mental-models/Upper Funnel Campaign Structure Mental Model.md) | Framework: campaign structure context |
-| [SOP – Launch a Display Campaign](../sops/SOP – Launch a Display Campaign.md) | Execution: Display campaign setup |
+| [SOP – Launch a Demand Gen Campaign](../sops/SOP – Launch a Demand Gen Campaign.md) | Execution: Demand Gen campaign setup |
 | [SOP – Launch a Video Campaign](../sops/SOP – Launch a Video Campaign.md) | Execution: Video campaign setup |
 | [Upper Funnel Campaign Launch Checklist](../checklists/Upper Funnel Campaign Launch Checklist.md) | Validation: pre-launch checks |
 
@@ -401,8 +408,8 @@ If your Display or Video campaigns currently use only audience targeting with no
 
 ## Version details
 
-- **Version:** 2.0
-- **Last Updated:** April 2026
+- **Version:** 4.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

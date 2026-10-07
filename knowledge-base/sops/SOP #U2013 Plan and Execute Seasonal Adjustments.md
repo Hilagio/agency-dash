@@ -1,5 +1,6 @@
 # SOP – Plan and Execute Seasonal Adjustments
 Created: 2026-04-04
+Updated: 2026-10-05
 
 Agent_Executable: No
 Category: Operational
@@ -58,6 +59,7 @@ Run this SOP when:
 | [Promotional Extensions Reference](../references/Promotional Extensions Reference.md) | Promotional element specs and timing |
 | [Budget Pacing Reference](../references/Budget Pacing Reference.md) | Budget pacing mechanics during peak |
 | [Dynamic Text Reference](../references/Dynamic Text Reference.md) | Countdown timer and ad customizer syntax |
+| [Data Exclusions Reference](../references/Data Exclusions Reference.md) | Post-event data exclusion windows |
 
 ---
 
@@ -178,7 +180,7 @@ Based on YoY data and client goals, define:
 ### 3.1 Configure Seasonality Bid Adjustments (event start)
 
 For short events (1-7 days):
-1. In Google Ads: Tools > Bid strategies > Advanced controls > Seasonality adjustments
+1. In Google Ads: Tools > Budgets and bidding > Bid strategies > Advanced controls > Seasonality adjustments
 2. Set the date range to cover the exact event period
 3. Set the adjustment percentage based on the expected conversion rate increase during the event (e.g., if CVR typically doubles during Black Friday, set 100%)
 4. Select campaign scope: all campaigns or specific campaign types
@@ -202,7 +204,7 @@ For multi-week seasonal ramp-ups:
 
 ### 3.4 Monitor in real time (during event)
 
-1. Track CPC as the primary live metric (ROAS has conversion delay)
+1. Track CPC as the primary live metric (ROAS has conversion lag)
 2. Monitor budget pacing: actual spend vs. seasonal budget plan
 3. Check Search IS lost (budget) hourly on peak day: any loss = missed opportunity
 4. Pull Auction Insights: compare vs. same period prior year. Seasonal vs. structural?
@@ -234,13 +236,13 @@ For multi-week seasonal ramp-ups:
 ### 4.4 Apply Data Exclusion (if applicable)
 
 If the event was a short, sharp spike (1-3 day sale):
-1. In Google Ads: Tools > Bid strategies > Advanced controls > Data exclusions
-2. Set the date range to cover the event period (account for conversion delay: if the sale was Nov 24-26 with 5-day conversion window, exclude Nov 19-26)
+1. In Google Ads: Tools > Budgets and bidding > Bid strategies > Advanced controls > Data exclusions
+2. Set the date range to cover the event period (account for conversion lag: if the sale was Nov 24-26 with 5-day conversion window, exclude Nov 19-26)
 3. Typical duration: 3 days. Maximum recommended: 7 days.
 
 ---
 
-### Validation & Definition of Done
+### Validation & definition of done
 
 - [ ] YoY benchmark report completed and shared with client
 - [ ] All seasonal assets deployed (ads, extensions, keywords, feed updates)
@@ -263,7 +265,7 @@ If the event was a short, sharp spike (1-3 day sale):
 | **Issue found** | **Route to** |
 |----------------|-------------|
 | ROAS not recovering post-peak | [SOP – Scale Bids and Budgets](../sops/SOP – Scale Bids and Budgets.md) (target recalibration) |
-| Conversion tracking discrepancies | [SOP – Resolve Tracking Breakage](../sops/SOP – Resolve Tracking Breakage.md) |
+| Conversion tracking discrepancies | [SOP – Set Up Google Ads Conversion Tracking](../sops/SOP – Set Up Google Ads Conversion Tracking.md) |
 | Seasonal queries still triggering post-peak | [SOP – Run Post-Peak Season Normalization](../sops/SOP – Run Post-Peak Season Normalization.md) |
 
 ---
@@ -280,7 +282,7 @@ A: SBAs for sharp 1-7 day events. Lower ROAS targets for multi-week seasonal ram
 A: Not every brand needs to participate in discount events. Added value (free shipping, bundles, extended warranty, free accessories) can drive seasonal conversions without price erosion. Run the proposition check in Phase 2.1.
 
 **Q: How much should I increase budgets during peak?**
-A: Use prior year spend as the baseline, apply the growth target percentage, and add a buffer for IS recovery. Ensure the daily budget is at least 5-10x the target CPA. For PMax, increase gradually.
+A: Use prior year spend as the baseline, apply the growth target percentage, and add a buffer for IS recovery. Ensure the daily budget is at least 10x the target CPA. For PMax, increase gradually.
 
 ---
 
@@ -298,7 +300,7 @@ A: Use prior year spend as the baseline, apply the growth target percentage, and
 
 | SOP | Relationship |
 |-----|-------------|
-| [SOP – Run Post-Peak Season Normalization](../sops/SOP – Run Post-Peak Season Normalization.md) | Downstream: Phases 4-5 |
+| [SOP – Run Post-Peak Season Normalization](../sops/SOP – Run Post-Peak Season Normalization.md) | Downstream: Phase 5 |
 | [SOP – Scale Bids and Budgets](../sops/SOP – Scale Bids and Budgets.md) | Related: bid/budget mechanics |
 | [SOP – Allocate Budget Across Campaigns](../sops/SOP – Allocate Budget Across Campaigns.md) | Related: budget redistribution |
 | [SOP – Set Up Ad Extensions](../sops/SOP – Set Up Ad Extensions.md) | Related: extension setup mechanics |
@@ -319,8 +321,8 @@ A: Use prior year spend as the baseline, apply the growth target percentage, and
 
 ## Version details
 
-- **Version:** 1.0
-- **Last Updated:** April 2026
+- **Version:** 4.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

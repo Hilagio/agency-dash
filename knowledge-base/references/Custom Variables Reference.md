@@ -28,8 +28,9 @@ Documents custom conversion variables for enriching Google Ads conversion data w
 **This reference does NOT:**
 
 - Provide step-by-step conversion tracking setup (See: [Conversion Action Reference](../references/Conversion Action Reference.md))
-- Cover offline conversion tracking upload procedures (See: future SOP: Set Up Offline Conversion Tracking)
-- Explain how to build scoring models for lead qualification (See: future SOP: Set Up Scoring Model Segmentation)
+- Cover offline conversion tracking upload procedures (See: [SOP - Set Up Offline Conversion Tracking](../sops/SOP – Set Up Offline Conversion Tracking.md))
+- Explain how to build scoring models for lead qualification (See: [SOP - Set Up Scoring Model Segmentation](../sops/SOP – Set Up Scoring Model Segmentation.md))
+- Provide the variable creation and upload procedure (See: [SOP - Set Up Custom Variables](../sops/SOP – Set Up Custom Variables.md))
 
 ---
 
@@ -42,10 +43,10 @@ Documents custom conversion variables for enriching Google Ads conversion data w
 | **Implementation methods** | gtag (hardcoded snippet) or OCT import (offline upload) |
 | **NOT available via** | GTM (no native support, workarounds unreliable) |
 | **Where to view** | Campaign reports > Segments > Conversions > Custom Variables |
-| **Variable creation** | Tools > Conversions > Custom Variables in Google Ads UI |
+| **Variable creation** | Goals > Conversions > Custom variables in Google Ads UI |
 | **Naming rule** | Variable names in tags/uploads must exactly match names in Google Ads UI |
 
-> ⚠️ **Custom variables are NOT available via GTM:** Despite various workarounds attempted, GTM does not natively support custom conversion variables. Use the gtag method (hardcoded snippet) or OCT import method instead.
+> ⚠️ **Custom variables are NOT available via GTM.** GTM has no native support for custom conversion variables, which leaves two routes: the gtag hardcoded snippet, or OCT import.
 
 ---
 
@@ -79,19 +80,11 @@ Now you see Campaign B delivers 83% high-score leads and 93% enterprise companie
 
 Add custom parameters directly to the conversion event snippet on your confirmation page. Google Ads reads these parameters and maps them to your defined custom variables.
 
-### Setup steps
+### Where variables are defined
 
-**Step 1️⃣: Create custom variables in Google Ads**
+Custom variables are created under Goals > Conversions > Custom variables, and the name entered there is the name the tag has to send. Creating and enabling them is owned by [SOP - Set Up Custom Variables](../sops/SOP – Set Up Custom Variables.md).
 
-| **Action** | **Where** |
-|-----------|----------|
-| Navigate to Tools > Measurement > Conversions | Google Ads UI |
-| Click "Custom Variables" tab | Top navigation within Conversions |
-| Click "+ Custom Variable" | Create each variable |
-| Enter variable name (e.g., `lead_score`) | Must match exactly what you send in the tag |
-| Save and enable | Variable is now active |
-
-**Step 2️⃣: Add parameters to conversion snippet**
+### Snippet syntax
 
 ```javascript
 gtag('event', 'conversion', {
@@ -105,9 +98,7 @@ gtag('event', 'conversion', {
 });
 ```
 
-**Step 3️⃣: Verify data flow**
-
-Custom variable data appears in reports within 24-48 hours of the first conversion with variable data.
+Custom variable data appears in reports within 24-48 hours of the first conversion carrying it.
 
 ### gtag parameter rules
 
@@ -131,7 +122,7 @@ Include custom variable columns in your offline conversion upload file. This met
 
 **Step 1️⃣: Create custom variables in Google Ads**
 
-Same process as gtag: Tools > Measurement > Conversions > Custom Variables. Create each variable before uploading.
+Same process as gtag: Goals > Conversions > Custom variables. Create each variable before uploading.
 
 **Step 2️⃣: Add columns to upload template**
 
@@ -171,9 +162,9 @@ Create each variable manually in Google Ads before sending data. This ensures ex
 
 | **Step** | **Action** |
 |----------|-----------|
-| 1 | Go to Tools > Measurement > Conversions |
-| 2 | Click "Custom Variables" tab |
-| 3 | Click "+ Custom Variable" |
+| 1 | Go to Goals > Conversions |
+| 2 | Click "Custom variables" |
+| 3 | Click the blue plus button |
 | 4 | Enter name (must match tag/upload parameter exactly) |
 | 5 | Save |
 | 6 | Repeat for each variable (max 5) |
@@ -268,8 +259,8 @@ For gtag implementations, Google can auto-detect new parameters sent with conver
 
 ## Version details
 
-- **Version:** 1.0
-- **Last Updated:** February 2026
+- **Version:** 2.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

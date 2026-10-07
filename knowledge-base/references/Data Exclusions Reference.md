@@ -75,7 +75,7 @@ This is critical when a technical failure causes conversion data to be artificia
 | **Identifier needed** | None (time-based) | Transaction ID or GCLID |
 | **Maximum duration** | 14 days per exclusion | No time limit |
 | **Affects** | Smart Bidding predictions only | Reporting columns and Smart Bidding |
-| **Location** | Tools > Bid Strategies > Advanced Controls | Tools > Conversions > Uploads |
+| **Location** | Tools > Budgets and bidding > Bid strategies > Advanced Controls | Goals > Conversions > Uploads |
 
 ---
 
@@ -83,11 +83,7 @@ This is critical when a technical failure causes conversion data to be artificia
 
 ### Location in Google Ads
 
-1. Go to Tools and Settings
-2. Click Shared Library
-3. Click Bid Strategies
-4. On the left side, click Advanced Controls
-5. On the top, click Data Exclusions
+Data Exclusions sit under Tools > Budgets and bidding > Bid strategies > Advanced Controls > Data Exclusions. Creating one is owned by [SOP - Set Up Data Exclusions](../sops/SOP – Set Up Data Exclusions.md), Phase 2.
 
 ### Settings
 
@@ -117,7 +113,7 @@ This is critical when a technical failure causes conversion data to be artificia
 | Mobile only | Mobile-specific payment issue or responsive design failure |
 | Tablet only | Tablet-specific rendering issue on conversion page |
 
-> 💡 **Be specific with scope and devices:** If only mobile checkout was broken, exclude only mobile devices. Excluding all devices when only one was affected removes valid data that Smart Bidding needs.
+> 💡 **Scope and device selection are subtractive.** An exclusion wider than the actual failure removes valid data Smart Bidding needs, so a mobile-only checkout break belongs in a mobile-only exclusion.
 
 ---
 
@@ -127,12 +123,12 @@ This is critical when a technical failure causes conversion data to be artificia
 |-----------|--------|
 | **Maximum 14 days per exclusion** | A single exclusion cannot span more than 14 days |
 | **Can chain multiple exclusions** | For longer outages, create consecutive 14-day exclusions |
-| **Do not exclude more than 2-3 weeks total** | Extended exclusions starve the algorithm of data, degrading bid quality |
+| **2-3 weeks total is the practical ceiling** | Beyond it, exclusions starve the algorithm of data and bid quality degrades |
 | **Smart Bidding only** | Data Exclusions affect automated bidding strategies only, not manual CPC |
 | **Cannot retroactively fix reports** | Exclusions tell Smart Bidding to ignore the period, they do not change reported conversion numbers |
 | **Hour precision** | Start and end times are set to the hour, not the minute |
 
-> ⚠️ **Do not use Data Exclusions for periods longer than 2-3 weeks:** Extended exclusions deprive Smart Bidding of the data it needs to make accurate predictions. If your tracking was broken for more than 3 weeks, consider resetting bid strategy learning periods instead of excluding the entire window.
+> ⚠️ **Past 2-3 weeks, an exclusion costs more than the corrupted data it removes.** Extended exclusions deprive Smart Bidding of the volume it needs for accurate predictions. An outage longer than three weeks is a bid-strategy reset, not an exclusion.
 
 ---
 
@@ -218,14 +214,15 @@ When a Data Exclusion is active:
 | [Measurement Maturity Mental Model](../mental-models/Measurement Maturity Mental Model.md) | Where data exclusions fit in the measurement stack |
 | [Conversion Tracking Configuration Guidelines](../guidelines/Conversion Tracking Configuration Guidelines.md) | Recommended configuration including exclusion protocols |
 | [Conversion Data Quality Checklist](../checklists/Conversion Data Quality Checklist.md) | Validates that outages have exclusions applied |
+| [SOP - Set Up Data Exclusions](../sops/SOP – Set Up Data Exclusions.md) | Execution: documenting the issue, creating the exclusion, validating it |
 | [SOP – Set Up Google Ads Conversion Tracking](../sops/SOP – Set Up Google Ads Conversion Tracking.md) | Tracking setup that prevents outages |
 
 ---
 
 ## Version details
 
-- **Version:** 1.0
-- **Last Updated:** February 2026
+- **Version:** 2.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

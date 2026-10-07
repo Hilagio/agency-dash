@@ -269,7 +269,7 @@ If conversions are the anomaly but traffic metrics are stable:
 ### 5.3 Document the investigation
 
 ```
-Anomaly Investigation — [Date]
+Anomaly Investigation: [Date]
 Account: [Name]
 
 ANOMALY

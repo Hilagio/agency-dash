@@ -1,5 +1,6 @@
 # SOP – Review and Optimize Ad Extensions
 Created: 2026-02-14
+Updated: 2026-10-05
 
 SOP_ID: SOP_73
 Status: Done
@@ -40,12 +41,12 @@ Run this SOP when:
 
 ## Before you start
 
-#### Required inputs
+### Required inputs
 
 - Google Ads account access with campaign management permissions
 - At least 30 days of extension performance data
 
-#### Reference documents (have open)
+### Reference documents (have open)
 
 | Document | Used for |
 |----------|----------|
@@ -71,7 +72,7 @@ Run this SOP when:
 
 ### 1.1 Check minimum coverage per campaign
 
-Pull the full asset list from Ads & Assets > Assets. Filter by association level (Account, Campaign, Ad Group). For each active campaign, verify these minimums:
+Pull the full asset list from Assets > Assets. Filter by association level (Account, Campaign, Ad group). For each active campaign, verify these minimums:
 | Extension type | Minimum required | Preferred level |
 |----------------|-----------------|-----------------|
 | Sitelinks | 4 | Campaign |
@@ -86,7 +87,7 @@ Flag any campaign below these thresholds. Campaigns relying solely on account-le
 
 ### 2.1 Pull extension performance report
 
-Navigate to Ads & Assets > Assets. Set date range to the last 30-60 days. Add columns: Impressions, Clicks, CTR, Conv. Rate, Conversions, Cost/Conv., Conv. Value, ROAS. Segment by asset type.
+Navigate to Assets > Assets. Set date range to the last 30-60 days. Add columns: Impressions, Clicks, CTR, Conv. rate, Conversions, Cost / conv., Conv. value, Conv. value / cost. Segment by asset type.
 
 ### 2.2 Identify underperformers
 
@@ -108,7 +109,7 @@ Navigate to Ads & Assets > Assets. Set date range to the last 30-60 days. Add co
 
 ### 3.1 Remove flagged extensions
 
-Navigate to Ads & Assets > Assets. Select each flagged extension and remove it. Do not pause: removed extensions free the slot for replacements.
+Navigate to Assets > Assets. Select each flagged extension and remove it. Do not pause: removed extensions free the slot for replacements.
 
 ### 3.2 Create replacement sitelinks
 
@@ -139,17 +140,9 @@ Run all new extensions through the [Extension Coverage Checklist](../checklists/
 
 ### 4.1 Review and disable auto-generated assets
 
-Navigate to Ads & Assets > Assets > Account-level automated assets. Disable auto-generated sitelinks, callouts, and structured snippets:
-
-| Auto-generated asset | Recommended | Rationale |
-|---------------------|-------------|-----------|
-| Dynamic sitelinks | Off | Maintain control over destinations |
-| Dynamic callouts | Off | Prevent generic or off-brand messaging |
-| Dynamic structured snippets | Off | Keep categorization intentional |
+Navigate to Assets > Assets > Account-level automated assets. Set each automated asset to the state given in [Automated Assets Control Guidelines](../guidelines/Automated Assets Control Guidelines.md).
 
 > ⚠️ **Check before disabling:** If any auto-generated extension outperforms your manual ones, note the messaging angle and incorporate it into a manual replacement before turning it off.
-
-For the full configuration, see [Automated Assets Control Guidelines](../guidelines/Automated Assets Control Guidelines.md).
 
 ---
 
@@ -240,8 +233,8 @@ Once extensions are updated and live:
 
 ## Version details
 
-- **Version:** 2.0
-- **Last Updated:** March 2026
+- **Version:** 4.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

@@ -22,9 +22,9 @@ This SOP walks you through preparing a conversion adjustment upload template, po
 
 This SOP does **not:**
 
-- Set up basic conversion tracking (prerequisite: conversion action must already exist)
+- Set up basic conversion tracking (See: [SOP – Set Up Google Ads Conversion Tracking](../sops/SOP – Set Up Google Ads Conversion Tracking.md))
 - Implement transaction ID deduplication (See: [SOP – Implement Transaction ID Deduplication](../sops/SOP – Implement Transaction ID Deduplication.md))
-- Configure offline conversion imports for new conversions (separate workflow)
+- Configure offline conversion imports for new conversions (See: [SOP – Set Up Offline Conversion Tracking](../sops/SOP – Set Up Offline Conversion Tracking.md))
 - Adjust bidding strategies based on adjusted data (downstream optimization)
 
 ### When to run this SOP
@@ -52,6 +52,7 @@ Run this SOP when:
 
 | Document | Used for |
 |----------|----------|
+| [Conversion Adjustments Reference](../references/Conversion Adjustments Reference.md) | Adjustment types, upload mechanics, column specs |
 | Google Ads conversion action names | Exact names for the upload template |
 | Backend/ERP export of returns and cancellations | Source data for adjustments |
 | Google Ads upload template format | Column structure and formatting |
@@ -95,7 +96,7 @@ Parameters:TimeZone=America/New_York
 
 Use the IANA timezone that matches your Google Ads account timezone.
 
-### 1.3 Understand adjustment types
+### 1.3 Select the adjustment type
 
 | Type | What it does | When to use | Value columns |
 |------|-------------|-------------|---------------|
@@ -145,7 +146,7 @@ Upload adjustments for all conversions, regardless of attribution source. Google
 
 ### 2.4 Use exact conversion action names
 
-1. Go to Google Ads > Goals > Conversions > Summary
+1. Go to Google Ads > Goals > Summary
 2. Copy the exact name of each conversion action
 3. Paste into the Conversion Name column
 
@@ -217,9 +218,9 @@ Track your adjustment rate over time:
 
 | Metric | How to calculate | Healthy range |
 |--------|-----------------|---------------|
-| Adjustment rate | Adjusted conversions / Total conversions | Depends on business, but consistent month-over-month |
-| Retraction rate | Retracted conversions / Total conversions | Should match your return/cancellation rate |
-| Average adjustment lag | Days between conversion and adjustment upload | Under 14 days ideal |
+| Adjustment rate | Adjusted conversions / Total conversions | Consistent month-over-month |
+| Retraction rate | Retracted conversions / Total conversions | Matches your return/cancellation rate |
+| Average adjustment lag | Days between conversion and adjustment upload | Under 14 days |
 
 ### 4.4 Final checklist
 
@@ -298,14 +299,14 @@ A: Yes. Adjusted values replace original values in all reports, including histor
 | RETRACT rows include a value | Template error, value not cleared | Always leave value and currency empty for RETRACT |
 | Conversion name mismatch | Name in file doesn't match Google Ads exactly | Copy-paste from Google Ads, never type manually |
 | Adjustments uploaded too late | Batch process runs infrequently | Set up daily or weekly scheduled uploads |
-| Missing transaction IDs | Original conversion didn't send a transaction ID | Fix deduplication first (SOP_28), then adjustments work |
+| Missing transaction IDs | Original conversion did not send a transaction ID | Run [SOP – Implement Transaction ID Deduplication](../sops/SOP – Implement Transaction ID Deduplication.md) first |
 
 ---
 
 ### Version details
 
-- **Version:** 1.0
-- **Last Updated:** February 2026
+- **Version:** 2.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

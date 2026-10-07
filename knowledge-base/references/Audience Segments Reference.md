@@ -42,10 +42,10 @@ Explains how Google Ads audience segments work: matching mechanics, intent tempe
 |----------|-------------------|-------------|------------------|----------------------|
 | Basic Demographics | Self-reported + inferred from browsing/search patterns | Layer only (refines, not targets) | ~20 options | All campaign types |
 | Detailed Demographics | Cross-referenced from browsing, search, and life stage signals | Layer only (refines, not targets) | ~25 segments | All campaign types |
-| Affinity Audiences | Long-term browsing patterns, content consumption, lifestyle signals | Cold (broad interest, no purchase intent) | ~130 segments | Display, Video, Demand Gen, PMax (signal) |
-| In-Market Audiences | Active research behavior: recent searches, site visits, content engagement | Cool (active consideration, higher intent than Affinity) | ~500+ segments | Display, Video, Demand Gen, PMax (signal) |
-| Life Events | Behavioral signals indicating major life transitions | Cool (intent varies by event proximity) | ~15 events | Display, Video, Demand Gen |
-| Custom Segments | Keywords, URLs, or apps you define | Varies by input quality | Unlimited | Display, Video, Demand Gen, PMax (signal) |
+| Affinity Audiences | Long-term browsing patterns, content consumption, lifestyle signals | Cold (broad interest, no purchase intent) | ~130 segments | Video, Demand Gen, PMax (signal) |
+| In-Market Audiences | Active research behavior: recent searches, site visits, content engagement | Cool (active consideration, higher intent than Affinity) | ~500+ segments | Video, Demand Gen, PMax (signal) |
+| Life Events | Behavioral signals indicating major life transitions | Cool (intent varies by event proximity) | ~15 events | Video, Demand Gen |
+| Custom Segments | Keywords, URLs, or apps you define | Varies by input quality | Unlimited | Video, Demand Gen, PMax (signal) |
 | Your Data (Remarketing) | Direct interaction: site visits, app usage, video views | Warm to hot (based on recency) | Unlimited | All campaign types |
 | Customer Match | First-party CRM data matched to Google accounts | Hot (known customers/leads) | Unlimited | All campaign types |
 
@@ -81,36 +81,39 @@ Temperature reflects how close a user is to a conversion action. It determines e
 
 ### Segment availability by campaign type
 
-| Segment type | Search | Shopping | PMax | Display | Video | Demand Gen |
-|-------------|--------|----------|------|---------|-------|------------|
-| Basic Demographics | Observation only | Observation only | Signal | Targeting/Observation | Targeting/Observation | Targeting |
-| Detailed Demographics | Observation only | Observation only | Signal | Targeting/Observation | Targeting/Observation | Targeting |
-| Affinity | Observation only | Observation only | Signal | Targeting/Observation | Targeting/Observation | Targeting |
-| In-Market | Observation only | Observation only | Signal | Targeting/Observation | Targeting/Observation | Targeting |
-| Life Events | ❌ | ❌ | Signal | Targeting/Observation | Targeting/Observation | Targeting |
-| Custom Segments | ❌ | ❌ | Signal | Targeting/Observation | Targeting/Observation | Targeting |
-| Your Data (Remarketing) | RLSA (Observation/Targeting) | ❌ | Signal | Targeting/Observation | Targeting/Observation | Targeting |
-| Customer Match | RLSA (Observation/Targeting) | ❌ | Signal | Targeting/Observation | Targeting/Observation | Targeting |
-| Lookalike Segments | ❌ | ❌ | ❌ | ❌ | ❌ | Targeting |
-| Combined Segments | Observation only | ❌ | Signal | Targeting/Observation | Targeting/Observation | Targeting |
+| Segment type | Search | Shopping | PMax | Video | Demand Gen |
+|-------------|--------|----------|------|-------|------------|
+| Basic Demographics | Observation only | Observation only | Signal | Targeting/Observation | Targeting |
+| Detailed Demographics | Observation only | Observation only | Signal | Targeting/Observation | Targeting |
+| Affinity | Observation only | Observation only | Signal | Targeting/Observation | Targeting |
+| In-Market | Observation only | Observation only | Signal | Targeting/Observation | Targeting |
+| Life Events | ❌ | ❌ | Signal | Targeting/Observation | Targeting |
+| Custom Segments | ❌ | ❌ | Signal | Targeting/Observation | Targeting |
+| Your Data (Remarketing) | RLSA (Observation/Targeting) | ❌ | Signal | Targeting/Observation | Targeting |
+| Customer Match | RLSA (Observation/Targeting) | ❌ | Signal | Targeting/Observation | Targeting |
+| Lookalike Segments | ❌ | ❌ | ❌ | ❌ | Targeting |
+| Combined Segments | Observation only | ❌ | Signal | Targeting/Observation | Targeting |
 
-> 💡 **Key distinction.** In Search/Shopping, audience segments function as observation layers (bid modifiers) or RLSA targeting. In Display/Video/Demand Gen, they control who sees your ads. In PMax, they function as signals (hints to the algorithm).
+> 💡 **Key distinction.** In Search/Shopping, audience segments function as observation layers (bid modifiers) or RLSA targeting. In Video/Demand Gen, they control who sees your ads. In PMax, they function as signals (hints to the algorithm).
 
 ### The "Unknown" segment
 
-Every demographic dimension includes an "Unknown" category representing users Google cannot classify. This segment typically contains 20-40% of traffic.
+Every demographic dimension includes an "Unknown" category representing users Google cannot classify.
 
-- Do not exclude "Unknown" without 30+ days of data showing CPA > 2x campaign average
-- "Unknown" often contains high-quality users whose demographics are simply undetected
-- Excluding "Unknown" reduces reach by 20-40% with uncertain performance impact
+| Property | Detail |
+|----------|--------|
+| Share of traffic | Typically 20-40% |
+| Composition | High-quality users whose demographics are simply undetected, not a distinct low-value population |
+| Cost of exclusion | Reach falls by the same 20-40%, with an uncertain performance offset |
+| Evidence bar for exclusion | 30+ days of data showing CPA above 2x campaign average |
 
 ---
 
 ## Full segment name lookup
 
-The tables below list all predefined Google Ads segment names. Use the [Audience Segment Catalog](../catalogs/Audience Segment Catalog.md) for configuration examples and strategy per segment type.
+The tables below list predefined Google Ads segment names by category. Configuration examples and strategy per segment type live in the [Audience Segment Catalog](../catalogs/Audience Segment Catalog.md).
 
-## Basic Demographics
+### Basic Demographics
 
 | Age | Gender | Household Income | Parental Status |
 |-----|--------|------------------|-----------------|
@@ -124,9 +127,9 @@ The tables below list all predefined Google Ads segment names. Use the [Audience
 
 ---
 
-## Detailed Demographics
+### Detailed Demographics
 
-### Education
+#### Education
 
 | Segment | Detail |
 |---------|--------|
@@ -135,7 +138,7 @@ The tables below list all predefined Google Ads segment names. Use the [Audience
 | Highest Level: Bachelor's Degree | Undergraduate degree holders |
 | Highest Level: High School Graduate | High school diploma holders |
 
-### Employment
+#### Employment
 
 | Category | Segment |
 |----------|---------|
@@ -151,14 +154,14 @@ The tables below list all predefined Google Ads segment names. Use the [Audience
 | Industry | Real Estate Industry |
 | Industry | Technology Industry |
 
-### Homeownership Status
+#### Homeownership Status
 
 | Segment |
 |---------|
 | Homeowners |
 | Renters |
 
-### Marital Status
+#### Marital Status
 
 | Segment |
 |---------|
@@ -166,7 +169,7 @@ The tables below list all predefined Google Ads segment names. Use the [Audience
 | Married |
 | Single |
 
-### Parental Status (Detailed)
+#### Parental Status (Detailed)
 
 | Segment | Age Range |
 |---------|-----------|
@@ -178,23 +181,23 @@ The tables below list all predefined Google Ads segment names. Use the [Audience
 
 ---
 
-## Affinity Audiences
+### Affinity Audiences
 
-### Banking & Finance
+#### Banking & Finance
 
 | Segment |
 |---------|
 | Avid Investors |
 | Banks Online |
 
-### Beauty & Wellness
+#### Beauty & Wellness
 
 | Segment |
 |---------|
 | Beauty Mavens |
 | Frequently Visits Salons |
 
-### Food & Dining
+#### Food & Dining
 
 | Category | Subcategory | Segment |
 |----------|------------|---------|
@@ -210,14 +213,14 @@ The tables below list all predefined Google Ads segment names. Use the [Audience
 | Vegetarians & Vegans | | Vegetarians & Vegans |
 | Vegetarians & Vegans | | Vegans |
 
-### Home & Garden
+#### Home & Garden
 
 | Segment |
 |---------|
 | Do-It-Yourselfers |
 | Home Decor Enthusiasts |
 
-### Lifestyles & Hobbies
+#### Lifestyles & Hobbies
 
 | Category | Segment |
 |----------|---------|
@@ -235,7 +238,7 @@ The tables below list all predefined Google Ads segment names. Use the [Audience
 | Pet Lovers | Cat Lovers |
 | Pet Lovers | Dog Lovers |
 
-### Media & Entertainment
+#### Media & Entertainment
 
 | Category | Segment |
 |----------|---------|
@@ -282,7 +285,7 @@ The tables below list all predefined Google Ads segment names. Use the [Audience
 | TV Lovers | TV Comedy Fans |
 | TV Lovers | TV Drama Fans |
 
-### News & Politics
+#### News & Politics
 
 | Category | Segment |
 |----------|---------|
@@ -294,7 +297,7 @@ The tables below list all predefined Google Ads segment names. Use the [Audience
 | Avid News Readers | Men's Media Fans |
 | Avid News Readers | Women's Media Fans |
 
-### Shoppers
+#### Shoppers
 
 | Category | Segment |
 |----------|---------|
@@ -307,7 +310,7 @@ The tables below list all predefined Google Ads segment names. Use the [Audience
 | Shoppers by Store Type | Grocery Shoppers |
 | Shoppers by Store Type | Superstore Shoppers |
 
-### Sports & Fitness
+#### Sports & Fitness
 
 | Category | Segment |
 |----------|---------|
@@ -334,7 +337,7 @@ The tables below list all predefined Google Ads segment names. Use the [Audience
 | Sports Fans | Water Sports Enthusiasts |
 | Sports Fans | Winter Sports Enthusiasts |
 
-### Technology
+#### Technology
 
 | Category | Segment |
 |----------|---------|
@@ -345,7 +348,7 @@ The tables below list all predefined Google Ads segment names. Use the [Audience
 | Technophiles | High-End Computer Aficionados |
 | Technophiles | Home Automation Enthusiasts |
 
-### Travel
+#### Travel
 
 | Category | Segment |
 |----------|---------|
@@ -355,7 +358,7 @@ The tables below list all predefined Google Ads segment names. Use the [Audience
 | Travel Buffs | Luxury Travelers |
 | Travel Buffs | Snowbound Travelers |
 
-### Vehicles & Transportation
+#### Vehicles & Transportation
 
 | Category | Segment |
 |----------|---------|
@@ -367,9 +370,9 @@ The tables below list all predefined Google Ads segment names. Use the [Audience
 
 ---
 
-## In-Market Audiences
+### In-Market Audiences
 
-### Apparel & Accessories
+#### Apparel & Accessories
 
 | Category | Subcategory | Segment |
 |----------|------------|---------|
@@ -401,13 +404,13 @@ The tables below list all predefined Google Ads segment names. Use the [Audience
 | Shoes | | Boots |
 | Shoes | | Dress Shoes |
 
-### Arts & Crafts Supplies
+#### Arts & Crafts Supplies
 
 | Segment |
 |---------|
 | Arts & Crafts Supplies |
 
-### Autos & Vehicles
+#### Autos & Vehicles
 
 **Auto Parts & Accessories**
 
@@ -491,7 +494,7 @@ The tables below list all predefined Google Ads segment names. Use the [Audience
 | By Type | Station Wagons |
 | By Type | SUVs |
 
-### Baby & Children's Products
+#### Baby & Children's Products
 
 | Category | Segment |
 |----------|---------|
@@ -505,7 +508,7 @@ The tables below list all predefined Google Ads segment names. Use the [Audience
 | Baby Transport | Baby Carriers |
 | Baby Transport | Strollers |
 
-### Beauty Products & Services
+#### Beauty Products & Services
 
 | Category | Subcategory | Segment |
 |----------|------------|---------|
@@ -522,7 +525,7 @@ The tables below list all predefined Google Ads segment names. Use the [Audience
 | Skin Care Products | | Facial Cleansers |
 | Skin Care Products | | Moisturizers |
 
-### Business Services
+#### Business Services
 
 | Category | Segment |
 |----------|---------|
@@ -546,7 +549,7 @@ The tables below list all predefined Google Ads segment names. Use the [Audience
 | Business Technology | Project Management Software |
 | Business Technology | Web Hosting Services |
 
-### Computers & Peripherals
+#### Computers & Peripherals
 
 | Category | Segment |
 |----------|---------|
@@ -559,7 +562,7 @@ The tables below list all predefined Google Ads segment names. Use the [Audience
 | Computers | Laptops & Notebooks |
 | Computers | Tablets |
 
-### Consumer Electronics
+#### Consumer Electronics
 
 | Category | Subcategory | Segment |
 |----------|------------|---------|
@@ -580,7 +583,7 @@ The tables below list all predefined Google Ads segment names. Use the [Audience
 | Video Game Consoles | By Brand | PlayStation |
 | Video Game Consoles | By Brand | Xbox |
 
-### Consumer Software
+#### Consumer Software
 
 | Segment |
 |---------|
@@ -588,13 +591,13 @@ The tables below list all predefined Google Ads segment names. Use the [Audience
 | Business & Productivity Software |
 | Photo & Video Editing Software |
 
-### Dating Services
+#### Dating Services
 
 | Segment |
 |---------|
 | Dating Services |
 
-### Education
+#### Education
 
 | Category | Segment |
 |----------|---------|
@@ -603,7 +606,7 @@ The tables below list all predefined Google Ads segment names. Use the [Audience
 | Post-Secondary Education | Exams & Standardized Tests |
 | Primary & Secondary Schools | Private Schools |
 
-### Employment
+#### Employment
 
 | Segment |
 |---------|
@@ -625,7 +628,7 @@ The tables below list all predefined Google Ads segment names. Use the [Audience
 | Scientific & Engineering Jobs |
 | Skilled Trade & Labor Jobs |
 
-### Financial Services
+#### Financial Services
 
 | Category | Subcategory | Segment |
 |----------|------------|---------|
@@ -648,7 +651,7 @@ The tables below list all predefined Google Ads segment names. Use the [Audience
 | Investment Services | | Brokerage & Day Trading |
 | Top-level | | Tax Services |
 
-### Food & Groceries
+#### Food & Groceries
 
 | Category | Segment |
 |----------|---------|
@@ -658,7 +661,7 @@ The tables below list all predefined Google Ads segment names. Use the [Audience
 | Prepared Foods | Frozen Meals |
 | Prepared Foods | Prepared Meals & Side Dishes |
 
-### Gifts & Occasions
+#### Gifts & Occasions
 
 | Segment |
 |---------|
@@ -668,7 +671,7 @@ The tables below list all predefined Google Ads segment names. Use the [Audience
 | Party & Holiday Supplies |
 | Personalized Gifts |
 
-### Health
+#### Health
 
 | Category | Subcategory | Segment |
 |----------|------------|---------|
@@ -692,7 +695,7 @@ The tables below list all predefined Google Ads segment names. Use the [Audience
 | Wellness Products | | Herbal & Natural Remedies |
 | Wellness Products | | Vitamins & Supplements |
 
-### Home & Garden
+#### Home & Garden
 
 | Category | Subcategory | Segment |
 |----------|------------|---------|
@@ -742,7 +745,7 @@ The tables below list all predefined Google Ads segment names. Use the [Audience
 | Outdoor & Garden | | Outdoor Storage |
 | Outdoor & Garden | | Pools & Spas |
 
-### Real Estate
+#### Real Estate
 
 | Category | Segment |
 |----------|---------|
@@ -754,7 +757,7 @@ The tables below list all predefined Google Ads segment names. Use the [Audience
 | Residential Property | Houses |
 | Residential Property | Vacation & Leisure Property |
 
-### Sports & Fitness
+#### Sports & Fitness
 
 | Category | Subcategory | Segment |
 |----------|------------|---------|
@@ -777,7 +780,7 @@ The tables below list all predefined Google Ads segment names. Use the [Audience
 | Team Sports Equipment | | Football Equipment |
 | Team Sports Equipment | | Soccer Equipment |
 
-### Telecom
+#### Telecom
 
 | Category | Segment |
 |----------|---------|
@@ -788,7 +791,7 @@ The tables below list all predefined Google Ads segment names. Use the [Audience
 | Mobile Phone Service | T-Mobile |
 | Mobile Phone Service | Verizon |
 
-### Travel
+#### Travel
 
 | Category | Subcategory | Segment |
 |----------|------------|---------|
@@ -928,7 +931,7 @@ The tables below list all predefined Google Ads segment names. Use the [Audience
 
 | Document | Type | Relationship |
 |----------|------|-------------|
-| [Audience Segment Catalog](../catalogs/Audience Segment Catalog.md) | Catalog | Configuration guidance for Display, Video, Demand Gen segments |
+| [Audience Segment Catalog](../catalogs/Audience Segment Catalog.md) | Catalog | Configuration guidance for Video and Demand Gen segments |
 | [Audience Signal Catalog](../catalogs/Audience Signal Catalog.md) | Catalog | Configuration guidance for PMax audience signals |
 | [Audience Targeting Reference](../references/Audience Targeting Reference.md) | Reference | System specs, targeting modes, limits |
 | [Audience Signals Reference](../references/Audience Signals Reference.md) | Reference | PMax signal types and configuration |
@@ -956,4 +959,4 @@ Violations may be detected through embedded document fingerprints and will be pu
 
 Full terms: [https://www.ppcmastery.com/terms-and-conditions](https://www.ppcmastery.com/terms-and-conditions)
 
-(c) 2026 PPC Mastery B.V. All rights reserved.
+© 2026 PPC Mastery B.V. All rights reserved.

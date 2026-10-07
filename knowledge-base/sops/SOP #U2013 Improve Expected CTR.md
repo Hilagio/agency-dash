@@ -133,12 +133,10 @@ Your RSA must include these elements to compete effectively:
 
 **Action:**
 
-1. Check Auction Insights → **Overlap Rate** to identify top competitors (see screenshot below).
+1. Check Auction Insights → **Overlap Rate** to identify top competitors.
 2. Search your main keywords in an incognito browser, or use [**Google's Ads Transparency Center**](https://adstransparency.google.com/).
 3. Screenshot the top 3-4 competitor ads.
 4. Note what they're doing that you're NOT doing.
-
-![image.png](image.png)
 
 #### What to look for:
 
@@ -165,7 +163,7 @@ Your RSA must include these elements to compete effectively:
 | **No numbers** | Zero quantified claims | [SOP – Craft Your Offer Angles](../sops/SOP – Craft Your Offer Angles.md) |
 | **Descriptions repeat headlines** | Same message in different words | [Description Expansion Catalog](../catalogs/Description Expansion Catalog.md) |
 | **Missing extensions** | No sitelinks, callouts, images | [Extension Leverage Catalog](../catalogs/Extension Leverage Catalog.md) |
-| **Weak offer** | Nothing compelling to say 💩 | [SOP – Create an Irresistible Offer](../sops/SOP – Create an Irresistible Offer.md) |
+| **Weak offer** | Nothing compelling to say | [SOP – Create an Irresistible Offer](../sops/SOP – Create an Irresistible Offer.md) |
 
 ---
 
@@ -267,9 +265,9 @@ If multiple gaps exist, follow this order:
 | Situation | Action |
 | --- | --- |
 | CTR improved but label unchanged | Wait longer (labels lag) |
-| CTR flat after 14 days | Re-run Phase 1 diagnosis; something was missed |
+| CTR flat after 14 days | Re-run Phase 1 diagnosis: something was missed |
 | CTR dropped | Check for other changes (bids, competition, landing page) |
-| Label stuck at "Average" | "Average" is acceptable; proceed to [SOP – RSA Testing with The Iteration Loop](../sops/SOP – RSA Testing with The Iteration Loop.md) |
+| Label stuck at "Average" | "Average" is acceptable: proceed to [SOP – RSA Testing with The Iteration Loop](../sops/SOP – RSA Testing with The Iteration Loop.md) |
 
 ---
 
@@ -304,13 +302,9 @@ Once complete, you have two paths:
 
 ### FAQ
 
-**Q: How is this different from the old version of this SOP?**
-
-A: The old version included all the "how to write" content. This version focuses on diagnosis and routes you to modular SOPs for execution. Same outcome, better organization.
-
 **Q: What if I don't know whether my offer is weak?**
 
-A: Run the Offer Audit Checklist in [SOP – Create an Irresistible Offer](../sops/SOP – Create an Irresistible Offer.md). If you score below 8/12, your offer needs work before creative optimization will help.
+A: Run the [Offer Audit Checklist](../checklists/Offer Audit Checklist.md). If you score below 8, your offer needs work before creative optimization will help.
 
 **Q: Can I skip the foundational SOPs and just write new headlines?**
 
@@ -337,7 +331,7 @@ A: 14-21 days for the label to update. CTR movement appears within the first 7 d
 | [Description Expansion Catalog](../catalogs/Description Expansion Catalog.md) | Execution (fix description gaps) |
 | [Extension Leverage Catalog](../catalogs/Extension Leverage Catalog.md) | Execution (fix extension gaps) |
 | [SOP – RSA Testing with The Iteration Loop](../sops/SOP – RSA Testing with The Iteration Loop.md) | Downstream (ongoing optimization) |
-| [SOP – Improve Landing Page Experience](../sops/SOP – Improve Landing Page Experience.md) | Parallel (Phase 1 of QS Playbook |
+| [SOP – Improve Landing Page Experience](../sops/SOP – Improve Landing Page Experience.md) | Downstream (Phase 3 of the Quality Score playbook) |
 
 ---
 

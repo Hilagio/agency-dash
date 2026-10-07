@@ -26,8 +26,8 @@ This SOP does **not:**
 
 - Build a new LP from scratch (See: [SOP – Build a High-Converting Landing Page](../sops/SOP – Build a High-Converting Landing Page.md))
 - Explain LP structure theory (See: [LP Hierarchy Mental Model](../mental-models/LP Hierarchy Mental Model.md))
-- Run A/B tests (See: *Testing Mental Model* [TBD, Phase 6])
-- Fix conversion tracking issues (See: *Conversion Tracking SOPs* [TBD, Phase 2])
+- Run A/B tests (See: [SOP – Run a Landing Page A&B Test](../sops/SOP – Run a Landing Page A&B Test.md))
+- Fix conversion tracking issues (See: [SOP – Set Up Google Ads Conversion Tracking](../sops/SOP – Set Up Google Ads Conversion Tracking.md))
 
 ## When to run this SOP
 
@@ -244,7 +244,7 @@ After validation:
 
 | Outcome | Next step |
 |---------|-----------|
-| CVR improved significantly | Move to P2 fixes, then consider A/B testing further optimizations |
+| CVR improved significantly | Move to P2 fixes, then A/B test further optimizations |
 | CVR unchanged | Re-diagnose: the fixes targeted the wrong issue. Re-run Phase 3 diagnosis. |
 | CVR decreased | Revert changes, re-diagnose from Phase 3 |
 
@@ -287,7 +287,7 @@ After validation:
 | SOP | Relationship |
 |-----|--------------|
 | [SOP – Build a High-Converting Landing Page](../sops/SOP – Build a High-Converting Landing Page.md) | Upstream: initial build process |
-| *Testing Mental Model* [TBD, Phase 6] | Downstream: structured A/B testing after audit fixes |
+| [SOP – Run a Landing Page A&B Test](../sops/SOP – Run a Landing Page A&B Test.md) | Downstream: structured A/B testing after audit fixes |
 
 ---
 

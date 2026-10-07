@@ -25,8 +25,8 @@ This is the bridge between keyword research and campaign structure. Every cluste
 
 This SOP does **not:**
 
-- Research or discover keywords (See: SOP – Research Keywords)
-- Build the campaign structure from clusters (See: SOP – Build Search Campaign Structure)
+- Research or discover keywords (See: [SOP – Research Keywords](../sops/SOP – Research Keywords.md))
+- Build the campaign structure from clusters (See: [SOP – Build Search Campaign Structure](../sops/SOP – Build Search Campaign Structure.md))
 - Write the RSAs for each cluster (See: [SOP – Write Compelling RSAs](../sops/SOP – Write Compelling RSAs.md))
 - Decide match types for individual keywords (See: [Match Type Reference](../references/Match Type Reference.md))
 - Manage negative keywords (See: [Negative Keyword Reference](../references/Negative Keyword Reference.md))
@@ -169,7 +169,7 @@ Within each cluster, group keywords that are variations of the same concept:
 | Word order changes | "cheap flights london" and "london cheap flights" |
 | Modifier variations | "best crm software" and "top crm software" |
 
-These share one ad group. The match type system handles variant matching within the group.
+These share one ad group (See: [Match Type Reference](../references/Match Type Reference.md)).
 
 ### 2.3 Name each cluster
 
@@ -195,7 +195,7 @@ Check each cluster against these ranges:
 
 | Cluster size | Action |
 |--------------|--------|
-| 1-3 keywords | Consider merging with a related cluster if the Single Ad Test passes |
+| 1-3 keywords | Merge with a related cluster when the Single Ad Test passes |
 | 4-20 keywords | Typical healthy cluster |
 | 21+ keywords | Review for split opportunities: are there sub-themes that need different ads? |
 
@@ -260,13 +260,7 @@ If a cluster contains keywords with mixed intent:
 
 ### 4.3 Flag informational clusters
 
-Mark any cluster labeled "Informational" for secondary review. These clusters:
-
-- May not justify paid search spend
-- Could be better served by SEO or content marketing
-- Should only remain if they have a clear conversion path (lead magnet, free tool, consultation)
-
-If no conversion path exists, move the cluster to Tier 3 or remove entirely.
+Mark any cluster labeled "Informational" for secondary review. Keep the cluster only when it has a clear conversion path (lead magnet, free tool, consultation). If no conversion path exists, move the cluster to Tier 3 or remove it entirely.
 
 > ⚠️ **Include informational keywords only when:** (1) your ad messaging matches the informational intent, (2) your landing page fulfills the user's need, and (3) you have a clear conversion funnel (free guide, quiz, tool, consultation offer). Evaluate the full path from query to conversion before including.
 
@@ -340,7 +334,7 @@ Once all clusters are validated and mapped:
 
 | Next step | Action |
 |-----------|--------|
-| Tier 1 clusters ready | Begin SOP – Build Search Campaign Structure with Tier 1 clusters |
+| Tier 1 clusters ready | Begin [SOP – Build Search Campaign Structure](../sops/SOP – Build Search Campaign Structure.md) with Tier 1 clusters |
 | LP gaps identified | Route landing page creation before building ad groups for those clusters |
 | Negative keyword sheet complete | Feed into negative keyword setup during campaign build |
 
@@ -384,8 +378,8 @@ Once all clusters are validated and mapped:
 
 | SOP | Relationship |
 |-----|--------------|
-| SOP – Research Keywords | Upstream (provides the raw keyword list) |
-| SOP – Build Search Campaign Structure | Downstream (uses clusters to build ad groups) |
+| [SOP – Research Keywords](../sops/SOP – Research Keywords.md) | Upstream (provides the raw keyword list) |
+| [SOP – Build Search Campaign Structure](../sops/SOP – Build Search Campaign Structure.md) | Downstream (uses clusters to build ad groups) |
 | [SOP – Write Compelling RSAs](../sops/SOP – Write Compelling RSAs.md) | Downstream (writes ads for each cluster) |
 | [SOP – Promote Search Terms to Keywords](../sops/SOP – Promote Search Terms to Keywords.md) | Parallel (ongoing keyword refinement after launch) |
 
@@ -407,4 +401,4 @@ Violations may be detected through embedded document fingerprints and will be pu
 
 Full terms: https://www.ppcmastery.com/terms-and-conditions
 
-(c) 2026 PPC Mastery B.V. All rights reserved.
+© 2026 PPC Mastery B.V. All rights reserved.

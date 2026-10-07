@@ -12,7 +12,7 @@ Pillar: 6
 
 ## Purpose
 
-Documents frequency capping configuration for Display and Video campaigns. This reference provides recommended caps by campaign goal, configuration steps, and adjustment triggers.
+Documents frequency capping configuration for Video campaigns. Demand Gen has no manual frequency caps: Google manages frequency automatically, so monitor frequency in reporting and control fatigue with audience exclusions. This reference provides recommended caps by campaign tier, configuration steps, and adjustment triggers.
 
 ---
 
@@ -21,7 +21,7 @@ Documents frequency capping configuration for Display and Video campaigns. This 
 **This reference:**
 
 - Documents frequency capping options by campaign type
-- Provides recommended caps by campaign goal
+- Provides recommended caps by campaign tier
 - Explains how to configure and adjust frequency caps
 
 **This reference does NOT:**
@@ -29,19 +29,19 @@ Documents frequency capping configuration for Display and Video campaigns. This 
 - Cover Search or Shopping campaigns (frequency capping does not apply)
 - Cover PMax frequency (automated, no manual control)
 - Cover Demand Gen frequency (frequency capping is NOT available in Demand Gen)
-- Provide campaign creation steps (See: campaign launch SOPs)
+- Provide campaign creation or cap-configuration steps (See: [SOP - Launch a Video Campaign](../sops/SOP – Launch a Video Campaign.md))
 
 ---
 
 ## Quick reference: recommended frequency caps
 
-| Campaign goal | Daily cap | Weekly cap | Monthly cap |
+| Campaign tier | Daily cap | Weekly cap | Monthly cap |
 |---------------|-----------|------------|-------------|
 | **Remarketing** | 5-7 | 15-20 | 60-80 |
 | **Prospecting** | 3-5 | 10-15 | 40-60 |
 | **Awareness** | 2-3 | 7-10 | 30-40 |
 
-> 💡 **Start with daily caps:** Weekly and monthly caps provide additional control but daily caps have the most immediate impact.
+> 💡 **The daily cap is the one that binds first.** Weekly and monthly caps add control on top, but a user reaching the daily limit never reaches the weekly one.
 
 ---
 
@@ -66,31 +66,6 @@ Frequency capping limits how many times a single user sees your ads within a tim
 
 ## Frequency caps by campaign type
 
-### Display campaigns
-
-**Available controls:**
-
-| Setting | Options |
-|---------|---------|
-| Impressions per day | Custom number |
-| Impressions per week | Custom number |
-| Impressions per month | Custom number |
-
-**Recommended settings:**
-
-| Goal | Daily | Weekly | Notes |
-|------|-------|--------|-------|
-| Remarketing | 5-7 | 15-20 | Higher tolerance for known visitors |
-| Prospecting | 3-5 | 10-15 | Moderate for discovery |
-| Awareness | 2-3 | 7-10 | Lower to avoid saturation |
-
-**How to configure:**
-
-1. Go to campaign settings → Additional settings
-2. Find "Frequency management" or "Frequency capping"
-3. Select "Set a custom limit"
-4. Enter impressions and time period
-
 ### Video campaigns
 
 **Available controls:**
@@ -105,20 +80,15 @@ Frequency capping limits how many times a single user sees your ads within a tim
 
 **Recommended settings:**
 
-| Goal | Daily impressions | Weekly impressions |
-|------|-------------------|-------------------|
-| Awareness (reach) | 2-3 | 7-10 |
-| Consideration | 3-4 | 10-14 |
-| Remarketing (video) | 4-5 | 12-15 |
+| Campaign subtype | Daily impressions | Weekly impressions |
+|------------------|-------------------|-------------------|
+| Video reach (Efficient reach, Non-skippable reach, Target frequency) | 2-3 | 7-10 |
+| Video views | 3-4 | 10-14 |
+| Any subtype on remarketing audiences | 4-5 | 12-15 |
 
-**How to configure:**
+Frequency capping sits under campaign settings > Additional settings, with separate switches for impression frequency and view frequency. Configuring it is owned by [SOP - Launch a Video Campaign](../sops/SOP – Launch a Video Campaign.md), Phase 1.4.
 
-1. Go to campaign settings → Additional settings
-2. Find "Frequency capping"
-3. Select "Cap impression frequency" and/or "Cap view frequency"
-4. Enter limits
-
-> 💡 **For Video, cap both impressions and views:** Impressions cap how often ads appear. Views cap how often they're watched. Both matter for user experience.
+> 💡 **Impressions and views are two separate caps.** The impression cap governs how often an ad appears, the view cap how often it is watched, and capping one leaves the other uncapped.
 
 ---
 
@@ -166,42 +136,16 @@ Frequency capping limits how many times a single user sees your ads within a tim
 
 ---
 
-## How to set frequency caps (step by step)
-
-### Display campaign
-
-1. Open the campaign
-2. Click **Settings**
-3. Expand **Additional settings**
-4. Find **Frequency management**
-5. Click **Set a custom limit**
-6. Enter:
-   - Number of impressions
-   - Time period (day, week, or month)
-7. Save
-
-### Video campaign
-
-1. Open the campaign
-2. Click **Settings**
-3. Expand **Additional settings**
-4. Find **Frequency capping**
-5. Check **Cap impression frequency**
-6. Enter limits per day, week, and/or month
-7. Optionally check **Cap view frequency**
-8. Save
-
----
-
 ## Monitoring frequency
 
 ### Where to find frequency data
 
-1. Go to campaign or ad group
-2. Click **Columns** → **Modify columns**
-3. Under "Reach metrics" add:
-   - Avg. impr. freq. per user
-   - Avg. impr. freq. per user (7 days)
+Two columns under "Reach metrics" in the campaign or ad group column picker carry it:
+
+| Column | What it reports |
+|--------|-----------------|
+| Avg. impr. freq. per user | Average impressions per user over the selected range |
+| Avg. impr. freq. per user (7 days) | The same figure on a fixed 7-day window |
 
 ### Healthy frequency ranges
 
@@ -251,11 +195,11 @@ Frequency capping limits how many times a single user sees your ads within a tim
 | Manual frequency cap | ❌ No |
 | Automatic optimization | ✅ Yes (Google-managed) |
 
-You cannot set frequency caps in PMax. Google manages frequency automatically.
+PMax has no manual frequency cap. Google manages frequency automatically.
 
 ### Search and Shopping
 
-Frequency capping does not apply. Users see ads when they search, there's no concept of ad fatigue from repeated search impressions.
+Frequency capping does not apply. Users see ads when they search, so there is no concept of ad fatigue from repeated search impressions.
 
 ### Cross-campaign frequency
 
@@ -264,7 +208,7 @@ Frequency capping does not apply. Users see ads when they search, there's no con
 | Caps apply per campaign | Same user seeing ads from multiple campaigns |
 | No account-level cap | Total exposure can exceed intended frequency |
 
-**Workaround:** Use audience exclusions to prevent overlap between campaigns (e.g., exclude Display audiences from Video campaigns targeting similar users).
+**Workaround:** audience exclusions prevent overlap between campaigns, for example excluding Demand Gen audiences from Video campaigns targeting similar users.
 
 ---
 
@@ -287,7 +231,6 @@ Frequency capping does not apply. Users see ads when they search, there's no con
 | [Content Exclusion Guidelines](../guidelines/Content Exclusion Guidelines.md) | Brand safety alongside frequency |
 | [Audience Targeting Reference](../references/Audience Targeting Reference.md) | Audience tier definitions |
 | [Upper Funnel Campaign Structure Mental Model](../mental-models/Upper Funnel Campaign Structure Mental Model.md) | Campaign tier framework |
-| [SOP – Launch a Display Campaign](../sops/SOP – Launch a Display Campaign.md) | Display frequency configuration |
 | [SOP – Launch a Video Campaign](../sops/SOP – Launch a Video Campaign.md) | Video frequency configuration |
 | [SOP – Launch a Demand Gen Campaign](../sops/SOP – Launch a Demand Gen Campaign.md) | Demand Gen campaigns (frequency capping not available) |
 
@@ -295,8 +238,8 @@ Frequency capping does not apply. Users see ads when they search, there's no con
 
 ## Version details
 
-- **Version:** 2.0
-- **Last Updated:** February 2026
+- **Version:** 4.0
+- **Last Updated:** August 2026
 - **Creator:** Bob Meijer
 
 ---

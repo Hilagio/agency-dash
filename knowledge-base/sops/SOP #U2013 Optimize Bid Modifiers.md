@@ -1,5 +1,6 @@
 # SOP – Optimize Bid Modifiers
 Created: 2026-02-14
+Updated: 2026-08-27
 
 SOP_ID: SOP_69
 Status: Done
@@ -171,7 +172,7 @@ Use this flagging logic:
 | CPA within 30% of campaign average | Average performer | No change |
 | CPA 30-50% above campaign average | Weak performer | Decrease modifier |
 | CPA 50%+ above campaign average | Poor performer | Strong decrease or exclusion |
-| Zero conversions, significant spend (50+ clicks) | Non-converter | Consider -100% exclusion |
+| Zero conversions after 200+ clicks | Non-converter | Consider -100% exclusion |
 
 | Segment performance (ROAS-based) | Flag | Action direction |
 |-----------------------------------|------|------------------|
@@ -179,7 +180,7 @@ Use this flagging logic:
 | ROAS within 30% of campaign average | Average performer | No change |
 | ROAS 30-50% below campaign average | Weak performer | Decrease modifier |
 | ROAS 50%+ below campaign average | Poor performer | Strong decrease or exclusion |
-| Zero conversions, significant spend (50+ clicks) | Non-converter | Consider -100% exclusion |
+| Zero conversions after 200+ clicks | Non-converter | Consider -100% exclusion |
 
 ### 2.4 Prioritize modifier dimensions
 
@@ -252,12 +253,7 @@ Record every modifier applied for post-check comparison:
 
 ### 3.5 Stacking awareness
 
-When applying modifiers across multiple dimensions, remember that modifiers stack multiplicatively, not additively.
-
-**Example:** A mobile user (+30%) in a high-performing location (+20%) during peak hours (+15%) gets a combined adjustment of:
-1.30 x 1.20 x 1.15 = 1.794 (a 79.4% increase, not 65%)
-
-Check the [Bid Modifier Reference](../references/Bid Modifier Reference.md) for full stacking rules. Avoid combining more than three positive modifiers on the same dimension combination to prevent bid inflation.
+Multiply the modifiers a single auction can hit at once and confirm the product sits inside your acceptable bid range. Modifiers stack multiplicatively: +30% device, +20% location and +15% schedule combine to 1.30 x 1.20 x 1.15 = a 79.4% increase, not 65%. Apply no more than three positive modifiers across dimensions. Full stacking rules: [Bid Modifier Reference](../references/Bid Modifier Reference.md).
 
 ---
 
@@ -403,8 +399,8 @@ A: Apply at the campaign level for device, location, and ad schedule. Apply at t
 
 ### Version details
 
-- **Version:** 1.0
-- **Last Updated:** February 2026
+- **Version:** 2.0
+- **Last Updated:** August 2026
 - **Creator:** Bob Meijer
 
 ---

@@ -1,11 +1,11 @@
 # Audience Signals Reference
 Created: 2026-02-04
-Updated: 2026-02-05
+Updated: 2026-10-05
 
 Support_ID: CHEATSHEET_4
 Status: Done
 Category: Operational
-Reference Type: Cheat Sheet
+Reference Type: Cheat Sheets
 Agent_Readable: Yes
 Human_Facing: Yes
 Domain: Audiences
@@ -39,8 +39,6 @@ Documents signal types, search themes syntax, and exclusion settings for Perform
 | --- | --- | --- | --- |
 | Customer Match | CRM upload | 🥇 Highest | Asset group |
 | Website converters | Google tag | 🥇 Highest | Asset group |
-
-> 💡 **Signal quality drives learning speed:** Higher-quality signals give Google's AI a sharper starting profile of your ideal customer, which means fewer wasted impressions during the learning phase. Low-quality signals (broad affinity, demographics alone) force the algorithm to explore widely before it converges on profitable audiences. The difference is measurable: campaigns seeded with Tier 1-2 signals typically exit learning faster and hit stable CPA/ROAS sooner than campaigns relying on Tier 4-5 signals alone.
 | Website visitors | Google tag | 🥈 High | Asset group |
 | YouTube engaged | Channel link | 🥈 High | Asset group |
 | App users | Firebase/SDK | 🥈 High | Asset group |
@@ -52,6 +50,8 @@ Documents signal types, search themes syntax, and exclusion settings for Perform
 | Affinity | Google predefined | 📉 Lowest | Asset group |
 | Demographics | Age/gender/income | 📉 Lowest | Asset group |
 
+> 💡 **Signal quality drives learning speed:** Higher-quality signals give Google's AI a sharper starting profile of your ideal customer, which means fewer wasted impressions during the learning phase. Low-quality signals (broad affinity, demographics alone) force the algorithm to explore widely before it converges on profitable audiences. The difference is measurable: campaigns seeded with the highest-quality signals exit learning faster and reach stable CPA/ROAS sooner than campaigns relying on the lowest tiers alone.
+
 ---
 
 ## Your data signals
@@ -62,17 +62,21 @@ Documents signal types, search themes syntax, and exclusion settings for Perform
 | --- | --- |
 | **Minimum list size** | 100 matched users |
 | **Data types accepted** | Email, phone, address, mobile device ID |
-| **Upload methods** | CSV upload, API, CRM integration |
-| **Match rate range** | 25-75% typical |
+| **Upload methods** | CSV upload, Data Manager API, CRM integration via Data Manager |
+| **Match rate range** | 60-80% healthy, below 60% needs diagnosis |
 | **Refresh recommendation** | Weekly (minimum monthly) |
+
+> ⚠️ **One list, one data type.** A Customer Match list carries either contact information or mobile device IDs, never both. Mixing them in a single upload makes the list unusable, so build separate lists when you hold both signal types.
 
 **Match rate optimization:**
 
-| **Data provided** | **Expected Match Rate lift** |
+| **Data provided** | **Expected match rate** |
 | --- | --- |
-| Email only | Baseline |
-| Email + Phone | +15-20% |
-| Email + Phone + Address | +25-30% |
+| Email only | 29-62%, Google's email-only baseline |
+| Email + phone | Baseline +15-20 points |
+| Email + phone + address | Baseline +25-35 points |
+
+> ↪️ For the healthy band, the diagnosis path for a list below it, and upload procedure: See [SOP – Build Customer Match Lists](../sops/SOP – Build Customer Match Lists.md)
 
 ### Website/App Data
 
@@ -129,7 +133,7 @@ Search themes share your unique business insights with Performance Max across **
 | **Function** | Audience signal only | Audience signal + search placement |
 | **Limit** | No hard limit | 25 per asset group |
 
-> 💡 **Search themes do everything custom segments do in Performance Max, and more:** Use search themes to share unique business insights that work across any channel.
+> 💡 **Search themes do everything custom segments do in Performance Max, and more:** they carry unique business insight across every channel, where a custom segment reaches non-Search inventory only.
 
 ### Search theme behavior
 
@@ -149,12 +153,12 @@ When PMax search themes compete with Search campaign keywords for the same query
 
 | Priority | Condition | Winner |
 | --- | --- | --- |
-| 1️⃣ Highest | Exact match keyword **identical** to query | Search campaign (always) |
+| 1️⃣ Highest | Exact match keyword that **matches** the query, close variants included | Search campaign (always) |
 | 2️⃣ | Phrase/broad keyword OR search theme **identical** to query | Whichever is identical wins; if both identical → Ad Rank decides |
 | 3️⃣ | Nothing identical to query | AI selects most relevant ad group |
 | 4️⃣ Lowest | Equal relevance | Highest Ad Rank wins |
 
-> ⚠️ **"Identical" includes spell-corrected terms** (e.g., "crm sofware" → "crm software") **but NOT plurals or synonyms** (e.g., "software" ≠ "softwares" ≠ "tools").
+> ⚠️ **Tier 1 covers close variants, tier 2 does not.** An exact keyword holds plurals, misspellings and same-intent rewordings. At tier 2, **"identical" includes spell-corrected terms** (e.g., "crm sofware" → "crm software") **but NOT plurals or synonyms** (e.g., "software" ≠ "softwares" ≠ "tools").
 
 ### Cannibalization scenarios
 
@@ -329,13 +333,13 @@ Exclusions are the only PMax element that restricts delivery like traditional ta
 
 ## Version details
 
-- **Version:** 4.0
-- **Last Updated:** April 2026
+- **Version:** 6.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---
 
-### Terms of Use
+## Terms of Use
 
 This document is licensed for personal and internal business use only under the PPC Mastery General [Terms & Conditions](https://www.ppcmastery.com/terms-and-conditions). Use it to become better at your job. Don't use it to build things you sell to others.
 

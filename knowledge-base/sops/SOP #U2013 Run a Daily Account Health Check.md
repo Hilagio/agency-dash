@@ -17,7 +17,7 @@ This SOP guides you through a 10-15 minute daily triage scan that catches broken
 
 > ❓ **The big question:** Did anything major break overnight, and do I need to take immediate action?
 
-Daily monitoring is not about optimization. It's about damage prevention. You scan for breakage, flag issues, and move on. Diagnosis happens during the weekly review.
+Scan for breakage, flag issues, and move on. Diagnosis happens during the weekly review.
 
 ---
 
@@ -85,8 +85,8 @@ Run this SOP:
 
 ### 1.1 Check conversion action status
 
-1. Navigate to Goals > Conversions > Summary
-2. Verify all primary conversion actions show "Recording conversions"
+1. Navigate to Goals > Summary
+2. Verify all primary conversion actions show "Active"
 3. Check that no conversion actions show "No recent conversions" or "Inactive"
 
 ### 1.2 Quick volume check
@@ -110,7 +110,7 @@ Run this SOP:
 
 1. Navigate to Campaigns view
 2. Sort by Cost (descending) for yesterday's date
-3. Scan for campaigns spending significantly more or less than expected
+3. Scan for campaigns spending outside ±20% of expected
 
 | Finding | Action |
 |---------|--------|
@@ -139,7 +139,7 @@ Run this SOP:
 
 ### 3.1 Check ad disapprovals
 
-1. Navigate to Ads & Assets > Ads
+1. Navigate to Campaigns > Ads
 2. Filter by Status: "Disapproved" or "Approved (limited)"
 3. Scan for new disapprovals since yesterday
 
@@ -151,7 +151,7 @@ Run this SOP:
 
 ### 3.2 Check asset disapprovals
 
-1. Navigate to Ads & Assets > Assets
+1. Navigate to Assets > Assets
 2. Filter by Status: "Disapproved"
 3. Check for newly disapproved sitelinks, callouts, or images
 
@@ -187,7 +187,7 @@ Run this SOP:
 ### 4.3 Check bid strategy status
 
 1. Navigate to bid strategies
-2. Verify all strategies show "Eligible" or expected "Learning" status
+2. Verify every strategy shows "Eligible", or "Learning" with a matching entry in Change History
 3. Flag any "Limited" or "Misconfigured" strategies
 
 ---
@@ -199,7 +199,7 @@ Run this SOP:
 Record your daily triage using this format:
 
 ```
-Daily Triage — [Date]
+Daily Triage: [Date]
 Account: [Name]
 Time: [X] minutes
 
@@ -220,7 +220,7 @@ For weekly review:
 |---------------|-----------------|
 | Tracking broken | Investigate and fix now |
 | High-volume ad disapproved | Fix or appeal now |
-| Dramatic spend anomaly with no explanation | Pause or adjust now, investigate |
+| Spend above 120% of expected with no matching change in Change History | Pause or adjust now, investigate |
 | Bid strategy misconfigured | Fix configuration now |
 
 All other flagged items go to the weekly review.
@@ -231,7 +231,7 @@ All other flagged items go to the weekly review.
 
 This SOP is complete when:
 
-- [ ] All six checklist categories scanned (tracking, budget, bids, disapprovals, URLs, anomalies)
+- [ ] Every category has a recorded status: tracking, budget, bids, disapprovals, URLs, anomalies
 - [ ] Critical issues addressed immediately
 - [ ] Non-critical flags documented for weekly review
 - [ ] Triage log entry completed
@@ -295,8 +295,8 @@ After daily triage:
 
 ## Version details
 
-- **Version:** 1.0
-- **Last Updated:** February 2026
+- **Version:** 2.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

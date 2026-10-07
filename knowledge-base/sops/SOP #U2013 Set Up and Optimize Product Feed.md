@@ -1,6 +1,6 @@
 # SOP – Set Up and Optimize Product Feed
 Created: 2026-02-04
-Updated: 2026-02-06
+Updated: 2026-10-05
 
 Agent_Executable: No
 Category: Shopping
@@ -18,7 +18,6 @@ This SOP guides you through setting up and optimizing a product feed for Google 
 
 > ❓ **The big question:** How do I create a product feed that maximizes Shopping performance and avoids disapprovals?
 
-This SOP covers the complete feed setup process. It is the foundation for all Ecommerce Shopping campaigns.
 
 ---
 
@@ -71,7 +70,7 @@ Before starting, determine your approach:
 | If... | Then... | Setup required |
 |-------|---------|----------------|
 | You need maximum control and scalability | Use Feed Management Tool (FMT) | FMT subscription (Channable, DataFeedWatch, etc.) |
-| You have a large catalog with frequent changes | Use Content API | Developer resources |
+| You have a large catalog with frequent changes | Use Merchant API | Developer resources |
 | You have a small catalog with stable data | Use Google Sheets | Manual setup |
 | You want minimal setup (not recommended) | Use automated website crawl | Structured data markup |
 
@@ -84,7 +83,7 @@ Need full control over feed optimization?
 │
 ├─ YES → Products change frequently?
 │         │
-│         ├─ YES → Use Content API or FMT with high-frequency sync
+│         ├─ YES → Use Merchant API or FMT with high-frequency sync
 │         │
 │         └─ NO → Use FMT with daily scheduled fetch
 │
@@ -99,12 +98,10 @@ Need full control over feed optimization?
 
 ### Feed management tool recommendation
 
-Feed Management Tools provide the best ROI for most retailers.
-
 | Method | Automated | Customizable | Scalable | Time-efficient |
 |--------|-----------|--------------|----------|----------------|
 | Scheduled file fetch (FMT) | Yes | Yes | Yes | Yes |
-| Content API | Yes | No | Yes | Yes |
+| Merchant API | Yes | No | Yes | Yes |
 | Google Sheets | No | Yes | No | No |
 | Automated crawl | Yes | No | No | Yes |
 
@@ -231,11 +228,11 @@ Titles are your highest-impact optimization. Follow category-specific formulas.
 
 ### 2.5 Configure images
 
-1. **Verify resolution** is at least 100x100px (1500x1500px recommended)
-2. **Check frame fill**: product should be 75-90% of image
+1. **Verify resolution** is at least 500x500px (1500x1500px recommended)
+2. **Check frame fill**: product fills 75-90% of the image
 3. **Ensure white/neutral background** for main image
 4. **Map additional_image_link** for extra angles
-5. **Map lifestyle_image_link** if lifestyle images available
+5. **Map lifestyle_image_link** if lifestyle images available, up to 5 per product. In a text data source, submit the URLs as comma-separated values in one field
 
 ### 2.6 Configure pricing
 
@@ -246,13 +243,12 @@ Titles are your highest-impact optimization. Follow category-specific formulas.
 
 ### 2.7 Configure availability
 
-1. **Map availability** to valid values
-2. **Map inventory field** to `in_stock`, `out_of_stock`, `preorder`, `backorder`
-3. **Configure sync frequency** to match inventory change rate
+1. **Map availability** to the valid values `in_stock`, `out_of_stock`, `preorder`, `backorder`
+2. **Configure sync frequency** to match inventory change rate
 
 | Inventory change frequency | Recommended sync |
 |---------------------------|------------------|
-| Multiple times daily | Content API or hourly fetch |
+| Multiple times daily | Merchant API or hourly fetch |
 | Daily | Daily fetch |
 | Weekly or less | Daily fetch |
 
@@ -275,9 +271,9 @@ Custom labels enable campaign segmentation. Populate BEFORE campaign launch.
 |-------|-----------------|----------------|
 | custom_label_0 | Performance tier | hero, sidekick, villain, zombie |
 | custom_label_1 | Margin tier | high_margin, medium_margin, low_margin |
-| custom_label_2 | Seasonality | evergreen, seasonal, clearance |
-| custom_label_3 | Inventory level | high_stock, low_stock, critical |
-| custom_label_4 | Priority | featured, standard, deprioritize |
+| custom_label_2 | Promotional flags | on_sale, clearance, full_price |
+| custom_label_3 | Inventory status | high_stock, low_stock, critical |
+| custom_label_4 | Seasonal/lifecycle | evergreen, summer, new |
 
 > ↪️ **For segmentation strategies:** See [Feed Segmentation Catalog](../catalogs/Feed Segmentation Catalog.md).
 
@@ -297,7 +293,7 @@ Custom labels enable campaign segmentation. Populate BEFORE campaign launch.
 | Villain | High spend, low/no revenue | villain |
 | Zombie | No impressions or spend | zombie |
 
-> 💡 **Performance tier calculations can be automated** through ProductHero, Channable, or similar Feed Management Tools. These tools connect to your Google Ads data and automatically update custom labels based on performance thresholds you define.
+> 💡 **Automate the tier calculation** through ProductHero, Channable, or a similar Feed Management Tool. These connect to your Google Ads data and update custom labels against performance thresholds you define.
 
 ### 3.3 Configure supplemental feed (if using automated labeling)
 
@@ -307,7 +303,7 @@ If using an external tool (ProductHero, Profitmetrics, etc.) for dynamic perform
 2. **Link supplemental feed** to primary feed in Merchant Center
 3. **Configure refresh schedule** matching tool updates
 
-> 💡 **Supplemental feeds are typically handled automatically** by Feed Management Tools. The FMT generates and maintains the supplemental feed with your performance labels, pushing updates to Merchant Center on schedule.
+> 💡 **Let the Feed Management Tool own the supplemental feed.** It generates and maintains the supplemental feed carrying your performance labels and pushes updates to Merchant Center on schedule.
 
 ---
 
@@ -330,10 +326,13 @@ If using an external tool (ProductHero, Profitmetrics, etc.) for dynamic perform
 
 ### 4.2 Configure scheduled fetch
 
-1. **Enter file URL** from your FMT
-2. **Set fetch time** after your FMT export completes
-3. **Set fetch frequency** (daily minimum recommended)
-4. **Enable file validation**
+1. **Enter file URL** from your FMT. It must start with `http://`, `https://` or `sftp://` and point directly at the data source file, not at a landing page or a redirect
+2. **Confirm Google can reach the file**: server permissions must allow the fetch, and if the file is password-protected, store those credentials in Merchant Center settings
+3. **Set fetch time** after your FMT export completes
+4. **Set fetch frequency** (daily minimum recommended)
+5. **Enable file validation**
+
+> ⚠️ **On SFTP the file name is the link.** The file name you enter in Merchant Center must match the uploaded file exactly, capitalization and extension included, with no spaces or other invalid characters. A mismatch means the transfer succeeds and nothing syncs.
 
 ### 4.3 Enable automatic item updates
 
@@ -342,7 +341,7 @@ If using an external tool (ProductHero, Profitmetrics, etc.) for dynamic perform
 3. Enable **Automatic availability updates**
 4. Enable **Automatic condition updates** (if applicable)
 
-> 💡 Automatic updates are a safety net, not a replacement for accurate feed data.
+> 💡 **Automatic updates are a safety net.** They do not replace accurate feed data.
 
 ### 4.4 Link Google Ads account
 
@@ -386,7 +385,7 @@ After first fetch completes:
 |-------|-------|-----|
 | Missing GTIN | GTIN field not mapped | Add GTIN or set identifier_exists=false |
 | Price mismatch | Feed price differs from landing page | Update feed or enable automatic updates |
-| Image too small | Image below 100x100px | Use higher resolution images |
+| Image too small | Image below 500x500px | Use higher resolution images |
 | Missing required attribute | Category-specific attribute missing | Add required attribute |
 | Invalid GTIN | Incorrect or fabricated GTIN | Verify GTIN with manufacturer |
 
@@ -448,7 +447,7 @@ A: Google recommends one primary feed per market. Use `excluded_destination` to 
 
 **Q: How often should I update my feed?**
 
-A: Minimum daily. For fast-moving inventory, use Content API or increase fetch frequency. Enable automatic updates as a safety net.
+A: Minimum daily. For fast-moving inventory, use Merchant API or increase fetch frequency. Enable automatic updates as a safety net.
 
 **Q: What if I don't have GTINs?**
 
@@ -500,8 +499,8 @@ A: Prefer FMT optimization for full control. Use MC attribute rules for quick fi
 
 ### Version details
 
-- **Version:** 1.0
-- **Last Updated:** February 2026
+- **Version:** 6.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

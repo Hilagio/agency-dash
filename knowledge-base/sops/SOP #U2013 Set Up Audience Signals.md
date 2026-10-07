@@ -1,6 +1,6 @@
 # SOP – Set Up Audience Signals
 Created: 2026-02-04
-Updated: 2026-04-01
+Updated: 2026-10-05
 
 SOP_ID: SOP_11
 Status: Done
@@ -25,7 +25,7 @@ This SOP configures **audience signals for a Performance Max asset group** using
 This SOP does **not:**
 
 - Create Customer Match lists (See: [SOP – Build Customer Match Lists](../sops/SOP – Build Customer Match Lists.md))
-- Configure Display, Video, or Demand Gen audience targeting (See: [SOP – Set Up Audience Targeting](../sops/SOP – Set Up Audience Targeting.md))
+- Configure Video or Demand Gen audience targeting (See: [SOP – Set Up Audience Targeting](../sops/SOP – Set Up Audience Targeting.md))
 - Teach the signal vs. targeting framework (See: [Audience Strategy Mental Model](../mental-models/Audience Strategy Mental Model.md))
 - List all signal options and examples (See: [Audience Signal Catalog](../catalogs/Audience Signal Catalog.md))
 
@@ -77,7 +77,7 @@ Run this SOP when:
 
 #### Step 1.1: Check Customer Match lists
 
-1. Navigate to **Tools & Settings → Audience Manager → Customer lists**
+1. Navigate to **Tools → Shared library → Audience manager → Your data segments**
 2. Document available lists using the table below
 3. Usability criteria: 1,000+ matched users, updated within 30 days
 
@@ -87,7 +87,7 @@ Run this SOP when:
 
 #### Step 1.2: Check website audience segments
 
-1. Navigate to **Tools & Settings → Audience Manager → Your data segments**
+1. Navigate to **Tools → Shared library → Audience manager → Your data segments**
 2. Document available segments using the table below
 3. Usability criteria: 100+ users (1,000+ recommended)
 
@@ -129,7 +129,7 @@ Add these first, they carry the most weight:
 
 | Signal | Source | Configuration |
 |--------|--------|--------------|
-| Customer Match | Audience Manager | Select your primary customer list (all customers for growth, top 20% for efficiency) |
+| Customer Match | Audience manager | Select your primary customer list (all customers for growth, top 20% for efficiency) |
 | Website converters | Your data segments | Select converter segment with 90-540 day window |
 
 #### Step 2.2: Add Tier 2 signals
@@ -143,7 +143,7 @@ Add these first, they carry the most weight:
 
 Create custom segments if they don't already exist:
 
-1. Navigate to **Audience Manager → Custom segments → New custom segment**
+1. Navigate to **Audience manager → Custom segments → New custom segment**
 2. Create a search term segment:
    - Add 10-15 highest-converting search terms from your Search campaigns
    - Pull terms from Search Terms report, filtered by conversions
@@ -167,7 +167,7 @@ Create custom segments if they don't already exist:
 
 #### Step 2.5: Review signal stack
 
-Your completed signal stack should look like this:
+The completed signal stack:
 
 | Layer | Signal type | Configured? |
 |-------|------------|-------------|
@@ -193,7 +193,7 @@ Your completed signal stack should look like this:
 
 | Question | If YES | If NO |
 |----------|--------|-------|
-| Do you run Search campaigns for these keywords? | Do NOT add search themes (high cannibalization risk) | Proceed to Step 3.2 |
+| Do you run Search campaigns for these keywords? | Do NOT add search themes (high cannibalization risk), skip to Phase 4 | Continue to the next question |
 | Is PMax your only search-eligible campaign? | Add search themes for primary categories | Skip search themes entirely |
 | Are you comfortable with PMax taking search inventory? | Add search themes selectively | Skip search themes entirely |
 
@@ -202,7 +202,7 @@ Your completed signal stack should look like this:
 1. In the asset group settings, navigate to **Search themes**
 2. Add category-level themes (broad, not specific keywords):
    - Example: "google ads management" (category) not "google ads management agency pricing" (long-tail)
-3. Maximum: 25 search themes per asset group
+3. Maximum: 50 search themes per asset group
 4. Do NOT duplicate keywords from active Search campaigns
 
 #### Step 3.3: Document search theme decisions
@@ -270,7 +270,7 @@ This SOP is complete when:
 |-----------------------------|-------------|
 | Need to create a Customer Match list | [SOP – Build Customer Match Lists](../sops/SOP – Build Customer Match Lists.md) |
 | Ready to expand audience reach | [Expand Audience Reach](../playbooks/Expand Audience Reach.md) |
-| Need to set up Display/Video/DG targeting | [SOP – Set Up Audience Targeting](../sops/SOP – Set Up Audience Targeting.md) |
+| Need to set up Video or Demand Gen targeting | [SOP – Set Up Audience Targeting](../sops/SOP – Set Up Audience Targeting.md) |
 
 ---
 
@@ -316,8 +316,8 @@ A: Remove search themes if PMax is cannibalizing Search campaign impressions or 
 
 ### Version details
 
-- **Version:** 3.0
-- **Last Updated:** April 2026
+- **Version:** 5.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

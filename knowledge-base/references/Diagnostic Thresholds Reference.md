@@ -1,5 +1,6 @@
 # Diagnostic Thresholds Reference
 Created: 2026-03-31
+Updated: 2026-10-05
 
 Support_ID: REF_69
 Status: Ready-to-publish
@@ -12,7 +13,7 @@ Pillar: 0
 
 ## Purpose
 
-Consolidates all numeric diagnostic thresholds used across PPCOS skills into one reference. Each threshold defines when a metric triggers a PASS, WARN, or FAIL verdict in a diagnostic check.
+Consolidates all numeric diagnostic thresholds used across PPC OS skills into one reference. Each threshold defines when a metric triggers a PASS, WARN, or FAIL verdict in a diagnostic check.
 
 ---
 
@@ -20,7 +21,7 @@ Consolidates all numeric diagnostic thresholds used across PPCOS skills into one
 
 **This reference:**
 
-- Lists every quantitative threshold used in PPCOS diagnostic checks
+- Lists every quantitative threshold used in PPC OS diagnostic checks
 - Organizes thresholds by domain (Keywords, Bidding, Budgets, etc.)
 - Links each threshold to the skill check ID that uses it
 - Provides comparison basis and severity for each threshold
@@ -112,16 +113,18 @@ All thresholds assume a 30-day lookback window unless stated otherwise.
 | Metric | Threshold | Comparison | Verdict | Severity | Check ID |
 |--------|-----------|-----------|---------|----------|----------|
 | Manual bidding on high-volume campaign | Manual CPC on campaign with 50+ conversions/month | Monthly conversion count | WARN | Medium | BID-D02 |
-| Smart bidding on low-volume campaign | tCPA/tROAS on campaign with <15 conversions/month | Monthly conversion count | FAIL | High | BID-D03 |
-| Smart bidding on borderline campaign | tCPA/tROAS on campaign with 15-29 conversions/month | Monthly conversion count | WARN | Medium | BID-D03 |
+| Smart bidding (volume strategy) on low-volume campaign | tCPA or Maximize conversions on campaign with <15 conversions/month | Monthly conversion count | FAIL | High | BID-D03 |
+| Smart bidding (volume strategy) on borderline campaign | tCPA or Maximize conversions on campaign with 15-29 conversions/month | Monthly conversion count | WARN | Medium | BID-D03 |
+| Smart bidding (value strategy) on low-volume campaign | tROAS or Maximize conversion value on campaign with <30 conversions/month | Monthly conversion count | FAIL | High | BID-D03 |
+| Smart bidding (value strategy) on borderline campaign | tROAS or Maximize conversion value on campaign with 30-49 conversions/month | Monthly conversion count | WARN | Medium | BID-D03 |
 | Target CPA vs. breakeven | Target CPA >100% of breakeven CPA | Breakeven CPA | FAIL: Unprofitable target | Critical | BID-D05 |
 | Target CPA vs. breakeven | Target CPA >80% of breakeven CPA | Breakeven CPA | WARN: Thin margin | High | BID-D05 |
 | Target ROAS vs. breakeven | Target ROAS <100% of breakeven ROAS | Breakeven ROAS | FAIL: Unprofitable target | Critical | BID-D06 |
 | Actual CPA/ROAS vs. target | >20% deviation sustained for 2x conversion lag (minimum 14 days) | Target CPA/ROAS | FAIL | High | BID-D08 |
 | Actual CPA/ROAS vs. target | 10-20% deviation sustained for 2x conversion lag (minimum 14 days) | Target CPA/ROAS | WARN | Medium | BID-D08 |
 | Learning phase duration | >14 days in "Learning" status | Strategy status | FAIL: Extended learning | High | BID-D10 |
-| Changes during learning | Any campaign change within 14 days of strategy change | Change history | WARN | Medium | BID-D11 |
-| Strategy change recency | Strategy changed within last 14 days | Change history | WARN: In learning | Low | BID-D13 |
+| Changes during learning | Any campaign change within 14 days of strategy change (14 days is the automation default, not the methodology; overridable via `ads-context.config.json`) | Change history | WARN | Medium | BID-D11 |
+| Strategy change recency | Strategy changed within last 14 days (14 days is the automation default, not the methodology; overridable via `ads-context.config.json`) | Change history | WARN: In learning | Low | BID-D13 |
 | Mixed campaign types in portfolio | Portfolio strategy spans different campaign types | Campaign type | WARN | Medium | BID-D14 |
 | CPC cap vs. top CPCs | CPC cap <80% of top-performing keyword CPCs | Keyword CPC distribution | WARN: Cap may limit | Medium | BID-D16 |
 | Shared budget + portfolio conflict | Shared budget AND portfolio strategy on same campaigns | Budget + strategy type | WARN | Medium | BID-D17 |
@@ -130,6 +133,8 @@ All thresholds assume a 30-day lookback window unless stated otherwise.
 | Rising CPC trend | CPC increasing for 3+ consecutive 7-day periods | Prior 3 periods | WARN | Medium | BID-D23 |
 | Bid simulator opportunity | Simulator shows >20% conversion increase at <15% cost increase | Bid simulator forecast | WARN: Opportunity | Medium | BID-D24 |
 | Conversion value rules on non-VBB campaign | Value rules active but campaign not on value-based bidding | Bid strategy type | WARN | Low | BID-D25 |
+
+> 💡 **The 14-day change-recency windows in BID-D11 and BID-D13 are automation defaults.** They make generated audits comparable between accounts. The methodology behind them is two separate quantities: a 7-14 day learning phase and a 1-2 conversion cycle post-change wait, documented in [Smart Bidding Mechanics Reference](../references/Smart Bidding Mechanics Reference.md).
 
 ---
 
@@ -142,8 +147,8 @@ All thresholds assume a 30-day lookback window unless stated otherwise.
 | IS lost to budget | >25% IS lost to budget | Campaign IS metrics | FAIL | High | BUD-D02 |
 | Profitable + budget limited | CPA below target (or ROAS above target) AND IS lost to budget >10% | Target CPA/ROAS + IS metrics | FAIL: Missed opportunity | Critical | BUD-D03 |
 | Unprofitable + budget limited | CPA above target (or ROAS below target) AND limited by budget | Target CPA/ROAS + Google status | WARN: Reduce first | High | BUD-D04 |
-| Daily budget:CPA ratio | Daily budget <1x target CPA (or <1x revenue-implied daily target for ROAS campaigns) | Target CPA / Target ROAS | FAIL | High | BUD-D05 |
-| Daily budget:CPA ratio | Daily budget 1-1.6x target CPA (or 1-1.6x revenue-implied daily target) | Target CPA / Target ROAS | WARN | Medium | BUD-D05 |
+| Daily budget:CPA ratio (Search, Shopping, PMax) | Daily budget <1x target CPA (or <1x revenue-implied daily target for ROAS campaigns) | Target CPA / Target ROAS | FAIL | High | BUD-D05 |
+| Daily budget:CPA ratio (Search, Shopping, PMax) | Daily budget 1-1.6x target CPA (or 1-1.6x revenue-implied daily target) | Target CPA / Target ROAS | WARN | Medium | BUD-D05 |
 | Budget exhaustion before 6pm local | Budget depleted before 18:00 regularly (3+ days/week) | Hourly spend pattern | WARN | Medium | BUD-D06 |
 | Monthly pacing: overspend | Projected spend >110% of monthly budget | Monthly budget target | WARN | Medium | BUD-D10 |
 | Monthly pacing: underspend | Projected spend <90% of monthly budget | Monthly budget target | WARN | Medium | BUD-D11 |
@@ -180,18 +185,18 @@ All thresholds assume a 30-day lookback window unless stated otherwise.
 
 | Metric | Threshold | Comparison | Verdict | Severity | Check ID |
 |--------|-----------|-----------|---------|----------|----------|
-| Mobile app category not excluded | App category placements active on Display/Video/DG/PMax | Exclusion list | WARN | Medium | PL-D01 |
+| Mobile app category not excluded | App category placements active on Video/DG/PMax | Exclusion list | WARN | Medium | PL-D01 |
 | Mobile app spend share (no conversions) | App spend >5% of campaign total, 0 conversions | Campaign total spend | FAIL | High | PL-D01 |
-| Display placement: zero clicks | Placement with 1,000+ impressions, 0 clicks | Absolute | WARN: Invalid | Medium | PL-D02 |
-| Display placement: suspiciously high CTR | Placement CTR >10% | Absolute | FAIL: Accidental clicks | High | PL-D02 |
-| Display placement: high CTR, zero conversions | Placement CTR >3%, 0 conversions | Absolute | FAIL: Invalid traffic | High | PL-D02 |
-| Display placement: high CPA | Placement CPA >3x campaign average | Campaign average CPA | FAIL | High | PL-D02 |
+| GDN placement: zero clicks | Placement with 1,000+ impressions, 0 clicks | Absolute | WARN: Invalid | Medium | PL-D02 |
+| GDN placement: suspiciously high CTR | Placement CTR >10% | Absolute | FAIL: Accidental clicks | High | PL-D02 |
+| GDN placement: high CTR, zero conversions | Placement CTR >3%, 0 conversions | Absolute | FAIL: Invalid traffic | High | PL-D02 |
+| GDN placement: high CPA | Placement CPA >3x campaign average | Campaign average CPA | FAIL | High | PL-D02 |
 | Video: kids/children's content | Placement on known children's content | Content classification | FAIL: Brand safety | Critical | PL-D03 |
 | Known-bad domain patterns | Parked domains, MFA sites, random character domains | Pattern matching | FAIL | High | PL-D04 |
 | No account-level exclusion list | No exclusion list exists at account level | Account settings | FAIL | High | PL-D05 |
 | Exclusion list not updated | List not updated in 90+ days | Last update date | WARN | Medium | PL-D09 |
 | Exclusion list near capacity | List >80% of 65K limit | List size | WARN | Low | PL-D09 |
-| Brand safety: expanded inventory | Inventory type set to "Expanded" | Inventory setting | WARN | Medium | PL-D06 |
+| Brand safety: maximum inventory | Inventory type set to "Maximum" | Inventory setting | WARN | Medium | PL-D06 |
 
 ---
 
@@ -230,6 +235,19 @@ All thresholds assume a 30-day lookback window unless stated otherwise.
 | Shopping/Search/PMax overlap | Same product/query served by 2+ campaign types simultaneously | Search term + shopping reports | WARN | Medium | WD-D12 |
 | Broken tracking + active spend | Conversion count dropped >80% for 3+ days while campaign is spending | Conversion trend | FAIL: Emergency | Critical | WD-D13 |
 | Brand CPC vs. organic baseline | Brand CPC >3x industry organic CTR implied value | Estimated organic click value | WARN | Medium | WD-D14 |
+
+---
+
+## Measurement
+
+| Metric | Threshold | Comparison | Verdict | Severity | Check ID |
+|--------|-----------|-----------|---------|----------|----------|
+| Offline conversion upload latency | Conversions uploaded >7 days after the click | Click timestamp | FAIL: Bypassed by attribution modeling | High | TRK-D37 |
+| Offline conversion upload latency | Conversions uploaded 3-7 days after the click | Click timestamp | WARN: Approaching the attribution cutoff | Medium | TRK-D37 |
+| Enhanced Conversions status | Enhanced Conversions off at account level | Account setting | FAIL | High | TRK-D18 |
+| Enhanced Conversions match rate | <50% match rate reported in conversion diagnostics | Conversion diagnostics | WARN: Low identifier coverage | Medium | TRK-D19 |
+
+> ⚠️ **The 7-day upload latency threshold is separate from the 90-day acceptance limit.** Conversions uploaded more than 7 days after the click are still recorded in standard reports but are bypassed by attribution modeling. Enhanced conversions and Enhanced conversions for leads are account-level settings, so TRK-D18 evaluates the account, not individual conversion actions.
 
 ---
 
@@ -296,7 +314,7 @@ These thresholds apply across multiple skills and domains.
 | View rate (non-skippable) | Watch completion <25% | Absolute | WARN: Creative issue | Medium | VID-D17 |
 | CPV (skippable in-stream) | CPV >2x target CPV or bid | Target CPV | FAIL | High | VID-D18 |
 | CPV (skippable in-stream) | CPV 1.5-2x target | Target CPV | WARN | Medium | VID-D18 |
-| CTR on action campaigns (TrueView for Action) | CTR <0.3% after 14+ days | Absolute | FAIL | High | VID-D19 |
+| CTR on action campaigns | CTR <0.3% after 14+ days | Absolute | FAIL | High | VID-D19 |
 | CTR on action campaigns | 0.3-0.5% after 14+ days | Absolute | WARN | Medium | VID-D19 |
 | Video frequency (per user per week) | >10 impressions/user/week | User frequency data | WARN: Fatigue risk | Medium | VID-D10 |
 | Creative freshness | Same creative running >90 days without refresh | Campaign start date | WARN | Low | VID-D08 |
@@ -309,8 +327,10 @@ These thresholds apply across multiple skills and domains.
 |--------|-----------|-----------|---------|----------|----------|
 | Seed audience size | <1,000 users | Absolute | FAIL: Below Google minimum | High | DG-D01 |
 | Seed audience size | 1,000-5,000 users | Absolute | WARN: Functional but limited | Medium | DG-D01 |
-| Seed freshness | List not updated in >90 days | Current date | FAIL | High | DG-D03 |
-| Seed freshness | List not updated in 30-90 days | Current date | WARN | Medium | DG-D03 |
+| Seed freshness (website-visitor seed) | List not updated in >90 days | Current date | FAIL | High | DG-D03 |
+| Seed freshness (website-visitor seed) | List not updated in 30-90 days | Current date | WARN | Medium | DG-D03 |
+| Seed freshness (Customer Match seed) | List not updated in >30 days | Current date | FAIL | High | DG-D03 |
+| Seed freshness (Customer Match seed) | List not updated in 14-30 days | Current date | WARN | Medium | DG-D03 |
 | Demand Gen CPM | CPM >€15 (or local equivalent) sustained | Absolute | WARN: Above range (typical €5-15) | Medium | DG-D17 |
 | Demand Gen CTR | <0.2% sustained for 14+ days | Absolute | FAIL | High | DG-D18 |
 | Demand Gen CTR | 0.2-0.5% sustained | Absolute | WARN | Medium | DG-D18 |
@@ -318,6 +338,9 @@ These thresholds apply across multiple skills and domains.
 | Demand Gen CPA/ROAS vs target | CPA 1.5-2x Demand Gen target (or ROAS 0.5-0.7x target) after learning | Demand Gen tCPA/tROAS | WARN | Medium | DG-D19 |
 | Conversions per ad group per month | <30 conversions/ad group/month on Target CPA | Monthly conversion count | WARN: Insufficient signal | Medium | DG-D01 |
 | Creative freshness | Same creative set running >60 days without refresh | Campaign start date | WARN | Low | DG-D07 |
+| Demand Gen daily budget | Daily budget <10x Demand Gen target CPA, or <€100/day (or local equivalent) on Maximize conversions | Demand Gen tCPA / campaign budget | FAIL: Below serving floor | High | DG-D20 |
+| Demand Gen feed inventory depth | <4 approved in-stock products, or approved products spread across <4 Group IDs | Merchant Center feed status | FAIL: Campaign does not serve | Critical | DG-D21 |
+| Demand Gen goal and audience conflict | New customer acquisition goal enabled together with a Lookalike segment | Campaign goal + audience config | FAIL | High | DG-D22 |
 
 ---
 
@@ -326,16 +349,16 @@ These thresholds apply across multiple skills and domains.
 | Metric | Threshold | Comparison | Verdict | Severity | Check ID |
 |--------|-----------|-----------|---------|----------|----------|
 | Audience list minimum size (Search) | <1,000 members | Absolute | FAIL: Below Google minimum | High | AUS-D03 |
-| Audience list minimum size (Display/Video) | <100 members | Absolute | FAIL: Below Google minimum | High | AUS-D03 |
+| Audience list minimum size (Demand Gen/Video) | <100 members | Absolute | FAIL: Below Google minimum | High | AUS-D03 |
 | Customer Match match rate | <40% match rate | Upload records | FAIL: Data quality issue (typical 60-80%) | High | AUS-D06 |
-| Customer Match match rate | 40-55% match rate | Upload records | WARN: Below typical (60-80%) | Medium | AUS-D06 |
-| Audience list freshness | Customer Match list not updated in >90 days | Current date | FAIL | High | AUS-D04/D07 |
-| Audience list freshness | Customer Match list not updated in 30-90 days | Current date | WARN | Medium | AUS-D04/D07 |
+| Customer Match match rate | 40-59% match rate | Upload records | WARN: Below typical (60-80%) | Medium | AUS-D06 |
+| Audience list freshness | Customer Match list not updated in >30 days | Current date | FAIL | High | AUS-D04/D07 |
+| Audience list freshness | Customer Match list not updated in 14-30 days | Current date | WARN | Medium | AUS-D04/D07 |
 | Remarketing list freshness | Website visitor list not refreshing (tag issue) | Expected refresh cadence | FAIL | High | AUS-D04 |
 | Unknown demographic spend | >25% of campaign spend on "Unknown" age, gender, or income | Campaign total spend | WARN | Medium | AUS-D14 |
 | Unknown demographic spend | >40% on "Unknown" | Campaign total spend | FAIL: Targeting blind spot | High | AUS-D14 |
-| Excessive ad frequency | >15 impressions/user/week on Display | User frequency data | WARN: Fatigue | Medium | AUS-D17 |
-| Excessive ad frequency | >20 impressions/user/week on Display | User frequency data | FAIL: Waste | High | AUS-D17 |
+| Excessive ad frequency | >15 impressions/user/week on Demand Gen | User frequency data | WARN: Fatigue | Medium | AUS-D17 |
+| Excessive ad frequency | >20 impressions/user/week on Demand Gen | User frequency data | FAIL: Waste | High | AUS-D17 |
 | Membership duration vs buying cycle | Remarketing window <7 days for high-consideration product (avg cycle >30 days) | Business buying cycle | WARN: Too short | Medium | AUS-D11 |
 
 ---
@@ -354,7 +377,7 @@ These thresholds apply across multiple skills and domains.
 | Silent Killer asset | AIS >25% AND CPI/RPI below cluster average (or ad-level average if no cluster), 5,000+ impressions | Cluster/ad average CPI/RPI | FAIL: Remove immediately | Critical | AD-D06 |
 | Hidden Gem asset | AIS <15% AND CPI/RPI above cluster average (or ad-level average), 3,000+ impressions | Cluster/ad average CPI/RPI | WARN: Opportunity (pin to increase visibility) | Medium | AD-D06 |
 | CPI/RPI decline | CPI/RPI declining 2+ consecutive weeks | Prior 2-week trend | WARN: Creative fatigue | Medium | AD-D22 |
-| Creative freshness (Display) | Same ad creatives running >60 days without refresh | Creative upload date | WARN | Low | DSP-D13 |
+| Creative freshness (Demand Gen) | Same ad creatives running >60 days without refresh | Creative upload date | WARN | Low | DSP-D13 |
 
 ---
 
@@ -395,19 +418,21 @@ Sourced from Account Monitoring Mental Model and Post-Launch Monitoring Referenc
 
 1. **All CPA/ROAS thresholds assume the target is correctly set.** If target CPA/ROAS is not configured, use breakeven CPA or breakeven ROAS as the reference point. (See: [Bid Targets Reference](../references/Bid Targets Reference.md))
 
-2. **Percentage thresholds are defaults.** Skills should allow threshold overrides via `config/ads-context.config.json` for accounts with non-standard economics (high-value B2B, seasonal businesses, low-volume verticals).
+2. **Percentage thresholds are defaults.** Every skill accepts threshold overrides via `config/ads-context.config.json`, for accounts with non-standard economics (high-value B2B, seasonal businesses, low-volume verticals).
 
-3. **Lookback windows:** Unless stated, thresholds use 30-day lookback. Performance-based thresholds (CPA/ROAS deviation, anomaly detection) use `max(7 days, 2x conversion lag)` as the rolling window. Configure via `ads-context.config.json`. Other exceptions: learning phase (14 days), QS trends (3 reporting periods), seasonal (YoY), exclusion list freshness (90 days), N-gram freshness (spend-dependent: 30/90/180 days).
-
-6. **CPA and ROAS equivalence:** All CPA-based thresholds have a ROAS equivalent. When the account uses Target ROAS bidding, evaluate using the ROAS threshold instead of CPA. The ROAS multiples use clean round numbers consistent across the OS: 0.5x (severe), 0.7x (inefficient). Do not mix CPA and ROAS evaluation on the same entity: pick the metric that matches the bid strategy.
+3. **Lookback windows:** Unless stated, thresholds use 30-day lookback. Performance-based thresholds (CPA/ROAS deviation, anomaly detection) use `max(7 days, 2x conversion lag)` as the rolling window. Configure via `ads-context.config.json`. Other exceptions: learning phase (7-14 days, a fixed floor and ceiling), post-change wait (1-2 conversion cycles, which scales with the account's cycle), QS trends (3 reporting periods), seasonal (YoY), exclusion list freshness (90 days), N-gram freshness (spend-dependent: 30/90/180 days).
 
 4. **Severity assignment logic:**
-   - **Critical (15pts):** Actively losing money or broken tracking
+   - **Critical (15pts):** Actively losing money, broken tracking, or the campaign cannot serve at all
    - **High (10pts):** Significant waste or missed opportunity, fix within current optimization cycle
    - **Medium (5pts):** Optimization opportunity, schedule for next cycle
    - **Low (3pts):** Best practice deviation, address when capacity allows
 
-5. **SKIP conditions:** When data is insufficient to make a judgment (below minimum click/spend thresholds), diagnostics should SKIP rather than PASS. SKIP removes the check from the denominator so it does not inflate scores.
+5. **SKIP conditions:** When data is insufficient to make a judgment (below minimum click/spend thresholds), the diagnostic returns SKIP rather than PASS. SKIP removes the check from the denominator so it does not inflate scores.
+
+6. **CPA and ROAS equivalence:** All CPA-based thresholds have a ROAS equivalent. On an account using Target ROAS bidding, the ROAS threshold is evaluated instead of the CPA one. The ROAS multiples use clean round numbers consistent across the OS: 0.5x (severe), 0.7x (inefficient). CPA and ROAS evaluation never run on the same entity: the metric follows the bid strategy.
+
+7. **Cost thresholds run on spend net of invalid-activity credits.** The Invalid Activity Credit Report breaks credits down by campaign and by network, with the click and interaction counts behind each credit. On accounts with material credits, gross cost overstates spend and inflates every cost-based waste and CPA threshold. Net the credits out before scoring.
 
 ---
 
@@ -422,7 +447,7 @@ Sourced from Account Monitoring Mental Model and Post-Launch Monitoring Referenc
 | [Auction Insights Reference](../references/Auction Insights Reference.md) | Competitive metrics behind IS thresholds |
 | [Improve Quality Score](../playbooks/Improve Quality Score.md) | Routes QS findings to correct fix |
 | [Diagnostic Logic Patterns Reference](../references/Diagnostic Logic Patterns Reference.md) | Non-numeric diagnostic logic (classification, pattern matching, skip conditions) |
-| [Post-Launch Monitoring Reference](../references/Post-Launch Monitoring Reference.md) | Video/Display/DG benchmarks that source monitoring thresholds |
+| [Post-Launch Monitoring Reference](../references/Post-Launch Monitoring Reference.md) | Video/Demand Gen benchmarks that source monitoring thresholds |
 | [Demand Gen Performance Reference](../references/Demand Gen Performance Reference.md) | Demand Gen CPM/CTR/CPA ranges |
 | [Frequency Capping Reference](../references/Frequency Capping Reference.md) | Frequency limits by campaign type |
 
@@ -430,8 +455,8 @@ Sourced from Account Monitoring Mental Model and Post-Launch Monitoring Referenc
 
 ## Version details
 
-- **Version:** 2.0
-- **Last Updated:** April 2026
+- **Version:** 4.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---
@@ -444,4 +469,4 @@ Violations may be detected through embedded document fingerprints and will be pu
 
 Full terms: https://www.ppcmastery.com/terms-and-conditions
 
-(c) 2026 PPC Mastery B.V. All rights reserved.
+© 2026 PPC Mastery B.V. All rights reserved.

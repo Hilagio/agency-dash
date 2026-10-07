@@ -164,7 +164,7 @@ The developer populates the `transaction_id` value dynamically from the backend.
 
 1. Complete 3-5 test conversions
 2. For each one, verify the transaction ID is:
-   - Present (not blank or undefined)
+   - Present (not blank or undefined, and not a value starting with `GG_`: that prefix marks a Google-generated placeholder, which means the tag sent no ID of its own)
    - Unique (different for each conversion)
    - Matching the backend record
 
@@ -196,7 +196,7 @@ Test transaction ID population on every conversion path:
 
 ### 4.2 Check Google Ads
 
-1. Go to Google Ads > Goals > Conversions > conversion action detail
+1. Go to Google Ads > Goals > Summary > conversion action detail
 2. Look at the conversion count for the test period
 3. Confirm the duplicate submission was counted only once
 
@@ -287,8 +287,8 @@ A: Yes. Use the same `transaction_id` value for both. This also enables cross-pl
 
 ### Version details
 
-- **Version:** 1.0
-- **Last Updated:** February 2026
+- **Version:** 2.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

@@ -71,16 +71,18 @@ The monthly spending limit (30.4x daily budget) applies regardless of ad schedul
 | 12 hours/day | 30.4x daily budget | Concentrated into 12 active hours |
 | 8 hours/day | 30.4x daily budget | Concentrated into 8 active hours |
 
-To reduce total monthly spend, lower the daily budget. Ad schedules control when ads show, not how much you spend in total.
+The daily budget is the only control on total monthly spend. Ad schedules control when ads show, not how much a campaign spends in total.
 
-### What to tell stakeholders
+### Why an overspend day is not an overspend
 
-Stakeholders often react to days where spend exceeds the daily budget. Educate them proactively:
+A day where spend exceeds the daily budget is the designed behavior, and four facts describe it fully:
 
-- Daily spend can be up to 2x the set budget on any given day
-- Monthly spend is capped at 30.4x the daily budget
-- Overspend days are compensated by underspend days
-- This behavior helps Google maximize results by capitalizing on high-opportunity moments
+| Fact | Detail |
+|------|--------|
+| Daily ceiling | Up to 2x the set budget on any given day |
+| Monthly ceiling | 30.4x the daily budget, never exceeded |
+| Compensation | Overspend days are offset by underspend days |
+| Purpose | Google concentrates spend into high-opportunity moments |
 
 ---
 
@@ -132,7 +134,7 @@ One daily budget shared across multiple linked campaigns. Google distributes spe
 
 ### Where to find shared budgets
 
-Google Ads > Tools > Budgets and Bidding > Shared budgets
+Google Ads > Tools > Budgets and bidding > Shared budgets
 
 ### Shared budget + portfolio bid strategy
 
@@ -144,7 +146,7 @@ Combining a shared budget with a portfolio bid strategy creates the most automat
 
 This is powerful for accounts where campaigns share the same business objective and efficiency targets.
 
-> ⚠️ **Shared budgets do not work with campaign experiments in most cases:** If you run frequent experiments, use individual budgets for those campaigns.
+> ⚠️ **Shared budgets are incompatible with most campaign experiments.** A campaign that needs to run experiments needs an individual budget.
 
 ---
 
@@ -165,13 +167,12 @@ This is powerful for accounts where campaigns share the same business objective 
 
 ## Budget pacing reports
 
-### Accessing budget reports
+### Where budget reports live
 
-1. Navigate to your campaign list
-2. Click on the budget amount for any campaign
-3. Select "View budget report" from the dropdown
-
-For shared budgets: Tools > Budgets and Bidding > Shared budgets > select budget > view report
+| Budget type | Path to the report |
+|-------------|--------------------|
+| Individual | The budget amount on the campaign list links through to "View budget report" |
+| Shared | Tools > Budgets and bidding > Shared budgets, then the budget's report |
 
 ### What the report shows
 
@@ -185,14 +186,14 @@ For shared budgets: Tools > Budgets and Bidding > Shared budgets > select budget
 
 ### Custom columns for budget monitoring
 
-Create these custom columns for better budget visibility:
+Two custom columns carry the pacing picture:
 
 | Custom column | Formula | Purpose |
 |--------------|---------|---------|
 | **Daily budget spent %** | Cost / (Budget x Days in period) x 100 | Shows if you are pacing on target |
 | **Actual daily spend** | Cost / Days in period | Average daily spend for comparison against budget |
 
-Combine these with the **Search lost IS (budget)** column to identify campaigns where budget is limiting volume.
+Paired with the **Search lost IS (budget)** column, they identify campaigns where budget is the binding constraint.
 
 ---
 
@@ -226,6 +227,7 @@ This is only available for video campaigns. All other campaign types use daily b
 ## Budget sufficiency diagnostics
 
 These thresholds determine whether a campaign's daily budget is sufficient for Smart Bidding to optimize effectively.
+
 ### Daily budget-to-CPA ratio
 
 The daily budget must be large enough for Smart Bidding to generate the minimum conversion volume it needs to learn. The ratio derives directly from the conversion volume thresholds in the [Conversion Volume Thresholds Reference](../references/Conversion Volume Thresholds Reference.md).
@@ -267,7 +269,7 @@ Google can spend up to 2x the daily budget on any single day. This is a feature,
 | Scenario | What It Means | Action |
 |----------|--------------|--------|
 | Daily spend regularly hits 2x budget | Campaign is heavily budget-constrained on high-opportunity days | Increase budget or tighten targeting to reduce wasteful impressions |
-| Daily spend regularly hits 2x AND campaign is profitable | Strong signal to increase budget: high-opportunity days are producing results | Increase daily budget by 20-30%, monitor IS lost to budget |
+| Daily spend regularly hits 2x AND campaign is profitable | Strong signal to increase budget: high-opportunity days are producing results | Increase daily budget by 15-20%, monitor IS lost to budget |
 | Daily spend rarely hits 2x but monthly cap is reached | Steady spend across days, but 30.4x monthly limit constraining | Check if daily budget is set correctly for monthly goals |
 
 ### Minimum budget for conversion volume
@@ -321,8 +323,8 @@ If the required daily budget exceeds the available budget, consolidate campaigns
 
 ## Version details
 
-- **Version:** 3.0
-- **Last Updated:** March 2026
+- **Version:** 4.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

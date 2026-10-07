@@ -1,6 +1,6 @@
 # SOP – Set Up Data Exclusions
 Created: 2026-02-04
-Updated: 2026-04-02
+Updated: 2026-10-05
 
 Agent_Executable: No
 Category: Measurement
@@ -26,7 +26,7 @@ This SOP does **not:**
 - Fix the underlying tracking issue (diagnose and resolve first, then exclude the bad period)
 - Replace conversion adjustments for individual conversion corrections (See: [SOP – Configure Conversion Adjustments](../sops/SOP – Configure Conversion Adjustments.md))
 - Provide ongoing data quality monitoring (separate operational process)
-- Configure Smart Bidding strategies (downstream SOP)
+- Configure Smart Bidding strategies (See: [SOP – Select a Bidding Strategy](../sops/SOP – Select a Bidding Strategy.md))
 
 ### When to run this SOP
 
@@ -53,7 +53,8 @@ Run this SOP when:
 
 | Document | Used for |
 |----------|----------|
-| Google Ads account | Creating the data exclusion |
+| [Data Exclusions Reference](../references/Data Exclusions Reference.md) | Exclusion scope, duration limits and mechanics |
+| [Smart Bidding Mechanics Reference](../references/Smart Bidding Mechanics Reference.md) | How excluded data affects the bidding model |
 | Incident log or monitoring tools | Exact start/end times of the issue |
 
 ---
@@ -113,14 +114,19 @@ Determine which type of issue occurred:
 ### 2.1 Navigate to Data Exclusions
 
 1. Open Google Ads
-2. Go to Tools > Shared Library > Bid Strategies
+2. Go to Tools > Budgets and bidding > Bid strategies
 3. Click "Advanced Controls" in the top navigation
 4. Select "Data Exclusions"
 
 ### 2.2 Create the exclusion
 
 1. Click the "+" button to add a new data exclusion
-2. Fill in the fields:
+2. Fill in the fields listed below
+3. If selecting specific campaigns: check the campaigns that were affected and leave unaffected campaigns unchecked
+4. If selecting specific devices: check only the affected device types (Computer, Mobile, Tablet)
+5. Click Save
+
+**Fields:**
 
 | Field | What to enter |
 |-------|--------------|
@@ -129,15 +135,6 @@ Determine which type of issue occurred:
 | Start date and time | Exact start of the corrupted period |
 | End date and time | Exact end of the corrupted period |
 | Scope | Select: All campaigns, specific campaigns, or specific devices |
-
-3. If selecting specific campaigns:
-   - Check the campaigns that were affected
-   - Leave unaffected campaigns unchecked
-
-4. If selecting specific devices:
-   - Check only the affected device types (Computer, Mobile, Tablet)
-
-5. Click Save
 
 ### 2.3 Review the exclusion summary
 
@@ -155,7 +152,7 @@ After saving, verify the exclusion details:
 
 ### 3.1 Confirm the exclusion is active
 
-1. Return to Tools > Shared Library > Bid Strategies > Advanced Controls > Data Exclusions
+1. Return to Tools > Budgets and bidding > Bid strategies > Advanced Controls > Data Exclusions
 2. Verify your exclusion appears in the list
 3. Confirm the status shows as active
 4. Check that the date range and scope are correct
@@ -168,9 +165,9 @@ After the exclusion is applied:
 
 | Timeframe | What to check |
 |-----------|--------------|
-| First 24 hours | Smart Bidding may adjust bids as it recalculates without the excluded data |
-| First 7 days | CPA/ROAS targets should stabilize as the algorithm adapts |
-| After 14 days | Performance should return to pre-incident levels (assuming the root cause is fixed) |
+| First 24 hours | Smart Bidding adjusts bids as it recalculates without the excluded data |
+| First 7 days | CPA/ROAS performance stabilizes as the algorithm adapts |
+| After 14 days | Performance returns to pre-incident levels, provided the root cause is fixed |
 
 ### 3.3 Verify the root cause is resolved
 
@@ -194,7 +191,7 @@ The data exclusion protects Smart Bidding from bad data, but the underlying issu
 
 ### Limitations
 
-Understand these constraints before relying on data exclusions:
+These constraints apply:
 
 | Limitation | Detail |
 |------------|--------|
@@ -280,8 +277,8 @@ A: Data exclusions tell Smart Bidding to ignore bad data from a past period. Sea
 
 ### Version details
 
-- **Version:** 2.0
-- **Last Updated:** February 2026
+- **Version:** 4.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

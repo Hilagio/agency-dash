@@ -1,4 +1,4 @@
-﻿# Ad Schedule Reference
+# Ad Schedule Reference
 Created: 2026-02-14
 
 Support_ID: REFERENCE_43
@@ -52,11 +52,9 @@ Documents ad schedule configuration in Google Ads: time slot setup, hour-of-week
 
 ## Configuration mechanics
 
-### How to set an ad schedule
+### Where the setting lives
 
-1. Open the campaign, navigate to **Ad schedule** in the left menu
-2. Click the pencil icon to edit
-3. Select days and time ranges, then save
+Ad schedule is a campaign-level setting, edited from the **Ad schedule** entry in the campaign's left menu. Configuration is owned by [SOP - Optimize Ad Schedule](../sops/SOP – Optimize Ad Schedule.md), Phase 3.
 
 ### Time slot rules
 
@@ -90,11 +88,9 @@ Documents ad schedule configuration in Google Ads: time slot setup, hour-of-week
 | Clicks per time slot | 50+ for reliable patterns |
 | Conversion volume | 10+ per slot for conversion-based decisions |
 
-### How to extract the data
+### Where the data comes from
 
-1. Go to **Reports** in Google Ads, create a custom report
-2. Add dimensions: Day of week, Hour of day
-3. Add metrics: Clicks, Impressions, Conversions, Cost, Conversion value
+Hour-of-week data is a Google Ads report segmented by **Hour of day** and **Day of week**, carrying clicks, impressions, conversions, cost and conversion value. The pull is owned by [SOP - Optimize Ad Schedule](../sops/SOP – Optimize Ad Schedule.md), Phase 1.
 
 ### Key metrics per slot
 
@@ -107,10 +103,11 @@ Documents ad schedule configuration in Google Ads: time slot setup, hour-of-week
 
 ### Pattern validation
 
-- Compare week-over-week patterns before applying adjustments
-- Ignore slots with fewer than 50 clicks (insufficient data)
-- Flag patterns that appear in 3+ of 4 weeks as reliable
-- Treat patterns appearing in only 1 of 4 weeks as noise
+| Condition | Reading |
+|-----------|---------|
+| Pattern present in 3+ of 4 weeks | Reliable |
+| Pattern present in 1 of 4 weeks | Noise |
+| Slot below 50 clicks | Insufficient data, no reading |
 
 ---
 
@@ -140,10 +137,10 @@ Adjustment = (520 / 400 - 1) x 100 = +30%. Bid up 30% for Sunday evenings.
 
 | Guardrail | Rule |
 |-----------|------|
-| Initial cap | Limit adjustments to +/- 30% when first applying |
-| Ramp period | Run for 2 weeks, then expand range based on results |
+| Initial cap | +/- 30% on first application |
+| Ramp period | 2 weeks before the range widens on results |
 | Full pause (-100%) | Reserve for hours with zero business value (e.g., B2B weekends, overnight for call-only campaigns) |
-| Maximum positive | Rarely exceed +50% unless data volume is very high |
+| Maximum positive | +50%, above which the slot needs very high data volume to support the adjustment |
 
 ---
 
@@ -167,19 +164,11 @@ Adjustment = (520 / 400 - 1) x 100 = +30%. Bid up 30% for Sunday evenings.
 | Maximize Conversions | No, adjustments are ignored |
 | Maximize Conversion Value | No, adjustments are ignored |
 
-To stop ads during certain hours while using Smart Bidding, do not use bid adjustments. Set the ad schedule itself to exclude those hours. Smart Bidding respects the schedule, just not the adjustments.
+Under Smart Bidding, the only working way to stop delivery in a given hour is the schedule itself: a -100% adjustment on that slot has no effect, because Smart Bidding respects the schedule and ignores the adjustments.
 
 ### Budget pacing interaction
 
-Ad schedules control WHEN ads show but do not reduce total monthly spend. The full monthly budget (30.4x daily budget) concentrates into scheduled hours.
-
-| Schedule configuration | Monthly budget | Per-hour spend rate |
-|------------------------|---------------|---------------------|
-| 24 hours/day | 30.4x daily budget | Standard |
-| 12 hours/day | 30.4x daily budget | ~2x standard rate per active hour |
-| 8 hours/day | 30.4x daily budget | ~3x standard rate per active hour |
-
-Campaigns with limited schedules see higher per-hour spend rates because the same monthly total is distributed across fewer active hours. To reduce total spend, lower the daily budget.
+Ad schedules control when ads show, not how much a campaign spends in total. The monthly spending limit is unaffected by the schedule, so a restricted schedule concentrates the same monthly total into fewer active hours and raises the per-hour spend rate. The daily budget is the only control on total spend. The monthly cap mechanics are owned by [Budget Pacing Reference](../references/Budget Pacing Reference.md).
 
 ---
 
@@ -210,8 +199,8 @@ Campaigns with limited schedules see higher per-hour spend rates because the sam
 | Using Smart Bidding, no hours to exclude | No schedule needed: Smart Bidding handles time optimization |
 | Using Smart Bidding, need to pause specific hours | Set schedule to exclude those hours, no bid adjustments |
 | Using Manual CPC, clear hourly performance patterns | Set schedule with bid adjustments based on data |
-| B2B with no weekend value | Pause weekends via schedule (budget concentrates into weekdays, does not reduce monthly total: lower daily budget to reduce spend) |
-| Call-only campaigns outside business hours | Pause outside staffed hours (budget concentrates into staffed hours: lower daily budget to reduce spend) |
+| B2B with no weekend value | Pause weekends via schedule, which concentrates budget into weekdays without reducing the monthly total |
+| Call-only campaigns outside business hours | Pause outside staffed hours, which concentrates budget into staffed hours without reducing the monthly total |
 | New campaign, no data yet | Run 24/7 for 2 to 4 weeks, then analyze |
 
 ---
@@ -226,7 +215,7 @@ Campaigns with limited schedules see higher per-hour spend rates because the sam
 | Forgetting schedule gaps stop delivery | Leaving hours uncovered kills volume | Cover all intended delivery hours with slots |
 | Not accounting for time zones in multi-geo campaigns | Schedule misaligned with target audience | Split campaigns by region if timing precision matters |
 | Using -100% instead of removing the time slot | Same result but harder to audit | Remove slots entirely when you want zero delivery |
-| Using ad schedules to reduce total spend | Monthly cap (30.4x daily budget) applies regardless of schedule | Lower the daily budget to reduce spend: ad schedules only control timing |
+| Using ad schedules to reduce total spend | The monthly cap applies regardless of schedule | Lower the daily budget to reduce spend: ad schedules only control timing |
 
 ---
 

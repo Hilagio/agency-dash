@@ -1,5 +1,6 @@
 # Video Creative Reference
 Created: 2026-02-04
+Updated: 2026-10-05
 
 Support_ID: CHEATSHEET_3
 Status: Done
@@ -17,7 +18,7 @@ Documents video ad specifications, the ABCD creative framework, and technical re
 
 ---
 
-## What this is / What this is NOT
+## What this reference is / What this is NOT
 
 **This reference:**
 
@@ -38,11 +39,11 @@ Documents video ad specifications, the ABCD creative framework, and technical re
 
 | Format | Max duration | Skippable | Best for | Compatible campaigns |
 | --- | --- | --- | --- | --- |
-| Skippable In-Stream | No limit (< 3 min recommended) | After 5s | Engagement measurement, direct response | Demand Gen, Video View, Video Reach, PMax |
-| In-Feed Video | No limit | N/A (user clicks) | Discovery, high-intent viewers | Demand Gen, Video View, Video Reach, PMax |
-| YouTube Shorts | < 60 seconds recommended | Swipe | Mobile-first, engaged viewers | Demand Gen, Video View, Video Reach, PMax |
-| Non-Skippable In-Stream | 15-60 seconds | No | Full message delivery, awareness | Video Reach |
-| Bumper Ads | 6 seconds | No | Quick awareness, message reinforcement | Video Reach |
+| Skippable In-Stream | No limit (< 3 min recommended) | After 5s | Engagement measurement, direct response | Demand Gen, Video views, Video reach, PMax |
+| In-Feed Video | No limit | N/A (user clicks) | Discovery, high-intent viewers | Demand Gen, Video views, Video reach, PMax |
+| YouTube Shorts | < 60 seconds recommended | Swipe | Mobile-first, engaged viewers | Demand Gen, Video views, Video reach, PMax |
+| Non-Skippable In-Stream | 15-60 seconds | No | Full message delivery, awareness | Video reach |
+| Bumper Ads | 6 seconds | No | Quick awareness, message reinforcement | Video reach |
 
 ---
 
@@ -50,14 +51,14 @@ Documents video ad specifications, the ABCD creative framework, and technical re
 
 | Principle | Question It Answers | Focus |
 | --- | --- | --- |
-| **A — Attention** | Will they keep watching? | Hook and sustain with immersive story |
-| **B — Branding** | Will they remember who this is from? | Brand early, often, and richly |
-| **C — Connection** | Will they care? | Help people think or feel something |
-| **D — Direction** | Will they act? | Clear, specific call-to-action |
+| **A: Attention** | Will they keep watching? | Hook and sustain with immersive story |
+| **B: Branding** | Will they remember who this is from? | Brand early, often, and richly |
+| **C: Connection** | Will they care? | Help people think or feel something |
+| **D: Direction** | Will they act? | Clear, specific call-to-action |
 
 ---
 
-## A — Attention
+## A: Attention
 
 > 💡 **Goal:** Hook viewers in the first 5 seconds and sustain attention throughout.
 
@@ -82,7 +83,7 @@ Documents video ad specifications, the ABCD creative framework, and technical re
 
 ---
 
-## B — Branding
+## B: Branding
 
 > 💡 **Goal:** Ensure viewers know who the ad is from, even if they skip.
 
@@ -110,7 +111,7 @@ Documents video ad specifications, the ABCD creative framework, and technical re
 
 ---
 
-## C — Connection
+## C: Connection
 
 > 💡 **Goal:** Make viewers think or feel something (emotion drives action).
 
@@ -139,7 +140,7 @@ Documents video ad specifications, the ABCD creative framework, and technical re
 
 ---
 
-## D — Direction
+## D: Direction
 
 > 💡 **Goal:** Tell viewers exactly what to do next.
 
@@ -151,9 +152,9 @@ Documents video ad specifications, the ABCD creative framework, and technical re
 | Supercharge with audio | Reinforce on-screen CTA with voice-over |
 | Make it easy | Simple, clear instructions (one action only) |
 
-### CTAs by objective
+### CTAs by intent
 
-| Objective | CTA Examples |
+| Intent | CTA Examples |
 | --- | --- |
 | Awareness | "Learn more at [brand].com" |
 | Consideration | "See how it works" / "Watch the demo" |
@@ -164,7 +165,7 @@ Documents video ad specifications, the ABCD creative framework, and technical re
 
 ---
 
-## ABCD by marketing objective
+## ABCD by intent
 
 ### Awareness ads
 
@@ -226,6 +227,8 @@ Documents video ad specifications, the ABCD creative framework, and technical re
 | Good | Horizontal + vertical (cover most inventory) |
 | Minimum | Horizontal only (limits mobile performance) |
 
+> ⚠️ **Never run vertical-only asset mixes.** Campaigns with only vertical video can stop serving in YouTube in-feed environments. Always include horizontal (and preferably square) alongside vertical.
+
 ---
 
 ### Duration guidelines
@@ -234,9 +237,9 @@ Documents video ad specifications, the ABCD creative framework, and technical re
 | --- | --- | --- | --- |
 | Skippable In-Stream | 12 seconds | 15-60 seconds | No limit (< 3 min) |
 | Non-Skippable In-Stream | 15 seconds | 15-30 seconds | 60 seconds |
-| Bumper | — | 6 seconds | 6 seconds |
-| YouTube Shorts | — | 15-30 seconds | 60 seconds |
-| In-Feed | — | 30-90 seconds | No limit |
+| Bumper | 5 seconds | 6 seconds | 6 seconds |
+| YouTube Shorts | N/A | 15-30 seconds | 60 seconds |
+| In-Feed | N/A | 30-90 seconds | No limit |
 
 ---
 
@@ -246,7 +249,7 @@ Documents video ad specifications, the ABCD creative framework, and technical re
 | --- | --- | --- |
 | Top | ~10% | May be covered by UI elements |
 | Bottom | ~20% | May be covered by CTAs, buttons, text |
-| Center | ~70% | Safe zone — keep critical content here |
+| Center | ~70% | Safe zone, holds all critical content |
 
 > ⚠️ **Critical content to keep in center 70%:** Logo, product, text, faces, key visual details.
 
@@ -254,11 +257,11 @@ Documents video ad specifications, the ABCD creative framework, and technical re
 
 ## Format selection guide
 
-### Step 1️⃣: Check format availability
+### Format availability by campaign type
 
-Your campaign type determines which formats are available:
+Campaign type determines which formats are available:
 
-| Format | Video Reach | Video Views | Demand Gen | PMax |
+| Format | Video reach | Video views | Demand Gen | PMax |
 | --- | --- | --- | --- | --- |
 | Skippable In-Stream | ✅ | ✅ | ✅ | ✅ * |
 | Non-Skippable In-Stream | ✅ | ❌ | ❌ | ❌ |
@@ -266,13 +269,13 @@ Your campaign type determines which formats are available:
 | In-Feed Video | ✅ | ✅ | ✅ | ✅ * |
 | YouTube Shorts | ✅ | ✅ | ✅ | ✅ * |
 
-> 💡 **Non-Skippable and Bumper ads are Video Reach exclusives:** If you need guaranteed full-message delivery, you must use a Video Reach campaign.
+> 💡 **Non-Skippable and Bumper ads are Video reach exclusives:** If you need guaranteed full-message delivery, you must use a Video reach campaign.
 
-### Step 2️⃣: Select format by campaign type and objective
+### Format selection by campaign type and objective
 
-**Video Reach campaigns** (all formats available):
+**Video reach campaigns** (all formats available):
 
-```jsx
+```
 What's your primary objective?
 │
 ├─ Guaranteed full message delivery?
@@ -291,9 +294,9 @@ What's your primary objective?
    └─ YES → Skippable In-Stream (default)
 ```
 
-**Video Views campaigns** (no forced-view formats):
+**Video views campaigns** (no forced-view formats):
 
-```jsx
+```
 What's your primary objective?
 │
 ├─ Maximize completed views?
@@ -308,7 +311,7 @@ What's your primary objective?
 
 **Demand Gen campaigns** (no forced-view formats):
 
-```jsx
+```
 What's your primary objective?
 │
 ├─ Direct response / conversions?
@@ -323,7 +326,7 @@ What's your primary objective?
 
 **Performance Max:**
 
-No format selection available. Upload all video formats (horizontal, vertical, square) and all durations (6s, 15s, 30s+). Google selects automatically based on placement and predicted performance.
+No format selection available. Performance Max draws on every uploaded format (horizontal, vertical, square) and duration (6s, 15s, 30s+), and Google selects between them based on placement and predicted performance.
 
 ---
 
@@ -378,9 +381,9 @@ No format selection available. Upload all video formats (horizontal, vertical, s
 | [Video Creative Quality Checklist](../checklists/Video Creative Quality Checklist.md) | Validates videos against these standards |
 | [Asset Optimization Control Guidelines](../guidelines/Asset Optimization Control Guidelines.md) | Enhancement settings to disable |
 | [Image Creative Reference](../references/Image Creative Reference.md) | Parallel reference for image assets |
-| SOP — Set Up Video Campaigns | Campaign setup using these specs |
-| SOP — Set Up Demand Gen Campaigns | Demand Gen video requirements |
-| SOP — Set Up Performance Max Campaigns | PMax video requirements |
+| [SOP – Launch a Video Campaign](../sops/SOP – Launch a Video Campaign.md) | Campaign setup using these specs |
+| [SOP – Launch a Demand Gen Campaign](../sops/SOP – Launch a Demand Gen Campaign.md) | Demand Gen video requirements |
+| [SOP – Launch PMax Full Assets Ecommerce Campaign](../sops/SOP – Launch PMax Full Assets Ecommerce Campaign.md) | PMax video requirements |
 
 ---
 
@@ -388,17 +391,15 @@ No format selection available. Upload all video formats (horizontal, vertical, s
 
 | Resource | Link |
 | --- | --- |
-| ABCD Playbook (Google) | [Think with Google](4075) |
-| Video ad specs (Google Ads Help) | [About video ad specs](https://support.google.com/google-ads/answer/2375464) |
+| ABCD Playbook (Google) | Think with Google |
 | YouTube Ads inspiration | [YouTube Ads Leaderboard](https://www.youtube.com/ads/leaderboard/) |
-| Video creation in Google Ads | [Create a video using Asset library](https://support.google.com/google-ads/answer/10670486) |
 
 ---
 
 ## Version details
 
-- **Version:** 1.0
-- **Last Updated:** January 2026
+- **Version:** 4.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

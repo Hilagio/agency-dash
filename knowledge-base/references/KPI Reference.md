@@ -1,6 +1,6 @@
 # KPI Reference
 Created: 2026-02-04
-Updated: 2026-02-05
+Updated: 2026-09-16
 
 Support_ID: CHEATSHEET_11
 Status: Done
@@ -59,7 +59,7 @@ Documents every Google Ads KPI: what it measures, how it is calculated, what tie
 
 ## Tier 1: Primary KPIs
 
-These metrics directly measure progress toward your Google Ads goal. Report on these in every stakeholder meeting.
+These metrics directly measure progress toward the Google Ads goal. They are the stakeholder-facing set.
 
 ### Conversions
 
@@ -125,7 +125,7 @@ These metrics directly measure progress toward your Google Ads goal. Report on t
 
 ## Tier 2: Secondary KPIs (Guardrails)
 
-Guardrails prevent your primary goal from causing damage. Set these as hard boundaries that cannot be crossed.
+Guardrails prevent the primary goal from causing damage. They function as hard boundaries, not as targets to trade off.
 
 ### For growth-focused accounts
 
@@ -139,17 +139,17 @@ Guardrails prevent your primary goal from causing damage. Set these as hard boun
 
 | Guardrail | What it prevents | How to set |
 |-----------|-----------------|------------|
-| **Minimum conversion volume** | Campaigns drying out, losing market share | Set based on Smart Bidding thresholds (30+ conversions/month) |
+| **Minimum conversion volume** | Campaigns drying out, losing market share | Derived from Smart Bidding thresholds (See: [Conversion Volume Thresholds Reference](../references/Conversion Volume Thresholds Reference.md)) |
 | **Minimum conversion value** | Revenue dropping below business needs | Set based on revenue targets from business goals |
 | **Minimum impression share** | Competitive visibility erosion | Set based on auction insights baseline |
 
-> ⚠️ **When a guardrail triggers, investigate before adjusting:** A guardrail breach means your primary goal is causing damage. Diagnose the cause before loosening the guardrail.
+> ⚠️ **A guardrail breach is a diagnosis trigger, not a threshold to loosen.** The breach means the primary goal is causing damage, and the cause sits upstream of the guardrail value.
 
 ---
 
 ## Tier 3: Diagnostic KPIs
 
-Diagnostic KPIs are investigation tools. They explain why primary KPIs move. Do not set targets for diagnostic KPIs: use them to find problems and opportunities.
+Diagnostic KPIs are investigation tools. They explain why primary KPIs move, and they carry no targets of their own.
 
 ### Traffic metrics
 
@@ -173,8 +173,8 @@ Diagnostic KPIs are investigation tools. They explain why primary KPIs move. Do 
 | Metric | Calculation | What it reveals | Investigate when |
 |--------|-------------|-----------------|-----------------|
 | **Search impression share** | Impressions / Total eligible impressions | Market coverage | Below 60% on core non-branded campaigns |
-| **IS lost to budget** | % of impressions lost due to budget | Budget constraints | Above 10%: consider budget increase or consolidation |
-| **IS lost to rank** | % of impressions lost due to Ad Rank | Quality or bid issues | Above 20%: check Quality Score and bids |
+| **IS lost to budget** | % of impressions lost due to budget | Budget constraints | Above 10% |
+| **IS lost to rank** | % of impressions lost due to Ad Rank | Quality or bid issues | Above 20% |
 | **Absolute top IS** | Top-1 position impressions / Total eligible | Competitive dominance | Branded campaigns below 90% |
 
 ### Quality metrics
@@ -182,9 +182,9 @@ Diagnostic KPIs are investigation tools. They explain why primary KPIs move. Do 
 | Metric | Calculation | What it reveals | Investigate when |
 |--------|-------------|-----------------|-----------------|
 | **Quality Score** | 1-10 scale (Expected CTR + Ad relevance + LP experience) | Ad-keyword-LP alignment | Below 6: investigate components |
-| **Expected CTR** | Below/Average/Above average | Ad copy effectiveness | Below average: rewrite ads |
-| **Ad relevance** | Below/Average/Above average | Keyword-ad alignment | Below average: tighten ad groups |
-| **LP experience** | Below/Average/Above average | Landing page quality | Below average: optimize LP |
+| **Expected CTR** | Below/Average/Above average | Ad copy effectiveness | Below average |
+| **Ad relevance** | Below/Average/Above average | Keyword-ad alignment | Below average |
+| **LP experience** | Below/Average/Above average | Landing page quality | Below average |
 
 ---
 
@@ -201,17 +201,9 @@ Conversion value / Cost = ROAS
 Cost / Conversions = CPA
 ```
 
-**Diagnosis flow:** When a primary KPI drops, work backwards through the chain:
+The chain locates the arithmetic drivers of a primary KPI change. Metric movement alone does not establish a cause. Comparable definitions, mature cohorts, mix checks and evidence distinguish competing explanations.
 
-```
-Conversion value dropped
-├─ Conversions dropped?
-│  ├─ Clicks dropped?
-│  │  ├─ Impressions dropped? → Check budget, IS, bid changes
-│  │  └─ CTR dropped? → Check ad copy, competitive landscape
-│  └─ Conversion rate dropped? → Check LP, offer, audience quality
-└─ AOV dropped? → Check product mix, discounting, seasonal shifts
-```
+> ↪️ **For the per-branch diagnostic trees and candidate-explanation table:** See [Metric Tree Reference](../references/Metric Tree Reference.md), which owns the root cause analysis method.
 
 ---
 
@@ -302,8 +294,8 @@ These are directional benchmarks, not targets. Actual performance varies by indu
 
 ## Version details
 
-- **Version:** 1.0
-- **Last Updated:** February 2026
+- **Version:** 2.0
+- **Last Updated:** September 2026
 - **Creator:** Bob Meijer
 
 ---

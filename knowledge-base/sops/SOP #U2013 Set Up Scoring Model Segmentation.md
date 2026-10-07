@@ -1,5 +1,6 @@
 # SOP – Set Up Scoring Model Segmentation
 Created: 2026-02-04
+Updated: 2026-08-27
 
 SOP_ID: SOP_53
 Status: Done
@@ -17,7 +18,6 @@ This SOP sets up composite scoring segmentation for Shopping campaigns using a w
 
 > ❓ **The big question:** How do I prioritize products based on multiple factors (performance, margin, inventory, competitiveness) rather than just historical ROAS?
 
-Scoring models combine multiple variables into a single priority score. This gives you business-aligned prioritization that goes beyond performance-only segmentation.
 
 ---
 
@@ -77,7 +77,7 @@ This SOP does **not:**
 
 ## Critical rules
 
-1. **No single variable should exceed ~35% weight:** Over-weighting defeats multi-variable purpose.
+1. **No single variable exceeds ~35% weight:** Over-weighting defeats the multi-variable purpose.
 2. **Data quality is non-negotiable:** Bad data in any variable corrupts the entire score.
 3. **Normalize all variables to the same scale:** Cannot compare ROAS (0-1000%) with margin (0-50%) without normalization.
 4. **Start simple, add complexity:** Begin with 2-3 variables. Add more only after validating.
@@ -151,11 +151,11 @@ Normalize each variable to a 0-10 scale.
 |----------|-------|---------|-------|---------|--------|
 | | | | | | |
 
-> 💡 Use historical data to set breakpoints. Pull 20th, 50th, and 80th percentile values as starting points.
+> 💡 **Set breakpoints from your own data.** Pull the 20th, 50th, and 80th percentile values as starting points.
 
 ### 0.3 Assign weights
 
-Weights should reflect business priorities. Total must equal 100%.
+Weights reflect business priorities. The total must equal 100%.
 
 **Example weight distributions:**
 
@@ -306,6 +306,13 @@ Based on your bucket definitions:
 | [Product] - High Priority | Score ≥7.0 | 50-60% |
 | [Product] - Medium Priority | Score 5.0-6.9 | 25-35% |
 | [Product] - Low Priority | Score <5.0 | 10-20% |
+
+**2-bucket:**
+
+| Campaign | Contains | Budget share |
+|----------|----------|--------------|
+| [Product] - Priority | Score ≥6.0 | 70-80% |
+| [Product] - Standard | Score <6.0 | 20-30% |
 
 ### 2.2 Create campaigns
 
@@ -474,8 +481,8 @@ A: Quarterly minimum. Also after major strategy or market changes.
 
 ## Version details
 
-- **Version:** 2.0
-- **Last Updated:** February 2026
+- **Version:** 3.0
+- **Last Updated:** August 2026
 - **Creator:** Bob Meijer
 
 ---

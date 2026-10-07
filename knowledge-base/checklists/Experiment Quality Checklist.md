@@ -1,5 +1,6 @@
 # Experiment Quality Checklist
 Created: 2026-02-05
+Updated: 2026-08-27
 
 Support_ID: CHECKLIST_24
 Status: Done
@@ -57,16 +58,16 @@ Run this checklist:
 
 - [ ] Only one variable is being tested (control everything else)
 - [ ] Test is high-impact (10%+ potential effect on primary KPI)
-- [ ] Effect size you want to detect is realistic for your volume
-- [ ] Alternative approaches were considered (is experiment the right method?)
+- [ ] The target effect size is detectable at the campaign's current volume
+- [ ] An experiment is documented as the right method over a pre/post analysis
 
 ### Sample Size and Duration
 
 - [ ] Required sample size is calculated based on effect size
-- [ ] Campaign has enough volume to reach sample size in reasonable time
-- [ ] Duration accounts for learning period (minimum 2 weeks)
+- [ ] Campaign volume reaches the required sample size within the planned duration
+- [ ] Duration accounts for learning period (minimum 1-2 weeks)
 - [ ] Duration covers full day-of-week cycle (minimum 1 week)
-- [ ] Duration accounts for conversion lag (add your average lag)
+- [ ] Planned duration exceeds the calculated duration by at least the average conversion lag
 - [ ] Duration accounts for business cycles (if applicable)
 
 ### Success Criteria
@@ -79,15 +80,16 @@ Run this checklist:
 
 ### Configuration
 
-- [ ] Traffic split is set appropriately (50/50 recommended unless specific reason)
+- [ ] Traffic split is 50/50, or a different split is documented with its reason
 - [ ] Sync schedule is set (Daily recommended)
 - [ ] End date is set based on calculated duration
 - [ ] Goal metric in Google Ads matches your primary metric
+- [ ] Auto-apply results is turned OFF
 - [ ] Both arms are verified identical except for test variable
 
 ### Exclusion of Confounding Factors
 
-- [ ] No other experiments running on same campaign
+- [ ] No other experiment is running on the same campaign
 - [ ] No planned campaign changes during test period
 - [ ] No known external factors that will affect results (seasonality, promotions)
 - [ ] Conversion tracking is verified stable
@@ -99,7 +101,7 @@ Run this checklist:
 - [ ] Start date and planned end date documented
 - [ ] Traffic split and settings documented
 - [ ] Success criteria documented
-- [ ] Team is informed (no one will make changes during test)
+- [ ] Team has confirmed no changes will be made during the test
 
 ### Pre-Launch Verification
 
@@ -122,14 +124,14 @@ Run this checklist:
 ### Internal Validity
 
 - [ ] Only one variable differs between arms
-- [ ] Assignment is random (cookie-based split)
+- [ ] Assignment method is set deliberately
 - [ ] No selection bias in traffic split
 - [ ] Measurement is identical for both arms
 
 ### External Validity
 
 - [ ] Test period is representative (not during unusual events)
-- [ ] Results will be applicable to future periods
+- [ ] No known structural change lands after the test period that would invalidate the result
 - [ ] Learnings can be applied to similar campaigns
 
 ---
@@ -138,7 +140,8 @@ Run this checklist:
 
 - [ ] Dashboard set up to monitor both arms
 - [ ] Alert set if either arm drops catastrophically (>30% worse)
-- [ ] Team reminded not to make changes
+- [ ] No budget was rebalanced to equalize spend between arms
+- [ ] Over-delivery is checked against Served Cost, not Billed Cost
 - [ ] Calendar reminder set for end date
 - [ ] Calendar reminder set for results review (end date + conversion lag)
 
@@ -157,8 +160,8 @@ Run this checklist:
 
 ## Version details
 
-- **Version:** 1.0
-- **Last Updated:** February 2026
+- **Version:** 3.0
+- **Last Updated:** August 2026
 - **Creator:** Bob Meijer
 
 ---

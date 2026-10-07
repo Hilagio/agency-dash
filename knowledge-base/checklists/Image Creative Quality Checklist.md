@@ -70,7 +70,7 @@ Run this checklist:
 
 - [ ]  Single clear focal point (not competing elements)
 - [ ]  Key content within center 80% safe zone
-- [ ]  No critical elements at edges (may be cropped)
+- [ ]  No critical element sits at an image edge
 - [ ]  High contrast between subject and background
 - [ ]  Clean, uncluttered background
 - [ ]  Faces visible and properly lit (if people included)

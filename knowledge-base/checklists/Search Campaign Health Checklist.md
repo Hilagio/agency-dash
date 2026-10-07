@@ -53,9 +53,9 @@ Run this checklist:
 
 ### Keyword health
 
-- [ ] QS distribution reviewed: fewer than 20% of keywords have QS below 7
+- [ ] Fewer than 20% of keywords have QS below 7
 - [ ] No non-converting keywords with spend exceeding 2x target CPA and 50+ clicks
-- [ ] Impression share (Search IS) checked: campaigns or ad groups with IS below 70% identified
+- [ ] Every campaign or ad group with Search IS below 70% is listed
 - [ ] IS Lost (Budget) and IS Lost (Rank) values documented
 - [ ] No duplicate keywords across ad groups or campaigns causing cannibalization
 
@@ -63,12 +63,12 @@ Run this checklist:
 
 ### Search term health
 
-- [ ] Search term report reviewed for a date range aligned to the account's conversion lag (not a fixed window)
+- [ ] Search term report is pulled for a date range at least as long as the account's conversion lag
 - [ ] No new irrelevant query patterns consuming more than 5% of campaign spend
 - [ ] N-gram exclusion lists linked to campaign (both non-converting and inefficient lists)
 - [ ] Primary irrelevant search term exclusion list linked to campaign
-- [ ] High-performing search terms not yet added as keywords identified
-- [ ] Close-variant performance checked for significant divergence from parent keywords
+- [ ] Every high-performing search term not yet added as a keyword is listed
+- [ ] Every close variant whose CPA exceeds its parent keyword by more than 50% is listed
 
 > ↪️ **Search term analysis:** See [Search Term Report Reference](../references/Search Term Report Reference.md) for report configuration and analysis patterns.
 
@@ -78,43 +78,45 @@ Run this checklist:
 
 - [ ] All ad groups have at least one active RSA
 - [ ] Asset performance judged by CPI/RPI/PPI and Asset Impression Share (AIS), not by Ad Strength or CTR
-- [ ] RSA testing status checked: active tests running via Iteration Loop methodology
-- [ ] Pinning strategy reviewed: not over-pinning (max 2 pinned positions)
+- [ ] Every ad group has an active RSA asset test running under the Iteration Loop
+- [ ] No RSA has more than 2 pinned positions
 
 ### Extension coverage
 
 - [ ] Minimum 4 active sitelinks per campaign
 - [ ] Minimum 4 active callouts per campaign
 - [ ] Structured snippets configured
-- [ ] Auto-generated extensions disabled or reviewed
+- [ ] Auto-generated assets are disabled, or an exception is documented
 
 > ↪️ **Full extension validation:** See [Extension Coverage Checklist](../checklists/Extension Coverage Checklist.md) for the complete extension gate.
 
 ### Bid strategy health
 
 - [ ] Bid strategy not in "Learning" or "Learning (limited)" for 14+ days
-- [ ] Conversion volume sufficient for bid strategy (50+ monthly for tCPA/tROAS)
+- [ ] Campaigns on Target CPA or Maximize Conversions have 15+ monthly conversions
+- [ ] Campaigns on Target ROAS or Maximize Conversion Value have 30+ monthly conversions
+- [ ] Every campaign under 50 monthly conversions has a documented decision
 - [ ] Actual CPA/ROAS within 20% of target over the last 14 days
-- [ ] No recent bid strategy changes within the last 14 days (respect learning period)
+- [ ] No major changes within the last 1-2 conversion cycles (strategy switch, target change > 25%, budget change > 30%, geographic targeting change)
 
 > ↪️ **Bid strategy deep dive:** See [Bid Strategy Health Checklist](../checklists/Bid Strategy Health Checklist.md) for the complete bid strategy validation gate.
 
 ### Budget health
 
-- [ ] IS Lost (Budget) documented: campaigns with more than 10% flagged for review
+- [ ] Every campaign losing more than 10% impression share to budget is flagged
 - [ ] Monthly spend pacing on track (within 10% of monthly budget target)
 
 ### Structure health
 
-- [ ] All ad groups receiving 4,000+ monthly impressions (1,000/week) (flag underperforming groups)
+- [ ] Every ad group receives 4,000+ monthly impressions (1,000 per week)
 - [ ] Keyword-to-ad relevance verified: keywords in each ad group match ad messaging
-- [ ] No ad groups with a single keyword and very low volume (consolidation candidates)
+- [ ] No ad group runs on a single keyword with fewer than 500 monthly searches
 
 ### Competitive health
 
-- [ ] Auction insights reviewed for impression share shifts
-- [ ] New competitor entries noted
-- [ ] Significant overlap rate changes flagged
+- [ ] Impression share shift versus the prior period is recorded from Auction Insights
+- [ ] Every competitor new to Auction Insights is listed
+- [ ] Every overlap rate change above 10 percentage points is flagged
 
 ---
 

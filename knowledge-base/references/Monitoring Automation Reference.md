@@ -39,7 +39,7 @@ This reference does **not:**
 
 ## Tier 1️⃣: Google Ads rules
 
-Free, minutes to set up. Start here for basic coverage of Layer 1️⃣ status checks and Layer 2️⃣ absolute thresholds.
+Free, minutes to set up. The lowest tier that covers Layer 1️⃣ status checks and Layer 2️⃣ absolute thresholds.
 
 ### Layer 1️⃣ health checks
 
@@ -65,15 +65,9 @@ Free, minutes to set up. Start here for basic coverage of Layer 1️⃣ status c
 
 ### What rules cannot do
 
-Rules only support absolute thresholds and status-based conditions. They cannot:
+Rules support absolute thresholds and status-based conditions only. Relative comparisons, minimum-volume filtering, URL and feed health, Change History, pacing calculations, and cross-account execution all fall outside them, and each moves up to Scripts (Tier 2️⃣) or third-party tools (Tier 3️⃣).
 
-- Compare metrics to baselines or prior periods (relative % changes)
-- Filter by minimum conversion volume
-- Check URLs, feed health, or Change History
-- Calculate pacing or compare to targets
-- Run cross-account
-
-For these checks, add Scripts (Tier 2️⃣) or third-party tools (Tier 3️⃣).
+> ↪️ **For the full limitations table with workarounds:** See [Google Ads Alerts and Rules Reference](../references/Google Ads Alerts and Rules Reference.md), which owns native rule mechanics.
 
 ---
 
@@ -112,7 +106,7 @@ These checks require logic that rules cannot handle.
 | Conversion action status | Check ConversionAction status via API, email if not "ENABLED" | Daily |
 | 404 errors on final URLs | UrlFetchApp HTTP check on all active final URLs, email broken URLs with campaign/ad group context | Weekly |
 | Redirect chain detection | Follow redirects, flag chains >2 hops, output to Sheets | Weekly |
-| Feed processing errors | Content API integration, pull Merchant Center diagnostics | Daily |
+| Feed processing errors | Merchant API integration, pull Merchant Center diagnostics | Daily |
 | Missing feed attributes | Attribute coverage check against required fields | Weekly |
 | Product coverage drop | Weekly product count comparison vs. baseline in Sheets | Weekly |
 | Extended learning (>14 days) | Track bid strategy learning start date in Sheets, flag if >14d | Daily |
@@ -141,7 +135,7 @@ Baselines underpin all fluctuation alerts. They must be maintained and updated.
 | **Same period last year** | Script pulls YoY data for seasonal comparison | Accounts for seasonality | Requires 12+ months of data, business changes confound |
 | **Statistical bands** | Script calculates mean + standard deviation, sets bands | More precise, filters noise well | More complex to implement, requires sufficient data |
 
-> 💡 **Recalibrate monthly:** Baselines that never update normalize poor performance. Run a monthly recalibration (manually or via script) to ensure your "normal" reflects current reality, not last quarter's.
+> 💡 **Baselines need monthly recalibration.** A baseline that never updates normalizes poor performance, so a monthly recalibration, manual or scripted, keeps "normal" anchored to current reality rather than last quarter's.
 
 ### Layer 3️⃣ target monitoring (scripts add)
 
@@ -183,7 +177,7 @@ These capabilities are difficult or impossible to replicate with rules and scrip
 | Real-time uptime monitoring | Layer 1️⃣ | Scripts are scheduled, tools provide real-time page health |
 | PMax asset-level scanning | Layer 1️⃣ | Asset group rules are extremely limited (Enable/Pause only, 3 metrics) |
 | Comprehensive governance scanning | Layer 1️⃣ | Tools check dozens of settings simultaneously, scripts require custom code per check |
-| Feed-specific monitoring | Layer 1️⃣ | Dedicated feed tools (Channable, DataFeedWatch) provide deeper attribute analysis than Content API scripts |
+| Feed-specific monitoring | Layer 1️⃣ | Dedicated feed tools (Channable, DataFeedWatch) provide deeper attribute analysis than Merchant API scripts |
 | Multi-metric anomaly detection | Layer 2️⃣ | Tools maintain automatic baselines and detect anomalies across metrics without manual threshold configuration |
 | Automatic baseline management | Layer 2️⃣ | Zero maintenance: tool recalibrates internally (trade-off: less control over methodology) |
 
@@ -198,7 +192,7 @@ Advanced, cost varies. AI agents add reasoning and diagnosis on top of any tier.
 | **Capability** | **Layer** | **What it does** |
 |----------------|----------|-----------------|
 | Root cause diagnosis | Layer 1️⃣ | Investigates why tracking broke, why a bid strategy is stuck in learning, why URLs are failing |
-| Policy analysis and appeal drafting | Layer 1️⃣ | Analyzes disapproval patterns, drafts policy-compliant appeals |
+| Policy analysis and appeal drafting | Layer 1️⃣ | Analyzes disapproval patterns, drafts policy-compliant appeals for decisions less than 6 months old, and drafts edit-and-resubmit plans for older decisions, which have no in-account appeal |
 | Cross-system validation | Layer 1️⃣ | Compares Google Ads data against backend/CRM to identify discrepancies |
 | Feed error diagnosis | Layer 1️⃣ | Diagnoses feed attribute issues, suggests optimization priorities |
 | Multi-factor efficiency diagnosis | Layer 2️⃣ | Investigates CPA/ROAS changes considering multiple variables (competition, seasonality, landing pages) |
@@ -207,7 +201,7 @@ Advanced, cost varies. AI agents add reasoning and diagnosis on top of any tier.
 | Growth trajectory analysis | Layer 3️⃣ | Forecasts whether current pace will hit targets, suggests reallocation |
 | Natural language reporting | Layer 3️⃣ | Generates insight-driven narrative summaries instead of raw data tables |
 
-> 💡 **AI agents are a complement, not a replacement:** Use Tiers 1️⃣-3️⃣ for detection and alerting. Use AI agents for investigation, diagnosis, and decision support when alerts fire.
+> 💡 **AI agents are a complement, not a replacement.** Tiers 1️⃣-3️⃣ handle detection and alerting. AI agents handle investigation, diagnosis, and decision support once an alert fires.
 
 ---
 
@@ -248,7 +242,7 @@ What do you need to automate?
 
 ## Implementation priority
 
-Automate checks in this order for maximum impact with minimum effort:
+This order delivers the most coverage for the least effort:
 
 | **Priority** | **Check** | **Why first** |
 |-------------|-----------|---------------|
@@ -263,7 +257,7 @@ Automate checks in this order for maximum impact with minimum effort:
 | 9 | Comprehensive governance | Subscription cost, but covers dozens of checks automatically |
 | 10 | Feed health monitoring | Subscription cost, essential for ecommerce |
 
-> 💡 **Start with Google rules (priorities 1-4):** They are free, take minutes to set up, and cover the most critical Layer 1️⃣ and Layer 2️⃣ checks. Add Scripts and third-party tools as your monitoring matures.
+> 💡 **Priorities 1-4 are all native Google rules.** They are free, take minutes to configure, and cover the most critical Layer 1️⃣ and Layer 2️⃣ checks. Scripts and third-party tools layer on as monitoring matures.
 
 ---
 
@@ -284,7 +278,7 @@ Automate checks in this order for maximum impact with minimum effort:
 |---------------------|-------------------|---------|
 | Backend lead delivery | CRM integration check (Script or third-party) | Leads not reaching CRM = lost pipeline |
 | Lead quality signals | Script: compare frontend conversions to CRM-qualified leads | Frontend metrics may hide quality degradation |
-| Offline conversion import health | Script: verify recent offline conversion uploads exist | Stale offline data degrades bid strategy performance |
+| Offline conversion import health | Script: verify uploads exist inside the 7-day attribution window (see [Offline Conversion Tracking Reference](../references/Offline Conversion Tracking Reference.md)) | Uploads past that window still report but no longer shape attribution or bidding |
 
 ### SaaS
 

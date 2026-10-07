@@ -262,7 +262,7 @@ Assign every campaign to one of three tiers based on historical performance:
 
 **Shared budgets:**
 
-1. Go to Tools > Budgets and Bidding > Shared budgets
+1. Go to Tools > Budgets and bidding > Shared budgets
 2. Create a shared budget with the pooled daily amount
 3. Link the intended campaigns
 4. Verify all campaigns show the shared budget
@@ -371,8 +371,8 @@ A: Recalculate quarterly at minimum, or whenever goals, unit economics, or marke
 
 ### Version details
 
-- **Version:** 1.0
-- **Last Updated:** February 2026
+- **Version:** 2.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

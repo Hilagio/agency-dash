@@ -1,6 +1,6 @@
 # Conversion Pixel Reference
 Created: 2026-02-04
-Updated: 2026-02-05
+Updated: 2026-10-05
 
 Support_ID: CHEATSHEET_13
 Status: Done
@@ -24,7 +24,7 @@ Documents the Google Ads Conversion Tracking pixel (GACT), the three implementat
 - Explains the three methods for implementing GACT on websites
 - Documents GTM tag setup essentials (Google Tag, Conversion Linker, conversion tracking tag)
 - Lists data layer requirements for purchase and lead events
-- Covers debug and validation methods
+- Covers debug and validation tooling
 
 **This reference does NOT:**
 
@@ -40,7 +40,7 @@ Documents the Google Ads Conversion Tracking pixel (GACT), the three implementat
 | **Method** | **What it does** | **Setup requires** | **Best for** |
 |------------|-----------------|-------------------|-------------|
 | **Hardcoded gtag** | Places Google tag scripts directly in the website source code | Developer access to source code | Simple sites with minimal tracking needs |
-| **Google Tag Manager (GTM)** | Loads GTM container on all pages, then manages all tags within the GTM interface | GTM account, container snippet on all pages, developer for data layer | 95% of implementations: flexible, organized, independent of developer |
+| **Google Tag Manager (GTM)** | Loads GTM container on all pages, then manages all tags within the GTM interface | GTM account, container snippet on all pages, developer for data layer | Almost every implementation: flexible, organized, independent of developer |
 | **CMS-specific plugins** | Uses platform-native plugins to handle tracking automatically | Plugin installation, configuration within CMS | Shopify, WooCommerce, Magento stores with well-supported plugins |
 
 ---
@@ -60,9 +60,9 @@ A global site tag (gtag.js) loads on every page. Conversion event snippets fire 
 | Direct, minimal latency | Not flexible for multi-platform tracking |
 | | Must manually update when Google releases new features |
 
-### When to use
+### When it fits
 
-Use hardcoded gtag only when you have a single conversion action on a simple site and no need for multi-platform tracking (Meta, LinkedIn, GA4). For anything more complex, use GTM.
+Hardcoded gtag fits a single conversion action on a simple site with no multi-platform tracking (Meta, LinkedIn, GA4). Past that point every change routes through a developer, which is what GTM removes.
 
 ---
 
@@ -82,9 +82,9 @@ The GTM container snippet loads on every page (head and body). All tags, trigger
 | Easy to adopt new features (Enhanced Conversions, Cart Data) | |
 | Version control and rollback built in | |
 
-### When to use
+### When it fits
 
-GTM is the recommended method for all implementations. It gives full control over tag management without developer dependency.
+GTM fits every implementation, and it is the library default. It gives full control over tag management with no developer dependency after the container is installed.
 
 ### GTM setup essentials
 
@@ -96,7 +96,7 @@ Every GACT implementation via GTM requires these three components:
 | **Conversion Linker** | Sets first-party cookies that store ad click information (GCLID, GBRAID, WBRAID) for cross-page attribution. | All Pages (fires on every page load) |
 | **Google Ads Conversion Tracking Tag** | Fires the actual conversion event with Conversion ID and Conversion Label. | Event-specific trigger (purchase event, form submit, button click, page view) |
 
-> 💡 **Link your GA4 property to Google Ads first:** This shares the existing Google Tag between GA4 and Google Ads, preventing duplicate Google Tags on your site. Link via GA4 Admin > Google Ads Linking.
+> 💡 **A GA4 property linked to Google Ads shares one Google Tag between them.** The link lives at GA4 Admin > Google Ads Linking, and without it a site running both ends up with duplicate Google Tags.
 
 ### Key GTM concepts
 
@@ -111,10 +111,10 @@ Every GACT implementation via GTM requires these three components:
 
 | **ID Type** | **Scope** | **Where to find** |
 |-------------|----------|------------------|
-| **Conversion ID** | Account-level: same for all conversion actions in the account | Goals > Conversions > Summary > [Action] > Tag Setup > Google Tag Manager |
+| **Conversion ID** | Account-level: same for all conversion actions in the account | Goals > Summary > [Action] > Tag Setup > Google Tag Manager |
 | **Conversion Label** | Action-level: unique per conversion action | Same location, unique per action |
 
-Store the Conversion ID as a GTM Constant variable so you can reuse it across all conversion tags without re-entering it.
+Because the Conversion ID is account-level, a single GTM Constant variable serves every conversion tag in the container. Creating it is owned by [SOP - Set Up Google Ads Conversion Tracking](../sops/SOP – Set Up Google Ads Conversion Tracking.md), Phase 2A.3.
 
 ---
 
@@ -141,11 +141,11 @@ Platform-specific plugins handle tag implementation, data layer creation, and ad
 | **Shopify** | Native Google Channel or Shopify Pixels | Built-in integration handles most tracking |
 | **Magento 2** | Varies | Fewer advanced features than WooCommerce plugins |
 
-> ⚠️ **Use one multi-platform plugin, not multiple single-platform plugins:** Multiple tracking plugins conflict with each other, break data layers, and cause duplicate firing. Pick one plugin that covers all platforms.
+> ⚠️ **One multi-platform plugin, never several single-platform ones.** Multiple tracking plugins conflict with each other, break data layers, and cause duplicate firing.
 
-### When to use
+### When it fits
 
-Use CMS plugins when running a popular e-commerce platform (Shopify, WooCommerce) with a well-supported plugin. Combine with GTM if you need additional customization beyond what the plugin provides.
+A CMS plugin fits a popular ecommerce platform (Shopify, WooCommerce) with a well-supported plugin behind it. Customization beyond what the plugin exposes requires GTM alongside it.
 
 ---
 
@@ -177,23 +177,14 @@ The purchase event data layer must include these variables for proper conversion
 
 | **Tool** | **What it does** | **When to use** |
 |---------|-----------------|----------------|
-| **GTM Preview Mode** | Shows which tags fired, which didn't, what triggered them, and data layer contents in real time | During setup and after any tag changes |
+| **GTM Preview Mode** | Shows which tags fired, which did not, what triggered them, and data layer contents in real time | During setup and after any tag changes |
 | **Google Tag Assistant** | Chrome extension that communicates with GTM Preview Mode for cross-tab debugging | Alongside GTM Preview Mode |
 | **Conversion Action Diagnostics** | Shows tag status (active, inactive, no recent conversions) and recent conversion data in Google Ads | After publishing tags: verify conversions are being recorded |
 | **Real-time reports (GA4)** | Confirms events are arriving in GA4 in real time | When using GA4 alongside GACT |
 | **Chrome DevTools (Network tab)** | Shows HTTP requests to Google servers when tags fire | Troubleshooting firing issues |
 | **Data Layer Inspector** | View data layer pushes and variable values in real time | Verifying data layer structure and values |
 
-### Validation checklist
-
-- [ ] Google Tag fires on all pages
-- [ ] Conversion Linker fires on all pages
-- [ ] Conversion tracking tag fires on the correct trigger event only
-- [ ] Conversion ID and Label match the values in Google Ads
-- [ ] Transaction ID is unique per conversion (no duplicates)
-- [ ] Dynamic value passes correctly (not hardcoded, not zero)
-- [ ] Currency code is present and correct
-- [ ] Tag status shows "Active" in Google Ads conversion action diagnostics (may take up to 24 hours)
+> ↪️ **Validating an implementation:** the pass/fail items live in [Conversion Tracking Setup Checklist](../checklists/Conversion Tracking Setup Checklist.md). One timing note applies to the last of them: conversion action diagnostics can take up to 24 hours to move a tag to "Active".
 
 ---
 
@@ -221,13 +212,15 @@ The purchase event data layer must include these variables for proper conversion
 | [Server-Side Tagging Reference](../references/Server-Side Tagging Reference.md) | Next-level implementation for preventing data loss from ad blockers |
 | [Enhanced Conversions Reference](../references/Enhanced Conversions Reference.md) | Supplementing GACT with hashed first-party data |
 | [Conversion Volume Thresholds Reference](../references/Conversion Volume Thresholds Reference.md) | Minimum volume requirements that depend on accurate pixel implementation |
+| [Conversion Tracking Setup Checklist](../checklists/Conversion Tracking Setup Checklist.md) | Validation: the pass/fail gate for a pixel implementation |
+| [SOP - Set Up Google Ads Conversion Tracking](../sops/SOP – Set Up Google Ads Conversion Tracking.md) | Execution: container, tags, triggers and data layer |
 
 ---
 
 ## Version details
 
-- **Version:** 1.0
-- **Last Updated:** February 2026
+- **Version:** 2.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---
