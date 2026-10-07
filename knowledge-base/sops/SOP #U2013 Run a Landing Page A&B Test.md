@@ -16,8 +16,6 @@ This SOP walks you through selecting a test candidate, forming a hypothesis, run
 
 > ❓ **The big question:** Which version of this landing page converts more visitors into customers, and how do I prove it with confidence?
 
-Landing page optimization without testing is guesswork. This SOP turns landing page improvement into a repeatable, evidence-based process.
-
 ---
 
 ### What this SOP is NOT
@@ -85,7 +83,7 @@ This SOP is for **ongoing conversion rate optimization** on landing pages that a
 
 ### 1.1 Identify high-impact pages
 
-Pull your landing page performance data from Google Ads (Campaigns > Insights & Reports > Landing Pages) and sort by traffic volume.
+Pull your landing page performance data from Google Ads (Campaigns > Insights and reports > Landing pages) and sort by traffic volume.
 
 Focus on pages that meet both criteria:
 
@@ -176,7 +174,7 @@ and our bounce rate data shows 72% of visitors leave without scrolling.
 |---------|------------|
 | Primary metric | Conversion rate (CVR) |
 | Success threshold | Minimum 10% relative improvement (e.g., 3.0% to 3.3%) |
-| Guardrail metric 1 | Bounce rate (should not increase by more than 5%) |
+| Guardrail metric 1 | Bounce rate does not increase by more than 5% |
 | Guardrail metric 2 | Average time on page (should not decrease significantly) |
 | Confidence level | 95% (standard) |
 
@@ -204,7 +202,7 @@ Build one variant (Version B) that changes only the element being tested.
 | Method | Best for | Setup |
 |--------|----------|-------|
 | **Landing page builder A/B test** (Unbounce, Instapage, Leadpages, VWO) | Dedicated landing pages | Built-in split testing, easiest setup |
-| **Google Optimize successor / third-party tool** (VWO, Optimizely, Convert) | Website pages you control | JavaScript-based overlay, no new URL needed |
+| **Third-party experimentation tool** (VWO, Optimizely, Convert) | Website pages you control | JavaScript-based overlay, no new URL needed |
 | **Google Ads Ad Variations** | Campaign-level URL split | 50/50 Final URL split, compare CVR, CPA, ROAS, AOV |
 | **Manual URL split** | When no tools are available | Two URLs, traffic split via campaign settings or ad rotation |
 
@@ -222,7 +220,7 @@ Build one variant (Version B) that changes only the element being tested.
 **Calculate estimated test duration:**
 
 ```
-Conversions needed per variant: 100 (minimum for 95% confidence at 10% MDE)
+Conversions needed per variant: 100 (minimum for 95% confidence at 15-20% MDE)
 Total conversions needed: 200
 
 Monthly conversions on this page: ___
@@ -269,9 +267,9 @@ Before going live, verify:
 
 | Timeframe | What to check | Action |
 |-----------|---------------|--------|
-| Day 1 | Both variants receiving traffic | Verify 50/50 split is working |
+| Day 1 | Both variants receiving traffic | Builder and third-party tools: verify the 50/50 split is working. Ad Variations: confirm both arms have impressions, do not rebalance |
 | Day 2-3 | No technical issues (broken forms, tracking gaps) | Fix immediately if found, restart test clock |
-| Weekly | Traffic distribution still balanced, no external disruptions | Document any anomalies |
+| Weekly | Builder and third-party tools: traffic distribution still balanced. Ad Variations: spend deviation between arms under 20%. Both: no external disruptions | Document any anomalies |
 | End date | Full results ready for analysis | Proceed to Phase 5 |
 
 ### 4.2 Hands-off rules during the test
@@ -312,11 +310,11 @@ If only one condition is met, extend the test until both are satisfied.
 
 | Metric | Control (A) | Variant (B) | Difference | Stat. significant? |
 |--------|------------|-------------|------------|---------------------|
-| Visitors | ___ | ___ | — | — |
+| Visitors | ___ | ___ | n/a | n/a |
 | Conversions | ___ | ___ | ___% | Yes / No |
 | Conversion rate | ___% | ___% | ___% relative | Yes / No (p < 0.05) |
-| Bounce rate | ___% | ___% | ___% | — |
-| Avg. time on page | ___ | ___ | ___ | — |
+| Bounce rate | ___% | ___% | ___% | n/a |
+| Avg. time on page | ___ | ___ | ___ | n/a |
 
 ### 5.3 Interpret results
 
@@ -377,8 +375,8 @@ Results:
 | Metric         | Control | Variant | Diff    | Significant? |
 |----------------|---------|---------|---------|--------------|
 | Conversion rate | ___% | ___% | ___% | Yes/No |
-| Bounce rate     | ___% | ___% | ___% | — |
-| Time on page    | ___  | ___  | ___  | — |
+| Bounce rate     | ___% | ___% | ___% | n/a |
+| Time on page    | ___  | ___  | ___  | n/a |
 
 Winner: [A / B / Inconclusive]
 Deployed: [Yes / No]
@@ -456,8 +454,8 @@ After completing a landing page A/B test:
 
 ### Version details
 
-- **Version:** 2.0
-- **Last Updated:** March 2026
+- **Version:** 3.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

@@ -1,6 +1,6 @@
 # SOP – Improve Landing Page Experience
 Created: 2026-02-04
-Updated: 2026-04-02
+Updated: 2026-10-05
 
 SOP_ID: SOP_3
 Status: Done
@@ -72,7 +72,7 @@ Run this SOP if **any** of the following are true:
 **Required:**
 
 - Access to landing page(s) or ability to request changes
-- Google Ads Landing Pages report (Campaigns → Insights & Reports → Landing Pages)
+- Google Ads Landing Pages report (Campaigns → Insights and reports → Landing pages)
 - Google PageSpeed Insights access
 - Mobile device or emulator for testing
 - Current conversion rate data by landing page
@@ -207,8 +207,6 @@ If your LP fails 2+ questions, you've identified your priority gaps.
 2. Enter your landing page URL
 3. Check both Mobile and Desktop scores
 
-![image.png](image.png)
-
 **Speed benchmarks:**
 
 | Score | Rating | Action |
@@ -227,7 +225,7 @@ If your LP fails 2+ questions, you've identified your priority gaps.
 | Too many HTTP requests | Slow load | Combine files, reduce plugins |
 | No CDN | Geographic latency | Implement CDN |
 
-> ⚠️ **Mobile speed is critical:** For retail, a 1-second delay in mobile load time can impact conversions by up to 20% ([source]<!-- TODO: link target missing -->).
+> ⚠️ **Mobile speed is critical:** For retail, a 1-second delay in mobile load time can impact conversions by up to 20%.
 
 #### Mobile-friendliness test
 
@@ -330,14 +328,14 @@ Google explicitly looks for transparency and trust signals. Missing these can hu
 
 *Execute this phase for each gap identified in Phase 1.*
 
-> ⚠️ **Can't fix a foundational issue? The problem might be your offer, not your landing page.**
+> ⚠️ **Cannot fix a foundational issue? The problem is your offer, not your landing page.**
 > If you struggle to create a compelling value proposition, can't articulate clear benefits, have no social proof to show, or can't offer any risk reversal, the issue isn't your landing page. **It's your offer.**
 > 💡 **A landing page can only be as strong as the offer behind it.**
 > Before continuing, ask yourself:
 > - Do we have a compelling reason for someone to choose us?
 > - Do we have proof that we deliver results?
 > - Do we have something that lowers the risk of trying us?
-> If the answer is "no" to multiple questions, pause this SOP and fix the offer first. No amount of landing page optimization will compensate for a weak or undifferentiated offer.
+> If the answer is "no" to multiple questions, pause this SOP and run [SOP – Create an Irresistible Offer](../sops/SOP – Create an Irresistible Offer.md) first. No amount of landing page optimization compensates for a weak or undifferentiated offer.
 
 ---
 
@@ -383,7 +381,7 @@ For accounts with many keyword variations, implement DTR:
 - Consolidated traffic for better conversion data
 - Faster A/B testing with larger sample sizes
 
-> Most landing page builders (Unbounce, Instapage, Leadpages) have built-in DTR. If you're not using a builder, you can build custom DTR functionality. It’s one of the first thing I (Bob) ask my client’s developers to build for me.
+> Most landing page builders (Unbounce, Instapage, Leadpages) have built-in DTR. If you are not using a builder, have your developer build custom DTR functionality.
 
 ---
 
@@ -547,7 +545,7 @@ Reinforce your CTA with:
 | **Media mentions** | "As seen in Forbes, TechCrunch" | All verticals |
 | **Certifications** | Industry badges, security certs | All verticals |
 
-> 💡 **Make social proof verifiable:** Include full names, company names, photos, and links to original reviews when possible. Unverifiable testimonials create suspicion and and work counterproductively.
+> 💡 **Make social proof verifiable:** Include full names, company names, photos, and links to original reviews when possible. Unverifiable testimonials create suspicion and work counterproductively.
 
 ---
 
@@ -643,7 +641,7 @@ Google uses conversion signals as part of LP Experience assessment. Track:
 | Metric | Target Trend |
 | --- | --- |
 | Conversion Rate | Increasing |
-| Bounce Rate | Decreasing (not relevant for onepagers) |
+| Bounce Rate | Decreasing (not relevant for one-pagers) |
 | Time on Page | Increasing (for considered purchases) |
 | Pages per Session | Context-dependent |
 
@@ -766,8 +764,8 @@ A: The "Landing Pages" report in Google Ads covers Search, Display, Video, and S
 
 ### Version details
 
-- **Version:** 3.0
-- **Last Updated:** January 2026
+- **Version:** 4.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

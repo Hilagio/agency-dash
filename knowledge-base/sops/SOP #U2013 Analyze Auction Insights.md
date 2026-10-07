@@ -26,7 +26,7 @@ Auction Insights data is useful for context, not for reaction. Most competitive 
 This SOP does **not:**
 
 - Document Auction Insights metrics and mechanics (See: [Auction Insights Reference](../references/Auction Insights Reference.md))
-- Define bidding strategy changes (those require separate testing decisions)
+- Define bidding strategy changes (See: [SOP – Select a Bidding Strategy](../sops/SOP – Select a Bidding Strategy.md))
 - Cover Google Merchant Center competitive reports (separate data source)
 
 ## When to run this SOP
@@ -189,7 +189,7 @@ The critical question is not "what are competitors doing?" but "is it affecting 
 | Competitor IS increasing but your KPIs are on target | Monitor, no action needed |
 | Competitor IS increasing and your CPA is rising | Investigate: is CPC increase from competition driving CPA? |
 | New competitor and your IS dropped | Check if Lost IS is budget or rank driven |
-| Competitor disappeared and your CPC dropped | Opportunity: consider expanding targeting or testing lower bids |
+| Competitor disappeared and your CPC dropped | Expand targeting or test lower bids |
 | Multiple competitors growing and your position declining | Strategic review: evaluate if position defense or efficiency focus |
 
 > ⚠️ **Do not chase competitor positions:** If your CPA/ROAS targets are met, it does not matter that a competitor outranks you. Focus on your own business metrics, not competitive vanity.
@@ -197,7 +197,7 @@ The critical question is not "what are competitors doing?" but "is it affecting 
 ### 4.3 Document findings
 
 ```
-Auction Insights Analysis — [Month Year]
+Auction Insights Analysis: [Month Year]
 Account: [Name]
 
 MY POSITION
@@ -249,8 +249,8 @@ After auction insights analysis:
 
 | Issue | Route to |
 |-------|----------|
-| IS loss from budget | Budget reallocation decision |
-| IS loss from rank | Quality Score or bid investigation |
+| IS loss from budget | [SOP – Handle Budget-Limited Campaigns](../sops/SOP – Handle Budget-Limited Campaigns.md) |
+| IS loss from rank | [Improve Quality Score](../playbooks/Improve Quality Score.md) |
 | New dominant competitor | Strategic review with stakeholders |
 
 ---

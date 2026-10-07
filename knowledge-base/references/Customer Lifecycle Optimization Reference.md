@@ -1,6 +1,6 @@
 # Customer Lifecycle Optimization Reference
 Created: 2026-02-04
-Updated: 2026-02-05
+Updated: 2026-10-05
 
 Support_ID: REFERENCE_17
 Status: Done
@@ -19,12 +19,19 @@ Customer lifecycle optimization adjusts bidding to prioritize different customer
 
 ---
 
-## What this is NOT
+## What this is / What this is NOT
 
-This reference does **not:**
+**This reference:**
+
+- Documents the account-level customer lifecycle settings and what each one adds to conversion value
+- Documents the campaign-level customer acquisition and prospecting modes
+- Records the campaign support matrix and the identification methods behind it
+- Sets out the reporting distortion that incremental value introduces
+
+**This reference does NOT:**
 
 - Explain PMax campaign configuration (See: [PMax Configuration Guidelines](../guidelines/PMax Configuration Guidelines.md))
-- Explain conversion tracking setup (See: [SOP – Set Up Conversion Tracking](../sops/SOP – Set Up Conversion Tracking.md))
+- Explain conversion tracking setup (See: [SOP – Set Up Google Ads Conversion Tracking](../sops/SOP – Set Up Google Ads Conversion Tracking.md))
 - Explain audience creation (See: [Audience Signals Reference](../references/Audience Signals Reference.md))
 - Provide bid strategy selection guidance (See: [Bid Strategy Selection Reference](../references/Bid Strategy Selection Reference.md))
 
@@ -43,7 +50,7 @@ This reference does **not:**
 
 ## Account-level settings
 
-Account-level customer lifecycle settings are configured in **Tools & Settings > Conversions > Customer lifecycle goals**.
+Account-level customer lifecycle settings are configured in **Goals > Summary > Customer lifecycle optimization**.
 
 ### New customer acquisition
 
@@ -73,10 +80,10 @@ Incremental value = (Average customer lifetime value) - (Average first purchase 
 | **Setting** | **Description** |
 |-------------|-----------------|
 | **Audience segments of current customers** | Upload a list of existing customers so Google can identify who is "new" |
-| **Minimum list size** | 1,000 matched users recommended |
+| **Minimum list size** | 100 active members per segment on the YouTube or Search network to be eligible. 1,000 matched users recommended |
 | **List type** | Customer Match list of all purchasers/converters |
 
-> ⚠️ **Without a customer list, Google uses conversion history only:** For accurate new customer identification, upload your full customer list via Customer Match.
+> ⚠️ **Without a customer list, Google falls back to conversion history alone.** That misses every existing customer who has not converted through Google Ads, which is what a full Customer Match list closes.
 
 ### Customer identification methods
 
@@ -88,7 +95,7 @@ Google uses three methods to identify customer segments for reporting, bidding, 
 | **Customer Match lists** | Upload your customer lists to identify existing customers | Medium |
 | **Conversion tag parameter** | Pass new vs. existing customer data in the conversion tracking tag | Highest |
 
-> 💡 **For best accuracy, use all three methods together:** First-party data combined with the new vs. existing customer parameter in your conversion tag supplements autodetection and significantly improves identification accuracy.
+> 💡 **The three methods stack rather than replace each other.** First-party data plus the new-versus-existing parameter in the conversion tag supplements autodetection, and accuracy rises with each layer added.
 
 ### High-value customer acquisition
 
@@ -99,10 +106,7 @@ High-value customer settings allow you to bid even more for new customers who ar
 | **Add incremental conversion value for new customers (high value)** | Adds additional value for new customers predicted to be high-value |
 | **Audience segments for high value customers** | Customer Match list of your highest-value customers for modeling |
 
-**How it works:**
-1. Upload a list of your best customers (top 20% by LTV)
-2. Google models characteristics of high-value customers
-3. New customers matching high-value profile receive additional bid boost
+**How it works:** the uploaded list of best customers (top 10-20% by LTV) is the modelling seed. Google learns the characteristics of that group, and new customers matching the profile receive an additional bid boost on top of the regular new-customer value.
 
 > 💡 **High value customer settings only apply to Performance Max and Search campaigns:** Other campaign types do not support this feature.
 
@@ -123,13 +127,15 @@ When you add incremental value for new customers, your reported conversion value
 | No automatic offset | Adding value to new customers does NOT automatically decrease value for existing customers |
 | ROAS target confusion | You must adjust your ROAS targets to account for the inflated values (difficult to calculate accurately) |
 
-### Questions to consider before enabling
+### What the incremental value depends on
 
-Before assigning incremental value to new customers, answer these questions:
+Three unknowns sit behind any incremental value, and each one distorts the number if it is guessed:
 
-1. **What is a new customer really worth?** Do you have reliable LTV data?
-2. **What is the average order value difference** between new and existing customers?
-3. **How many "new" customers would have bought from you regardless?** Not all conversions are truly incremental.
+| Unknown | Why it matters |
+|---------|----------------|
+| What a new customer is actually worth | The incremental value is only as good as the LTV data behind it |
+| The average order value gap between new and existing customers | A narrow gap makes the whole setting close to a no-op |
+| How many "new" customers would have bought regardless | Non-incremental conversions inherit the boost without earning it |
 
 ### Validation requirement
 
@@ -139,7 +145,7 @@ When using "new customers only" mode, you may still see returning customers in y
 - Incomplete Customer Match lists
 - Users on new devices/browsers
 
-**Always cross-reference:** Compare Google's new customer reporting with your own CRM data and third-party attribution tools to verify accuracy.
+Google's new-customer reporting is a classification, not a fact. CRM data and third-party attribution are what establish how far it drifts.
 
 ### Lapsed customer re-engagement (Customer retention)
 
@@ -160,7 +166,20 @@ Define "lapsed" based on your business cycle:
 - SaaS: Churned accounts
 - Lead Gen: Previous leads who did not convert
 
-> ⚠️ **Customer retention settings are only supported in Performance Max campaigns:** Search campaigns support customer acquisition but not customer retention.
+### Loyalty program members (Customer retention)
+
+The loyalty program members setting reaches and re-engages members of your loyalty program. It runs on a Customer Match list of members plus the loyalty program benefits in your Merchant Center feed.
+
+| **Setting** | **Description** |
+|-------------|-----------------|
+| **Show member benefits to loyalty program members** | Shows member price and member shipping on Shopping ads in eligible countries |
+| **Bid higher for loyalty program members** | Adds the member value to a member's purchase so Smart Bidding bids more for members |
+
+Bid strategies: Target ROAS and Maximize Conversion Value.
+
+> ⚠️ **Bidding higher for members raises reported value, not proven incremental value.** Loyalty members are the customers most likely to buy without an ad. Set the member value from CRM data, the same way as the new customer and lapsed customer values, and read the result against a holdout or an experiment before scaling it.
+
+> ⚠️ **Customer retention support differs per setting:** Re-engagement and high-value re-engagement run in Performance Max only. The loyalty program members setting runs in Performance Max and Shopping. Search campaigns support customer acquisition but no customer retention setting.
 
 ---
 
@@ -172,11 +191,22 @@ Campaign-level customer acquisition settings control how the campaign bids for n
 
 | **Mode** | **Effect** | **When to use** |
 |----------|------------|-----------------|
-| **Off** | No bid adjustment for new customers | When you want equal treatment of new and returning |
-| **Bid more for new customers** | Higher bids for users not in your customer list | Growth focus with balanced remarketing |
+| **Bid equally for new and existing customers** | No bid adjustment for new customers | When you want equal treatment of new and returning |
+| **Bid higher for new customers** | Higher bids for users not in your customer list | Growth focus with balanced remarketing |
 | **Only bid for new customers** | Excludes returning customers from bidding | Pure acquisition campaigns |
 
 **Where to configure:** Campaign settings > Customer acquisition
+
+### Prospecting mode (new prospects)
+
+Prospecting mode is a newer, broader exclusion than "only bid for new customers". It tells Search and AI Max to bid only for new prospects, excluding anyone who has already searched your brand, visited your site, or engaged with you on Google or YouTube. Where "new customers" is defined by your customer list and conversion history, "new prospects" excludes the whole pool of people who have already engaged with you.
+| **Mode** | **Excludes** | **Use when** |
+|----------|--------------|--------------|
+| Bid higher for new customers | Nobody (just bids up for new) | Default growth posture with remarketing intact |
+| Only bid for new customers | Prior converters and customer-list members | Pure customer acquisition |
+| Only bid for new prospects | Anyone who searched your brand, visited your site, or engaged on Google or YouTube | Pure top-of-funnel prospecting, when you deliberately want zero overlap with already-engaged users |
+
+> ⚠️ **Default to the least aggressive mode.** Start with "bid more for new customers" and keep remarketing and brand traffic in their own campaigns. Reserve "only bid for new prospects" for a deliberate pure-prospecting goal: it removes a large pool of warm, high-intent users (brand searchers, site visitors), which usually lowers conversion rate and volume. Keep your brand and remarketing campaigns funded so they own that excluded traffic.
 
 ### Tracking vs bidding distinction
 
@@ -189,36 +219,26 @@ Campaign-level customer acquisition settings control how the campaign bids for n
 
 ---
 
-## Configuration workflow
+## Where each setting lives
 
-### Step 1️⃣: Set up account-level settings
+| Layer | Location | What it holds |
+|-------|----------|---------------|
+| Account | Goals > Summary > Customer lifecycle optimization | Customer acquisition and retention toggles, Customer Match lists, incremental values |
+| Campaign | Campaign settings > Customer acquisition | The mode: Off, Bid higher for new customers, Only bid for new customers, Only bid for new prospects |
+| Reporting | Campaign report segmented by Customer type | The new versus returning split, readable after 7+ days |
 
-1. Go to **Tools & Settings > Conversions > Customer lifecycle goals**
-2. Enable customer acquisition and/or customer retention
-3. Upload Customer Match lists for customer identification
-4. Set incremental values based on your LTV calculations
-
-### Step 2️⃣: Configure campaign-level settings
-
-1. Open your PMax or Search campaign
-2. Go to **Campaign settings > Customer acquisition**
-3. Select the appropriate mode (Off, Bid more, Only bid for new)
-
-### Step 3️⃣: Verify configuration
-
-1. After 7+ days, check campaign performance by customer type
-2. Segment by **Customer type** to see new vs returning breakdown
-3. Verify incremental value is being applied correctly
+Configuring them is owned by [SOP - Set Up New Customer Tracking](../sops/SOP – Set Up New Customer Tracking.md), Phase 4.
 
 ---
 
 ## Campaign support matrix
 
-| **Feature** | **Performance Max** | **Search** | **Shopping** | **Display** |
-|-------------|---------------------|------------|--------------|-------------|
-| New customer acquisition | Yes | Yes | No | No |
+| **Feature** | **Performance Max** | **Search** | **Shopping** | **Demand Gen** |
+|-------------|---------------------|------------|--------------|----------------|
+| New customer acquisition | Yes | Yes | Yes | Yes |
 | High-value customer acquisition | Yes | Yes | No | No |
 | Customer retention (lapsed) | Yes | No | No | No |
+| Customer retention (loyalty program members) | Yes | No | Yes | No |
 
 ---
 
@@ -226,7 +246,7 @@ Campaign-level customer acquisition settings control how the campaign bids for n
 
 | **Practice** | **Rationale** |
 |--------------|---------------|
-| Start with "Bid more for new customers" | Less aggressive than excluding returning customers |
+| Start with "Bid higher for new customers" | Less aggressive than excluding returning customers |
 | Use accurate LTV data for incremental values | Incorrect values lead to over/under bidding |
 | Upload comprehensive customer lists | Better new customer identification |
 | Segment high-value customers carefully | Top 10-20% by LTV, not just recent purchasers |
@@ -262,8 +282,8 @@ Campaign-level customer acquisition settings control how the campaign bids for n
 
 ## Version details
 
-- **Version:** 1.0
-- **Last Updated:** February 2026
+- **Version:** 3.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

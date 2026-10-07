@@ -1,5 +1,6 @@
 # Post-Launch Monitoring Reference
 Created: 2026-02-05
+Updated: 2026-08-27
 
 Support_ID: REFERENCE_38
 Status: Done
@@ -40,7 +41,6 @@ Documents the post-launch monitoring cadence, learning period rules, and verific
 | **Search** | 7-14 days | 14 days |
 | **Shopping (Standard)** | 1-2 weeks | 14-30 days |
 | **PMax** | 2-4 weeks | 30 days |
-| **Display** | 2-4 weeks | 30 days |
 | **Video** | 2-4 weeks | 30 days |
 | **Demand Gen** | 2-4 weeks | 30 days |
 
@@ -50,7 +50,7 @@ Documents the post-launch monitoring cadence, learning period rules, and verific
 
 ## What NOT to change during learning
 
-These changes reset the learning period and should be avoided:
+These changes reset the learning period:
 
 | Change | Impact | Wait until |
 |--------|--------|------------|
@@ -60,6 +60,7 @@ These changes reset the learning period and should be avoided:
 | **Pausing and re-enabling** | Disrupts learning signals | Only for critical issues |
 | **Adding/removing conversion actions** | Changes what algorithm optimizes for | Before launch or after evaluation |
 | **Significant audience changes** | Resets targeting signals | After learning period |
+| **Geographic targeting changes** | Resets learning the same way a bid or budget change does | After learning period |
 
 ---
 
@@ -73,7 +74,7 @@ These changes do not significantly disrupt learning:
 | **Fixing disapproved ads** | Necessary for campaign health |
 | **Adding new ads/assets** | Expands options without disrupting existing learning |
 | **Small budget increases (<20%)** | Gradual scaling is acceptable |
-| **Placement exclusions** (Display/Video) | Quality control without disrupting audience learning |
+| **Placement exclusions** (Demand Gen/Video) | Quality control without disrupting audience learning |
 | **Search term refinement** | Improves relevance |
 
 ---
@@ -116,7 +117,7 @@ These changes do not significantly disrupt learning:
 | Bid strategy status | 2-3x per week | Should exit learning |
 | Performance stabilization | 2-3x per week | Less day-to-day volatility |
 | Conversion quality | Weekly | Not just volume, but quality |
-| Channel mix (PMax/Display/Video) | Weekly | Placement distribution |
+| Channel mix (PMax channels) | Weekly | Placement distribution |
 
 ### Week 4+
 
@@ -158,15 +159,6 @@ These changes do not significantly disrupt learning:
 | Asset performance | Balanced impressions across assets | Multiple assets with zero impressions |
 | Channel mix | Varies by setup | Unexpected channel dominance |
 
-### Display campaigns
-
-| Metric | Healthy range | Red flag |
-|--------|---------------|----------|
-| CTR | 0.1-0.5% (remarketing higher) | <0.05% sustained |
-| View-through rate | Platform-dependent | N/A |
-| Conversion rate | Lower than Search | No conversions after 14 days with clicks |
-| Frequency | 3-7 per user per week | >15 per user per week |
-
 ### Video campaigns
 
 | Metric | Healthy range | Red flag |
@@ -189,7 +181,7 @@ These changes do not significantly disrupt learning:
 
 ## Red flags vs normal learning volatility
 
-### Normal learning volatility (do not panic)
+### Normal learning volatility
 
 | Signal | Why it's normal |
 |--------|-----------------|
@@ -199,7 +191,7 @@ These changes do not significantly disrupt learning:
 | CPCs higher than expected initially | Algorithm learning optimal bids |
 | Some days with zero conversions | Expected in low-volume campaigns |
 
-### Actual red flags (investigate immediately)
+### Actual red flags
 
 | Signal | Likely cause | Action |
 |--------|-------------|--------|
@@ -257,7 +249,7 @@ These changes do not significantly disrupt learning:
 | Week 2 review | Launch + 14 days | Learning period assessment |
 | Month 1 review | Launch + 30 days | Full performance evaluation |
 
-> 💡 **Add these as calendar reminders:** Do not rely on memory.
+> 💡 **These milestones belong on a calendar.** Memory is not a monitoring cadence.
 
 ---
 
@@ -287,8 +279,8 @@ These changes do not significantly disrupt learning:
 
 ## Version details
 
-- **Version:** 1.0
-- **Last Updated:** February 2026
+- **Version:** 2.0
+- **Last Updated:** August 2026
 - **Creator:** Bob Meijer
 
 ---

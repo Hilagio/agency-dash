@@ -1,6 +1,6 @@
 # SOP – Run a Monthly Performance Review
 Created: 2026-02-11
-Updated: 2026-04-02
+Updated: 2026-10-05
 
 Agent_Executable: No
 Category: Reporting
@@ -140,9 +140,9 @@ Based on the first X months of the year, project full-year performance:
 
 | Source | Conversions | Revenue | Discrepancy % |
 |--------|------------|---------|---------------|
-| Google Ads | ___ | ___ | — |
-| Backend | ___ | ___ | — |
-| **Discrepancy** | — | — | ___% |
+| Google Ads | ___ | ___ | n/a |
+| Backend | ___ | ___ | n/a |
+| **Discrepancy** | n/a | n/a | ___% |
 
 **Acceptable ranges:**
 
@@ -154,7 +154,7 @@ Based on the first X months of the year, project full-year performance:
 
 ### 2.2 Conversion action health
 
-1. Navigate to Goals > Conversions > Summary
+1. Navigate to Goals > Summary
 2. Verify all primary and secondary conversion actions are active
 3. Check conversion action settings (window, counting method, value)
 4. Note any conversion actions with warnings
@@ -198,7 +198,8 @@ For each active campaign, verify:
 - [ ] Location targeting unchanged from intended
 - [ ] Network settings correct (Search Partners, Display Network)
 - [ ] Ad rotation set to "Optimize"
-- [ ] Language targeting correct
+- [ ] Language targeting correct on Demand Gen, Video and PMax campaigns
+- [ ] Search ad copy and landing pages are in one language per ad group
 - [ ] Conversion goals aligned with intended actions
 
 ### 4.2 Auto-applied changes review
@@ -273,7 +274,7 @@ If performance has consistently exceeded or fallen below current thresholds for 
 ### 6.3 Document the review
 
 ```
-Monthly Performance Review — [Month Year]
+Monthly Performance Review: [Month Year]
 Account: [Name]
 Reviewer: [Name]
 
@@ -298,9 +299,9 @@ BASELINE CHANGES
 [Any threshold adjustments]
 
 ACTION PLAN
-P1: [Action] — [Owner] — [Due]
-P2: [Action] — [Owner] — [Due]
-P3: [Action] — [Owner] — [Due]
+P1: [Action] / [Owner] / [Due]
+P2: [Action] / [Owner] / [Due]
+P3: [Action] / [Owner] / [Due]
 
 CONSTRAINT STATUS
 Current: [Constraint] in [Bucket]
@@ -382,8 +383,8 @@ After monthly review:
 
 ## Version details
 
-- **Version:** 2.0
-- **Last Updated:** February 2026
+- **Version:** 3.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 - **Changelog:** v2.0: Linked quarterly forward reference to published QBR SOP, added to Related SOPs table
 

@@ -1,5 +1,6 @@
 # SOP – Set Up Value-Based Bidding (Max Conv Value / tROAS / POAS)
 Created: 2026-02-04
+Updated: 2026-10-05
 
 Agent_Executable: No
 Category: Bidding
@@ -101,7 +102,7 @@ Are conversion values populating in your reports?
 | **Phase 2️⃣: Configure ROAS strategy** | Set Max Conv Value or tROAS with initial target | Strategy active on campaign |
 | **Phase 3️⃣: Transition to POAS** | Switch from revenue to profit optimization with guardrails | POAS strategy running with safeguards |
 | **Phase 4️⃣: VBB for lead gen** | Set up value-based bidding using OCT deal values | tROAS experiment running against tCPA baseline |
-| **Phase 5️⃣: Manage learning and optimize** | Monitor learning period and make first adjustments | Stable strategy with documented next steps |
+| **Phase 5️⃣: Manage learning and optimize** | Hold through the learning phase and the post-change wait, then make first adjustments | Stable strategy with documented next steps |
 
 ---
 
@@ -122,7 +123,7 @@ Are conversion values populating in your reports?
 
 ### 1.2 Set the correct primary conversion action
 
-1. Go to campaign settings > Goals
+1. Go to campaign settings > Conversion goals
 2. Select "Use campaign-specific goal settings"
 3. Choose the correct conversion action as primary:
    - For ROAS: the revenue-tracking conversion action
@@ -221,7 +222,7 @@ Before starting the transition, confirm:
 
 ### 3.2 Set up campaign-specific goals
 
-1. Navigate to campaign settings > Goals
+1. Navigate to campaign settings > Conversion goals
 2. Switch to "Use campaign-specific goal settings"
 3. Select the profit-based conversion action as primary
 4. Deselect the revenue-based conversion action
@@ -333,7 +334,7 @@ After 30+ days, evaluate:
 |--------|--------|
 | tROAS arm generates more total conversion value at acceptable CPA | Apply experiment (switch to tROAS) |
 | tROAS arm generates similar value but lower volume | Keep tCPA, re-test after more OCT data accumulates |
-| tROAS arm generates less value or much higher CPA | Keep tCPA, VBB may not suit this funnel yet |
+| tROAS arm generates less value or much higher CPA | Keep tCPA, the funnel does not carry enough value signal for VBB |
 
 > 💡 **Evaluate on conversion value, not just CPA:** The point of VBB for lead gen is to prioritize high-value leads. A slightly higher CPA is acceptable if total deal value increases.
 
@@ -345,14 +346,15 @@ After 30+ days, evaluate:
 
 Before the strategy goes live (or after a major change), brief stakeholders:
 
-- Performance will fluctuate for approximately two conversion cycles (See: [Smart Bidding Mechanics Reference](../references/Smart Bidding Mechanics Reference.md))
-- ROAS/POAS may be below target during learning
-- Conversion value may be inconsistent day to day
-- No changes will be made during this period
+- The bid strategy enters a 7-14 day learning phase from the moment the strategy changes
+- The change is not evaluated until 1-2 conversion cycles have passed from the change date, which is the longer window on any conversion cycle above 14 days (See: [Smart Bidding Mechanics Reference](../references/Smart Bidding Mechanics Reference.md))
+- ROAS/POAS will be below target during learning
+- Conversion value will be inconsistent day to day
+- No changes will be made until both windows have closed
 
 ### 5.2 Monitor without reacting
 
-During the learning period (two conversion cycles):
+From the change date until both windows close, the 7-14 day learning phase and 1-2 conversion cycles:
 
 | Do | Do not |
 |----|--------|
@@ -361,19 +363,19 @@ During the learning period (two conversion cycles):
 | Note external factors (seasonality, promotions, competitor changes) | Add or remove keywords |
 | Prepare your first optimization plan for post-learning | Panic if day-to-day ROAS swings widely |
 
-### 5.3 Identify learning period end
+### 5.3 Confirm both windows have closed
 
-The learning period has ended when:
+Move to 5.4 when all three are true:
 
-- Daily performance stabilizes (less extreme day-to-day swings)
-- Two conversion cycles have passed since the strategy change
-- At least one full conversion cycle has elapsed
+- 7-14 days have passed since the strategy change, closing the learning phase
+- 1-2 conversion cycles have passed since the strategy change, closing the post-change wait
+- Daily performance has stabilized (less extreme day-to-day swings)
 
 ### 5.4 Post-learning adjustments
 
-After the learning period ends:
+After both windows have closed:
 
-1. Pull performance data excluding the learning period (first two conversion cycles)
+1. Pull performance data excluding the 7-14 day learning phase
 2. Also exclude the most recent conversion-delay days (incomplete attribution)
 3. Compare actual ROAS/POAS to target
 4. Compare conversion value to growth goals
@@ -381,8 +383,8 @@ After the learning period ends:
 | Result | Action |
 |--------|--------|
 | ROAS/POAS near target, value meets goals | No change needed, continue monitoring |
-| ROAS/POAS below target by more than 20% | Tighten target by 10-15%, wait one conversion cycle |
-| ROAS/POAS well above target | Consider loosening target to capture more volume |
+| ROAS/POAS below target by more than 20% | Tighten target by 10-15%, wait 1-2 conversion cycles |
+| ROAS/POAS well above target | Loosen target by 10-15% to capture more volume |
 | Value below growth goals | Decrease target by 10-15% or increase budget |
 | Value above goals, ROAS/POAS within target | Opportunity to tighten target for more efficiency |
 
@@ -412,7 +414,7 @@ This SOP is complete when:
 - [ ] POAS guardrails are in place (if transitioning from ROAS to POAS)
 - [ ] Lead gen experiment is running (if VBB for lead gen path)
 - [ ] Stakeholders have been briefed on learning period expectations
-- [ ] Learning period has been completed without interference
+- [ ] 7-14 day learning phase completed without interference and 1-2 conversion cycles have passed since the change
 - [ ] Post-learning evaluation has been performed
 - [ ] Bid Strategy Health Checklist passes
 
@@ -424,7 +426,7 @@ Once the strategy is stable and post-learning evaluation is complete:
 
 | Timeframe | Action |
 |-----------|--------|
-| Week 3-4 | Make first target adjustment if needed (10-15% increments) |
+| Once 1-2 conversion cycles have passed | Make first target adjustment if needed (10-15% increments) |
 | Month 2+ | Begin regular optimization cadence |
 | When profit tracking is ready (if currently on ROAS) | Return to Phase 3 of this SOP for POAS transition |
 | When scaling beyond current performance | Begin [SOP – Scale Bids and Budgets](../sops/SOP – Scale Bids and Budgets.md) |
@@ -505,8 +507,8 @@ A: Lead gen value data is inherently noisier than e-commerce (fewer conversions,
 
 ### Version details
 
-- **Version:** 1.0
-- **Last Updated:** February 2026
+- **Version:** 4.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

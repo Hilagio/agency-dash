@@ -1,5 +1,6 @@
 # SOP – Monitor Landing Page Performance
 Created: 2026-02-14
+Updated: 2026-10-05
 
 SOP_ID: SOP_89
 Status: Done
@@ -93,9 +94,9 @@ This SOP does **not:**
 ### 1.1 Pull the Landing Pages report
 
 1. Open Google Ads
-2. Navigate to Campaigns > Insights & Reports > Landing Pages
+2. Navigate to Campaigns > Insights and reports > Landing pages
 3. Set date range to the review period (14 days for bi-weekly, 30 days for monthly, 90 days for quarterly)
-4. Add columns if not already present: Clicks, Impressions, CTR, Conversions, Conv. Rate, Cost, CPA, Conv. Value, ROAS, Mobile Speed Score
+4. Add columns if not already present: Clicks, Impressions, CTR, Conversions, Conv. Rate, Cost, CPA, Conv. Value, ROAS, Mobile speed score (the Google Ads 1-10 scale)
 
 ### 1.2 Pull analytics data
 
@@ -141,8 +142,8 @@ Flag any page that breaches one or more of these thresholds:
 | CPA | Above 2x campaign target CPA (for CPA-based campaigns) | High |
 | CVR | Declining for 3+ consecutive review periods | High |
 | Bounce rate | Above 70% for Lead Gen/SaaS, above 50% for dedicated LP (non-homepage) | Medium |
-| Mobile PageSpeed score | Below 50 | Medium |
-| Desktop PageSpeed score | Below 70 | Low |
+| Mobile PageSpeed Insights score (0-100) | Below 50 | Medium |
+| Desktop PageSpeed Insights score (0-100) | Below 70 | Low |
 | LCP (mobile) | Above 4 seconds | Medium |
 | CLS | Above 0.25 | Low |
 | Mobile CVR vs desktop CVR | Mobile CVR less than 40% of desktop CVR | High |
@@ -157,7 +158,7 @@ For each flagged page, assign a category:
 | Category | Criteria | Example |
 |----------|----------|---------|
 | **CVR/ROAS problem** | CVR or ROAS below threshold or declining trend | Page converts at 1.2% vs. account average of 3.5%, or ROAS 1.5 vs. target 4.0 |
-| **Speed problem** | Mobile or desktop speed below threshold | Mobile PageSpeed score 32 |
+| **Speed problem** | Mobile or desktop speed below threshold | Mobile PageSpeed Insights score 32 |
 | **Engagement problem** | High bounce, low duration, low scroll | 78% bounce rate, 8 seconds avg. duration |
 | **Mobile problem** | Mobile CVR significantly below desktop | Desktop CVR 4.1%, mobile CVR 0.9% |
 | **Multiple problems** | Two or more categories flagged | Low CVR + slow mobile + high bounce |
@@ -268,7 +269,7 @@ Based on the diagnosis, route to the correct workflow:
 
 | Priority | Criteria | Action timeline |
 |----------|----------|-----------------|
-| P1: Critical | High-traffic page with CVR below 50% of benchmark, or page speed below 30 | Fix within 1 week |
+| P1: Critical | High-traffic page with CVR below 50% of benchmark, or mobile PageSpeed Insights score below 30 | Fix within 1 week |
 | P2: High | Any threshold breach on a page receiving significant spend | Fix within 2 weeks |
 | P3: Standard | Minor threshold breaches, low-traffic pages, engagement-only issues | Schedule for next optimization cycle |
 | P4: Monitor | Page close to threshold but not breaching, or recently fixed (still validating) | Review again next cycle |
@@ -318,7 +319,7 @@ ACTIONS FROM PREVIOUS REVIEW
 
 SPEED SCORES
 ------------
-[Any pages with mobile score changes >10 points]
+[Any pages with mobile PageSpeed Insights score changes >10 points]
 
 NEXT REVIEW DATE
 ----------------
@@ -402,7 +403,7 @@ After completing this review:
 | [SOP – Improve Landing Page Experience](../sops/SOP – Improve Landing Page Experience.md) | SOP | Phase 5 (routing for speed/mobile/message match) |
 | [SOP – Audit and Optimize an Existing Landing Page](../sops/SOP – Audit and Optimize an Existing Landing Page.md) | SOP | Phase 5 (routing for full LP optimization) |
 | [SOP – Run a Landing Page A&B Test](../sops/SOP – Run a Landing Page A&B Test.md) | SOP | Phase 5 (routing for test-based optimization) |
-| [Landing Page Quality Score Mental Model](../mental-models/Landing Page Quality Score Mental Model.md) | Mental Model | Understanding how LP performance affects Quality Score |
+| [Improve Quality Score](../playbooks/Improve Quality Score.md) | Playbook | Routing when LP performance drags Quality Score |
 
 ---
 
@@ -420,8 +421,8 @@ After completing this review:
 
 ## Version details
 
-- **Version:** 3.0
-- **Last Updated:** March 2026
+- **Version:** 5.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

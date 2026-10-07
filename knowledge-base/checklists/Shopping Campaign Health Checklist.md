@@ -55,9 +55,9 @@ Run this checklist:
 ### Feed health
 
 - [ ] No disapproved products (or all disapprovals have active fix plans)
-- [ ] Missing attributes flagged: products without GTIN, brand, or required attributes
-- [ ] Product data quality errors checked in Merchant Center diagnostics
-- [ ] Feed refresh happening on schedule (daily minimum for price/availability)
+- [ ] Every product missing a GTIN, brand or required attribute is listed
+- [ ] Merchant Center diagnostics show no product data quality errors
+- [ ] Feed refreshed at least daily for price and availability
 - [ ] Supplemental feeds configured and syncing (if applicable)
 
 > ↪️ **Feed attribute details:** See [Product Feed Data Specification Reference](../references/Product Feed Data Specification Reference.md) for required and recommended attributes.
@@ -66,7 +66,7 @@ Run this checklist:
 
 - [ ] Zero-click products identified: products with 0 impressions or 0 clicks after 30+ days
 - [ ] Zero-click rate documented (percentage of catalog with no traffic)
-- [ ] Top sellers receiving adequate budget (not budget-limited)
+- [ ] No top-selling product sits in a budget-limited campaign
 - [ ] Unprofitable products identified (high cost, low/no conversions, ROAS below target)
 - [ ] Product performance segments updated: hero / sidekick / villain / zombie (if applicable)
 
@@ -74,43 +74,43 @@ Run this checklist:
 
 ### Price competitiveness
 
-- [ ] GMC price competitiveness data reviewed
+- [ ] Merchant Center price competitiveness is recorded per product group
 - [ ] Products in "High" (most expensive) tier flagged for pricing review
-- [ ] Sale price badge eligibility checked (45-60 day stable base price)
-- [ ] Competitor pricing shifts noted
+- [ ] Base prices have been stable for 45-60 days on products intended for sale badges
+- [ ] Every competitor price shift above 10% is listed
 
 ### Title and image quality
 
-- [ ] Best-seller titles reviewed: contain brand + product type + key attribute + differentiator (See: [Product Title Catalog](../catalogs/Product Title Catalog.md))
-- [ ] Title length distribution checked: titles using available character limit (max 150, aim 70-100)
-- [ ] Product descriptions reviewed for key selling points and keyword coverage (See: [Product Description Catalog](../catalogs/Product Description Catalog.md))
+- [ ] Every best-seller title contains brand, product type, key attribute and differentiator (See: [Product Title Catalog](../catalogs/Product Title Catalog.md))
+- [ ] Every title is 70-150 characters
+- [ ] Every product description carries the key selling points and target keywords (See: [Product Description Catalog](../catalogs/Product Description Catalog.md))
 - [ ] Primary images meet quality standards: white background, clear product, no overlays
 - [ ] High-impression/low-CTR products flagged for title/image optimization
 
 ### Bid strategy health
 
-- [ ] Conversion volume sufficient for bid strategy type
+- [ ] Conversion volume meets the minimum for the active bid strategy
 - [ ] Actual ROAS/CPA within 20% of target over last 14 days
 - [ ] Bid strategy not stuck in "Learning" for 14+ days
-- [ ] No recent bid strategy changes within last 14 days
+- [ ] No major changes within the last 1-2 conversion cycles (strategy switch, target change > 25%, budget change > 30%, geographic targeting change)
 
 ### Budget health
 
 - [ ] IS Lost (Budget) on best-seller products/campaigns documented
-- [ ] Monthly spend pacing on track (if applicable)
-- [ ] Budget allocation between Standard Shopping and PMax reviewed
+- [ ] Month-to-date spend is within 10% of pace (if applicable)
+- [ ] Budget split between Standard Shopping and PMax is recorded
 
 ### Structure health
 
-- [ ] Listing group granularity appropriate (not "All products" in one group)
-- [ ] Custom labels reflecting current performance tiers
+- [ ] No listing group holds the entire catalogue under "All products"
+- [ ] Custom labels match the current performance tiers
 - [ ] Product segmentation strategy active (hero/sidekick/villain/zombie), if applicable (See: [Feed Segmentation Catalog](../catalogs/Feed Segmentation Catalog.md))
 - [ ] No listing group overlap causing cannibalization
 
 ### Search term health
 
-- [ ] Shopping search term report reviewed
-- [ ] Irrelevant query patterns identified and excluded
+- [ ] Shopping search term report is pulled for the period
+- [ ] Every irrelevant query pattern found is excluded
 - [ ] Negative keyword lists linked to Shopping campaigns
 - [ ] N-gram analysis applied to Shopping search terms
 

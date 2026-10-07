@@ -1,5 +1,6 @@
 # Match Type Reference
 Created: 2026-02-04
+Updated: 2026-08-27
 
 Support_ID: CHEATSHEET_29
 Category: Targeting
@@ -12,7 +13,7 @@ Status: Done
 
 ## Purpose
 
-Documents how Google Ads keyword match types work: syntax, matching behavior, close variant expansion, signal usage, and the internal keyword selection hierarchy that determines which keyword serves for a given query.
+Documents how Google Ads keyword match types work: syntax, matching behavior, close variant expansion, signal usage, and the account-wide keyword selection hierarchy that determines which keyword serves for a given query.
 
 ---
 
@@ -22,7 +23,7 @@ Documents how Google Ads keyword match types work: syntax, matching behavior, cl
 
 - Documents the mechanics of exact, phrase, and broad match
 - Explains close variant behavior for each match type
-- Details the 7-step keyword selection hierarchy Google uses to pick a keyword per query
+- Details the account-wide keyword selection hierarchy (including AI-based ad group prioritization) Google uses to pick a keyword per query
 - Covers the 4 extra signals broad match uses that phrase and exact do not
 - Provides syntax and rules for each match type
 
@@ -46,13 +47,15 @@ Documents how Google Ads keyword match types work: syntax, matching behavior, cl
 
 > 💡 **All match types use semantic matching:** Google interprets meaning and intent, not just syntax. A search for "budget accommodation" can match the keyword `[cheap hotels]` on exact match because Google considers them semantically equivalent.
 
+> 💡 **Quality Score is keyword-level across all three match types:** A keyword's Quality Score applies to every query matched through that keyword, however wide the match.
+
 ---
 
 ## 1. Exact match
 
 ### What it does
 
-Matches searches that have the same meaning or intent as your keyword. Despite the name, exact match no longer requires a character-for-character match. Google applies close variant expansion to cover synonyms, rewordings, and implied intent.
+Matches searches that have the same meaning or intent as your keyword. Exact match does not require a character-for-character match. Google applies close variant expansion to cover synonyms, rewordings, and implied intent.
 
 ### Syntax
 
@@ -87,8 +90,7 @@ Exact match close variants include:
 | **Character limit** | Keywords can be up to 80 characters including spaces |
 | **Word order** | Not guaranteed to preserve word order: Google interprets intent |
 | **Negative interaction** | Negative exact `[keyword]` blocks only that exact query, not close variants (use negative phrase for broader blocking) |
-| **Quality Score** | Keyword-level Quality Score applies to all queries matched through this keyword |
-| **Auction priority** | Exact match keywords identical to the search term get highest priority in keyword selection |
+| **Auction priority** | An exact match keyword gets highest priority in keyword selection whenever the query matches it, close variants included |
 
 ### Use cases
 
@@ -144,9 +146,9 @@ Phrase match close variants include everything exact match covers, plus:
 |------|---------|
 | **Character limit** | Keywords can be up to 80 characters including spaces |
 | **Meaning preservation** | Google maintains the core meaning of your keyword in matched queries |
-| **Broader than historical** | Phrase match absorbed the old broad match modifier (+keyword) behavior in 2021 |
+| **Wider than it looks** | Phrase match reaches queries that carry your phrase's meaning with extra words around it, not only the literal string |
 | **No extra signals** | Does not use landing page, other keywords, user history, or location signals for matching (only for bidding) |
-| **Auction priority** | Phrase match identical to search term gets priority over non-identical exact match (see keyword selection hierarchy) |
+| **Auction priority** | A phrase match keyword identical to the search term ranks at tier 2, below any exact match keyword that matches the term, close variants included (see keyword selection hierarchy) |
 
 ### Use cases
 
@@ -189,14 +191,14 @@ No symbols. Just the keyword text.
 ### The 4 extra signals
 
 Broad match uses 4 signals for query matching that phrase and exact match do not:
-
-> AI Max for Search campaigns extends broad match behavior further by adding asset-based and landing page-based keywordless matching. If AI Max is enabled, your campaign can match queries that relate to your headlines, descriptions, sitelinks, and landing page content, even without matching keywords. See [AI Max for Search Reference](../references/AI Max for Search Reference.md) for details.
 | Signal | What it does | Example |
 |--------|-------------|---------|
 | **Landing page content** | Google reads your landing page to understand what you sell, and matches queries that align with your page content | Keyword `shoes` with a running shoe landing page: less likely to match "dress shoes" |
 | **Other keywords in the ad group** | Google uses your other keywords as context to understand the theme of your ad group | Ad group with `crm software`, `sales pipeline tool`, `lead management`: broad match on `crm software` understands you target sales tools |
 | **User's previous searches** | Google considers the user's recent search history to predict intent | User previously searched "marathon training": now searching "shoes" is more likely to match `running shoes` |
 | **User location** | Google factors in where the user is physically located | User in Amsterdam searching "restaurant": more likely to match `amsterdam restaurants` |
+
+> ↪️ **AI Max extends broad match with keywordless matching.** An AI Max campaign also matches queries related to its headlines, descriptions, sitelinks, and landing page content, with no keyword involved. See [AI Max for Search Reference](../references/AI Max for Search Reference.md).
 
 > 💡 **These signals operate at matching time, not just bidding time:** Phrase and exact match also benefit from these signals for bid calculation through smart bidding, but only broad match uses them to determine whether a query qualifies as a match in the first place.
 
@@ -216,7 +218,7 @@ Broad match includes all close variants from exact and phrase, plus:
 |------|---------|
 | **Character limit** | Keywords can be up to 80 characters including spaces |
 | **No syntax symbols** | Any keyword entered without brackets or quotes defaults to broad match |
-| **Requires negative keyword management** | Broader matching means more irrelevant query potential: add negatives proactively |
+| **Requires negative keyword management** | Broader matching means more irrelevant query potential, which proactive negatives contain |
 | **Most effective with smart bidding** | Smart bidding can evaluate each broad match query individually and bid down on low-value matches |
 | **Landing page matters** | Your landing page directly influences which queries Google considers relevant |
 | **Auction priority** | Broad match identical to search term gets same priority as phrase match identical to search term |
@@ -246,49 +248,71 @@ Broad match includes all close variants from exact and phrase, plus:
 
 ## Keyword selection hierarchy
 
-When a user enters a search query, Google follows a 7-step process to determine which keyword, ad, and bid enters the auction.
+When a user enters a search query, Google decides which keyword, ad, and bid enters the auction. Selection is account-wide: if multiple keywords targeting the same domain are eligible for the same search term, they do not compete against each other. Google picks one using the priority order below, and only that ad goes on to compete with other advertisers.
 
-### The 7-step auction sequence
+### The auction sequence
 
 1. **User enters a query** on Google Search
-2. **Google retrieves all potentially relevant enabled keywords** across your account (and all other advertisers' accounts)
-3. **Eligibility check:** Google evaluates each keyword against the query using match type rules
-4. **Google selects one keyword per ad group** using the internal priority hierarchy (see below)
-5. **RSA assembly:** Google assembles the best headline/description combination for the selected keyword
-6. **Smart bidding sets the optimal bid** for this specific impression, user, and context
-7. **The ad with the highest Ad Rank** (bid x Quality Score x expected extension impact) enters the auction
+2. **Google retrieves all eligible keywords** across your account (same domain) that match the query under their match type rules, alongside all other advertisers' eligible keywords
+3. **Google selects one keyword and ad group** using the priority order below
+4. **RSA assembly:** Google assembles the best headline and description combination for the selected keyword
+5. **Smart bidding sets the optimal bid** for this impression, user, and context
+6. **The selected ad competes in the auction.** Ad Rank (bid x Quality Score x expected impact of formats) determines position and whether it shows
 
-### Internal keyword selection priority
+### Priority order
 
-When multiple keywords in the same ad group could match a query, Google uses this priority order:
-| Priority | Condition | Example |
-|----------|-----------|---------|
-| **1 (highest)** | Exact match keyword identical to search term | Query: "running shoes", keyword: `[running shoes]` |
-| **2** | Exact match keyword identical to spell-corrected search term | Query: "runnign shoes", keyword: `[running shoes]` |
-| **3** | Phrase or broad match keyword identical to search term | Query: "running shoes", keyword: `"running shoes"` or `running shoes` |
-| **4** | Phrase or broad match keyword identical to spell-corrected search term | Query: "runnign shoes", keyword: `"running shoes"` |
-| **5 (lowest)** | Keyword with highest Ad Rank | Multiple keywords qualify but none is identical: highest Ad Rank wins |
+Google applies this order across the account, not just within one ad group:
+| Priority | Condition | Notes |
+|----------|-----------|-------|
+| **1 (highest)** | Exact match keyword that matches the search term, close variants included | Beats any broad or phrase keyword, Performance Max search theme, or Performance Max campaign |
+| **2** | Phrase or broad match keyword (including AI Max) or a Performance Max search theme identical to the search term | If more than one is identical, Ad Rank decides between them |
+| **3** | AI-based ad group prioritization (relevance) | When nothing is identical, Google's AI considers only the most relevant ad groups, judged by the meaning of the search term, all the keywords in the ad group, and the ad group's landing pages |
+| **4 (lowest)** | Ad Rank | Breaks ties when options share equal priority |
 
-> 💡 **"Identical" means character-for-character match between the search term and the keyword text:** Close variants, synonyms, and rewordings are not considered identical. They fall to priority 5 (Ad Rank).
+> 💡 **Tier 1 matches through close variants, tier 2 does not.** An exact match keyword holds its close variants, so `[running shoe]` keeps "running shoes" at tier 1. At tier 2 a phrase or broad keyword has to be identical to the query, where identical includes spell-corrected terms ("runnign shoes" is identical to "running shoes") but not plurals or synonyms. Anything outside both tiers falls to AI relevance, then Ad Rank.
 
-### Cross-ad-group behavior
+### Account-wide, not ad-group-bound
 
-The priority hierarchy above applies within a single ad group. When keywords across multiple ad groups or campaigns could match:
+Selection spans ad groups and campaigns on the same domain. When no keyword is identical and several ad groups could match, AI-based ad group prioritization picks the most relevant ad group before Ad Rank is applied. It does not jump straight to Ad Rank.
 
-| Scenario | Resolution |
-|----------|-----------|
-| Same keyword in multiple ad groups | Ad Rank determines which ad group's keyword serves |
-| Different keywords, same query | Each ad group's best keyword competes on Ad Rank |
-| Different match types, same keyword text, different ad groups | Priority hierarchy applies first, then Ad Rank breaks ties |
+For a search like "skydiving certifications near me", a "Skydiving Licence" ad group and an "Advanced Courses" ad group might both match under broad match. AI selects the Licence ad group because "licence" is closer to "certifications" than "courses" is. If two ad groups are similarly relevant, the higher Ad Rank wins.
+
+> 💡 **Thematic ad groups drive routing.** Relevance is judged on the ad group's keywords and landing pages, so tight, single-theme ad groups let Google route a query to the right ad group. Loose or mixed ad groups blur the relevance signal.
+
+### How AI Max, Dynamic Search Ads, and Performance Max fit
+
+| Source | Selection behavior |
+|--------|--------------------|
+| AI Max ad groups with keywords | Keywords participate normally, AI relevance applies to non-identical matches |
+| AI Max ad groups without keywords | Treated as non-identical, selected by highest Ad Rank across the account |
+| Dynamic Search Ads | Treated as non-identical, selected by highest Ad Rank |
+| Performance Max search themes | Behave like phrase or broad match keywords, can be identical at priority 2 |
+| Performance Max without search themes | Treated as non-identical, selected by highest Ad Rank |
+
+> 💡 **Dynamic Search Ads are on Google's auto-upgrade path into AI Max.** AI Max is the current keywordless targeting surface. DSA campaigns serve under this hierarchy.
+
+### Exceptions that override the priority order
+
+Even when the order above would select a keyword, it may not serve if:
+| Exception | Effect |
+|-----------|--------|
+| Budget-limited campaign | A higher-priority keyword in a budget-capped campaign may not trigger, a lower-priority option serves instead |
+| Low search volume keyword | Temporarily inactive, does not trigger, another keyword serves |
+| Disapproved creatives or landing pages | The ad group cannot serve |
+| Targeting differences | Location, audience, or IP exclusions can make an otherwise-eligible keyword ineligible for that user |
+| Shopping ad format | The preference rules do not apply to Shopping, a Shopping ad can serve alongside your exact-match text ad |
+| Advanced surfaces (Lens, AI Mode, AI Overviews, autocomplete) | The reported term approximates intent, so matches are treated as non-identical and AI relevance selects the ad group |
 
 ### What this means in practice
 
 | Implication | Explanation |
 |-------------|-------------|
 | No need to duplicate keywords across match types | The hierarchy routes queries to the right keyword automatically |
-| Exact match gets first shot at identical queries | If `[running shoes]` exists and the query is "running shoes", exact match wins |
-| Ad Rank is the tiebreaker for everything else | For non-identical matches, the keyword attached to the highest-performing ad wins |
-| Broad match catches everything else | Queries that don't match an identical exact/phrase keyword flow to the highest Ad Rank keyword, often broad |
+| Exact match gets first shot at the queries it matches | If `[running shoes]` exists and the query is "running shoe", exact match still wins through its close variants |
+| Thematic ad groups drive correct routing | For non-identical queries, the most relevant ad group wins before Ad Rank, so tight themes route queries correctly |
+| Ad Rank is the final tiebreaker | When priority and relevance are equal, the highest-Ad-Rank keyword wins |
+
+> ↪️ **For PMax search-theme vs Search keyword routing and cannibalization scenarios:** See [Search PMax Query Routing Reference](../references/Search PMax Query Routing Reference.md) and [Audience Signals Reference](../references/Audience Signals Reference.md).
 
 ---
 
@@ -349,9 +373,10 @@ Using smart bidding (tCPA or tROAS)?
 | Using broad match with manual CPC | No per-query bid optimization to compensate for wide matching | Switch to smart bidding, or switch to phrase/exact match |
 | Assuming exact match = exact query | Exact match includes close variants, synonyms, and same-intent queries | Check the search terms report: "exact" match queries will include terms you did not type |
 | Ignoring the search terms report on broad match | Broad match will match irrelevant queries that waste budget | Review search terms weekly and add negatives |
-| Adding broad match modifier syntax (+keyword) | Broad match modifier was retired in 2021 and merged into phrase match | Use phrase match `"keyword"` instead |
+| Adding broad match modifier syntax (+keyword) | The + prefix carries no matching meaning. Google reads it as part of the keyword text | Use phrase match `"keyword"` instead |
 | Expecting word order preservation on phrase match | Phrase match can reorder words when meaning is preserved | Focus on meaning, not word sequence |
 | Using broad match without landing page alignment | Google uses your landing page as a matching signal: misaligned pages attract wrong queries | Ensure landing page content matches the keyword's intended topic |
+| Expecting a match type change to move Quality Score | Match type is not an input to the Quality Score calculation. Broadening a keyword lets it enter more auctions, which changes the mix of queries sitting behind the same score | Diagnose Quality Score through expected CTR, ad relevance, and landing page experience, never through match type |
 
 ---
 
@@ -373,8 +398,8 @@ Using smart bidding (tCPA or tROAS)?
 
 ## Version details
 
-- **Version:** 2.0
-- **Last Updated:** February 2026
+- **Version:** 5.0
+- **Last Updated:** August 2026
 - **Creator:** Bob Meijer
 
 ---

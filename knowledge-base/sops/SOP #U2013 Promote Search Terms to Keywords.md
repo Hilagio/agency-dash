@@ -1,6 +1,6 @@
 # SOP – Promote Search Terms to Keywords
 Created: 2026-02-04
-Updated: 2026-02-15
+Updated: 2026-08-27
 
 SOP_ID: SOP_47
 Status: Done
@@ -22,19 +22,7 @@ This SOP decides when to promote a search term to a keyword to gain **control + 
 
 ### Why promote?
 
-Promoting a search term to a keyword unlocks benefits you don't get from search terms alone:
-
-| Benefit | What it gives you |
-| --- | --- |
-| **Mapping control** | An exact/phrase keyword creates a more predictable "home" for that query instead of letting Google pick from multiple similar keywords. |
-| **QS diagnostics** | Quality Score components (Ad Relevance, Expected CTR, LP Experience) are surfaced at the keyword level (exact match). |
-| **DKI effectiveness** | Dynamic Keyword Insertion inserts the keyword, not the search term. Better keyword coverage → better headline matching. |
-| **Auction Insights visibility** | Competitive metrics (impression share, overlap rate, position above rate, etc) can be derived at the keyword-level for better competitive insights. |
-| **Search vs. pMax priority** | Search campaigns often [**take priority**](https://support.google.com/google-ads/answer/2756257?hl=en) over Performance Max when a query exactly matches an eligible keyword. Promotion keeps control in Search. |
-| **Keyword-level Final URLs** | Only keywords can have custom Final URLs. Lets you route to a more relevant page without splitting ad groups. |
-| **Historical trend retention** | Keyword performance is easier to trend over time. Search term data can be more difficult to work with. |
-
-> Promote when it meaningfully improves **control**, **diagnostics**, or **automation**. Skip when it only fragments data and hurts Smart Bidding!
+Promotion buys control, diagnostics or automation on a query. The full advantage list is the promotion test in Phase 2.1, question 3. For the structural background, see [Search Ad Group Structure Mental Model](../mental-models/Search Ad Group Structure Mental Model.md) and [Search PMax Query Routing Reference](../references/Search PMax Query Routing Reference.md).
 
 ### What this SOP is NOT
 
@@ -46,9 +34,6 @@ This SOP does **not**:
 > ⚠️ **Critical distinction:**
 > - If a search term needs a **meaningfully different ad** → this is a **Split & Route** case. See [Search Ad Group Structure Mental Model](../mental-models/Search Ad Group Structure Mental Model.md).
 > - If the **same ad** works but the query deserves a **different landing page** → **Promote + keyword-level Final URL** (this SOP).
-> 💡 **Rule of thumb:**
-> - Different **ad** needed → Split (see [Search Ad Group Structure Mental Model](../mental-models/Search Ad Group Structure Mental Model.md))
-> - Same **ad**, different **LP** → Promote + keyword-level Final URL (this SOP)
 
 ### When to run this SOP
 
@@ -84,7 +69,7 @@ Run this SOP if **any** of the following are true:
 
 This SOP has three phases:
 
-| Phase | Purpose | When to Execute |
+| Phase | Purpose | When to execute |
 | --- | --- | --- |
 | **Phase 1️⃣:** Identify | Surface high-signal candidates from Search Terms Report | Always |
 | **Phase 2️⃣:** Evaluate | Apply the decision framework to each candidate | Always |
@@ -118,7 +103,7 @@ Not every search term deserves evaluation. Focus on queries with enough volume t
 
 - Has conversions (≥ 1)
 
-> Start with volume. If a search term doesn't have meaningful impressions, promoting it won't give you meaningful benefits anyway.
+> 💡 **Start with volume.** A search term below the impression threshold does not clear the promotion test.
 
 ---
 
@@ -215,7 +200,7 @@ Skip when it's only:
 2. Set match type per 3.1 (default: Exact).
 3. If needed, set a **keyword-level Final URL** for a more relevant landing page.
 
-> ⚠️ **Keyword-level Final URL tip:** Use this when the same ad works but a different LP would convert better. Example: "running shoes sale" → route to collection page with discounted shoes sorted/prioritized, but the standard ad copy still applies (e.g. “Up to -40% Discount). This avoids unnecessary ad group splits while still improving Landing Page Experience.
+> ⚠️ **Keyword-level Final URL tip:** Use this when the same ad works but a different LP would convert better. Example: "running shoes sale" routes to a collection page with discounted shoes sorted first, while the standard ad copy still applies. This avoids unnecessary ad group splits while still improving Landing Page Experience.
 
 ### 3.3 Routing check (edge case)
 
@@ -226,7 +211,7 @@ However, if the query was previously matching from a **different** ad group:
 1. Check if you now have internal overlap (same query, multiple keyword entry points).
 2. If yes, add an **exact match negative** in the non-preferred ad group to clean up routing.
 
-> This is rare for same-ad-group promotions but can happen if you have overlapping themes across ad groups.
+> 💡 **Overlap is rare on same-ad-group promotions.** It appears when ad group themes overlap.
 
 ---
 
@@ -377,7 +362,7 @@ Once complete, promoted keywords are active and monitored. From here:
 | [SOP – Analyze Search Term Reports](../sops/SOP – Analyze Search Term Reports.md) | Upstream (identifies promotion candidates) |
 | [Search Ad Group Structure Mental Model](../mental-models/Search Ad Group Structure Mental Model.md) | Upstream (determines whether to split or promote) |
 | [SOP – Build Search Campaign Structure](../sops/SOP – Build Search Campaign Structure.md) | Upstream (creates new ad groups when no suitable home exists) |
-| [SOP – Improve Ad Relevance](../sops/SOP – Improve Ad Relevance.md) | This SOP is Phase 2.2 dependency |
+| [SOP – Improve Ad Relevance](../sops/SOP – Improve Ad Relevance.md) | Downstream (promoted keywords may surface Ad Relevance issues) |
 | [SOP – Improve Expected CTR](../sops/SOP – Improve Expected CTR.md) | Downstream (promoted keywords may surface new creative angles) |
 | [SOP – Run N-gram Analysis](../sops/SOP – Run N-gram Analysis.md) | Parallel (routing cleanup if needed) |
 
@@ -393,8 +378,8 @@ Once complete, promoted keywords are active and monitored. From here:
 
 ### Version details
 
-- **Version:** 1.0
-- **Last Updated:** February 2026
+- **Version:** 2.0
+- **Last Updated:** August 2026
 - **Creator:** Bob Meijer
 
 ---
@@ -407,4 +392,4 @@ Violations may be detected through embedded document fingerprints and will be pu
 
 Full terms: [https://www.ppcmastery.com/terms-and-conditions](https://www.ppcmastery.com/terms-and-conditions)
 
-(c) 2026 PPC Mastery B.V. All rights reserved.
+© 2026 PPC Mastery B.V. All rights reserved.

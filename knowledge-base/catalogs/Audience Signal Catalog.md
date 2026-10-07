@@ -1,6 +1,6 @@
 # Audience Signal Catalog
 Created: 2026-02-04
-Updated: 2026-02-05
+Updated: 2026-08-27
 
 Support_ID: CATALOG_7
 Status: Done
@@ -33,7 +33,7 @@ It covers every signal input available in PMax asset groups: Customer Match, web
 - Validate signal setup quality (See: [Audience Signal Quality Checklist](../checklists/Audience Signal Quality Checklist.md))
 - Provide step-by-step signal configuration instructions (See: [SOP – Set Up Audience Signals](../sops/SOP – Set Up Audience Signals.md))
 - Explain the conceptual framework behind signals vs. targeting (See: [Audience Strategy Mental Model](../mental-models/Audience Strategy Mental Model.md))
-- Cover Display, Video, or Demand Gen audience targeting (See: [Audience Segment Catalog](../catalogs/Audience Segment Catalog.md))
+- Cover Video or Demand Gen audience targeting (See: [Audience Segment Catalog](../catalogs/Audience Segment Catalog.md))
 
 ---
 
@@ -67,7 +67,7 @@ Every signal type has a quality tier based on intent proximity and data reliabil
 
 ## Signal quality decision gate
 
-Before selecting signals, determine your optimization goal:
+The optimization goal decides the signal set:
 | If your goal is... | Prioritize... | Signal stack approach |
 |--------------------|--------------|----------------------|
 | **Efficiency (high ROAS/low CPA)** | Tier 1-2 signals only | Narrow: top 20% customers, website converters, 10 high-converting search terms |
@@ -81,7 +81,7 @@ Before selecting signals, determine your optimization goal:
 
 ## Signal types: Type-by-type breakdown
 
-## Type 1: Customer Match signals
+### Type 1: Customer Match signals
 
 - **Quality tier:** 🥇 Tier 1
 - **What it is:** Upload your CRM data (email, phone, address) so Google matches your customers and uses them as signal inputs.
@@ -106,13 +106,13 @@ Before selecting signals, determine your optimization goal:
 | Ecommerce | All purchasers | Email + address of past buyers | 1,000+ |
 | Ecommerce | Repeat buyers | 2+ purchases in 12 months | 1,000+ |
 
-> 💡 **Match rate optimization:** Email alone yields baseline match rates (29-62%). Adding phone numbers adds +15-20%. Adding mailing addresses adds another +10-15%. Always upload multiple identifiers per customer. Why it works: each additional identifier gives Google another way to match your CRM record to a logged-in Google user, increasing the overlap between your data and Google's identity graph.
+> 💡 **Match rate depends on identifier coverage:** Each additional identifier gives Google another way to match a CRM record to a logged-in Google user, so a list carrying email, phone, and mailing address matches more of its records than an email-only list. Email alone matches at Google's 29-62% baseline, below the 60-80% healthy band. The full band, the baseline increments, and the diagnosis path are in [SOP – Build Customer Match Lists](../sops/SOP – Build Customer Match Lists.md).
 
 > ↪️ For list creation and upload procedures: See [SOP – Build Customer Match Lists](../sops/SOP – Build Customer Match Lists.md)
 
 ---
 
-## Type 2: Website visitor signals
+### Type 2: Website visitor signals
 
 - **Quality tier:** 🥇 Tier 1 (converters) / 🥈 Tier 2 (all visitors)
 - **What it is:** Audience segments built from Google Tag data capturing website behavior.
@@ -144,7 +144,7 @@ Before selecting signals, determine your optimization goal:
 
 ---
 
-## Type 3: YouTube engagement signals
+### Type 3: YouTube engagement signals
 
 - **Quality tier:** 🥈 Tier 2
 - **What it is:** Segments of users who have interacted with your YouTube channel (views, subscribes, likes, shares).
@@ -168,7 +168,7 @@ Before selecting signals, determine your optimization goal:
 
 ---
 
-## Type 4: Custom segments (search terms)
+### Type 4: Custom segments (search terms)
 
 - **Quality tier:** 🥉 Tier 3
 - **What it is:** Custom audiences built from Google Search terms that represent your ideal customer's search behavior.
@@ -180,7 +180,7 @@ Before selecting signals, determine your optimization goal:
 |------|--------------|
 | Recommended terms | 10-15 high-converting search terms |
 | Maximum terms | 50 per segment |
-| Term quality | Use actual converting search terms from your Search campaigns |
+| Term quality | Actual converting search terms from the account's Search campaigns |
 | Avoid | Generic terms, single words, brand terms (already captured) |
 
 #### Example configurations by vertical
@@ -194,11 +194,11 @@ Before selecting signals, determine your optimization goal:
 | Ecommerce (Furniture) | "buy modern sofa online", "designer dining table", "premium office desk" | Transactional product queries |
 | Ecommerce (Supplements) | "best protein powder", "buy creatine online", "natural sleep supplement" | Product purchase intent |
 
-> ⚠️ **Do not dump hundreds of keywords into custom segments:** Use your 10-15 highest-converting search terms. Quality beats quantity, Google needs clear intent signals, not noise.
+> ⚠️ **Hundreds of keywords in one custom segment is noise.** The 10-15 highest-converting search terms give Google a clear intent signal.
 
 ---
 
-## Type 5: Custom segments (URLs/apps)
+### Type 5: Custom segments (URLs/apps)
 
 - **Quality tier:** 🥉 Tier 3
 - **What it is:** Custom audiences built from URLs of websites your ideal customers browse or apps they use.
@@ -210,7 +210,7 @@ Before selecting signals, determine your optimization goal:
 |------|--------------|
 | Recommended URLs | 10-15 relevant competitor/industry URLs |
 | URL targeting | Targets users who BROWSE similar sites, does not place ads on those sites |
-| URL quality | Use direct competitor URLs and industry publications |
+| URL quality | Direct competitor URLs and industry publications |
 | Avoid | Generic sites (news, social media homepages) |
 
 #### Example configurations by vertical
@@ -225,7 +225,7 @@ Before selecting signals, determine your optimization goal:
 
 ---
 
-## Type 6: Search themes
+### Type 6: Search themes
 
 - **Quality tier:** 🏅 Tier 4
 - **What it is:** Category-level search terms added at the asset group level that influence which searches trigger PMax ads.
@@ -235,7 +235,7 @@ Before selecting signals, determine your optimization goal:
 
 | Rule | Specification |
 |------|--------------|
-| Maximum per asset group | 25 search themes |
+| Maximum per asset group | 50 search themes |
 | Scope | Asset group level (not campaign level) |
 | Priority level | Same as phrase/broad match keywords in Search campaigns |
 | Cannibalization risk | HIGH: search themes compete directly with Search campaign keywords |
@@ -261,7 +261,7 @@ Before selecting signals, determine your optimization goal:
 
 ---
 
-## Type 7: Google predefined segments
+### Type 7: Google predefined segments
 
 - **Quality tier:** 🏅 Tier 4 (in-market) / ⬜ Tier 5 (affinity, life events, demographics)
 - **What it is:** Google's pre-built audience segments based on observed behavior, interests, and demographic attributes.
@@ -358,7 +358,7 @@ Basic demographic attributes, use as layer, never as standalone signal.
 ### Version details
 
 - **Version:** 3.0
-- **Last Updated:** April 2026
+- **Last Updated:** August 2026
 - **Creator:** Bob Meijer
 
 ---

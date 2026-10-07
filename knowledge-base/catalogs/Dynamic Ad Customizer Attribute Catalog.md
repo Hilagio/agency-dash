@@ -44,7 +44,7 @@ Lists reusable dynamic customizer attributes for price, inventory, and promotion
 | **DiscountAmount** | Price | Discount amount | €180 |
 | **PriceFrom** | Price | Starting price for range | €299 |
 
-> 💡 **Price flexibility tip:** Instead of using the "Price" data type, you can use "Text" and include only the number (e.g., `899`). Then add the currency symbol directly in your RSA: € `{CUSTOMIZER.Price:899}`. This gives you more control over formatting. Like whether to include a space between the symbol and the number.
+> 💡 **The Text data type buys formatting control:** A price stored as Text holding only the number (`899`) leaves the currency symbol in the RSA itself, which decides spacing and placement. The Price data type fixes both.
 
 ### 2️⃣ Product attributes
 
@@ -77,7 +77,7 @@ Lists reusable dynamic customizer attributes for price, inventory, and promotion
 | **ShippingText** | Text | Shipping offer | Free Shipping |
 | **DeliveryTime** | Text | Delivery estimate | 2-3 Days |
 
-### 6️⃣Trust attributes
+### 6️⃣ Trust attributes
 
 | **Attribute** | **Data type** | **Purpose** | **Example value** |
 | --- | --- | --- | --- |
@@ -90,7 +90,7 @@ Lists reusable dynamic customizer attributes for price, inventory, and promotion
 
 | **Data type** | **Format** | **✅ Correct** | **❌ Incorrect** |
 | --- | --- | --- | --- |
-| **Text** | Any text | Summer Sale | — |
+| **Text** | Any text | Summer Sale | None |
 | **Price** | Currency + amount | €89.99 | 89.99 |
 | **Number** | Digits only | 47 | 47% |
 | **Percent** | Number + % | 25% | 25 |
@@ -153,7 +153,7 @@ Lists reusable dynamic customizer attributes for price, inventory, and promotion
 | --- | --- | --- | --- | --- |
 | oak dining table | `Oak Dining Table` | Now `€719` | Available now: `In Stock` | Shop the `Oak Dining Table` you love. Now `€719` (was `€899`). `Free Shipping` included. |
 | walnut dining table | `Walnut Dining Table` | Now `€959` | Available now: `Only 3 Left` | Shop the `Walnut Dining Table` you love. Now `€959` (was `€1,199`). `Free Shipping` included. |
-| marble dining table | `Marble Dining Table` | Now `€1,199` | Available now: `In Stock` | Shop the `Marble Dining Table` you love. Now `€1,199` (was `€1,499`). `Free Shipping`  included. |
+| marble dining table | `Marble Dining Table` | Now `€1,199` | Available now: `In Stock` | Shop the `Marble Dining Table` you love. Now `€1,199` (was `€1,499`). `Free Shipping` included. |
 
 ### 2️⃣ Travel (Hotels)
 
@@ -197,7 +197,7 @@ Lists reusable dynamic customizer attributes for price, inventory, and promotion
 
 | **Must Have** | **Recommended** | **Optional** |
 | --- | --- | --- |
-| — | PromoText, Availability | Discount, PromoCode |
+| None | PromoText, Availability | Discount, PromoCode |
 
 ### Travel/Hospitality
 
@@ -219,7 +219,7 @@ Lists reusable dynamic customizer attributes for price, inventory, and promotion
 
 ### Countdown combination
 
-Combine customizers with countdown timers for urgency:
+Customizers combine with countdown timers for urgency:
 
 `{CUSTOMIZER.PromoText:Sale}` Ends in `{COUNTDOWN(2026-01-31 23:59:59):Soon}`!
 

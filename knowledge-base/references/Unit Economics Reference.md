@@ -1,6 +1,6 @@
 # Unit Economics Reference
 Created: 2026-02-04
-Updated: 2026-02-05
+Updated: 2026-08-27
 
 Support_ID: CHEATSHEET_10
 Status: Done
@@ -47,7 +47,7 @@ Documents the formulas, calculations, and benchmark thresholds for unit economic
 | **Contribution margin** | Revenue - COGS - Shipping - Fees - Ad spend | €32.28 - €20.20 - €6.50 - €1.00 - €4.30 = €0.28 |
 | **POAS (Profit on Ad Spend)** | Gross profit / Ad spend | €4.58 / €4.30 = 106% |
 
-> ⚠️ **Break-even ROAS is the minimum:** At break-even you make zero profit. Multiply by your acquisition budget share (typically 0.50-0.75 of gross profit allocated to acquisition) to get a realistic target ROAS.
+> ⚠️ **Break-even ROAS is the floor, not a target:** at break-even the account makes zero profit. A realistic target ROAS is break-even ROAS divided by the acquisition budget share, which sits between 0.50 and 0.75 of gross profit in most accounts.
 
 ### Lead Gen
 
@@ -59,7 +59,7 @@ Documents the formulas, calculations, and benchmark thresholds for unit economic
 | **ROI per deal** | Profit per deal / CAC | €2,500 / €500 = 5x |
 | **Required lead volume** | Revenue target / (Deal value x Lead-to-sale rate) | €1M / (€10,000 x 20%) = 50 leads/month |
 
-> ⚠️ **Target CPL is your break-even ceiling:** Every € above that CPL reduces profit. Set your operational target below the break-even CPL to maintain margins.
+> ⚠️ **Target CPL is a break-even ceiling:** every € above it reduces profit, which is why the operational target sits below the break-even CPL.
 
 ### SaaS
 
@@ -79,7 +79,7 @@ Documents the formulas, calculations, and benchmark thresholds for unit economic
 
 ## Ecommerce: detailed calculations
 
-### Step 1️⃣: Calculate gross margin per order
+### Gross margin per order
 
 | Line item | Source | Example |
 |-----------|--------|---------|
@@ -90,7 +90,7 @@ Documents the formulas, calculations, and benchmark thresholds for unit economic
 | **= Gross profit** | Calculated | **€4.58** |
 | **Gross margin %** | Gross profit / Revenue | **14.2%** |
 
-### Step 2️⃣: Calculate break-even ROAS
+### Break-even ROAS
 
 Break-even ROAS = 1 / Gross margin %
 
@@ -102,7 +102,7 @@ Break-even ROAS = 1 / Gross margin %
 | 15% | 667% | Difficult: very narrow margins |
 | 10% | 1000% | Unscalable: unit economics problem |
 
-### Step 3️⃣: Calculate target ROAS
+### Target ROAS
 
 Target ROAS = Break-even ROAS / Acquisition budget share
 
@@ -127,7 +127,7 @@ The acquisition budget share is the percentage of gross profit you allocate to a
 
 ## Lead Gen: detailed calculations
 
-### Step 1️⃣: Gather inputs
+### Required inputs
 
 | Input | Source | Example |
 |-------|--------|---------|
@@ -136,7 +136,7 @@ The acquisition budget share is the percentage of gross profit you allocate to a
 | Lead-to-sale rate | CRM (leads closed / leads generated) | 20% |
 | Current CAC | Ad spend / new customers acquired | €500 |
 
-### Step 2️⃣: Calculate target CPL and CAC
+### Target CPL and target CAC
 
 | Calculation | Formula | Result |
 |-------------|---------|--------|
@@ -170,7 +170,7 @@ The acquisition budget share is the percentage of gross profit you allocate to a
 
 ## SaaS: detailed calculations
 
-### Step 1️⃣: Calculate ARPU
+### ARPU
 
 | Input | Source | Example |
 |-------|--------|---------|
@@ -178,7 +178,7 @@ The acquisition budget share is the percentage of gross profit you allocate to a
 | Active paying customers | Billing system | 1,000 |
 | **ARPU** | MRR / Customers | **€100/month** |
 
-### Step 2️⃣: Calculate customer lifetime
+### Customer lifetime
 
 | Monthly churn rate | Customer lifetime | Assessment |
 |-------------------|------------------|------------|
@@ -188,7 +188,7 @@ The acquisition budget share is the percentage of gross profit you allocate to a
 | 8% | 12.5 months | Below average: retention problem |
 | 15% | 6.7 months | Critical: fix product before scaling |
 
-### Step 3️⃣: Calculate LTV and max CAC
+### LTV and max CAC
 
 | Metric | Formula | Example |
 |--------|---------|---------|
@@ -232,9 +232,9 @@ These symptoms look like Google Ads problems but are actually unit economics pro
 
 ---
 
-## Onboarding validation checklist
+## Onboarding validation thresholds
 
-Before accepting a new client, validate these metrics:
+The thresholds that determine whether an account's unit economics can support paid acquisition:
 
 ### Ecommerce
 
@@ -292,8 +292,8 @@ Before accepting a new client, validate these metrics:
 
 ## Version details
 
-- **Version:** 1.0
-- **Last Updated:** February 2026
+- **Version:** 2.0
+- **Last Updated:** August 2026
 - **Creator:** Bob Meijer
 
 ---

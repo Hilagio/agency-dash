@@ -1,6 +1,6 @@
 # SOP – Optimize Ad Schedule
 Created: 2026-02-14
-Updated: 2026-04-02
+Updated: 2026-10-05
 
 SOP_ID: SOP_70
 Status: Done
@@ -76,7 +76,7 @@ Run this SOP when:
 |-------|---------|--------|
 | **Phase 1️⃣: Export and analyze time data** | Pull performance by hour and day | Hour-of-week performance matrix |
 | **Phase 2️⃣: Identify actionable patterns** | Classify time slots by performance | Categorized slots with action tags |
-| **Phase 3️⃣: Configure schedule** | Build ad schedule in Google Ads | Live schedule with adjustments |
+| **Phase 3️⃣: Configure schedule and adjustments** | Build ad schedule in Google Ads | Live schedule with adjustments |
 | **Phase 4️⃣: Validate and refine** | Compare before/after | Validated, optimized schedule |
 
 ---
@@ -87,7 +87,7 @@ Run this SOP when:
 
 1. Open Google Ads > Reports, select the campaign(s)
 2. Add segments: **Hour of day** and **Day of week**
-3. Set date range: last 30-60 days (exclude the most recent conversion delay window)
+3. Set date range: last 30-60 days (exclude the most recent conversion lag window)
 4. Include columns: Clicks, Conversions, Cost, Conv. rate, Cost/conv. (CPA), Conv. value/cost (ROAS)
 5. Export to a spreadsheet
 
@@ -140,7 +140,7 @@ Do not act on single-week anomalies. Split the date range into individual weeks 
 
 ### 3.1 Plan your time slots
 
-Google Ads allows up to 6 time slots per day with a 15-minute minimum duration. Slots cannot overlap. Hours not covered are paused. Group adjacent hours with similar performance into single slots.
+Group adjacent hours with similar performance into single slots, within the slot limits in [Ad Schedule Reference](../references/Ad Schedule Reference.md).
 
 ### 3.2 Calculate bid adjustments (Manual CPC only)
 
@@ -162,7 +162,7 @@ Only pause confirmed dead windows: zero conversions with meaningful spend over 3
 
 ### 3.4 Apply the schedule in Google Ads
 
-1. Navigate to the campaign > Ad schedule, click the pencil icon
+1. Navigate to the campaign > Audiences, keywords, and content > Ad schedule, click the pencil icon
 2. Add each time slot for each day
 3. For Manual CPC: enter the calculated bid adjustment per slot
 4. For Smart Bidding: set -100% on dead windows only
@@ -285,8 +285,8 @@ A: Yes. They multiply. A +20% time adjustment with a +30% device adjustment = +5
 
 ### Version details
 
-- **Version:** 2.0
-- **Last Updated:** April 2026
+- **Version:** 4.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

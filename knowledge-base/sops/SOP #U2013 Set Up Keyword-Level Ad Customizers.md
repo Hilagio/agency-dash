@@ -1,6 +1,6 @@
 # SOP – Set Up Keyword-Level Ad Customizers
 Created: 2026-02-04
-Updated: 2026-04-02
+Updated: 2026-10-05
 
 SOP_ID: SOP_6
 Status: Done
@@ -103,17 +103,15 @@ This SOP does **not:**
 
 ---
 
-### Phase 2️⃣: Create attributes in Business Data
+### Phase 2️⃣: Create attributes in Business data
 
-1. Go to **Tools & Settings** → **Business Data** → **Ad customizer attributes**
+1. Go to **Tools** → **Business data** → **Ad customizer attributes**
 2. Click **+**
 3. For each attribute:
     - Enter name (e.g., "KeywordSingular")
     - Select Data type: **Text**
     - Leave Account value blank (defaults are set in the RSA)
 4. Click **Create**
-
-![image.png](image.png)
 
 ---
 
@@ -127,8 +125,6 @@ This SOP does **not:**
     - Enter the value for this keyword
     - Click **Save**
 4. Repeat for all keywords and all attributes
-
-![image.png](image%201.png)
 
 > 💡 **Work systematically:** Complete one attribute column for all keywords before moving to the next. This reduces errors and speeds up the process.
 
@@ -149,7 +145,7 @@ This SOP does **not:**
 
 ### Phase 5️⃣: Validate
 
-1. Go to **Tools & Settings** → **Ad Preview and Diagnosis**
+1. Go to **Tools** → **Troubleshooting** → **Ad preview and diagnosis**
 2. Test 5-10 keywords from your list
 3. Verify correct values appear (not defaults)
 4. Run [Ad Customizer Quality Checklist](../checklists/Ad Customizer Quality Checklist.md)
@@ -158,7 +154,7 @@ This SOP does **not:**
 
 ### Definition of done
 
-- [ ]  Attributes created in Business Data
+- [ ]  Attributes created in Business data
 - [ ]  Values assigned to all keywords
 - [ ]  RSA updated with customizer syntax
 - [ ]  5+ keywords tested in Ad Preview: correct values showing
@@ -193,7 +189,7 @@ A: DKI inserts the keyword exactly as it exists in your account. Keyword-level c
 
 **Q: Do I need to set values for every keyword?**
 
-A: Yes. Any keyword without a value will show the default text from your RSA syntax. If you have 50 keywords and only set values for 30, the other 20 will show defaults. This isn't necessarily bad, but just make sure your defaults work.
+A: Yes. Any keyword without a value shows the default text from your RSA syntax. If you have 50 keywords and set values for 30, the other 20 show defaults, so verify every default reads naturally in every position.
 
 **Q: What happens when I add new keywords?**
 
@@ -209,7 +205,7 @@ A: Check three things: (1) The attribute name in your RSA matches exactly (case-
 
 **Q: How do I handle keywords with different match types?**
 
-A: Customizer values are assigned to the keyword, not the match type. If you have "running shoes" as both broad and exact match, you should add customizer values for keywords.
+A: Customizer values are assigned to the keyword, not the match type. If you have "running shoes" as both broad and exact match, assign the value on each keyword separately.
 
 ---
 
@@ -226,8 +222,8 @@ A: Customizer values are assigned to the keyword, not the match type. If you hav
 
 ### Version details
 
-- **Version:** 2.0
-- **Last Updated:** January 2026
+- **Version:** 4.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

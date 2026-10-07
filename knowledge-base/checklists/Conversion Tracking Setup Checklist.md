@@ -1,5 +1,6 @@
 # Conversion Tracking Setup Checklist
 Created: 2026-02-04
+Updated: 2026-10-05
 
 Support_ID: CHECKLIST_15
 Status: Done
@@ -55,12 +56,13 @@ Run this checklist:
 
 ### Foundation
 
+- [ ] Conversion action status was last checked at least 48 hours after the most recent tag change
 - [ ] At least one macro conversion action exists and is set to Primary
 - [ ] Macro conversion fires on the correct trigger or page (purchase, form submission, signup)
 - [ ] Conversion value passes dynamically (not a static €1 or default value)
 - [ ] Transaction ID is populated with a unique value per conversion
 - [ ] Attribution model is set to Data-Driven (not Last Click)
-- [ ] Click-through window matches the sales cycle (verified via Path Metrics)
+- [ ] Click-through window matches the sales cycle (verified via Path metrics)
 - [ ] Counting method is correct (Every for ecommerce, One for lead gen)
 - [ ] Goal categories are correctly assigned (Purchase, Lead, Sign-up, etc.)
 - [ ] Account-default goal includes the correct primary macro conversion
@@ -86,13 +88,13 @@ Run this checklist:
 
 ### Enhanced Conversions
 
-- [ ] Enhanced Conversions enabled in Google Ads conversion action settings
+- [ ] Enhanced Conversions enabled at account level under Goals > Conversions > Conversion settings
 - [ ] Email address variable is populated correctly (hashed automatically)
-- [ ] Phone number variable is populated (optional but recommended)
-- [ ] First name and last name variables are populated (optional, improves match rate)
-- [ ] Address variables are populated (optional, improves match rate)
+- [ ] Phone number variable is populated, or recorded as unavailable
+- [ ] First name and last name variables are populated, or recorded as unavailable
+- [ ] Address variables are populated, or recorded as unavailable
 - [ ] Diagnostics page shows green check mark or active status
-- [ ] Match rate is within acceptable range (check via diagnostics)
+- [ ] Match rate is 50% or higher
 - [ ] Implementation method is documented (GTM tag, global site tag, or API)
 
 ### Offline Conversion Tracking (Lead Gen / SaaS)
@@ -103,9 +105,11 @@ Run this checklist:
 - [ ] Alternative: hashed email is captured and stored if GCLID capture is not possible
 - [ ] CRM pipeline stages map to Google Ads conversion actions
 - [ ] Upload schedule is configured (daily or weekly)
+- [ ] Upload latency stays under 7 days from the conversion event
 - [ ] Conversion values are assigned based on deal stage or actual deal value
 - [ ] Test upload has been completed successfully with no errors
 - [ ] Upload method is documented (manual, scheduled Google Sheet, or API)
+- [ ] A data source is connected for each import conversion action
 
 > 💡 **For lead gen accounts, OCT is as important as the initial pixel:** Form submission tracking only tells Smart Bidding who filled out a form. OCT tells it who became a paying customer. Without OCT, Smart Bidding optimizes for form fills, not revenue.
 
@@ -127,7 +131,7 @@ Run this checklist:
 ### Enhancement features
 
 - [ ] Cart Data is sending product-level purchase data (ecommerce)
-- [ ] Product feed includes COGS attribute (ecommerce, enables profit-based bidding)
+- [ ] Product feed includes COGS attribute (ecommerce)
 - [ ] New customer data parameter is populated (if NCA strategy is planned or active)
 - [ ] Custom variables are created and enabled (if default segments are insufficient)
 - [ ] Conversion Adjustments upload schedule is configured (ecommerce returns, lead value updates)
@@ -152,8 +156,8 @@ Run this checklist:
 
 ## Version details
 
-- **Version:** 1.0
-- **Last Updated:** February 2026
+- **Version:** 3.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

@@ -157,7 +157,7 @@ Filter for products with click share below 40% and ROAS above target. Check if t
 
 ### 4.1 Review Shopping search terms
 
-Go to Shopping campaign > **Search terms**. Sort by cost. Identify irrelevant queries, competitor brand queries, informational queries ("how to", "reviews"), and overly broad queries with high spend and low conversion.
+Go to Shopping campaign > **Insights and reports** > **Search terms**. Sort by cost. Identify irrelevant queries, competitor brand queries, informational queries ("how to", "reviews"), and overly broad queries with high spend and low conversion.
 
 > ↪️ **For the full search term analysis workflow:** See [SOP – Analyze Search Term Reports](../sops/SOP – Analyze Search Term Reports.md).
 
@@ -186,7 +186,7 @@ For deeper analysis, run the full procedure in [SOP – Run N-gram Analysis](../
 | Villain (unprofitable, high spend) | Decrease 20-30% or exclude |
 | Zombie (no impressions/clicks) | Set minimum bid to test viability |
 
-**Target ROAS:** verify learning is complete, then evaluate actual vs. target ROAS using the growth-efficiency framework. Do not apply mechanical percentage rules. See [Bid Targets Reference](../references/Bid Targets Reference.md) for target calculation methodology and [Bid Scaling Mental Model](../mental-models/Bid Scaling Mental Model.md) for the growth-efficiency slider approach to target adjustments.
+**Target ROAS:** verify the 7-14 day learning phase has completed, then evaluate actual vs. target ROAS using the growth-efficiency framework. Do not apply mechanical percentage rules. See [Bid Targets Reference](../references/Bid Targets Reference.md) for target calculation methodology and [Bid Scaling Mental Model](../mental-models/Bid Scaling Mental Model.md) for the growth-efficiency slider approach to target adjustments.
 
 ### 5.2 Review budget allocation
 
@@ -226,7 +226,7 @@ Evaluate brand vs. non-brand separation, hero-only campaigns with dedicated budg
 
 ### 7.1 Auction insights
 
-Go to Shopping campaign > **Auction insights**. Review overlap rate, impression share, and outranking share vs. top competitors. If your impression share is declining, review bids and budget. If outranking share drops, check feed quality and bid levels.
+Go to Shopping campaign > **Insights and reports** > **Auction insights**. Review overlap rate, impression share, and outranking share vs. top competitors. If your impression share is declining, review bids and budget. If outranking share drops, check feed quality and bid levels.
 
 ### 7.2 Competitor pricing
 
@@ -319,8 +319,8 @@ This cycle is complete when:
 
 ## Version details
 
-- **Version:** 2.0
-- **Last Updated:** March 2026
+- **Version:** 3.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

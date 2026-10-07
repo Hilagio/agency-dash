@@ -1,4 +1,4 @@
-﻿# Placement Performance Reference
+# Placement Performance Reference
 Created: 2026-02-14
 
 Support_ID: REFERENCE_45
@@ -12,7 +12,7 @@ Pillar: 0
 
 ## Purpose
 
-Documents placement types, performance metrics, exclusion categories, and brand safety settings across Display, Video, PMax, and Demand Gen campaigns. Use this reference to evaluate where ads appear and decide which placements to keep, exclude, or investigate.
+Documents placement types, performance metrics, exclusion categories, and brand safety settings across Video, PMax, and Demand Gen campaigns: where ads appear, and what separates a placement worth keeping from one worth excluding or investigating.
 
 ---
 
@@ -39,11 +39,11 @@ Documents placement types, performance metrics, exclusion categories, and brand 
 
 | Placement type | Where ads appear | Campaign types | Exclusion level |
 |----------------|-----------------|----------------|-----------------|
-| Websites | Publisher websites (GDN) | Display, Demand Gen, PMax | Individual site or category |
-| YouTube channels | Specific YouTube channels | Video, Display, PMax | Individual channel |
-| YouTube videos | Specific YouTube videos | Video, Display | Individual video |
-| Mobile apps | Apps and app categories | Display, Video, Demand Gen, PMax | Individual app or category |
-| App categories | Full app store categories | Display, PMax | Category level |
+| Websites | Publisher websites (GDN) | Demand Gen, PMax | Individual site or category |
+| YouTube channels | Specific YouTube channels | Video, PMax | Individual channel |
+| YouTube videos | Specific YouTube videos | Video | Individual video |
+| Mobile apps | Apps and app categories | Video, Demand Gen, PMax | Individual app or category |
+| App categories | Full app store categories | PMax | Category level |
 
 > ⚠️ **PMax placement control is limited:** You can view where PMax served impressions, but you cannot target specific placements. You can only add account-level placement exclusions.
 
@@ -57,9 +57,9 @@ Ads appear on third-party websites across the Google Display Network.
 
 | Detail | Value |
 |--------|-------|
-| Available in | Display, Demand Gen, PMax |
-| Targeting precision | Individual domain or URL path (Display, Video). Google AI-managed, no granular placement targeting (Demand Gen, PMax). |
-| Exclusion scope | Ad group, campaign, or account level |
+| Available in | Demand Gen, PMax |
+| Targeting precision | Google AI-managed, no granular placement targeting (Demand Gen, PMax). Exclusions accept individual domains. |
+| Exclusion scope | Ad group, campaign, or account level for Demand Gen. Account level only for PMax |
 | Typical volume | Highest reach across all placement types |
 
 **What to watch for:**
@@ -75,8 +75,8 @@ Ads appear on all videos within a specific YouTube channel.
 
 | Detail | Value |
 |--------|-------|
-| Available in | Video, Display, PMax |
-| Targeting precision | Channel level for Video and Display campaigns. PMax: reporting only, no targeting. |
+| Available in | Video, PMax |
+| Targeting precision | Channel level for Video campaigns. PMax: reporting only, no targeting. |
 | Exclusion scope | Campaign or account level |
 | Typical volume | Moderate (depends on channel size) |
 
@@ -92,8 +92,8 @@ Ads appear on specific individual YouTube videos.
 
 | Detail | Value |
 |--------|-------|
-| Available in | Video, Display |
-| Targeting precision | Individual video level for Video and Display campaigns (highest precision). |
+| Available in | Video |
+| Targeting precision | Individual video level for Video campaigns (highest precision). |
 | Exclusion scope | Campaign or account level |
 | Typical volume | Low (single video traffic) |
 
@@ -103,22 +103,22 @@ Ads appear inside mobile applications.
 
 | Detail | Value |
 |--------|-------|
-| Available in | Display, Video, Demand Gen, PMax |
-| Targeting precision | Individual app or app category (Display, Video). Google AI-managed (Demand Gen, PMax). |
-| Exclusion scope | Ad group, campaign, or account level |
-| Typical volume | Very high (often majority of Display impressions) |
+| Available in | Video, Demand Gen, PMax |
+| Targeting precision | Individual app or app category (Video). Google AI-managed (Demand Gen, PMax). |
+| Exclusion scope | Ad group, campaign, or account level for Video and Demand Gen. Account level only for PMax |
+| Typical volume | Very high (often majority of GDN impressions) |
 
-> ⚠️ **Exclude mobile apps by default:** Most mobile app placements produce accidental clicks from gaming apps and children's apps. Exclude all app categories unless you have a specific reason to include them.
+> ⚠️ **Mobile apps are excluded by default.** Most mobile app placements produce accidental clicks from gaming and children's apps, so all app categories stay excluded absent a specific reason to include them.
 
 ---
 
 ## Default exclusion categories
 
-These categories should be excluded from all Display and Video campaigns at account level before launching.
+These categories are excluded at account level before launch, which covers Demand Gen, Video, and PMax serving in one place.
 
 | Category | Why exclude | How to exclude |
 |----------|-----------|---------------|
-| Mobile apps (all) | Low-quality accidental clicks, children's games | Campaign > Placements > Exclusions > App categories: all |
+| Mobile apps (all) | Low-quality accidental clicks, children's games | App category exclusion, all categories |
 | Parked domains | No real content, bot traffic | Placement exclusion lists |
 | Made-for-advertising sites | Low engagement, poor brand safety | Placement exclusion lists |
 | Error pages | No user intent, wasted impressions | Automatic via content exclusions |
@@ -131,7 +131,9 @@ These categories should be excluded from all Display and Video campaigns at acco
 | Campaign | All ad groups in campaign | Campaign-specific poor performers |
 | Ad group | Single ad group | Granular performance-based exclusions |
 
-> 💡 **Build shared exclusion lists:** Create account-level placement exclusion lists and apply them to all Display and Video campaigns. Add poor performers to these lists over time rather than excluding per campaign.
+The three levels are not additive. Account-level exclusions override the campaign and ad group levels, and exclusions set on a manager account are inherited by every account beneath it.
+
+> 💡 **Shared exclusion lists cover every campaign type at once.** Account-level placement exclusion lists reach Demand Gen, Video, and PMax serving, and poor performers accumulate there rather than in per-campaign exclusions.
 
 ---
 
@@ -139,7 +141,7 @@ These categories should be excluded from all Display and Video campaigns at acco
 
 | Setting | Options | Recommendation |
 |---------|---------|---------------|
-| Content suitability | Expanded / Standard / Limited inventory | Standard for most, Limited for brand-sensitive |
+| Content suitability | Maximum / Moderate / Limited inventory | Moderate for most, Limited for brand-sensitive |
 | Content exclusions | Sensitive categories (tragedy, conflict, etc.) | Exclude all sensitive categories |
 | Digital content labels | DL-G through DL-MA | Exclude DL-MA minimum |
 
@@ -147,8 +149,8 @@ These categories should be excluded from all Display and Video campaigns at acco
 
 | Tier | What it includes | When to use |
 |------|-----------------|-------------|
-| Expanded | All monetizable content including sensitive | Never recommended |
-| Standard | Excludes most sensitive content | Default for most advertisers |
+| Maximum | All monetizable content including sensitive | Never recommended |
+| Moderate | Excludes most sensitive content | Default for most advertisers |
 | Limited | Only vetted, brand-safe content | Premium brands, regulated industries |
 
 ### Digital content labels
@@ -166,7 +168,7 @@ These categories should be excluded from all Display and Video campaigns at acco
 ## PMax placement reporting
 
 **Where to find placement data:**
-Insights tab > Placements (shows which websites, YouTube channels, and apps received impressions).
+Insights and reports > When and where ads showed > Where ads showed, table view "Where Performance Max ads showed" (shows which websites, YouTube channels, and apps received impressions).
 
 **What PMax shows:**
 
@@ -186,7 +188,7 @@ Insights tab > Placements (shows which websites, YouTube channels, and apps rece
 - Exclusions are account-level only: you cannot exclude placements at the PMax campaign level
 - Channel allocation data is available in the interface and via the API
 
-> 💡 **Use scripts for deeper PMax insights:** Mike Rhodes' channel distribution script provides more granular breakdowns of spend allocation across PMax channels than the default interface.
+> 💡 **Scripts reach deeper than the PMax interface.** Mike Rhodes' channel distribution script breaks down spend allocation across PMax channels more granularly than the default view.
 
 ### PMax placement data sources
 
@@ -199,13 +201,13 @@ PMax placement data is accessible through multiple channels, each with different
 | `group_content_suitability_placement_view` (GAQL) | Content suitability placement data across all campaign types (including PMax) | Google Ads Scripts or API |
 | Account-level exclusion lists | Only exclusion mechanism available for PMax | Google Ads UI or API |
 
-> ⚠️ **Script-based analysis is essential for PMax at scale:** The UI shows placements but provides no filtering, scoring, or automated flagging. For accounts with 3+ PMax campaigns, use Google Ads Scripts to pull placement data via the GAQL resources above and apply domain quality and TLD risk checks programmatically.
+> ⚠️ **Script-based analysis is essential for PMax at scale.** The interface lists placements with no filtering, scoring, or automated flagging. At 3+ PMax campaigns, the GAQL resources above feed Google Ads Scripts that apply domain quality and TLD risk checks programmatically.
 
 ---
 
 ## Demand Gen placements
 
-Demand Gen campaigns serve across YouTube, Discover, and Gmail with format-specific placements.
+Demand Gen campaigns serve across YouTube, Discover, Gmail, and the GDN with format-specific placements.
 
 | Channel | Placement | Format |
 |---------|-----------|--------|
@@ -224,7 +226,7 @@ Demand Gen campaigns serve across YouTube, Discover, and Gmail with format-speci
 |---------|-----------|
 | Channel-level reporting | Yes |
 | Placement-level reporting | Yes |
-| Placement exclusions | Account, campaign, and ad group level (+ placement exclusion lists) |
+| Placement exclusions | Account, campaign, and ad group level (+ placement exclusion lists). Account-level exclusions override the campaign and ad group levels, and manager-account exclusions are inherited |
 | Channel opt-out | Yes (ad group level channel selection: YouTube in-stream, YouTube in-feed, YouTube Shorts, Discover, Gmail, GDN) |
 | Content exclusions | Yes (standard brand safety) |
 
@@ -232,7 +234,7 @@ Demand Gen campaigns serve across YouTube, Discover, and Gmail with format-speci
 
 ## Automated exclusion patterns
 
-Use these patterns in Google Ads Scripts or third-party tools to automate placement hygiene.
+These patterns drive automated placement hygiene in Google Ads Scripts or third-party tools.
 
 ### Flag for exclusion
 
@@ -247,7 +249,7 @@ Use these patterns in Google Ads Scripts or third-party tools to automate placem
 | YouTube channel authority check | Flag channels with suspicious age, upload pattern, or subscriber ratio (see YouTube quality signal framework below) | Content farm or ad-revenue-only channel |
 | YouTube audience flag | Flag videos with language mismatch or madeForKids status | Wrong audience or restricted ad formats |
 
-> ⚠️ **Always review before excluding:** Automated flags catch patterns, not context. A placement with 0 clicks might be a new high-quality site that has not had enough time. A placement with high CTR might be a high-quality niche site with engaged users, not click fraud. Never auto-exclude based on thresholds alone: review every flagged placement before adding it to exclusion lists.
+> ⚠️ **Automated flags catch patterns, not context.** A placement with 0 clicks can be a new high-quality site that has not had time. A placement with high CTR can be a niche site with engaged users rather than click fraud. A threshold alone is a review trigger, never an exclusion decision.
 
 ---
 
@@ -283,10 +285,7 @@ The intended purpose of a TLD indicates whether legitimate publishers are likely
 
 Static TLD lists go stale. The most actionable approach is analyzing your own account data.
 
-1. Extract the TLD from every placement URL in the account
-2. Group placements by TLD
-3. Calculate total spend and total conversions per TLD
-4. Flag any TLD where total spend exceeds a meaningful threshold AND conversion count is zero across 3+ distinct domains
+The TLD is extracted from every placement URL in the account, placements group by TLD, and total spend and total conversions aggregate per TLD. The flag condition is a TLD whose total spend exceeds a meaningful threshold while conversion count sits at zero across 3+ distinct domains.
 
 This approach adapts to any advertiser's market. A `.ru` domain is suspicious for a Dutch ecommerce account but perfectly normal for a Russian advertiser. Account-level data resolves that ambiguity automatically.
 
@@ -380,7 +379,7 @@ YouTube video and channel placements carry quality signals beyond basic performa
 
 ## Minimum data thresholds
 
-Do not make placement decisions with insufficient data. Use these minimums before taking action.
+These are the minimums below which placement data does not support a decision.
 
 | Action | Minimum data required | Why |
 |--------|----------------------|-----|
@@ -430,11 +429,11 @@ Does the placement have 1,000+ impressions?
 |---------|---------|-----|
 | No placement exclusions set | Ads serve on parked domains, MFA sites, mobile games | Set account-level exclusions before launching |
 | Excluding placements with <100 clicks | Premature decisions based on insufficient data | Wait for minimum thresholds before acting |
-| Never reviewing placement reports | Poor placements accumulate spend silently | Review placement reports weekly for Display/Video |
-| Ignoring PMax placement data | Unaware of low-quality PMax placements | Check PMax Insights > Placements monthly |
+| Never reviewing placement reports | Poor placements accumulate spend silently | Review placement reports weekly for Demand Gen/Video |
+| Ignoring PMax placement data | Unaware of low-quality PMax placements | Check Insights and reports > When and where ads showed > Where ads showed ("Where Performance Max ads showed") monthly |
 | Keeping mobile apps enabled | Majority of clicks are accidental | Exclude all app categories by default |
 | Optimizing to view-through conversions | Inflated attribution from passive impressions | Track view-throughs for awareness, optimize to click-through only |
-| Setting brand safety to Expanded | Ads appear alongside sensitive content | Use Standard minimum, Limited for brand-sensitive accounts |
+| Setting brand safety to Maximum | Ads appear alongside sensitive content | Use Moderate minimum, Limited for brand-sensitive accounts |
 | Excluding placements one by one per campaign | Duplicated effort, inconsistent exclusions | Use shared account-level exclusion lists |
 
 ---
@@ -451,8 +450,8 @@ Does the placement have 1,000+ impressions?
 
 ## Version details
 
-- **Version:** 4.0
-- **Last Updated:** March 2026
+- **Version:** 5.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

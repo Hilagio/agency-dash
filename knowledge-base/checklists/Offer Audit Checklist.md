@@ -28,7 +28,7 @@ This checklist validates whether an offer has the foundational elements required
 **This checklist does NOT validate:**
 
 - How well the offer is communicated in ads
-    - See: [**Offer Angle Quality Checklist**]<!-- TODO: link target missing -->
+    - See: [Offer Angle Quality Checklist](../checklists/Offer Angle Quality Checklist.md)
 - Headline or description quality
     - See: [Headline Quality Checklist](../checklists/Headline Quality Checklist.md), [Description Quality Checklist](../checklists/Description Quality Checklist.md)
 - Landing page experience
@@ -51,30 +51,30 @@ This checklist validates whether an offer has the foundational elements required
 
 ### Value
 
-- [ ]  Does it solve a real, painful problem?
-- [ ]  Is the dream outcome clear and specific?
-- [ ]  Would your ideal customer *want* this (not just need it)?
-- [ ]  Is the perceived value higher than the price/effort required?
+- [ ]  The offer solves a real, painful problem
+- [ ]  The dream outcome is clear and specific
+- [ ]  The ideal customer wants this, not only needs it
+- [ ]  Perceived value exceeds the price and effort required
 
 ### Uniqueness
 
-- [ ]  Can this offer be directly compared to competitors? (Bad if yes)
-- [ ]  Is there something only you can claim?
-- [ ]  Have you stacked enough value that it's hard to price-compare?
-- [ ]  Does it speak to a specific audience vs. everyone?
+- [ ]  The offer cannot be directly compared to a competitor's
+- [ ]  The offer includes at least one claim only this business can make
+- [ ]  Enough value is stacked that price comparison is impractical
+- [ ]  The offer addresses a specific audience, not everyone
 
 ### Urgency
 
-- [ ]  Is there a reason to act now vs. later?
-- [ ]  Is the urgency real (not fake scarcity)?
-- [ ]  Is the deadline or limit clearly communicated?
+- [ ]  A reason to act now rather than later is stated
+- [ ]  The urgency is real, not manufactured scarcity
+- [ ]  The deadline or limit is stated on the page
 
 ### Trust
 
-- [ ]  What's the risk to the customer? Have you removed it?
-- [ ]  Is there a guarantee, trial, or refund policy?
-- [ ]  Do you have proof it works (testimonials, reviews, case studies)?
-- [ ]  Are there credibility signals (awards, certifications, user counts)?
+- [ ]  The customer's risk is named and removed
+- [ ]  A guarantee, trial or refund policy is in place
+- [ ]  Proof it works is present: testimonials, reviews or case studies
+- [ ]  Credibility signals are present: awards, certifications or user counts
 
 ---
 
@@ -144,7 +144,7 @@ If you can't check a box, use this table to diagnose and fix:
 | --- | --- |
 | [SOP – Create an Irresistible Offer](../sops/SOP – Create an Irresistible Offer.md) | Uses this checklist for validation |
 | [SOP – Craft Your Offer Angles](../sops/SOP – Craft Your Offer Angles.md)  | Downstream (after offer passes audit) |
-| [**Offer Angle Quality Checklist**]<!-- TODO: link target missing --> | Validates angle extraction (separate concern) |
+| [Offer Angle Quality Checklist](../checklists/Offer Angle Quality Checklist.md) | Validates angle extraction (separate concern) |
 
 ---
 

@@ -53,11 +53,9 @@ Documents the Google Ads Change History feature: what changes are logged, how to
 
 ## Accessing Change History
 
-### From the Google Ads interface
+### Where it lives
 
-1. Navigate to the account level
-2. Click "Change history" in the left navigation (under Insights & Reports)
-3. Select date range and apply filters
+Change history sits at account level, in the left navigation of the Campaigns menu. It takes a date range plus the filters below. The diagnostic procedure that uses it is owned by [SOP - Investigate Performance Anomalies](../sops/SOP – Investigate Performance Anomalies.md).
 
 ### Filtering options
 
@@ -83,7 +81,7 @@ Documents the Google Ads Change History feature: what changes are logged, how to
 | **System** | Google system changes (policy, algorithm) | "System" |
 | **Bulk upload** | Changes via bulk sheet upload | User email + "Bulk upload" |
 
-> ⚠️ **Watch for "Auto-applied recommendation" and "System" changes:** These are changes you did not make. Review them regularly to ensure Google's automated changes align with your strategy.
+> ⚠️ **"Auto-applied recommendation" and "System" are the two sources with no operator behind them.** Both record changes Google made to the account without a user action.
 
 ---
 
@@ -91,7 +89,7 @@ Documents the Google Ads Change History feature: what changes are logged, how to
 
 ### What to look for when diagnosing performance shifts
 
-When performance changes unexpectedly, check Change History for changes made 1-7 days before the shift.
+Internal causes of an unexpected performance shift usually sit in the 1-7 days of change history before the shift.
 
 | **Performance change** | **Check for these changes** |
 |------------------------|-----------------------------|
@@ -104,12 +102,7 @@ When performance changes unexpectedly, check Change History for changes made 1-7
 
 ### Correlating changes with performance
 
-1. Identify the date performance shifted
-2. Open Change History filtered to 1-7 days before that date
-3. Filter by the affected campaigns
-4. Look for changes that could explain the shift
-5. If internal changes found: evaluate if intentional and revert if not
-6. If no internal changes found: investigate external factors (competition, seasonality)
+The correlation procedure, from dating the shift through to ruling out external factors, is owned by [SOP - Investigate Performance Anomalies](../sops/SOP – Investigate Performance Anomalies.md), Phase 2.
 
 ---
 
@@ -132,7 +125,7 @@ When performance changes unexpectedly, check Change History for changes made 1-7
 | Not checking Change History before diagnosing | Missing an obvious internal cause of performance change | Always check Change History first when investigating |
 | Looking at too narrow a date range | Changes can take days to impact performance | Check 7 days before the performance shift |
 | Forgetting API and Editor changes | Third-party tools and Editor changes may not be obvious | Filter by all sources, not just web interface |
-| Not documenting intentional changes | Can't distinguish intended changes from accidental ones | Log intentional changes with notes in your review docs |
+| Not documenting intentional changes | Cannot distinguish intended changes from accidental ones | Log intentional changes with notes in your review docs |
 
 ---
 
@@ -149,8 +142,8 @@ When performance changes unexpectedly, check Change History for changes made 1-7
 
 ## Version details
 
-- **Version:** 1.0
-- **Last Updated:** February 2026
+- **Version:** 2.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

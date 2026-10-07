@@ -12,7 +12,7 @@ Pillar: 7
 
 ## Purpose
 
-Validates that Display, Video, and Demand Gen audience targeting is performing well across demographics, expansion impact, combined segments, audience insights, and cross-campaign consistency. Requires 30+ days of campaign data.
+Validates that Video and Demand Gen audience targeting is performing well across demographics, expansion impact, combined segments, audience insights, and cross-campaign consistency. Requires 30+ days of campaign data.
 
 ---
 
@@ -39,7 +39,7 @@ This checklist does **NOT:**
 
 Run this checklist:
 
-- During monthly Display, Video, or Demand Gen audience reviews
+- During monthly Video or Demand Gen audience reviews
 - When audience-level CPA exceeds targets by 2x+
 - Before scaling audience budgets
 - After 30+ days of campaign data has accumulated
@@ -50,15 +50,15 @@ Run this checklist:
 
 ### Expansion performance
 
-- [ ] Expansion performance measured via "Total: Expansion and optimized targeting" row
+- [ ] Expanded performance is recorded from the "Total: Expansion and optimized targeting" row
 - [ ] Expanded vs targeted CPA/ROAS compared: expanded > 2x targeted = turn OFF
-- [ ] Demand Gen optimized targeting demographic behavior reviewed (may serve beyond demographic selections when ON)
+- [ ] Every Demand Gen campaign with optimized targeting ON has a documented decision accepting serving outside its demographic selections
 
 ### Demographics validation
 
-- [ ] Demographic performance reviewed across all dimensions (Age, Gender, Parental status, Household income)
+- [ ] Demographic performance is recorded for Age, Gender, Parental status and Household income
 - [ ] Demographic outliers addressed (CPA > 2x campaign average with 50+ clicks)
-- [ ] "Unknown" segment reviewed: no exclusion without 30+ days of data showing CPA > 2x campaign average
+- [ ] The "Unknown" segment is excluded only where 30+ days of data show CPA above 2x the campaign average
 - [ ] No demographic exclusions applied without 30+ days of performance data
 - [ ] Demographics used as a layer on top of audience segments, not as standalone targeting
 
@@ -67,33 +67,33 @@ Run this checklist:
 - [ ] Combined segments maintain sufficient audience size after AND/NOT filtering (check "Ready" status)
 - [ ] Component segments individually validated before combining
 - [ ] Combined segments tested in separate ad groups before scaling
-- [ ] No more than 3 AND conditions per combined segment (diminishing returns)
+- [ ] No more than 3 AND conditions per combined segment
 - [ ] Combined segment performance compared to individual component segments
 
 ### Audience insights review
 
-- [ ] Insights page reviewed for high-index segments (3x+) not currently targeted
-- [ ] Your data insights checked in Audience Manager for cross-campaign performance
-- [ ] High-index untargeted segments evaluated for addition as targeting or in combined segments
-- [ ] Asset audience insights reviewed for creative-audience alignment opportunities
+- [ ] Every untargeted segment indexing 3x or higher on the Insights page is listed
+- [ ] Cross-campaign segment performance is recorded from Your data insights in Audience manager
+- [ ] Every high-index untargeted segment has an add-or-skip decision
+- [ ] Asset audience insights are recorded per asset group
 
 ### Observation mode review
 
-- [ ] Observation-mode segments monitored for bid adjustment opportunities
+- [ ] Every Observation-mode segment with 50+ clicks has a bid adjustment decision
 - [ ] No segments dormant in Observation for 60+ days without analysis
-- [ ] High-performing Observation segments flagged for graduation to Targeting
+- [ ] Every Observation segment beating the campaign average CPA is flagged for graduation to Targeting
 
-### Content targeting performance (Display/Video only)
+### Content targeting performance (Video, Demand Gen)
 
-- [ ] Content targeting evaluated: whether adding topics/placements would complement audience targeting
+- [ ] Adding topic or placement targeting has an add-or-skip decision
 - [ ] Zero-conversion topics/keywords removed after 30+ days
 
 ### Cross-campaign consistency
 
 - [ ] No audience overlap between ad groups targeting the same users with different bids
 - [ ] Remarketing and prospecting campaigns have mutually exclusive audiences
-- [ ] Frequency capping is set to avoid audience fatigue (Display/Video)
-- [ ] Budget allocation matches audience priority (warmer audiences get proportionally more budget)
+- [ ] Frequency capping is set on every Video campaign
+- [ ] Warmer audiences hold a larger budget share than colder audiences
 
 ---
 
@@ -111,8 +111,8 @@ Run this checklist:
 
 ## Version details
 
-- **Version:** 1.0
-- **Last Updated:** April 2026
+- **Version:** 2.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

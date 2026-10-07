@@ -75,7 +75,7 @@ These alerts detect structural breakage. All are high priority.
 ### URL health
 
 - [ ] URL checking is implemented for high-volume landing pages
-- [ ] Broken URL alerts include campaign and ad group context for fast diagnosis
+- [ ] Broken URL alerts include campaign and ad group context
 - [ ] URL check frequency matches traffic volume (daily for high-traffic, weekly for lower)
 
 > 💡 **Native Google rules cannot check URL health:** Use a Google Ads Script with UrlFetchApp or a third-party monitoring tool. Manual spot-checks are a safety net, not a primary detection method.
@@ -84,7 +84,7 @@ These alerts detect structural breakage. All are high priority.
 
 - [ ] Merchant Center email notifications are enabled for feed errors and disapprovals
 - [ ] Product disapproval count is monitored against baseline
-- [ ] Feed processing errors are flagged before they cause significant product loss
+- [ ] An alert is configured for feed processing errors
 - [ ] Inventory sync issues are detected (advertising out-of-stock products)
 
 ### Bid strategy status
@@ -95,7 +95,7 @@ These alerts detect structural breakage. All are high priority.
 
 ### Campaign settings drift
 
-- [ ] Change History is reviewed for auto-applied recommendations
+- [ ] A recurring Change History review for auto-applied recommendations is scheduled at least weekly
 - [ ] Critical settings (location, network, conversion goals) have drift detection
 
 ---
@@ -127,11 +127,11 @@ These alerts detect unexpected metric changes. Requires noise filtering via mini
 
 ### Noise filtering
 
-- [ ] All Layer 2️⃣ alerts have appropriate data windows (not too short, not too long)
+- [ ] Every Layer 2️⃣ alert uses the data window set by the account's volume tier below
 - [ ] High-volume accounts (200+ conv/mo): campaign-level alerts with 7-day windows
 - [ ] Medium-volume accounts (50-200): campaign-level alerts with 14-day windows
 - [ ] Low-volume accounts (15-50): account-level alerts with 30-day windows
-- [ ] Minimum volume thresholds are applied to prevent false positives on low-data entities
+- [ ] Minimum volume thresholds are applied to every Layer 2️⃣ alert
 - [ ] Data windows account for conversion lag if using standard conversion metrics instead of conversions (by time)
 
 ---
@@ -161,10 +161,10 @@ These alerts track progress toward business goals.
 ## Alert infrastructure
 
 - [ ] All alert emails route to the correct recipient(s)
-- [ ] Alert notification frequency is appropriate (not overwhelming the inbox)
-- [ ] Alert rule history is reviewed at least weekly to verify rules are firing
+- [ ] No alert sends more than one notification per day
+- [ ] Every alert rule shows a run entry in its history within the last 7 days
 - [ ] Labels are used to scope alerts to the correct campaigns
-- [ ] Alert thresholds are documented (so they can be recalibrated)
+- [ ] Alert thresholds are documented
 - [ ] Alert thresholds are recalibrated quarterly based on account performance
 
 ---

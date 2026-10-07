@@ -8,7 +8,7 @@ Category: Operational
 Reference Type: Cheat Sheets
 Agent_Readable: Yes
 Human_Facing: Yes
-Applies_To: Search, Shopping, PMax, Display, Video, Demand Gen
+Applies_To: Search, Shopping, PMax, Video, Demand Gen
 Domain: Measurement
 Pillar: 5
 
@@ -63,21 +63,13 @@ Documents the minimum conversion volume required for each bid strategy across al
 | **Target CPA** | 15 | 30 | 50+ | Added on top of Max Conversions |
 | **Target ROAS** | 30 | 50 | 50+ | Added on top of Max Conv Value |
 
-### Display
-
-| **Bid Strategy** | **Absolute Minimum** | **Functional Minimum** | **Recommended** | **Notes** |
-| --- | --- | --- | --- | --- |
-| **Target CPA** | 15 | 30 | 50+ | Standard threshold |
-| **Target ROAS** | 30 | 50 | 50+ | Higher bar due to value variance |
-| **Maximize Conversions** | 15 | 30 | 50+ | Good for ramping up |
-
 ### Video
 
 | **Bid Strategy** | **Absolute Minimum** | **Functional Minimum** | **Recommended** | **Notes** |
 | --- | --- | --- | --- | --- |
 | **Target CPM** | N/A | N/A | N/A | Impression-based, not conversion-based |
 | **Max CPV** | N/A | N/A | N/A | View-based, not conversion-based |
-| **Target CPA** | 15 | 30 | 50+ | Only via Demand Gen (Video Action Campaigns merged into Demand Gen in 2025) |
+| **Target CPA** | N/A | N/A | N/A | Not available on Video, use Demand Gen |
 
 ### Demand Gen
 
@@ -87,7 +79,7 @@ Documents the minimum conversion volume required for each bid strategy across al
 | **Target ROAS** | 30 | 50 | 50+ | Higher bar due to value variance |
 | **Maximize Conversions** | 15 | 30 | 50+ | Good for ramping up |
 
-> ⚠️ **Demand Gen needs higher volume per ad group:** Target 50+ conversions per ad group per 30 days. Demand Gen serves across multiple surfaces (YouTube, Discover, Gmail) and needs more signal to allocate between them. Consolidate ad groups aggressively.
+> ⚠️ **Demand Gen thresholds apply per ad group, at 50+ conversions per 30 days.** Demand Gen serves across multiple surfaces (YouTube, Discover, Gmail) and needs the extra signal to allocate between them, which puts a hard ceiling on how many ad groups a campaign can support.
 
 > ⚠️ **Maximize Conversion Value eligibility for Demand Gen:** Requires at least 50 conversions with value in the past 30 days within the campaign, or at least 100 conversions with value across all Demand Gen campaigns in the past 30 days. Without meeting this threshold, Maximize Conversion Value (including tROAS) is not available as a bid strategy.
 
@@ -107,7 +99,9 @@ Meeting the conversion threshold is necessary but not sufficient. You also need 
 
 Required monthly budget = (Target conversions / Conversion rate) x Average CPC
 
-If the result exceeds your budget, you need to consolidate campaigns or lower your bid strategy ambitions.
+**Demand Gen also has a daily serving floor:** at least 10x target CPA, minimum €100/day on Maximize conversions. Budget to whichever is higher. See [Demand Gen Performance Reference](../references/Demand Gen Performance Reference.md).
+
+A required budget above the available budget leaves two options: consolidate campaigns, or step down to a bid strategy with a lower threshold.
 
 ---
 
@@ -122,13 +116,13 @@ Smart Bidding attribution happens over your conversion window, not instantly. Sh
 | 14-30 days | 30-60 days | B2B SaaS, high-value services |
 | 30-90 days | 60-180 days | Enterprise B2B, complex sales |
 
-> ⚠️ **Evaluate over at least 2x your conversion lag:** A campaign that looks like it has 15 conversions/month may actually have 30+ once lagged conversions attribute. Check the "Days to conversion" report in Google Ads to understand your lag.
+> ⚠️ **An evaluation window shorter than 2x the conversion lag undercounts.** A campaign that reads as 15 conversions/month can settle at 30+ once lagged conversions attribute. The lag itself comes from the "Days to conversion" report.
 
 ---
 
 ## When you can't hit thresholds
 
-Use these tactics in priority order. Start at the top, move down only if the previous option is not viable.
+The tactics below are in priority order, and each one lower down costs more in control or signal quality than the one above it.
 
 | **Priority** | **Tactic** | **How It Works** | **Best For** |
 | --- | --- | --- | --- |
@@ -138,9 +132,9 @@ Use these tactics in priority order. Start at the top, move down only if the pre
 | 4th | **Move up the funnel** | Optimize for micro-conversions (add-to-cart, lead form start) instead of final conversions | Low-volume verticals where final conversions are scarce |
 | 5th | **Reduce segmentation** | Fewer product segments, fewer ad groups, fewer campaigns | Shopping/PMax accounts with too many segments per bucket |
 | 6th | **Expand targeting** | Broader match types, broader audiences, new geos | Campaigns limited by targeting, not by budget |
-| Last | **Accept lower volume** | Run Manual CPC or Maximize Clicks if there's a compelling business reason | Niche verticals where 30 conversions/month is structurally impossible |
+| Last | **Accept lower volume** | Run Manual CPC or Maximize Clicks where a compelling business reason holds | Niche verticals where 30 conversions/month is structurally impossible |
 
-> ⚠️ **Portfolio Bid Strategies** can be a low-risk way to test consolidation. Bundle campaigns with similar targets, let Smart Bidding optimize across them. If performance improves, consider full consolidation.
+> ⚠️ **A Portfolio Bid Strategy is a reversible test of consolidation.** Campaigns with similar targets share bidding signals without merging, so the performance result answers whether a full consolidation is worth making.
 
 ---
 
@@ -178,7 +172,7 @@ Use these tactics in priority order. Start at the top, move down only if the pre
 | [PMax Structure Mental Model (Ecommerce)](<../mental-models/PMax Structure Mental Model (Ecommerce).md>) | Uses thresholds for Ecommerce PMax bid strategy decisions |
 | [PMax Structure Mental Model (Lead Gen/SaaS)](<../mental-models/PMax Structure Mental Model (Lead Gen-SaaS).md>) | Uses thresholds for Lead Gen/SaaS PMax bid strategy decisions |
 | [Shopping Campaign Type Mental Model](../mental-models/Shopping Campaign Type Mental Model.md) | Uses thresholds for campaign type selection |
-| [Upper Funnel Campaign Structure Mental Model](../mental-models/Upper Funnel Campaign Structure Mental Model.md) | Uses thresholds for Display, Video, Demand Gen decisions |
+| [Upper Funnel Campaign Structure Mental Model](../mental-models/Upper Funnel Campaign Structure Mental Model.md) | Uses thresholds for Demand Gen and Video decisions |
 | [Product Feed Segmentation Mental Model](../mental-models/Product Feed Segmentation Mental Model.md) | Uses thresholds for segmentation bucket viability |
 | [Bid Strategy Selection Reference](../references/Bid Strategy Selection Reference.md) | Downstream (bid strategy selection and configuration) |
 

@@ -1,5 +1,6 @@
 # Account Health Checklist
 Created: 2026-02-11
+Updated: 2026-08-27
 
 Support_ID: CHECKLIST_25
 Status: Done
@@ -63,8 +64,8 @@ Run this checklist:
 
 - [ ] Primary conversion actions are active (not "no recent conversions" or "inactive")
 - [ ] No new conversion tracking warnings in the Diagnostics tab
-- [ ] Enhanced conversions (if configured) show healthy match rates
-- [ ] Conversion volume is within expected range (not zero, not abnormally low)
+- [ ] Enhanced Conversions match rate is 50% or higher (if configured)
+- [ ] Conversion volume is within the account's documented expected range
 - [ ] Conversion value tracking is functional (if configured)
 
 ### Ad and asset compliance
@@ -74,14 +75,14 @@ Run this checklist:
 - [ ] No new ad disapprovals on active campaigns
 - [ ] No disapproved RSA headline or description assets
 - [ ] No disapproved assets across all asset types (sitelinks, callouts, structured snippets, images, calls, prices, promotions)
-- [ ] Ads serving with restrictions are reviewed (limited approval status)
-- [ ] Previously flagged disapprovals have been addressed or appealed
+- [ ] Every ad with "Eligible (limited)" status has a documented decision
+- [ ] Previously flagged disapprovals have been resolved by editing and resubmitting, or appealed within 6 months of the decision
 
 ### URL and landing page health
 
 - [ ] No 404 errors reported on high-volume final URLs
 - [ ] No broken keyword-level final URLs
-- [ ] No broken DSA target URLs
+- [ ] No broken page feed URLs used by final URL expansion
 - [ ] No broken asset URLs (sitelinks, callouts with URLs)
 - [ ] No redirect chain issues on ad final URLs
 - [ ] No redirect chain issues on keyword-level URLs
@@ -92,7 +93,7 @@ Run this checklist:
 ### Bid strategy status
 
 - [ ] No bid strategies show "Limited" or "Misconfigured" status
-- [ ] Bid strategies in "Learning" status are expected (recent changes)
+- [ ] Every bid strategy in "Learning" status has a change in the last 14 days that accounts for it
 - [ ] No portfolio bid strategies show warnings
 
 ### Change History
@@ -101,11 +102,19 @@ Run this checklist:
 - [ ] Auto-apply settings have not been re-enabled
 - [ ] No changes by unknown users
 
+### Account-level serving blocks
+
+- [ ] Every campaign with zero impressions has its account status confirmed as active
+- [ ] No temporary daily spending limit is in force on the account
+
+> ⚠️ **An account security review stops serving silently.** It can drop a campaign to zero impressions or impose a temporary daily spending limit, and it sends no notification, so the symptom looks like a campaign-level fault. Check account status before diagnosing settings whenever impressions stop without a matching campaign change. The review cannot be expedited, so the response is to confirm the account is in good standing and wait rather than rebuild the campaign.
+
 ### Feed health (Shopping/PMax only)
 
 - [ ] No Merchant Center account-level issues or critical feed processing errors
-- [ ] Feed processing status is healthy and freshness is within expected window
-- [ ] Product disapproval count has not spiked and product warnings are reviewed
+- [ ] Feed processing completed with no errors and the last successful fetch is within the scheduled interval
+- [ ] Product disapproval count has not risen versus the prior check
+- [ ] Every product warning has a documented decision
 - [ ] No large unexpected changes in active product count (including high-volume products stopped showing)
 - [ ] No broken Shopping final URL or mobile link URLs
 - [ ] No inventory sync issues (advertising out-of-stock products)
@@ -117,7 +126,7 @@ Run this checklist:
 - [ ] No auto-generated text assets serving unintentionally
 - [ ] No auto-generated video assets serving unintentionally
 - [ ] Audience signals are configured on all asset groups
-- [ ] Asset coverage is sufficient (all required asset types populated)
+- [ ] Every required asset type is populated on every asset group
 
 ### Asset coverage (Search)
 
@@ -146,11 +155,11 @@ Each check category has different automation potential. Use this table to priori
 | **Check category** | **Automation potential** | **Primary tools** | **AI agents/skills** |
 |---------------------|-------------------------|-------------------|----------------------|
 | Conversion tracking health | High | Google rules (zero conv), scripts (volume drop, tag status), third-party tools (continuous monitoring) | Root cause analysis when tracking breaks, cross-checking tag configuration |
-| Ad and asset compliance | High | Google rules (status = disapproved), third-party tools (granular asset-level scanning) | Policy violation pattern detection, appeal drafting |
+| Ad and asset compliance | High | Google rules (status = disapproved), third-party tools (granular asset-level scanning) | Policy violation pattern detection, appeal drafting for decisions under 6 months old, edit-and-resubmit plans for older decisions |
 | URL and landing page health | Medium-high | Scripts (UrlFetchApp for HTTP checks), third-party tools (real-time uptime monitoring) | Diagnosing redirect chains, page content validation |
 | Bid strategy status | Medium | Google rules (status-based, limited), scripts (learning duration, target deviation) | Diagnosing why a strategy is stuck in learning, recommending fixes |
 | Campaign settings and Change History | Medium | Third-party tools (Change History scanning), scripts (settings snapshots) | Change impact analysis, detecting unintended cascading effects |
-| Feed health | High | Merchant Center native alerts, feed tools (Channable, DataFeedWatch), scripts (Content API) | Feed error diagnosis, attribute optimization suggestions |
+| Feed health | High | Merchant Center native alerts, feed tools (Channable, DataFeedWatch), scripts (Merchant API) | Feed error diagnosis, attribute optimization suggestions |
 | Performance Max health | Medium | Third-party tools (asset-level scanning), Google rules (asset group status, very limited) | Asset strength improvement recommendations, audience signal analysis |
 | Asset coverage | Medium | Third-party tools (coverage gap detection), scripts (asset count checks) | Asset gap prioritization, copy suggestions for missing assets |
 | Backend pipeline health | Low-medium | CRM integration monitoring, scripts (offline conversion upload checks) | Pipeline failure diagnosis, data reconciliation |
@@ -184,8 +193,8 @@ If you notice a dramatic spend anomaly during your Layer 1️⃣ scan (e.g., a c
 
 ## Version details
 
-- **Version:** 4.0
-- **Last Updated:** February 2026
+- **Version:** 6.0
+- **Last Updated:** August 2026
 - **Creator:** Bob Meijer
 - **Changelog:** v4.0: Consolidated per-asset-type disapproval checks and feed health checks to reduce granularity. Added AI agents/skills column to Automation coverage table. v3.0: Removed inline tool annotations. Enhanced checks from TrueClicks and Adalysis sources: expanded ad/asset compliance (12 checks), URL health (9 checks), feed health (10 checks). Added Performance Max health section (7 checks), asset coverage section (3 checks), campaign settings checks (auto text assets, broad match). Replaced inline annotations with "Automation coverage" section. v2.0: Renamed from "Daily Monitoring Checklist" to "Account Health Checklist" (Layer 1️⃣ focus). Added automation indicators, frequency flexibility, vertical-specific sections (Shopping, Lead Gen, SaaS). Moved spend/delivery anomalies to Layer 2️⃣ scope note. Sentence case headings.
 

@@ -24,7 +24,7 @@ This SOP does **not:**
 
 - Explain the legal requirements of GDPR or ePrivacy (consult your legal team)
 - Cover server-side tagging or advanced consent architectures
-- Configure conversion actions themselves (See: [SOP – Set Up Cart Data and Profit Tracking](../sops/SOP – Set Up Cart Data and Profit Tracking.md))
+- Configure conversion actions themselves (See: [SOP – Set Up Google Ads Conversion Tracking](../sops/SOP – Set Up Google Ads Conversion Tracking.md))
 
 ### When to run this SOP
 
@@ -50,6 +50,7 @@ Run this SOP when:
 
 | Document | Used for |
 |----------|----------|
+| [Consent Mode Reference](../references/Consent Mode Reference.md) | Consent signals, modeling mechanics, CMP integration methods |
 | CMP provider documentation | Template installation and domain group ID |
 | Google Tag Manager workspace | Tag and trigger configuration |
 | Google Ads account (Diagnostics) | Consent mode verification |
@@ -192,7 +193,7 @@ If your non-Google tags need a dedicated trigger:
 ### 4.2 Check Google Ads diagnostics
 
 1. Open Google Ads
-2. Go to Goals > Conversions > Diagnostics
+2. Go to Goals > Summary > Diagnostics
 3. Look for the Consent Mode status indicator
 4. Confirm it shows "Consent mode detected" for your conversion actions
 
@@ -259,7 +260,7 @@ A: Any Google-certified CMP works. Cookiebot, CookieYes, and OneTrust are common
 
 **Q: Do I need consent mode for US-only campaigns?**
 
-A: Not legally required today, but recommended. Consent mode future-proofs your setup and improves data quality as privacy regulations evolve.
+A: Implement it. Consent mode is not legally required outside the EU/EEA, and it still improves data quality wherever users decline tracking.
 
 **Q: What happens to conversions when users deny consent?**
 
@@ -289,8 +290,8 @@ A: Google uses cookieless pings plus machine learning to model conversions from 
 
 ### Version details
 
-- **Version:** 1.0
-- **Last Updated:** February 2026
+- **Version:** 2.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

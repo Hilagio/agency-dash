@@ -23,7 +23,7 @@ Documents the configuration options for every Google Ads conversion action: macr
 - Defines macro and micro conversion types with classification criteria
 - Explains primary vs. secondary conversion action roles
 - Documents attribution models, conversion windows, and counting methods
-- Provides recommended settings by vertical
+- Documents the classification criteria behind each setting (recommended values per vertical live in [Conversion Tracking Configuration Guidelines](../guidelines/Conversion Tracking Configuration Guidelines.md))
 
 **This reference does NOT:**
 
@@ -39,9 +39,9 @@ Documents the configuration options for every Google Ads conversion action: macr
 |-------------|------------|-------------|-----------|
 | **Goal category** | Purchase, Lead, Signup, Page View, Other, etc. | Depends on action type | Determines grouping for account/campaign goals |
 | **Optimization** | Primary / Secondary | Primary | Primary = used for bidding + reporting. Secondary = reporting only |
-| **Attribution** | Data-Driven (DDA) / Last Click (LCA) | Data-Driven | How credit is distributed across touchpoints |
-| **Click-through window** | 1-90 days | 30 days | How long after a click a conversion can be attributed |
-| **View-through window** | 1-30 days | 1 day | How long after an ad view (no click) a conversion can be attributed |
+| **Attribution** | Data-driven (DDA) / Last click (LCA) | Data-driven | How credit is distributed across touchpoints |
+| **Click-through conversion window** | 1-90 days | 30 days | How long after a click a conversion can be attributed |
+| **View-through conversion window** | 1-30 days | 1 day | How long after an ad view (no click) a conversion can be attributed |
 | **Engaged-view window** | 1-30 days | 3 days | How long after a 10-second video view a conversion can be attributed |
 | **Counting** | Every / One | Every | Whether to count all conversions or one per interaction |
 | **Value** | Static / Dynamic | Varies | Revenue value assigned to each conversion |
@@ -81,23 +81,23 @@ Use micro conversions as a primary conversion action only when:
 | Condition | Example | Action |
 |-----------|---------|--------|
 | Campaign goal is not revenue-tied | Upper funnel campaign optimizing for whitepaper downloads | Set the micro conversion as campaign-specific primary |
-| Insufficient macro conversion volume | Campaign has <30 macro conversions/month | Consider consolidation and portfolio strategies first, micro conversion second |
+| Insufficient macro conversion volume | Campaign has <30 macro conversions/month | Consolidation and portfolio strategies rank ahead of a micro conversion |
 | Conversion cycle exceeds 90-day cookie window | B2B enterprise with 6-month sales cycle | Optimize for a mid-funnel step (qualified lead instead of closed deal) |
 | Experimental testing | Testing whether a higher-volume signal improves Smart Bidding | Run a 50/50 experiment before switching fully |
 
-> ⚠️ **Exhaust consolidation tactics before switching to micro conversions:** Consolidate campaigns, use portfolio bid strategies, or remove bid targets first. Micro conversions are a proxy for revenue, not a replacement. (See: [Conversion Volume Thresholds Reference](../references/Conversion Volume Thresholds Reference.md))
+> ⚠️ **A micro conversion is a proxy for revenue, not a replacement.** Campaign consolidation, portfolio bid strategies and removing bid targets all raise volume without changing what the account optimizes toward, which is why they rank ahead of a micro conversion (See: [Conversion Volume Thresholds Reference](../references/Conversion Volume Thresholds Reference.md)).
 
-### Vanity metrics to avoid
+### Vanity metrics
 
-Do not track these as conversion actions:
+A conversion action earns its place only if the metric drives revenue, directly or indirectly. These fail that test:
 
-- Quality visits or "engaged sessions"
-- Time on site thresholds
-- Bounce rate improvements
-- Generic page views without business value
-- Scroll depth events
-
-**The test:** Does this metric directly or indirectly drive revenue? If not, it's vanity.
+| Metric | Why it fails |
+|--------|--------------|
+| Quality visits or "engaged sessions" | No defined relationship to revenue |
+| Time on site thresholds | Measures duration, not intent |
+| Bounce rate improvements | A site metric, not a user action |
+| Generic page views without business value | Fires on traffic, not on progress |
+| Scroll depth events | Measures rendering, not intent |
 
 ---
 
@@ -112,12 +112,14 @@ Do not track these as conversion actions:
 | **Affects optimization decisions** | Yes (n-gram analysis, bid adjustments) | No (observation only) |
 | **Default for new actions** | Yes | Must be manually changed |
 
-### How to view secondary conversions
+### Where secondary conversions are visible
 
-Two methods:
+Secondary actions report only in the All Conversions columns, reachable two ways:
 
-1. **Segment method:** Add "All Conversions" columns to reports, then segment by Conversion Action
-2. **Custom columns method (recommended):** Create custom columns filtering "All Conversions" by specific conversion action name. Enables persistent column configurations and custom calculations (e.g., add-to-cart to purchase ratio)
+| Surface | What it gives |
+|---------|---------------|
+| All Conversions columns segmented by Conversion Action | A per-action breakdown, rebuilt each time |
+| A custom column filtering All Conversions to one action name | A persistent column, and the basis for calculated ratios such as add-to-cart to purchase |
 
 ### Classification guide
 
@@ -137,21 +139,23 @@ Two methods:
 
 Google Ads uses a two-level goal system:
 
-1. **Account-default goals:** Applied to all campaigns by default. Set at Goals > Conversion Summary.
-2. **Campaign-specific goals:** Override account defaults for individual campaigns. Set at Campaign Settings > Conversion Goals.
+1. **Account-default goals:** Applied to all campaigns by default. Set at Goals > Summary.
+2. **Campaign-specific goals:** Override account defaults for individual campaigns. Set at Campaign settings > Conversion goals.
 
 Within each goal category (Purchase, Lead, Signup, etc.), only primary conversion actions are used for bidding and reporting.
+
+A campaign-specific goal with every conversion action removed falls back to the account-default goals for that campaign's bidding and reporting.
 
 ### When to use campaign-specific goals
 
 | Scenario | Example |
 |----------|---------|
 | A/B testing conversion actions | Testing revenue-based vs. profit-based primary actions |
-| Upper funnel campaigns with different objectives | Display campaign optimizing for whitepaper downloads instead of purchases |
+| Upper funnel campaigns with different objectives | Demand Gen campaign optimizing for whitepaper downloads instead of purchases |
 | OCT vs. GACT for different campaign types | Bottom-of-funnel uses OCT import, upper funnel uses GACT pixel |
 | Low-volume campaigns needing micro conversion | One campaign switches to add-to-cart while others stay on purchase |
 
-> ⚠️ **Triple-check your goal settings:** Misconfigured goals are one of the most common account setup errors. After any change, verify: (1) account-default goal categories, (2) primary conversion actions within each category, (3) campaign-level goal overrides.
+> ⚠️ **Misconfigured goals are one of the most common account setup errors.** Three settings interact and any one of them can silently override the others: account-default goal categories, the primary conversion actions within each category, and campaign-level goal overrides. Validation is owned by [Conversion Tracking Setup Checklist](../checklists/Conversion Tracking Setup Checklist.md).
 
 ---
 
@@ -161,10 +165,10 @@ Google Ads currently supports two attribution models:
 
 | Model | How credit is assigned | Best for |
 |-------|----------------------|----------|
-| **Data-Driven Attribution (DDA)** | Machine learning distributes credit across all Google Ads touchpoints based on their contribution to conversion | 99% of accounts (recommended default) |
+| **Data-Driven Attribution (DDA)** | Machine learning distributes credit across all Google Ads touchpoints based on their contribution to conversion | Almost every account, and the library default |
 | **Last Click Attribution (LCA)** | 100% credit to the final ad interaction before conversion | Legacy accounts, simple single-touchpoint funnels |
 
-> 💡 **Use DDA for all conversion actions:** It provides a more accurate view of how campaigns, ad groups, and keywords contribute to conversions across the full funnel. LCA systematically under-credits upper and mid-funnel interactions.
+> 💡 **DDA is the default across the library.** It gives a more accurate view of how campaigns, ad groups, and keywords contribute across the full funnel, where LCA systematically under-credits upper and mid-funnel interactions. The stance is owned by [Conversion Tracking Configuration Guidelines](../guidelines/Conversion Tracking Configuration Guidelines.md).
 
 ### Attribution scope
 
@@ -174,14 +178,14 @@ Google Ads currently supports two attribution models:
 | GA4 event import (default) | Google paid channels only |
 | GA4 event import (cross-channel setting) | Google paid + organic channels |
 
-**If using GA4 imports as primary:** Consider enabling the "paid and organic channels" attribution setting in GA4 for a more balanced view. This reduces over-attribution to paid clicks by including organic touchpoints.
+**GA4 imports as primary:** the "paid and organic channels" attribution setting in GA4 includes organic touchpoints, which reduces over-attribution to paid clicks.
 
 ### Over-attribution: the double-edged sword
 
 | | **Pro** | **Con** |
 |--|---------|---------|
 | **Effect** | More conversion signals for Smart Bidding | Inflated CPA/ROAS metrics |
-| **Impact** | Better algorithm learning, more consistent performance | Risk of overspending if targets aren't adjusted |
+| **Impact** | Better algorithm learning, more consistent performance | Risk of overspending until targets are adjusted |
 | **Action** | Leverage the richer data input | Recalibrate efficiency targets using backend data or third-party attribution |
 
 **Recalibration formula:** If Google Ads reports 300% ROAS but backend shows 220% ROAS, set your target ROAS to ~410% in Google Ads (300/220 x 300) to achieve real 300% performance.
@@ -207,11 +211,7 @@ Google Ads currently supports two attribution models:
 | 2-4 weeks | 30-60 days | B2B services, SaaS trials |
 | 1-3 months | 60-90 days | B2B enterprise, luxury goods, real estate |
 
-**How to determine your window:**
-1. Open Goals > Measurement > Attribution > Path Metrics
-2. Check "Average days to conversion"
-3. Set your click-through window to at least 2x the average conversion lag
-4. For view-through and engaged-view, keep shorter (1-7 days) unless you have specific upper-funnel attribution needs
+**The input:** "Avg. days to conversion" under Goals > Measurement > Attribution > Path metrics. The click-through window sits at least 2x that lag, and view-through plus engaged-view stay shorter. The calibration rule is owned by [Conversion Tracking Configuration Guidelines](../guidelines/Conversion Tracking Configuration Guidelines.md).
 
 ### Shorter vs. longer windows
 
@@ -223,9 +223,9 @@ Google Ads currently supports two attribution models:
 
 ### Testing window changes safely
 
-Duplicate your primary conversion action, set the duplicate as primary with the new window length, and compare results over 1-2 conversion cycles. This lets you evaluate impact without disrupting Smart Bidding on your current action.
+A duplicated primary conversion action carrying the new window length runs alongside the original, and the two are compared over 1-2 conversion cycles. Because the original keeps bidding, the test does not disturb Smart Bidding.
 
-> ⚠️ **Be wary of view-through and engaged-view conversions:** These are passive attribution signals. A user who saw your ad but converted through another channel will still be credited. Discount these conversions when evaluating upper-funnel campaign performance.
+> ⚠️ **View-through and engaged-view conversions are passive attribution signals.** A user who saw the ad but converted through another channel is still credited, so upper-funnel performance read from these columns is overstated.
 
 ---
 
@@ -251,7 +251,7 @@ Duplicate your primary conversion action, set the duplicate as primary with the 
 
 ### Repeat rate
 
-The repeat rate metric shows the average number of conversions per converting interaction. Find it at Goals > Conversion Summary > All Conversion Actions (top right) > Repeat Rate column.
+The repeat rate metric shows the average number of conversions per converting interaction. Find it at Goals > Conversions > All conversions > Repeat rate column.
 
 **Using repeat rate to evaluate counting impact:**
 
@@ -267,9 +267,9 @@ The repeat rate metric shows the average number of conversions per converting in
 | Multiple primary macro conversions double-counting | Smart Bidding optimizes for inflated volume | Keep one primary macro conversion per goal category per campaign |
 | All micro conversions set to primary | Dilutes Smart Bidding signal with low-value actions | Set micro conversions to secondary unless intentionally used for bidding |
 | Using Last Click attribution | Under-credits upper/mid-funnel campaigns | Switch to Data-Driven Attribution |
-| 90-day click window for impulse purchases | Over-attributes old clicks to recent purchases | Match window to actual conversion lag (check Path Metrics) |
+| 90-day click window for impulse purchases | Over-attributes old clicks to recent purchases | Match window to actual conversion lag (check Path metrics) |
 | Counting set to "Every" for lead gen | One lead submitting twice = two "conversions" | Switch to "One" for lead-type actions |
-| No campaign-specific goals for upper funnel | YouTube/Display campaigns optimized for purchase (too few conversions) | Set campaign-specific goal with appropriate primary action |
+| No campaign-specific goals for upper funnel | YouTube/Demand Gen campaigns optimized for purchase (too few conversions) | Set campaign-specific goal with appropriate primary action |
 | Ignoring engaged-view conversions in CPA | CPA looks great but most conversions are view-through | Create custom columns separating click-through from view-through conversions |
 
 ---
@@ -289,8 +289,8 @@ The repeat rate metric shows the average number of conversions per converting in
 
 ## Version details
 
-- **Version:** 1.0
-- **Last Updated:** February 2026
+- **Version:** 2.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

@@ -4,7 +4,7 @@ Created: 2026-02-05
 Support_ID: CHEATSHEET_43
 Status: Done
 Category: Operational
-Reference Type: Cheat Sheet
+Reference Type: Cheat Sheets
 Agent_Readable: Yes
 Human_Facing: Yes
 Domain: Reporting
@@ -72,7 +72,7 @@ Formula metric names differ from the abbreviated display names shown in the Goog
 | Search lost IS (budget) | `Search lost IS (budget)` |
 | Search lost IS (rank) | `Search lost IS (rank)` |
 
-> ⚠️ **Some formula names differ from UI:** Conversion metrics use expanded names in formulas (e.g., "All conversions" not "All conv".), but competitive metrics stay the same (e.g., "Search impr. share").
+> ⚠️ **Some formula names differ from the UI.** Conversion metrics use expanded names in formulas ("All conversions", not "All conv."), while competitive metrics stay the same ("Search impr. share").
 
 ---
 
@@ -91,11 +91,11 @@ Conversion value / Clicks
 ```
 Shows average value generated per click.
 
-**Revenue per impression:**
+**Revenue per 1,000 impressions:**
 ```
 (Conversion value / Impressions) * 1000
 ```
-Revenue per 1,000 impressions.
+The impression-weighted revenue rate. Revenue per single impression, the RPI metric used in creative testing, is the same formula without the x1000 (See: [Creative Performance Reference](../references/Creative Performance Reference.md)).
 
 **Value per conversion:**
 ```
@@ -139,7 +139,7 @@ Impressions lost to budget and rank combined.
 
 ### Lost opportunity metrics
 
-Use these formulas to quantify the cost of not capturing full impression share.
+These formulas quantify the cost of not capturing full impression share.
 
 | **Metric** | **Formula** | **Purpose** |
 |------------|-------------|-------------|
@@ -153,11 +153,11 @@ Use these formulas to quantify the cost of not capturing full impression share.
 | Lost revenue | `(((Impressions / Search impr. share) - Impressions) * CTR * (Conversions / Clicks)) * (Conversion value / Conversions)` | Missed revenue |
 | Incremental budget needed | `((Impressions / Search impr. share) * Search lost IS (budget)) * (Cost / Impressions)` | Budget gap estimate |
 
-> 💡 **Use lost revenue to justify budget increases:** Show stakeholders the revenue left on the table due to budget constraints.
+> 💡 **Lost revenue converts an impression-share gap into a currency figure**, which is the form a budget constraint has to take before it can be weighed against anything else.
 
 ### Budget and pacing metrics
 
-Use these formulas to track spend against targets and project end-of-period results.
+These formulas track spend against targets and project end-of-period results.
 
 | **Metric** | **Formula** | **Purpose** |
 |------------|-------------|-------------|
@@ -228,7 +228,7 @@ Use these formulas to track spend against targets and project end-of-period resu
 | Revenue per click | `Conversion value / Clicks` | Traffic value |
 | Break-even ROAS check | `Conversion value / Cost - 2.5` | Distance from break-even (adjust target) |
 
-> ⚠️ **These are estimates, not actual profitability:** The best approach is to import actual profit data using a tool like ProfitMetrics. If that's not feasible, these formulas can serve as rough estimates, but take them with a big grain of salt: they assume uniform margins across products and don't account for returns, shipping costs, or other variables.
+> ⚠️ **These are estimates, not actual profitability.** They assume a uniform margin across products and account for neither returns, shipping costs, nor any other order-level variable. Imported profit data (See: [Cart Data and Profit Tracking Reference](../references/Cart Data and Profit Tracking Reference.md)) replaces the assumption with a measurement.
 
 **Funnel stage metrics:**
 
@@ -263,7 +263,7 @@ Use these formulas to track spend against targets and project end-of-period resu
 | Revenue per session | `All_conversion_value.conversion_action("Purchase") / Clicks` | Session value |
 | Revenue per cart | `All_conversion_value.conversion_action("Purchase") / All_conversions.conversion_action("Add to Cart")` | Cart value potential |
 
-> 💡 **When to use these formulas:** Purchase value and Purchase ROAS are only relevant when you're optimizing toward micro-conversions (like add-to-cart) and macro conversion value data isn't in your regular conversion columns. If you're optimizing toward purchases directly, use the standard Conversion value and ROAS columns instead.
+> 💡 **These formulas apply only to an account optimizing toward micro-conversions.** Where add-to-cart is the primary action, purchase value sits outside the standard conversion columns and has to be pulled by conversion action. An account optimizing toward purchases directly already has it in Conversion value and ROAS.
 
 ### For lead generation
 

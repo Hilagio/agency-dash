@@ -16,7 +16,7 @@ This SOP runs the optimization routine for lead gen and SaaS Performance Max cam
 
 > ❓ **The big question:** What do I check, how often, and in what order to keep a lead gen/SaaS PMax campaign producing quality leads?
 
-**The core principle: quality over volume.** PMax for lead gen optimizes toward whatever conversion signal you give it. If that signal is raw form submissions, PMax will generate high volumes of low-quality leads. Offline conversion import with a quality signal (MQL, SQL, or revenue) is the foundation everything else rests on.
+**The core principle: quality over volume.** Optimize on an imported quality signal (MQL, SQL, or revenue), never on raw form submissions.
 
 ---
 
@@ -59,7 +59,7 @@ This SOP does **not:**
 | 9. Conversion quality review | Monthly | Quality trends need 30+ days of data |
 | 10. Placement review | Monthly | Placement patterns emerge over weeks |
 
-**Time totals:** Weekly cycle (Phases 1-3): ~30 min. Bi-weekly (Phases 1-4): ~45 min. Monthly (all phases): ~110 min.
+**Time totals:** Weekly cycle (Phases 1-3): 30 min. Bi-weekly (Phases 1-4): 45 min. Monthly (all phases): 115 min.
 
 ### Reference documents (have open)
 
@@ -94,7 +94,7 @@ This SOP does **not:**
 
 ## Phase 2️⃣: Search term review (weekly, 15 min)
 
-PMax search term reports now work like Search campaign reports: fully visible, with impression, click, and conversion data at the query level.
+PMax search term reports work like Search campaign reports: fully visible, with impression, click, and conversion data at the query level.
 
 1. Navigate to the PMax campaign > **Insights and reports** > **Search terms**
 2. Set date range to last 7 days, sort by cost (highest first)
@@ -110,7 +110,7 @@ PMax search term reports now work like Search campaign reports: fully visible, w
 | **Low-intent informational** | "what is", "how to", "free" | Exclude unless top-of-funnel intent desired |
 | **Job seekers / non-buyer intent** | "jobs", "careers", "salary", "internship" | Add to negative keyword list |
 
-4. Check brand vs. non-brand split: brand should be <30% of impressions. If brand dominates, your PMax reporting is inflated by easy wins.
+4. Check brand vs. non-brand split: brand is under 30% of impressions. Above that, the campaign reporting is inflated by brand wins.
 
 > ↪️ **For detailed search term management:** See [SOP – Manage PMax Search Terms and Brand Defense](../sops/SOP – Manage PMax Search Terms and Brand Defense.md).
 
@@ -120,7 +120,7 @@ PMax search term reports now work like Search campaign reports: fully visible, w
 
 PMax supports negative keyword lists linked directly to campaigns. Use shared lists the same way you manage negatives in Search.
 
-1. Open **Tools** > **Shared library** > **Negative keyword lists**
+1. Open **Tools** > **Shared library** > **Exclusion lists** > **Negative keyword lists**
 2. Add exclusion terms identified in Phase 2
 3. Confirm the list is linked to the PMax campaign
 4. For campaigns with sufficient volume, run N-gram analysis on 30-day search term exports to identify wasteful patterns at scale
@@ -162,7 +162,7 @@ PMax provides asset-level performance data: impressions, clicks, and conversions
 
 PMax distributes spend across Search, Display, Video, Gmail, and Discover. Channel-level data is available in the interface and via the API.
 
-1. Navigate to the PMax campaign > **Insights** > **Campaign insights** for channel breakdown
+1. Navigate to the PMax campaign > **Insights and reports** > **Channel performance** for channel breakdown
 2. Compare against healthy ranges:
 
 | Channel | Healthy range | Flag if... |
@@ -190,7 +190,7 @@ Audience signals are critical for lead gen/SaaS PMax. Without strong signals, le
 
 | Signal type | Priority | Review action |
 |-------------|----------|---------------|
-| **Customer Match (closed customers/SQLs)** | Highest | Refresh with latest CRM data (quarterly minimum). Minimum 1,000+ matched users. |
+| **Customer Match (closed customers/SQLs)** | Highest | Refresh with latest CRM data (monthly minimum). Minimum 1,000+ matched users. |
 | **Website converters** | High | Verify lists are populating correctly |
 | **High-intent visitors** | High | Demo page viewers, pricing page visitors, free trial starters |
 | **Custom segments** | Medium | Add new competitor URLs, relevant search terms |
@@ -199,7 +199,7 @@ Audience signals are critical for lead gen/SaaS PMax. Without strong signals, le
 4. Remove signals that consistently underperform campaign averages after 4+ weeks
 5. Add signals based on converting patterns from Search campaigns
 
-> ⚠️ **Customer Match is the most important signal for lead gen PMax.** If your Customer Match list is stale (>90 days old) or too small (<1,000 users), prioritize refreshing it before other signal optimization.
+> ⚠️ **Customer Match is the most important signal for lead gen PMax.** If your Customer Match list is stale (not refreshed in the last 30 days) or too small (<1,000 users), prioritize refreshing it before other signal optimization.
 
 ---
 
@@ -279,7 +279,7 @@ This phase is unique to lead gen/SaaS. Raw conversion volume is meaningless with
 
 ### 9.3 Campaign-level quality comparison
 
-If running PMax alongside Search campaigns, compare lead quality between channels. PMax should produce leads of comparable quality. If PMax leads convert at significantly lower rates downstream, investigate audience signals and channel allocation.
+If running PMax alongside Search campaigns, compare downstream conversion rates between channels. Where the PMax rate trails the Search rate, investigate audience signals and channel allocation.
 
 ---
 
@@ -287,7 +287,7 @@ If running PMax alongside Search campaigns, compare lead quality between channel
 
 PMax provides impression-level placement data.
 
-1. Navigate to **Insights and reports** > **When and where ads showed** > **Placements**, sort by impressions
+1. Navigate to **Insights and reports** > **When and where ads showed** > **Where ads showed**, sort by impressions
 2. Flag suspicious placements:
 
 | Red flag | Action |
@@ -297,7 +297,7 @@ PMax provides impression-level placement data.
 | Irrelevant YouTube channels | Exclude |
 | Any single placement with >5% of spend and zero conversions | Exclude |
 
-3. Apply exclusions via **Tools** > **Content suitability** > **Placement exclusions**
+3. Apply exclusions via **Tools** > **Content suitability** > **Excluded placements**
 
 > ⚠️ **Placement exclusions are account-level.** They remove placements from all campaigns. Verify the placement is unwanted everywhere before excluding.
 
@@ -354,7 +354,7 @@ This SOP is complete when:
 | Ignoring search terms | "PMax handles it automatically" | Weekly review is non-negotiable |
 | Structural changes weekly | Over-optimization | Monthly maximum, then wait 4 weeks |
 | Optimizing on form submissions | No offline conversion import | Fix the conversion signal before running PMax |
-| Stale Customer Match list | "We uploaded it once" | Refresh quarterly at minimum |
+| Stale Customer Match list | "We uploaded it once" | Refresh monthly at minimum |
 | Ignoring lead quality | "Volume looks great" | Phase 9 quality review is non-negotiable |
 | No documentation between cycles | Seems unnecessary | Continuity catches trends you'd miss |
 
@@ -376,8 +376,8 @@ This SOP is complete when:
 
 ## Version details
 
-- **Version:** 1.0
-- **Last Updated:** March 2026
+- **Version:** 2.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

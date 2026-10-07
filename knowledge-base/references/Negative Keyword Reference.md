@@ -42,7 +42,7 @@ Documents the mechanics of negative keyword match types, application levels, lis
 | **2. Negative phrase match** | `"running shoes"` | Negative terms appear in the query in exact order | No |
 | **3. Negative exact match** | `[running shoes]` | Query matches the negative terms exactly (same words, same order, no extra words) | No |
 
-> 💡 **Critical difference from positive keywords:** Negative keywords do NOT match on close variants. You must add singular, plural, misspellings, and accent variations manually.
+> 💡 **Critical difference from positive keywords.** Negative keywords do NOT match on close variants, so singular, plural, misspelling and accent variations each need their own entry.
 
 ---
 
@@ -187,9 +187,9 @@ Positive (regular) keywords match on close variants automatically: misspellings,
 | `colour` | color | Add `color` separately |
 | `ac repair` | a/c repair | Add `a/c repair` separately (if valid) |
 
-### Manual variants you must add
+### Variants that need their own entry
 
-For each negative keyword, consider adding:
+Each negative keyword needs a separate entry per variant form:
 
 - Singular and plural forms (`shoe` / `shoes`)
 - Common misspellings (`recieve` / `receive`)
@@ -197,7 +197,7 @@ For each negative keyword, consider adding:
 - Spelling variations (`colour` / `color`, `grey` / `gray`)
 - Abbreviations and expansions (`ac` / `air conditioning`)
 
-> ⚠️ **This is the most common negative keyword mistake:** Adding a negative and assuming close variants are covered causes continued wasted spend on variant queries.
+> ⚠️ **This is the most common negative keyword mistake.** A negative added on the assumption that close variants are covered leaves the variant queries spending.
 
 ---
 
@@ -230,7 +230,7 @@ Negative keywords can be applied at four levels. Lower levels override higher le
 - Primary use: routing traffic between ad groups in the same campaign
 - Example: In a campaign with "running shoes" and "trail shoes" ad groups, add `trail` as a negative to the "running shoes" ad group
 
-> ⚠️ **DSA campaigns:** Apply negative keyword lists to DSA campaigns to prevent ads on irrelevant queries. Do NOT add negatives at the DSA ad group level: let ad rank determine which ad group serves.
+> ⚠️ **Campaigns with final URL expansion take negatives at campaign level.** Negative keyword lists linked to the campaign block irrelevant queries. Negatives at the keywordless ad group level instead override the ad rank routing that picks the serving ad group.
 
 ---
 
@@ -273,7 +273,7 @@ Additional lists as needed:
 
 | **Rule** | **Details** |
 | --- | --- |
-| **Case** | Not case-sensitive. Use lowercase for consistency |
+| **Case** | Not case-sensitive. Lowercase throughout keeps audits and exports readable |
 | **Maximum keyword length** | 80 characters |
 | **Maximum words** | 10 words per negative keyword |
 | **Spaces** | Standard spaces between words |
@@ -284,7 +284,7 @@ Additional lists as needed:
 
 ### Invalid characters
 
-These characters are ignored or cause errors. Do not include them:
+These characters are ignored or cause errors:
 
 | **Character** | **Result** |
 | --- | --- |
@@ -296,7 +296,7 @@ These characters are ignored or cause errors. Do not include them:
 | `,` (comma) in the keyword itself | Treated as keyword separator |
 | Leading/trailing spaces | Stripped automatically |
 
-> 💡 **Lowercase only:** Google Ads is not case-sensitive for negative keywords, but using lowercase consistently across all negatives prevents confusion during audits and exports.
+> 💡 **Lowercase only.** Google Ads is not case-sensitive for negative keywords, and consistent lowercase across the set prevents confusion during audits and exports.
 
 ---
 
@@ -339,8 +339,8 @@ What are you excluding?
 | **Assuming close variants are covered** | Singular/plural, misspellings still trigger ads | Add all variant forms manually |
 | **Using pre-built default lists** | May exclude relevant terms for your business | Build lists from your own search term data |
 | **Adding negatives only in broad match** | May over-exclude relevant queries containing those words | Use phrase match for ngrams, exact match for specific queries |
-| **Forgetting to apply lists to DSA campaigns** | DSA campaigns match on page content, not keywords, so they need negative protection too | Link relevant negative keyword lists to all DSA campaigns |
-| **Adding negatives at DSA ad group level** | Prevents ad rank from routing to the best ad group | Apply negatives at the DSA campaign level or via lists only |
+| **Forgetting to apply lists to campaigns with final URL expansion** | Final URL expansion matches on page content, not keywords, so it needs negative protection too | Link relevant negative keyword lists to all campaigns running final URL expansion |
+| **Adding negatives at keywordless ad group level** | Prevents ad rank from routing to the best ad group | Apply negatives at the campaign level or via lists only |
 | **Not adding accent mark variations** | Accented and unaccented versions are different keywords | Add both `cafe` and `café` |
 | **Including special characters** | Characters are ignored or cause errors | Use only letters, numbers, spaces, periods, and ampersands |
 | **Exceeding list limits** | 5,000 per list maximum | Audit and consolidate lists periodically |
@@ -363,8 +363,8 @@ What are you excluding?
 
 ## Version details
 
-- **Version:** 2.0
-- **Last Updated:** February 2026
+- **Version:** 3.0
+- **Last Updated:** June 2026
 - **Creator:** Bob Meijer
 
 ---

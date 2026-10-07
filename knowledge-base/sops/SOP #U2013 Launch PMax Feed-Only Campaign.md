@@ -1,6 +1,6 @@
 # SOP – Launch PMax Feed-Only Campaign
 Created: 2026-02-04
-Updated: 2026-02-05
+Updated: 2026-10-05
 
 SOP_ID: SOP_50
 Status: Done
@@ -159,7 +159,7 @@ This is the critical step for Feed-Only behavior.
 2. Find **Final URL expansion**
 3. Toggle **OFF**
 
-> ⚠️ **If Final URL Expansion = ON, Google will expand to other networks and will automatically create assets:** This defeats the purpose of a Feed-Only setup. Keep it OFF.
+> ⚠️ **If Final URL expansion = ON, Google will expand to other networks and will automatically create assets:** This defeats the purpose of a Feed-Only setup. Keep it OFF.
 
 ### 2.4 Do NOT add audience signals
 
@@ -239,7 +239,7 @@ Brand exclusions prevent PMax from cannibalizing your cheap brand traffic.
 
 Use negative keyword lists for better organization and consistency:
 
-1. Go to **Tools & Settings** → **Shared library** → **Negative keyword lists**
+1. Go to **Tools** → **Shared library** → **Exclusion lists** → **Negative keyword lists**
 2. Create list: `[Client] - PMax Negatives`
 3. Add known irrelevant queries from your Search data
 4. Apply to PMax campaign
@@ -301,7 +301,7 @@ Use negative keyword lists for better organization and consistency:
 
 After 2+ weeks, check where spend is going:
 
-1. Go to campaign → **Insights**
+1. Go to campaign → **Insights and reports** → **Insights**
 2. Look at placement categories
 3. If significant Display/YouTube spend: Review asset group (may have accidentally added assets)
 
@@ -387,8 +387,8 @@ A: Minimum 30 days. Learning period is 2-4 weeks, then you need stable data to e
 
 ## Version details
 
-- **Version:** 3.0
-- **Last Updated:** February 2026
+- **Version:** 4.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

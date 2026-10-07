@@ -110,7 +110,7 @@ RETRACT permanently removes a conversion from your data. The conversion and its 
 
 Before you can upload conversion adjustments, you must have one of these identifiers already in place:
 
-| Identifier | Used for | How to implement |
+| Identifier | Used for | Where it comes from |
 |------------|----------|-----------------|
 | **Transaction ID** | Online conversions (ecommerce) | Pass the `transaction_id` parameter in your purchase event tag |
 | **GCLID** | Offline conversions (lead gen, SaaS) | Capture the GCLID from the URL and store it in your CRM |
@@ -134,11 +134,13 @@ The upload file (Google Sheet or CSV) requires six columns:
 
 ### Critical upload rules
 
-1. **Use the event date, not the upload date:** The Adjustment Time must be when the return/cancellation/upsell happened, not when you are uploading the file.
-2. **Leave value columns empty for RETRACT:** If you enter a value (even zero) with a RETRACT type, Google returns an error.
-3. **Use exact conversion action names:** The Conversion Name must match the name in Google Ads exactly, including capitalization and spacing.
-4. **Upload ALL adjustments, not just Google-attributed ones:** You cannot know which orders were attributed to Google Ads. Upload every adjustment from your backend. Google matches the ones it can and ignores the rest. Errors for unmatched conversions are expected and harmless.
-5. **Use ISO currency codes:** Look up the correct code for your currency (USD, EUR, GBP, etc.).
+| Rule | Detail |
+|------|--------|
+| Adjustment Time is the event date, never the upload date | The timestamp is when the return, cancellation or upsell happened |
+| RETRACT rows carry no value | A value on a RETRACT row, zero included, returns an error |
+| Conversion Name matches Google Ads exactly | Capitalization and spacing included |
+| Every backend adjustment goes in the file | Which orders Google attributed is unknowable from the backend, so Google matches what it can and ignores the rest. Errors for unmatched conversions are expected and harmless |
+| Currency is an ISO code | USD, EUR, GBP and so on |
 
 ---
 
@@ -146,30 +148,19 @@ The upload file (Google Sheet or CSV) requires six columns:
 
 | Method | How | Best for |
 |--------|-----|----------|
-| **Manual upload** | Google Ads > Tools > Measurement > Conversions > Uploads > click "+" | Low-volume accounts, testing |
+| **Manual upload** | Google Ads > Goals > Conversions > Uploads > click "+" | Low-volume accounts, testing |
 | **Scheduled Google Sheets** | Link a Google Sheet and set an upload schedule | Medium-volume accounts, automated exports |
 | **Google Ads API** | Programmatic upload via API | High-volume accounts, full automation |
 
-### Manual upload steps
+### Where uploads live
 
-1. Go to Tools > Measurement > Conversions > Uploads
-2. Click the "+" button to create a new upload
-3. Select your file (Google Sheet or CSV)
-4. Review the preview for errors
-5. Confirm the upload
-
-### Scheduled uploads
-
-1. Prepare a Google Sheet in the required format
-2. Automate the Sheet population from your ecommerce platform or CRM (work with your developer)
-3. In Google Ads, link the Sheet as a scheduled upload source
-4. Set the frequency (daily recommended for ecommerce)
+Both manual and scheduled uploads run from Goals > Conversions > Uploads. A manual upload takes a Google Sheet or CSV and shows a preview before confirmation. A scheduled upload links a Google Sheet as a recurring source at a chosen frequency, and the Sheet is populated from the ecommerce platform or CRM. Both are owned by [SOP - Configure Conversion Adjustments](../sops/SOP – Configure Conversion Adjustments.md), Phase 3.
 
 ---
 
 ## 6. Timing
 
-Upload conversion adjustments as soon as possible after the event occurs. The sooner the data reaches Google Ads, the faster Smart Bidding can incorporate the corrected signals.
+Bidding benefit decays with the gap between the event and the upload, because Smart Bidding can only act on signals it has received.
 
 | Timing | Impact |
 |--------|--------|
@@ -178,7 +169,7 @@ Upload conversion adjustments as soon as possible after the event occurs. The so
 | Within 30 days | Moderate bidding benefit, noticeable reporting lag |
 | After 30+ days | Minimal bidding benefit, historical correction only |
 
-> 💡 **Automate your adjustment uploads:** For ecommerce accounts with meaningful return rates, work with your developer to push returned/adjusted orders to a Google Sheet automatically. Daily scheduled uploads keep your data clean and your bidding sharp.
+> 💡 **Return rate decides whether manual uploads are viable.** An ecommerce account with a meaningful return rate generates adjustments faster than a manual cadence can absorb, which is what a daily scheduled upload from an auto-populated Sheet solves.
 
 ---
 
@@ -186,7 +177,7 @@ Upload conversion adjustments as soon as possible after the event occurs. The so
 
 After uploading adjustments, you can view their impact in Google Ads:
 
-**How to view:** Add the segment Conversions > Conversion Adjustment to any report. This shows the original conversion data alongside the adjustments applied.
+**Where it shows:** the Conversions > Conversion Adjustment segment on any report, which places the original conversion data alongside the adjustments applied.
 
 | Report column | Shows |
 |---------------|-------|
@@ -249,14 +240,15 @@ Both adjustment types provide Smart Bidding with more accurate historical data, 
 | [Measurement Maturity Mental Model](../mental-models/Measurement Maturity Mental Model.md) | Where conversion adjustments fit in the measurement stack |
 | [Conversion Tracking Configuration Guidelines](../guidelines/Conversion Tracking Configuration Guidelines.md) | Recommended configuration including adjustment scheduling |
 | [Conversion Data Quality Checklist](../checklists/Conversion Data Quality Checklist.md) | Validates that adjustments are being uploaded regularly |
+| [SOP - Configure Conversion Adjustments](../sops/SOP – Configure Conversion Adjustments.md) | Execution: preparing, populating, uploading and validating adjustments |
 | [SOP – Set Up Google Ads Conversion Tracking](../sops/SOP – Set Up Google Ads Conversion Tracking.md) | Implementation steps including Transaction ID setup |
 
 ---
 
 ## Version details
 
-- **Version:** 1.0
-- **Last Updated:** February 2026
+- **Version:** 2.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

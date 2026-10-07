@@ -1,5 +1,6 @@
 # Transaction ID Reference
 Created: 2026-02-04
+Updated: 2026-08-27
 
 Support_ID: CHEATSHEET_20
 Status: Done
@@ -12,7 +13,7 @@ Pillar: 5
 
 ## Purpose
 
-Documents transaction ID deduplication for Google Ads conversion tracking, covering all verticals (ecommerce, lead gen, SaaS), setup methods, and the critical role transaction IDs play in enabling Conversion Adjustments.
+Documents transaction ID deduplication for Google Ads conversion tracking, covering all verticals (ecommerce, lead gen, SaaS), the ID sources available per vertical, and the role transaction IDs play in enabling Conversion Adjustments.
 
 ---
 
@@ -21,15 +22,15 @@ Documents transaction ID deduplication for Google Ads conversion tracking, cover
 **This reference:**
 
 - Explains the duplicate conversion problem and how transaction IDs solve it
-- Documents GTM and gtag setup for ecommerce and lead gen
+- Documents the transaction ID sources available per vertical
 - Clarifies the difference between transaction ID dedup and conversion counting settings
 - Covers the transaction ID requirement for Conversion Adjustments
 
 **This reference does NOT:**
 
-- Provide step-by-step conversion tracking setup (See: future SOP: Set Up Google Ads Conversion Tracking)
+- Provide step-by-step conversion tracking setup (See: [SOP – Set Up Google Ads Conversion Tracking](../sops/SOP – Set Up Google Ads Conversion Tracking.md))
 - Cover conversion action settings in detail (See: [Conversion Action Reference](../references/Conversion Action Reference.md))
-- Explain offline conversion tracking upload procedures (See: future SOP: Set Up Offline Conversion Tracking)
+- Explain offline conversion tracking upload procedures (See: [SOP – Set Up Offline Conversion Tracking](../sops/SOP – Set Up Offline Conversion Tracking.md))
 
 ---
 
@@ -78,7 +79,9 @@ Documents transaction ID deduplication for Google Ads conversion tracking, cover
 3. If a conversion with the same `transaction_id` has already been recorded within the conversion window, Google ignores the duplicate
 4. Only the first conversion per unique transaction ID is counted
 
-> 💡 **Transaction ID dedup is passive and automatic:** You do not need to enable it. Simply include the `transaction_id` parameter in your conversion tag, and Google handles deduplication automatically.
+> 💡 **Transaction ID dedup is passive and automatic:** No setting switches it on. A conversion tag carrying the `transaction_id` parameter is deduplicated by Google without further configuration.
+
+> ↪️ **One exception:** A conversion action set to external attribution cannot use transaction ID deduplication. The conditions are in [Offline Conversion Tracking Reference](../references/Offline Conversion Tracking Reference.md).
 
 ---
 
@@ -94,7 +97,7 @@ These are two different deduplication mechanisms. They are not interchangeable.
 | **With transaction ID + "Every"** | 3 fires, 1 conversion counted (same ID) | 3 purchases, 3 conversions counted (different IDs) |
 | **Without transaction ID + "One"** | 3 fires, 1 conversion counted (one per click) | 3 purchases, 1 conversion counted (one per click) |
 
-> ⚠️ **You need both mechanisms:** Transaction ID prevents duplicate fires of the same conversion. The counting setting controls how multiple distinct conversions from one click are handled. Use transaction IDs always, and set counting to "Every" for ecommerce, "One" for lead gen.
+> ⚠️ **The two mechanisms cover different cases:** Transaction ID prevents duplicate fires of the same conversion. The counting setting governs how multiple distinct conversions from one click are counted. Counting settings per vertical live in [Conversion Action Reference](../references/Conversion Action Reference.md).
 
 ---
 
@@ -126,91 +129,21 @@ These are two different deduplication mechanisms. They are not interchangeable.
 | Subscription platform | Subscription ID | `SUB-stripe-pi_3abc` |
 | Trial signup | Trial session ID | `TRIAL-2024-5432` |
 
-> ⚠️ **Never use random client-side IDs that regenerate on page load:** A transaction ID must be the same value every time the same conversion page is loaded. Use server-generated IDs tied to the actual transaction record.
+> ⚠️ **Random client-side IDs that regenerate on page load defeat deduplication:** A transaction ID carries the same value on every load of the same conversion page, which is what a server-generated ID tied to the transaction record gives you.
 
 ---
 
-## GTM setup: ecommerce
+## Where transaction IDs are configured
 
-**Step 1️⃣: Push transaction ID to data layer**
+Both tagging paths carry the value in the `transaction_id` parameter of the conversion event. In GTM it comes from a Data Layer Variable populated by the purchase or form-submission data layer push. In gtag it sits directly in the event payload.
 
-Your developer includes the order ID in the purchase data layer push:
-
-```javascript
-dataLayer.push({
-  'event': 'purchase',
-  'transaction_id': 'ORD-2024-78432',
-  'value': 149.99,
-  'currency': 'USD'
-});
-```
-
-**Step 2️⃣: Create data layer variable**
-
-| **Setting** | **Value** |
-|-------------|----------|
-| Variable type | Data Layer Variable |
-| Variable name | `transaction_id` |
-| Data Layer version | Version 2 |
-
-**Step 3️⃣: Map in conversion tag**
-
-1. Open your Google Ads Conversion Tracking tag
-2. In the "Transaction ID" field, select your data layer variable
-3. Save and publish
-
-## GTM setup: lead gen
-
-**Step 1️⃣: Generate unique form submission ID**
-
-Your developer generates a unique ID when the form is submitted successfully (server-side):
-
-```javascript
-// After successful form submission, push to data layer
-dataLayer.push({
-  'event': 'form_submission',
-  'transaction_id': 'LEAD-2024-4521'
-});
-```
-
-**Step 2️⃣: Create data layer variable and map in tag**
-
-Same process as ecommerce: create a Data Layer Variable for `transaction_id` and map it in the conversion tag.
-
-> 💡 **For lead gen, the ID must be generated server-side at form submission time:** Do not generate IDs client-side on page load, as they change on every refresh and defeat the purpose of deduplication.
-
----
-
-## gtag setup
-
-Include `transaction_id` in the conversion event:
-
-**Ecommerce:**
-
-```javascript
-gtag('event', 'purchase', {
-  'send_to': 'AW-XXXXXXXXX/XXXXXXXXXXXXX',
-  'transaction_id': 'ORD-2024-78432',
-  'value': 149.99,
-  'currency': 'USD'
-});
-```
-
-**Lead gen:**
-
-```javascript
-gtag('event', 'conversion', {
-  'send_to': 'AW-XXXXXXXXX/XXXXXXXXXXXXX',
-  'transaction_id': 'LEAD-2024-4521',
-  'value': 0
-});
-```
+> ↪️ **Full configuration procedure:** See [SOP – Implement Transaction ID Deduplication](../sops/SOP – Implement Transaction ID Deduplication.md), Phase 2.
 
 ---
 
 ## Transaction ID and Conversion Adjustments
 
-Transaction IDs are required for Conversion Adjustments (formerly Conversion Value Rules adjustments). Without a transaction ID, you cannot adjust a conversion after it has been recorded.
+Transaction IDs are required for Conversion Adjustments. Without a transaction ID, a conversion cannot be adjusted after it has been recorded.
 
 | **Adjustment type** | **What it does** | **Requires transaction ID** |
 |--------------------|-----------------|---------------------------|
@@ -226,9 +159,9 @@ Transaction IDs are required for Conversion Adjustments (formerly Conversion Val
 
 ---
 
-## Developer briefing requirements
+## Developer requirements
 
-When briefing your developer, provide:
+A transaction ID implementation has to satisfy all of the following:
 
 | **Requirement** | **Details** |
 |-----------------|------------|
@@ -263,13 +196,14 @@ When briefing your developer, provide:
 | [Cart Data and Profit Tracking Reference](../references/Cart Data and Profit Tracking Reference.md) | Cart Data sends transaction ID alongside product-level data |
 | [Custom Variables Reference](../references/Custom Variables Reference.md) | Custom variables sent alongside transaction ID in conversion events |
 | [Conversion Volume Thresholds Reference](../references/Conversion Volume Thresholds Reference.md) | Removing duplicate conversions may reduce volume below thresholds |
+| [Offline Conversion Tracking Reference](../references/Offline Conversion Tracking Reference.md) | External attribution rules out transaction ID deduplication |
 
 ---
 
 ## Version details
 
-- **Version:** 1.0
-- **Last Updated:** February 2026
+- **Version:** 2.0
+- **Last Updated:** August 2026
 - **Creator:** Bob Meijer
 
 ---

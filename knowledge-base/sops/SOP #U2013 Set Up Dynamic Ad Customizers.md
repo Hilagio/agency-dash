@@ -1,5 +1,6 @@
 # SOP – Set Up Dynamic Ad Customizers
 Created: 2026-02-04
+Updated: 2026-10-05
 
 SOP_ID: SOP_7
 Status: Done
@@ -12,7 +13,7 @@ Pillar: 8
 
 ### Purpose
 
-This SOP sets up Ad Customizers for **dynamic, frequently-changing da ta** such as prices, inventory levels, product names, and time-limited promotions.
+This SOP sets up Ad Customizers for **dynamic, frequently-changing data** such as prices, inventory levels, product names, and time-limited promotions.
 
 > ❓ **The big question:** How do I keep my ads automatically updated with current prices, stock levels, and promotions without manual edits?
 
@@ -78,7 +79,7 @@ This SOP does **not:**
 4. **Percent type requires %:** Use 25% not 25
 5. **Defaults must work everywhere.**
 
-> 💡 **Price flexibility tip:** Instead of using the "Price" data type, you can use "Text" and include only the number (e.g., 899). Then add the currency symbol directly in your RSA: € `{CUSTOMIZER.Price:899}`. This gives you more control over formatting. Like whether to include a space between the symbol and the number.
+> 💡 **Price flexibility tip:** For control over currency symbol placement and spacing, use the "Text" data type with only the number (e.g., 899) and put the currency symbol in the RSA: € `{CUSTOMIZER.Price:899}`.
 
 ---
 
@@ -111,12 +112,8 @@ This SOP does **not:**
 
 #### Option 1: Manually
 
-1. Download the example template below
-2. Fill template
-
-**Official Ad Customizer Feed Template:**
-
-[rsa-customizer-combine-template.csv](rsa-customizer-combine-template.csv)
+1. Build the upload file using the structure below
+2. Fill in one row per attribute, then one row per value
 
 **Example structure:**
 
@@ -132,18 +129,13 @@ This SOP does **not:**
 1. Connect tool to your data source (Shopify, WooCommerce, ERP)
 2. Configure transformation rules
 3. Export to Google Sheets or CSV
-    1. Upload manually first to debug
-    2. Set up scheduled upload in Google Ads (if neccessary) in phase 7
-
-**Example:** Simple Ad Customizer CSV export containing the lowest price per product_type
-
-![image.png](image.png)
+4. Upload the export manually so you can debug it before any schedule is attached
 
 ---
 
 ### Phase 3️⃣: Upload and verify
 
-1. Go to **Tools & Settings** → **Bulk Actions** → **Uploads**
+1. Go to **Tools** → **Bulk actions** → **Uploads**
 2. Click **+** → select your file
 3. Click **Preview**. Verify:
     - Attribute count correct
@@ -162,21 +154,19 @@ This SOP does **not:**
 
 **Syntax:** `{CUSTOMIZER.AttributeName:Default Text}`
 
-**Example:** `{CUSTOMIZER.diy_houten_deur}`  Ad Customizer shows lowest price of this product category
-
-![image.png](image%201.png)
+**Example:** `{CUSTOMIZER.diy_houten_deur}` renders the lowest price in that product category
 
 ---
 
 ### Phase 5️⃣: Validate
 
-1. Go to **Tools & Settings** → **Ad Preview and Diagnosis**
+1. Go to **Tools** → **Troubleshooting** → **Ad preview and diagnosis**
 2. Test keywords from your feed
 3. Verify:
     - Correct values appear
     - Price formatting correct
     - Defaults only when expected
-4. Run [Ad Customizer Quality Checklist](../checklists/Ad Customizer Quality Checklist.md) 
+4. Run [Ad Customizer Quality Checklist](../checklists/Ad Customizer Quality Checklist.md)
 
 ---
 
@@ -196,12 +186,10 @@ Once your minimum viable feed is working correctly:
 **Google Sheets scheduled sync:**
 
 1. Create Google Sheet or CSV with your feed data
-2. Go to **Tools & Settings** → **Bulk Actions** → **Uploads** → **Schedules**
+2. Go to **Tools** → **Bulk actions** → **Uploads** → **Schedules**
 3. Click **+** → select Google Sheets → select your spreadsheet
 4. Set frequency (daily recommended) and time
 5. Save
-
-![image.png](image%202.png)
 
 ---
 
@@ -240,11 +228,11 @@ Once your minimum viable feed is working correctly:
 
 **Q: How often should my feed update?**
 
-A: Depends on your data volatility. Daily is sufficient for most Ecommerce accounts. If prices change multiple times per day or you have flash sales, consider hourly updates via a feed management tool.
+A: Daily is sufficient for most Ecommerce accounts. If prices change multiple times per day or you run flash sales, move to hourly updates via a feed management tool.
 
 **Q: What happens if my feed upload fails?**
 
-A: Your RSAs continue showing the last successfully uploaded values. Google doesn't revert to defaults on upload failure: it keeps the previous data. Check **Tools & Settings → Bulk Actions → Uploads** for error logs.
+A: Your RSAs continue showing the last successfully uploaded values. Google doesn't revert to defaults on upload failure: it keeps the previous data. Check **Tools → Bulk actions → Uploads** for error logs.
 
 **Q: Can I use text instead of the Price data type?**
 
@@ -281,8 +269,8 @@ A: Account value is the universal fallback: it shows when no more specific value
 
 ### Version details
 
-- **Version:** 3
-- **Last Updated:** January 2026
+- **Version:** 5.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

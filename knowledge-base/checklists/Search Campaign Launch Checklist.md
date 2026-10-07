@@ -1,5 +1,6 @@
 # Search Campaign Launch Checklist
 Created: 2026-02-04
+Updated: 2026-10-05
 
 Support_ID: CHECKLIST_19
 Status: Done
@@ -34,7 +35,8 @@ This checklist confirms:
 - Negative keyword lists are in place and linked
 - RSAs meet headline and description requirements
 - Bid strategy and targets are correctly configured
-- Campaign settings are correct (networks, locations, language, schedule)
+- Campaign settings are correct (networks, locations, schedule)
+- AI Max is on or off by decision rather than by default, and its brand controls are set
 - Final URL expansion components are properly set up (if applicable)
 
 This checklist does **NOT:**
@@ -58,7 +60,7 @@ This checklist does **NOT:**
 | Negative keywords | 4 | Lists, linking, exclusions |
 | Creatives (RSAs) | 5 | Headlines, descriptions, extensions |
 | Bidding | 4 | Strategy, targets, caps, budget |
-| Settings | 5 | Networks, location, language, schedule |
+| Settings | 7 | Networks, location, ad copy language, schedule, AI Max |
 | Final URL expansion (if applicable) | 5 | Page feed, URL inclusions, exclusions |
 
 ---
@@ -67,7 +69,7 @@ This checklist does **NOT:**
 
 ### Tracking verification
 
-- [ ] Conversion tracking is active and verified (status shows "Recording conversions")
+- [ ] Conversion tracking is active and verified (status shows "Active")
 - [ ] Conversion actions are correctly classified: primary action is the lowest-funnel macro conversion, micro conversions are set to Secondary
 - [ ] Google Tag or GTM is firing correctly on all relevant pages (verified via Tag Assistant or GTM Preview)
 - [ ] Conversion values are set and passing dynamically (not static defaults) for ecommerce, or assigned correctly for lead gen
@@ -78,7 +80,7 @@ This checklist does **NOT:**
 ### Campaign structure
 
 - [ ] Campaign name follows the naming convention: `[Country]_[Language]_[CampaignType]_[Theme]_[Modifier]` (See: [Campaign Naming Convention Reference](../references/Campaign Naming Convention Reference.md))
-- [ ] Campaign is segmented for a valid business reason (different budgets, different geos, different bid targets) and not over-segmented
+- [ ] Campaign is segmented for a documented business reason: different budgets, different geos or different bid targets
 - [ ] Brand campaign is separated from non-brand campaigns
 - [ ] Keywordless ad groups are included in the campaign (if final URL expansion is part of the strategy)
 - [ ] Campaign goal is set correctly (conversions or conversion value, matching the bid strategy)
@@ -88,9 +90,9 @@ This checklist does **NOT:**
 ### Ad group validation
 
 - [ ] Ad groups are organized by creative theme (each ad group represents one distinct message angle)
-- [ ] Each ad group passes the Single Ad Test: if you could only show one RSA, would the headlines and descriptions make sense for every keyword in the group?
+- [ ] Each ad group passes the Single Ad Test: one RSA's headlines and descriptions make sense for every keyword in the group
 - [ ] Keywords are assigned to the correct ad groups with no duplicate keywords across ad groups in the same campaign
-- [ ] Each ad group has estimated volume that meets the 1,000 impressions/week (4,000/month) target (check via Keyword Planner or historical data)
+- [ ] Each ad group has estimated volume that meets the 1,000 impressions/week (4,000/month) target
 
 ### Keywords
 
@@ -106,7 +108,7 @@ This checklist does **NOT:**
 - [ ] Shared negative keyword lists are created covering: irrelevant terms, known poor performers, and branded terms (for non-brand campaigns)
 - [ ] Shared negative keyword lists are linked to the correct campaigns (use shared lists, not campaign-level negatives)
 - [ ] URL exclusions are configured to prevent ads on irrelevant site sections (if final URL expansion is active)
-- [ ] No over-exclusion of potentially relevant terms (cross-check negatives against target keywords)
+- [ ] No negative keyword blocks a keyword in the target keyword set
 
 > ↪️ **Negative keyword reference:** See [Negative Keyword Reference](../references/Negative Keyword Reference.md) for list types and management rules.
 
@@ -115,7 +117,7 @@ This checklist does **NOT:**
 - [ ] At least one RSA is created per ad group with 7-8 headlines and 2-3 descriptions
 - [ ] Headlines cover the required angle types: keyword relevance, value proposition, CTA, social proof, urgency (per the Headline Angle Catalog)
 - [ ] Descriptions include a clear CTA and at least one value proposition or differentiator
-- [ ] Final URLs are correct, landing pages are live, and page load time is acceptable
+- [ ] Final URLs are correct, landing pages are live, and every page loads in under 3 seconds
 - [ ] Ad extensions are configured: sitelinks (at least 4), callouts, and structured snippets at minimum
 
 > ↪️ **Headline patterns:** See [Headline Angle Catalog](../catalogs/Headline Angle Catalog.md) for angle types and examples.
@@ -124,10 +126,10 @@ This checklist does **NOT:**
 
 ### Bidding
 
-- [ ] Bid strategy is selected based on data readiness and campaign objective (not defaulted blindly to Maximize Conversions)
+- [ ] Bid strategy is selected based on data readiness and campaign objective
 - [ ] Targets are set based on calculated breakeven and profit-to-acquisition ratio (CPA target, ROAS target, or POAS target as applicable)
-- [ ] CPC caps are in place for strategies that require them (Max Clicks, Target Impression Share) and set at a level that does not silently restrict volume
-- [ ] Daily budget is set appropriately: at least 10x the target CPA for conversion-based strategies, sufficient for the campaign's geographic and keyword scope
+- [ ] CPC caps are in place for strategies that require them (Max Clicks, Target Impression Share) and set at least 3x the average CPC of top converting search terms
+- [ ] Daily budget is at least 10x the target CPA for conversion-based strategies
 
 > ↪️ **Bid strategy selection:** See [Bidding Strategy Mental Model](../mental-models/Bidding Strategy Mental Model.md) and [Bid Targets Reference](../references/Bid Targets Reference.md) for target calculation.
 
@@ -137,9 +139,11 @@ This checklist does **NOT:**
 
 - [ ] Network settings are set to Search only (Display Network is unchecked, Search Partners is unchecked unless explicitly justified)
 - [ ] Location targeting is set to "Presence or interest" (default) or "Presence only" if location report data warrants restriction
-- [ ] Language targeting matches the campaign's target audience
+- [ ] Ad copy and landing pages are written in one language per ad group
 - [ ] Ad schedule is configured to match business hours or high-converting time windows (if data supports it, otherwise left to all hours)
 - [ ] Ad rotation is set to "Optimize: Prefer best performing ads"
+- [ ] AI Max is off, or it is on with brand controls, URL exclusions and text guidelines configured
+- [ ] Branded searches mode is set to "unbranded only" or "controlled", never left on "all relevant searches", when AI Max is on
 
 > ↪️ **Settings reference:** See [Search Campaign Settings Guidelines](../guidelines/Search Campaign Settings Guidelines.md) for recommended defaults.
 
@@ -149,7 +153,7 @@ This checklist does **NOT:**
 - [ ] Custom labels are configured to group pages by theme or priority
 - [ ] Keywordless ad groups are created with URL inclusions and targeted description lines, and text customization is ON
 - [ ] Campaign URL exclusions are in place to prevent ads on irrelevant pages (contact, privacy policy, careers, blog)
-- [ ] Final URL expansion is enabled at the campaign level with the correct domain and language configured
+- [ ] Final URL expansion is on at the campaign level, with exclusions, inclusions or a page feed steering it
 
 > ↪️ **Final URL expansion controls:** See [Final URL Expansion & Page Feed Reference](../references/Final URL Expansion & Page Feed Reference.md) for control mechanics and page feed setup.
 
@@ -175,6 +179,7 @@ This checklist does **NOT:**
 | [Headline Quality Checklist](../checklists/Headline Quality Checklist.md) | Headline quality validation |
 | [Extension Coverage Checklist](../checklists/Extension Coverage Checklist.md) | Extension completeness validation |
 | [Conversion Data Quality Checklist](../checklists/Conversion Data Quality Checklist.md) | Ongoing conversion data validation |
+| [SOP – Configure AI Max for Search](../sops/SOP – Configure AI Max for Search.md) | AI Max brand controls, URL exclusions and text guidelines |
 | [SOP – Write Compelling RSAs](../sops/SOP – Write Compelling RSAs.md) | RSA creation procedure |
 | [SOP – Set Up Google Ads Conversion Tracking](../sops/SOP – Set Up Google Ads Conversion Tracking.md) | Conversion tracking setup procedure |
 | [SOP – Set Up Conversion-Based Bidding](../sops/SOP – Set Up Conversion-Based Bidding.md) | Bid strategy configuration procedure |
@@ -184,8 +189,8 @@ This checklist does **NOT:**
 
 ## Version details
 
-- **Version:** 2.0
-- **Last Updated:** June 2026
+- **Version:** 4.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---
@@ -198,4 +203,4 @@ Violations may be detected through embedded document fingerprints and will be pu
 
 Full terms: https://www.ppcmastery.com/terms-and-conditions
 
-(c) 2026 PPC Mastery B.V. All rights reserved.
+© 2026 PPC Mastery B.V. All rights reserved.

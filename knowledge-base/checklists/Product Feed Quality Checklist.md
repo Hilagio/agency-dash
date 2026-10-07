@@ -1,8 +1,10 @@
 # Product Feed Quality Checklist
 Created: 2026-02-04
+Updated: 2026-08-27
 
 Support_ID: CHECKLIST_20
 Status: Done
+Category: Shopping
 Reference Type: Checklist
 Agent_Readable: No
 Human_Facing: Yes
@@ -83,7 +85,7 @@ These are table stakes. Products will be disapproved without them.
 ### Title quality
 
 - [ ] Titles front-load the most important details
-- [ ] Titles use available character space (aim for 150 characters)
+- [ ] Titles are 70-150 characters
 - [ ] Titles include brand, product type, and key attributes
 - [ ] Titles include variant attributes (size, color) for variants
 - [ ] Titles follow category-specific formulas
@@ -100,7 +102,7 @@ These are table stakes. Products will be disapproved without them.
 
 ### Image quality
 
-- [ ] Primary images are at least 500x500px (1500x1500px recommended, and the floor Google is moving all products to)
+- [ ] Primary images are at least 500x500px (1500x1500px recommended)
 - [ ] Products fill 75-90% of image frame
 - [ ] Images have white or neutral backgrounds
 - [ ] No promotional overlays (prices, watermarks, CTAs)
@@ -108,7 +110,7 @@ These are table stakes. Products will be disapproved without them.
 - [ ] Correct variant shown for each product
 - [ ] File size under 16MB per image
 - [ ] `additional_image_link` provided (recommended)
-- [ ] `lifestyle_image_link` provided for upper funnel (recommended)
+- [ ] `lifestyle_image_link` provided for upper funnel (recommended, up to 5 per product)
 
 ### Pricing and availability
 
@@ -151,16 +153,18 @@ These are table stakes. Products will be disapproved without them.
 - [ ] Primary data source created with correct settings
 - [ ] Target country and language configured
 - [ ] Feed label set for Google Ads targeting
-- [ ] Scheduled fetch frequency appropriate for inventory changes
+- [ ] Scheduled fetch is enabled on the primary data source
+- [ ] Fetch URL points directly at the file and Google can reach it (credentials stored in Merchant Center if the file is password-protected)
+- [ ] SFTP file name in Merchant Center matches the uploaded file exactly, capitalization and extension included, no spaces
 - [ ] Supplemental feeds configured for dynamic data (if needed)
 - [ ] Attribute rules tested and applied (if used)
 
 ### Merchant Center health
 
 - [ ] No account-level issues in Diagnostics
-- [ ] Item issues reviewed and prioritized
+- [ ] Every item issue has a documented priority
 - [ ] Disapproved products less than 5% of catalog
-- [ ] Limited products reviewed for improvement
+- [ ] Every "Limited" product has a documented decision
 - [ ] Google Ads account linked
 - [ ] Shipping settings configured
 - [ ] Return policy configured
@@ -209,8 +213,8 @@ These items improve matching and CTR but are not required for launch.
 
 ## Version details
 
-- **Version:** 1.0
-- **Last Updated:** February 2026
+- **Version:** 3.0
+- **Last Updated:** August 2026
 - **Creator:** Bob Meijer
 
 ---

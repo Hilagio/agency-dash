@@ -1,6 +1,6 @@
 # PMax Asset Group Strategy Reference
 Created: 2026-02-04
-Updated: 2026-04-02
+Updated: 2026-06-29
 
 Support_ID: REFERENCE_15
 Status: Done
@@ -37,9 +37,9 @@ This reference does **not:**
 | **PMax Type** | **Assets required** | **Behavior** |
 |---------------|---------------------|--------------|
 | **Feed-Only** | Listing groups only (NO other assets) | Serves primarily on Shopping surfaces (minor remarketing leak to other networks possible) |
-| **Full Assets** | All assets below | Serves on all Google surfaces |
+| **Full Assets** | All assets below | Serves on all Google surfaces (Search Partners and Display are selectable at the campaign level) |
 
-**For Feed-Only PMax:** Do NOT add any headlines, long headlines, descriptions, images, logos, or videos. Only configure listing groups. Your product feed IS your creative. Adding any assets will cause PMax to serve on Display and YouTube.
+**For Feed-Only PMax:** the asset group carries listing groups and nothing else, with no headlines, long headlines, descriptions, images, logos, or videos. The product feed is the creative, and any added asset pushes PMax onto Display and YouTube.
 
 ---
 
@@ -74,7 +74,7 @@ Each asset group in Full Assets PMax contains:
 | **Call to action** | Predefined options | 1 | 1 |
 | **Display URL path** | 15 characters × 2 | 0 | 1-2 |
 
-> 💡 **Do not max out assets.** Fewer, more targeted assets enable more efficient ad testing. See [SOP – RSA Testing with The Iteration Loop](../sops/SOP – RSA Testing with The Iteration Loop.md).
+> 💡 **A maxed-out asset set is harder to test.** Fewer, more targeted assets make ad testing more efficient. See [SOP – RSA Testing with The Iteration Loop](../sops/SOP – RSA Testing with The Iteration Loop.md).
 
 ### Image assets
 
@@ -108,7 +108,7 @@ Each asset group in Full Assets PMax contains:
 | **Aspect ratios** | Horizontal (16:9), Square (1:1), Vertical (9:16) |
 | **Quality** | 1080p or higher recommended |
 
-> ⚠️ **If you don't provide video, Google auto-generates:** Auto-generated videos from your images typically underperform custom video. Always upload at least one video.
+> ⚠️ **Google auto-generates video when none is supplied.** Auto-generated videos built from the image assets typically underperform custom video, which makes at least one uploaded video the floor.
 
 ---
 
@@ -188,7 +188,9 @@ Each asset group needs sufficient conversions to learn independently.
 | 2-3 asset groups | 30+ per asset group | Graduate when hitting threshold |
 | 4+ asset groups | 30+ per asset group | Only for high-volume accounts |
 
-> ⚠️ **Don't over-segment:** If you can't get 30+ conversions per asset group per month, consolidate.
+> ⚠️ **Segmentation is bounded by conversion volume.** An asset group that cannot reach 30+ conversions per month belongs consolidated into one that can. (See: [Conversion Volume Thresholds Reference](../references/Conversion Volume Thresholds Reference.md))
+
+> 💡 **Listing group ceiling:** Google Ads allows 20,000 listing groups. Segmentation depth is bounded by conversion volume per group long before it is bounded by this ceiling.
 
 ---
 
@@ -204,7 +206,7 @@ Each asset group needs sufficient conversions to learn independently.
 | **CTA** | "Start Free Trial", "Get a Demo" |
 | **Social proof** | "Trusted by 500+ Agencies", "#1 Google Ads OS" |
 
-**Mix:** Include variety across categories. Don't repeat the same message.
+**Mix:** variety across categories, with no message repeated between headlines.
 
 > ↪️ **For headline patterns and angles:** See [Headline Angle Catalog](../catalogs/Headline Angle Catalog.md).
 
@@ -253,7 +255,7 @@ Each asset group needs sufficient conversions to learn independently.
 
 ### Variety recommendations
 
-Provide variety across:
+Variety spans:
 
 - **Angles:** Product shots, lifestyle, close-ups
 - **Subjects:** Product alone, product with people, product in context
@@ -286,10 +288,10 @@ Provide variety across:
 
 ### Technical recommendations
 
-- **Aspect ratios:** Provide all three (16:9, 1:1, 9:16) when possible
-- **Sound:** Works without sound (captions), enhanced with sound
-- **Branding:** Logo in first 5 seconds
-- **CTA:** Clear call to action in final 5 seconds
+- **Aspect ratios:** all three (16:9, 1:1, 9:16) where production allows
+- **Sound:** works without sound (captions), enhanced with sound
+- **Branding:** logo in the first 5 seconds
+- **CTA:** clear call to action in the final 5 seconds
 
 > ↪️ **For video specifications and best practices:** See [Video Creative Reference](../references/Video Creative Reference.md).
 
@@ -297,7 +299,7 @@ Provide variety across:
 
 ## Audience signals by asset group
 
-Each asset group can have its own audience signals. Use different signals to match the asset group's creative theme.
+Each asset group carries its own audience signals, matched to that asset group's creative theme.
 
 | **Asset group theme** | **Recommended signals** |
 |----------------------|------------------------|
@@ -333,7 +335,7 @@ Google selects landing page from your site.
 | **ON** | Large site, many relevant pages |
 | **OFF** | Specific landing page required, Ecommerce (product pages) |
 
-> ⚠️ **For Ecommerce Feed-Only:** Always set Final URL expansion OFF. You want users landing on product pages from your feed, not blog posts.
+> ⚠️ **Ecommerce Feed-Only runs with Final URL expansion OFF.** The feed routes users to product pages, and expansion sends them to whatever else the site holds.
 
 ---
 
@@ -352,8 +354,8 @@ Google selects landing page from your site.
 
 ## Version details
 
-- **Version:** 1.0
-- **Last Updated:** February 2026
+- **Version:** 2.0
+- **Last Updated:** June 2026
 - **Creator:** Bob Meijer
 
 ---

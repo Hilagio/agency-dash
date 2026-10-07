@@ -1,5 +1,6 @@
 # SOP – Run a Creative Testing Cycle
 Created: 2026-02-14
+Updated: 2026-08-14
 
 SOP_ID: SOP_88
 Status: Done
@@ -25,7 +26,7 @@ This SOP does **not:**
 - Teach the Iteration Loop methodology for RSAs (See: [SOP – RSA Testing with The Iteration Loop](../sops/SOP – RSA Testing with The Iteration Loop.md))
 - Run PMax campaign-level optimization (See: [SOP – Run PMax Ecommerce Optimization Cycle](../sops/SOP – Run PMax Ecommerce Optimization Cycle.md) or [SOP – Run PMax Lead Gen-SaaS Optimization Cycle](../sops/SOP – Run PMax Lead Gen-SaaS Optimization Cycle.md))
 - Run Demand Gen campaign optimization (See: [SOP – Run Demand Gen Optimization Cycle](../sops/SOP – Run Demand Gen Optimization Cycle.md))
-- Run Display and Video campaign optimization (See: [SOP – Run Display & Video Campaign Optimization Cycle](../sops/SOP – Run Display & Video Campaign Optimization Cycle.md))
+- Run Video campaign optimization (See: [SOP – Run Video Campaign Optimization Cycle](../sops/SOP – Run Video Campaign Optimization Cycle.md))
 - Write initial RSAs or compose ad copy (See: [SOP – Write Compelling RSAs](../sops/SOP – Write Compelling RSAs.md))
 - Explain testing theory or experiment design (See: [Testing and Experimentation Mental Model](../mental-models/Testing and Experimentation Mental Model.md))
 
@@ -57,8 +58,7 @@ Run monthly as a recurring cadence. Each cycle covers all active ad formats.
 **Reference documents (have open):**
 | Document | Used for |
 |----------|----------|
-| [SOP – RSA Testing with The Iteration Loop](../sops/SOP – RSA Testing with The Iteration Loop.md) | Search RSA testing methodology |
-| [SOP – RSA Testing with The Iteration Loop](../sops/SOP – RSA Testing with The Iteration Loop.md) | Iteration Loop methodology (Templatize, Aggregate, Diagnose, Iterate) |
+| [SOP – RSA Testing with The Iteration Loop](../sops/SOP – RSA Testing with The Iteration Loop.md) | Search RSA testing and the Iteration Loop (Templatize, Aggregate, Diagnose, Iterate) |
 | [Headline Angle Catalog](../catalogs/Headline Angle Catalog.md) | Headline angle ideas for new variants |
 | [Demand Gen Performance Reference](../references/Demand Gen Performance Reference.md) | Demand Gen benchmarks and creative format data |
 | [Testing and Experimentation Mental Model](../mental-models/Testing and Experimentation Mental Model.md) | Statistical significance and experiment design |
@@ -102,10 +102,10 @@ Use these sources to create hypotheses for each format:
 | Customer reviews | Repeated praise or complaints | "If we add 'no contract' as a Risk Removal headline, CPI will improve because 40% of reviews mention commitment fears" |
 | Competitor ads | Messaging gaps or overused angles | "If we highlight '24/7 live support' in PMax headlines, we differentiate because no competitor mentions it" |
 | Sales/support team | Common objections and questions | "If we address 'setup time' in Demand Gen video hooks, CTR will improve because it is the top objection" |
-| Prior test results | Patterns across formats | "If the 'social proof' angle won in Search RSAs, testing user count overlays in Display images should improve CVR" |
+| Prior test results | Patterns across formats | "If the 'social proof' angle won in Search RSAs, testing user count overlays in Demand Gen images should improve CVR" |
 | Seasonal relevance | Timely offers or themes | "If we add Q4 budget messaging in January, relevance improves for annual planners" |
 
-> 💡 **These are example sources, not an exhaustive list.** Any signal about customer behavior, market conditions, or creative performance can generate a valid hypothesis. The key is that every test starts from a documented reason, not random exploration.
+> 💡 **Any signal about customer behavior, market conditions, or creative performance can generate a hypothesis.** Every test starts from a documented reason, not random exploration.
 
 ### 1.3 Write hypotheses per format
 
@@ -120,7 +120,7 @@ Create 1-3 hypotheses per active format. Do not overload a single cycle with mor
 | Search RSAs | 2-3 (per cluster) | Limited headline slots, need data per angle |
 | PMax assets | 1-2 (per asset group) | Max 2 swaps per asset type per cycle |
 | Demand Gen | 2-3 (per ad group) | Multiple creative formats to compare |
-| Display | 1-2 | Lower conversion volume, longer data accumulation |
+| RDA (Demand Gen) | 1-2 | Lower conversion volume, longer data accumulation |
 | Video | 1-2 | Production effort per variant is higher |
 
 ---
@@ -195,7 +195,7 @@ Demand Gen supports multiple creative formats: video, single image, and carousel
 
 ### 2.4 Responsive display ads
 
-Display creative testing focuses on individual elements within responsive display ads.
+Responsive display ad (RDA) testing focuses on individual elements within the ad.
 
 1. Review asset-level reports for current responsive display ads
 2. Identify the weakest element type (headline, description, image, logo)
@@ -212,7 +212,7 @@ Display creative testing focuses on individual elements within responsive displa
 
 ### 2.5 Video ads
 
-Video testing involves higher production effort. Plan variants strategically.
+Video testing carries higher production effort. Limit each cycle to the variants you can produce and measure.
 
 1. Review current video performance (view rate, CTR, conversions per view)
 2. Identify underperforming videos (below campaign average on conversions per view)
@@ -227,15 +227,15 @@ Video testing involves higher production effort. Plan variants strategically.
 | Format | Talking head vs. animation vs. product demo vs. UGC | Keep message consistent, change delivery style |
 | CTA placement | End card vs. mid-roll vs. persistent overlay | Same video, different CTA timing |
 
-> ⚠️ **Video testing is slower:** Production costs and lower conversion volumes mean video test cycles take 4-8 weeks to produce actionable data. Plan accordingly.
+> ⚠️ **Video test cycles take 4-8 weeks to produce actionable data.** Schedule video hypotheses against that window, not the 4-week cycle cadence.
 
 ### 2.6 Asset-level optimization across all formats
 
-Beyond ad-level testing, Demand Gen, Display, and Video campaigns provide asset-level performance data that enables creative optimization at a granular level:
+Beyond ad-level testing, Demand Gen and Video campaigns provide asset-level performance data that enables creative optimization at a granular level:
 
-1. **Format-level tests first:** Determine which creative format performs best (video vs. image vs. carousel for Demand Gen, different image approaches for Display). This is the "big picture" testing priority
+1. **Format-level tests first:** Determine which creative format performs best (video vs. image vs. carousel for Demand Gen, different image approaches within RDAs). This is the "big picture" testing priority
 2. **Then zoom into asset-level:** Once format winners are identified, optimize individual assets within the winning format: tweak headlines, descriptions, images, hooks, and CTAs
-3. **Testing maturity curve:** Early cycles focus on format discovery (broad). Mature accounts focus on asset-level refinement within proven formats (narrow). This follows the same testing maturity progression as the Iteration Loop: angle type vs. angle type first, then sub-angle vs. sub-angle, then asset vs. asset
+3. **Match test granularity to account maturity:** run format-level tests in early cycles, and asset-level tests once format winners are proven (See: [SOP – RSA Testing with The Iteration Loop](../sops/SOP – RSA Testing with The Iteration Loop.md) for the angle type, sub-angle, asset progression)
 
 ---
 
@@ -245,7 +245,7 @@ Beyond ad-level testing, Demand Gen, Display, and Video campaigns provide asset-
 
 Before deploying any variant, record current performance for each format:
 
-| Metric to record | Search RSAs | PMax | Demand Gen | Display | Video |
+| Metric to record | Search RSAs | PMax | Demand Gen | RDA | Video |
 |-------------------|------------|------|------------|---------|-------|
 | Impressions | Per asset | Per asset | Per creative | Per asset | Per video |
 | Clicks | Per asset | Per asset | Per creative | Per asset | Per video |
@@ -283,7 +283,7 @@ During the test period, do not:
 | Search RSAs | 2-4 weeks | 1,000+ impressions per asset across cluster |
 | PMax assets | 2-4 weeks | 1,000+ impressions per asset type |
 | Demand Gen | 3-4 weeks (includes learning) | 30+ conversions per ad group |
-| Display | 3-4 weeks | 1,000+ impressions per asset |
+| RDA (Demand Gen) | 3-4 weeks | 1,000+ impressions per asset |
 | Video | 4-8 weeks | 500+ views per video, 10+ conversions |
 
 ### 4.2 Weekly monitoring checks
@@ -322,7 +322,7 @@ At the end of the test period, extract data for each format using the same metri
 | Champions | High CPI/RPI, High AIS | Protect |
 | Hidden Gems | High CPI/RPI, Low AIS | Increase exposure |
 | Silent Killers | Low CPI/RPI, High AIS | Remove immediately |
-| Trash | Low CPI/RPI, Low AIS | Replace next cycle |
+| Underperformers | Low CPI/RPI, Low AIS | Replace next cycle |
 
 **PMax assets:** Classify by performance tier:
 
@@ -340,7 +340,7 @@ At the end of the test period, extract data for each format using the same metri
 | UGC vs. polished | CVR | CPA |
 | Audience-creative pairing | CPA | Conversion volume |
 
-**Display:** Compare element-level performance:
+**RDA (Demand Gen):** Compare element-level performance:
 
 | Metric | Use for |
 |--------|---------|
@@ -357,15 +357,15 @@ At the end of the test period, extract data for each format using the same metri
 | Conversions per view | Overall creative quality |
 | Cost per view | Efficiency |
 
-**Demand Gen, Display, Video: primary metric for performance-driven campaigns**
+**Demand Gen and Video: primary metric for performance-driven campaigns**
 
-When running Demand Gen, Display, or Video campaigns with performance goals (conversions, revenue), use CPI (Conversions Per Impression) or RPI (Revenue Per Impression) as the primary creative metric, consistent with the Iteration Loop methodology. Do not rely on CTR alone.
+When running Demand Gen or Video campaigns with performance goals (conversions, revenue), use CPI (Conversions Per Impression) or RPI (Revenue Per Impression) as the primary creative metric, consistent with the Iteration Loop methodology. Do not rely on CTR alone.
 
 For campaigns with view-through conversions (VTCs), use a blended conversion metric:
 
 > **Blended conversions** = click-through conversions + (VTCs x discount factor of 0.3-0.5)
 
-This acknowledges that view-through conversions have real but lower value than click-through conversions. Use 0.3 for conservative accounts, 0.5 when VTC validation data supports it.
+Use 0.3 for conservative accounts, 0.5 when VTC validation data supports it.
 
 > ↪️ **VTC handling methodology:** See [Demand Gen Performance Reference](../references/Demand Gen Performance Reference.md) for the full VTC framework.
 
@@ -386,7 +386,7 @@ If a result does not reach significance, classify it as "directional" and extend
 
 > ↪️ **For statistical significance framework:** See [Testing and Experimentation Mental Model](../mental-models/Testing and Experimentation Mental Model.md).
 
-**Target 80%+ statistical significance** before declaring winners. This aligns with the RSA Testing methodology where conversion thresholds are designed to reach this confidence level.
+**Target 80%+ statistical significance** before declaring winners.
 
 **When low volumes prevent reaching significance:**
 
@@ -397,7 +397,7 @@ If a result does not reach significance, classify it as "directional" and extend
 | Test running 8+ weeks with very low data | End test. The format or campaign lacks sufficient volume for asset-level testing. Consolidate variants and optimize at a higher level (ad-level or campaign-level) |
 | Consistently unable to reach significance | Re-evaluate testing scope: test bigger changes (format-level) rather than subtle asset variations |
 
-> ↪️ **Data poverty solution:** The Iteration Loop addresses data poverty through aggregation across ad groups and asset groups. The same principle applies here: pool data across campaigns or ad groups when individual tests lack volume.
+> ↪️ **When individual tests lack volume, pool data across campaigns or ad groups.** See [SOP – RSA Testing with The Iteration Loop](../sops/SOP – RSA Testing with The Iteration Loop.md) for the aggregation method.
 
 ---
 
@@ -410,7 +410,7 @@ If a result does not reach significance, classify it as "directional" and extend
 | Search RSAs | Promote winning asset, remove Silent Killers, maintain template consistency across cluster |
 | PMax | Keep Strong-tier assets, replace Underperforming with next hypothesis variant |
 | Demand Gen | Scale winning creative format, pause losing variants, test new variations of winner |
-| Display | Replace weakest element with proven winner, test next element in priority order |
+| RDA (Demand Gen) | Replace weakest element with proven winner, test next element in priority order |
 | Video | Scale winning video (increase budget/audience), produce variations of winning hook/format |
 
 ### 6.2 Update the learning log
@@ -419,7 +419,7 @@ For each hypothesis tested, record:
 
 ```
 TEST ID: [FORMAT]-[DATE]-[NUMBER]
-FORMAT: [Search RSA / PMax / Demand Gen / Display / Video]
+FORMAT: [Search RSA / PMax / Demand Gen / RDA / Video]
 TEST DATES: [Start] to [End]
 
 HYPOTHESIS:
@@ -450,7 +450,7 @@ After documenting individual results, look for patterns across formats:
 | Pattern to look for | Example | Action |
 |--------------------|---------|--------|
 | Angle wins across multiple formats | "Social proof" headlines win in RSAs AND PMax | Double down on social proof across all formats |
-| Format-specific preferences | UGC video wins in Demand Gen but polished wins in Display | Tailor creative style to format |
+| Format-specific preferences | UGC video wins in Demand Gen video but polished wins in RDA images | Tailor creative style to format |
 | Audience-creative alignment | Risk Removal messaging wins for cold audiences, CTA messaging wins for warm | Segment creative by audience temperature |
 
 ---
@@ -505,7 +505,7 @@ This SOP is complete when:
 
 | Next step | When |
 |-----------|------|
-| Run this SOP again | Next scheduled cycle (3-4 weeks) |
+| Run this SOP again | Next scheduled cycle, dated in Phase 7.1 |
 | Deep-dive into RSA testing | Iteration Loop needs more cycles within a cluster |
 | Deep-dive into PMax assets | Asset group needs structural changes (splitting) |
 | Demand Gen creative refresh | Creative fatigue detected (CTR declining 2+ weeks) |
@@ -517,7 +517,7 @@ This SOP is complete when:
 | RSA testing methodology | [SOP – RSA Testing with The Iteration Loop](../sops/SOP – RSA Testing with The Iteration Loop.md) |
 | PMax asset replacement | Phase 2.2 of this SOP + [SOP – Run PMax Ecommerce Optimization Cycle](../sops/SOP – Run PMax Ecommerce Optimization Cycle.md) or [SOP – Run PMax Lead Gen-SaaS Optimization Cycle](../sops/SOP – Run PMax Lead Gen-SaaS Optimization Cycle.md) Phase 4 |
 | Demand Gen optimization | [SOP – Run Demand Gen Optimization Cycle](../sops/SOP – Run Demand Gen Optimization Cycle.md) |
-| Display and Video optimization | [SOP – Run Display & Video Campaign Optimization Cycle](../sops/SOP – Run Display & Video Campaign Optimization Cycle.md) |
+| Video optimization | [SOP – Run Video Campaign Optimization Cycle](../sops/SOP – Run Video Campaign Optimization Cycle.md) |
 | Headline angle ideas | [Headline Angle Catalog](../catalogs/Headline Angle Catalog.md) |
 | Experiment design questions | [Testing and Experimentation Mental Model](../mental-models/Testing and Experimentation Mental Model.md) |
 
@@ -543,21 +543,20 @@ This SOP is complete when:
 
 | Document | Relationship |
 |----------|--------------|
-| [SOP – RSA Testing with The Iteration Loop](../sops/SOP – RSA Testing with The Iteration Loop.md) | Execution: Search RSA testing methodology |
-| [SOP – RSA Testing with The Iteration Loop](../sops/SOP – RSA Testing with The Iteration Loop.md) | Foundation: Iteration Loop methodology applied across all formats |
+| [SOP – RSA Testing with The Iteration Loop](../sops/SOP – RSA Testing with The Iteration Loop.md) | Execution: Search RSA testing, and the Iteration Loop applied across all formats |
 | [Testing and Experimentation Mental Model](../mental-models/Testing and Experimentation Mental Model.md) | Foundation: experiment design and statistical significance |
 | [Headline Angle Catalog](../catalogs/Headline Angle Catalog.md) | Reference: headline angle ideas for new variants |
 | [Demand Gen Performance Reference](../references/Demand Gen Performance Reference.md) | Reference: Demand Gen benchmarks and creative format data |
 | [SOP – Run Demand Gen Optimization Cycle](../sops/SOP – Run Demand Gen Optimization Cycle.md) | Parallel: Demand Gen optimization process |
-| [SOP – Run Display & Video Campaign Optimization Cycle](../sops/SOP – Run Display & Video Campaign Optimization Cycle.md) | Parallel: Display and Video optimization process |
+| [SOP – Run Video Campaign Optimization Cycle](../sops/SOP – Run Video Campaign Optimization Cycle.md) | Parallel: Video optimization process |
 | [Description Expansion Catalog](../catalogs/Description Expansion Catalog.md) | Reference: description patterns for new variants |
 
 ---
 
 ## Version details
 
-- **Version:** 2.0
-- **Last Updated:** March 2026
+- **Version:** 4.0
+- **Last Updated:** August 2026
 - **Creator:** Bob Meijer
 
 ---

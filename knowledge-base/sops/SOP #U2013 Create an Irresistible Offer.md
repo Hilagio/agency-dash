@@ -29,7 +29,7 @@ This SOP does **not**:
 
 - Teach how to *communicate* your offer in ads (See: [SOP – Craft Your Offer Angles](../sops/SOP – Craft Your Offer Angles.md))
 - Teach how to write headlines or descriptions (See: [Headline Angle Catalog](../catalogs/Headline Angle Catalog.md))
-- Validate offer strength (See: [**Offer Audit Checklist**]<!-- TODO: link target missing -->)
+- Validate offer strength (See: [Offer Audit Checklist](../checklists/Offer Audit Checklist.md))
 - Function as a one-time exercise (offers should evolve based on market feedback)
 
 ### When to run this SOP
@@ -43,7 +43,7 @@ Run this SOP if **any** of the following are true:
 - You're launching a new product, service, or campaign
 - Sales cycles are longer than expected
 - Lead quality is poor (price-focused, low intent)
-- Your offer fails the [**Offer Audit Checklist**]<!-- TODO: link target missing --> (<12 checks)
+- Your offer fails the [Offer Audit Checklist](../checklists/Offer Audit Checklist.md) (<12 checks)
 
 ---
 
@@ -64,7 +64,6 @@ An irresistible offer answers four questions:
 > Increase the dream outcome, decrease the friction.
 > ⚠️ **Link (not affiliated):**
 > [https://www.amazon.com/100M-Offers-People-Stupid-Saying-ebook/dp/B099QVG1H8](https://www.amazon.com/100M-Offers-People-Stupid-Saying-ebook/dp/B099QVG1H8)
-> ![image.png](image.png)
 
 ---
 
@@ -189,23 +188,23 @@ Each vertical has **different levers to pull**. What makes an offer irresistible
 
 | Failure | Why it happens | Fix |
 | --- | --- | --- |
-| **Generic value prop** | Afraid to be specific | Narrow your ICP; speak to their exact problem |
-| **No urgency** | Don't want to seem "salesy" | Real scarcity is ethical; fake scarcity is not |
+| **Generic value prop** | Afraid to be specific | Narrow your ICP, speak to their exact problem |
+| **No urgency** | Don't want to seem "salesy" | Real scarcity is ethical, fake scarcity is not |
 | **Competing on price** | No differentiation | Stack value (bundles, bonuses, service) instead of discounting |
 | **Weak guarantee** | Fear of abuse | Strong guarantees increase conversions more than refund abuse costs you |
-| **No social proof** | Haven't collected it | Start collecting reviews/testimonials immediately; display prominently |
+| **No social proof** | Haven't collected it | Start collecting reviews/testimonials immediately, display prominently |
 | **Asking too much too soon** | Want leads fast | Offer value before asking for commitment |
 
 ---
 
 ### Validation & definition of done
 
-Run your offer through the [**Offer Audit Checklist**]<!-- TODO: link target missing -->.
+Run your offer through the [Offer Audit Checklist](../checklists/Offer Audit Checklist.md).
 
 You've completed this SOP when:
 
 - [ ]  You can clearly articulate your offer in one sentence
-- [ ]  Your offer passes the [**Offer Audit Checklist**]<!-- TODO: link target missing --> (12+ checks)
+- [ ]  Your offer passes the [Offer Audit Checklist](../checklists/Offer Audit Checklist.md) (12+ checks)
 - [ ]  You've pressure-tested against competitors (yours stands out)
 - [ ]  You can answer "why should I choose you?" without mentioning price
 - [ ]  You have at least one urgency element that's authentic
@@ -216,7 +215,6 @@ You've completed this SOP when:
 Once your offer is solid, proceed to:
 
 → [SOP – Craft Your Offer Angles](../sops/SOP – Craft Your Offer Angles.md)
-**
 
 ---
 
@@ -224,11 +222,11 @@ Once your offer is solid, proceed to:
 
 **Q: How do I know if my offer is "good enough" to start advertising?**
 
-A: Run the [**Offer Audit Checklist**]<!-- TODO: link target missing -->. Score 12+ = proceed. Score 8-11 = fix gaps first. Score <8 = significant work needed before ad spend. Don't advertise a weak offer at scale. You're just paying to learn it doesn't convert 🙂.
+A: Run the [Offer Audit Checklist](../checklists/Offer Audit Checklist.md). Score 12+ = proceed. Score 8-11 = fix gaps first. Score <8 = significant work needed before ad spend. Don't advertise a weak offer at scale. You are just paying to learn it does not convert.
 
 **Q: What if I can't change the offer? (I'm just the ads person)**
 
-A: Document the gaps and present them to the decision-maker with this framing: "Here's why conversions are struggling, and here's what would fix it". Use the [**Offer Audit Checklist**]<!-- TODO: link target missing --> as evidence. If they won't change the offer, set realistic expectations about what ads can achieve.
+A: Document the gaps and present them to the decision-maker with this framing: "Here's why conversions are struggling, and here's what would fix it". Use the [Offer Audit Checklist](../checklists/Offer Audit Checklist.md) as evidence. If they won't change the offer, set realistic expectations about what ads can achieve.
 
 **Q: How often should I revisit this SOP?**
 
@@ -260,7 +258,7 @@ A: Stack value until comparison becomes difficult. Bundle services, add bonuses,
 
 | Document | Type | Used for |
 | --- | --- | --- |
-| [**Offer Audit Checklist**]<!-- TODO: link target missing --> | Checklist | Validates offer strength (12+ = ready) |
+| [Offer Audit Checklist](../checklists/Offer Audit Checklist.md) | Checklist | Validates offer strength (12+ = ready) |
 | [Headline Angle Catalog](../catalogs/Headline Angle Catalog.md) | Catalog | Headline patterns (after angles extracted) |
 | [Description Expansion Catalog](../catalogs/Description Expansion Catalog.md) | Catalog | Description patterns (after angles extracted) |
 

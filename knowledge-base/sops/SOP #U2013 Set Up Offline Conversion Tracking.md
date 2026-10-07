@@ -1,5 +1,6 @@
 # SOP – Set Up Offline Conversion Tracking
 Created: 2026-02-04
+Updated: 2026-10-05
 
 SOP_ID: SOP_24
 Status: Done
@@ -18,7 +19,6 @@ This SOP sets up Offline Conversion Tracking (OCT) to import CRM conversions (qu
 
 > ❓ **The big question:** Is Smart Bidding optimizing for actual business outcomes (qualified leads, closed deals) or just top-of-funnel form submissions?
 
-For Lead Gen and SaaS businesses, the form submission is the beginning, not the end. OCT closes the loop by importing downstream conversion events with their real value, giving Smart Bidding the signals it needs to find high-quality leads instead of just volume.
 
 ---
 
@@ -28,7 +28,7 @@ This SOP does **not:**
 
 - Apply to ecommerce (ecommerce tracks onsite purchases via GACT)
 - Set up basic GACT (See: [SOP – Set Up Google Ads Conversion Tracking](../sops/SOP – Set Up Google Ads Conversion Tracking.md))
-- Cover Conversion Adjustments for restating values after import (separate SOP)
+- Cover Conversion Adjustments for restating values after import (See: [SOP – Configure Conversion Adjustments](../sops/SOP – Configure Conversion Adjustments.md))
 - Teach the strategic rationale for OCT (See: [Measurement Maturity Mental Model](../mental-models/Measurement Maturity Mental Model.md))
 - Configure Enhanced Conversions for web (See: [SOP – Implement Enhanced Conversions](../sops/SOP – Implement Enhanced Conversions.md))
 
@@ -63,6 +63,18 @@ Run this SOP when:
 
 ---
 
+### Decision gate: OCT or native journey mapping
+
+Run this gate before the method gate. It decides whether you build an upload pipeline at all.
+| Situation | Path |
+| --- | --- |
+| A CRM is already in place | Continue with this SOP. Integrate the CRM with OCT so the business keeps its existing tool, CRM and lead-scoring stack |
+| No CRM, or no appetite to build an upload pipeline | Use native lead journey mapping instead, and stop here. A spreadsheet as the CRM plus an automation tool for uploads is the alternative to weigh it against |
+
+> ⚠️ **Do not rebuild scoring logic that already exists.** Where a CRM already scores leads, exporting that judgement through OCT beats asking Google to recreate it.
+
+---
+
 ### Decision gate: Import method
 
 Before proceeding, determine your OCT method:
@@ -72,7 +84,7 @@ Before proceeding, determine your OCT method:
 | CRM captures GCLID (Google Click ID) | Use GCLID import method | Phase 2A |
 | CRM captures email/phone but not GCLID | Use Enhanced Conversions for Leads (EC4L) | Phase 2B |
 | Both GCLID and email are available | Use Hybrid method (recommended) | Phase 2A + 2B |
-| High-volume or real-time import needed | Use Google Ads API | Consult API documentation |
+| High-volume or real-time import needed | Use the Data Manager API | Consult Data Manager documentation |
 
 > 💡 **The Hybrid method (GCLID + EC4L) provides the highest match rate:** When GCLID is available, Google uses it for direct attribution. When GCLID is missing (cross-device, non-click conversions), EC4L fills the gap using hashed email matching.
 
@@ -140,8 +152,8 @@ Before creating conversion actions, map your offline conversion funnel and assig
 
 For each stage in your funnel map:
 
-1. Navigate to **Goals > Conversions > Summary**
-2. Click **New conversion action**
+1. Navigate to **Goals > Summary**
+2. Click **Create conversion action**
 3. Select **Import**
 4. Select **Other data sources or CRMs > Track conversions from clicks**
 
@@ -211,13 +223,15 @@ If operating in EU/EEA:
 
 ## Phase 2B: Configure Enhanced Conversions for Leads (EC4L)
 
-### 2B.1 Enable EC4L in Google Ads
+### 2B.1 Enable Enhanced Conversions in Google Ads
 
-1. Navigate to **Goals > Settings**
+1. Navigate to **Goals > Conversions > Conversion settings**
 2. Find **Enhanced conversions for leads**
-3. Click **Turn on**
+3. Check **Turn on enhanced conversions for leads**
 4. Select your implementation method (Google Tag Manager recommended)
 5. Accept the customer data terms
+
+> 💡 **Leads have their own setting.** Enhanced conversions for leads is a separate row from Enhanced conversions, with its own checkbox and method. Having Enhanced conversions on (from [SOP – Implement Enhanced Conversions](../sops/SOP – Implement Enhanced Conversions.md)) does not turn it on.
 
 ### 2B.2 Configure User-Provided Data event in GTM
 
@@ -272,7 +286,7 @@ Manual uploads work for testing but do not scale. Set up automation:
 | Tool | Method | Frequency |
 | --- | --- | --- |
 | Zapier / Make | Trigger on CRM stage change, upload to Google Ads | Real-time or daily |
-| Google Ads API | Direct API integration from CRM | Real-time |
+| Data Manager API | Direct API integration from CRM | Real-time |
 | Google Sheets scheduled upload | Google Ads UI scheduled import from Google Sheet | Daily |
 
 **Zapier/Make example workflow:**
@@ -324,6 +338,9 @@ Once manual uploads are verified:
 1. Enable your Zapier/Make automation or Google Sheets scheduled upload
 2. Monitor for 7 days to confirm automated uploads run successfully
 3. Set up alerts for upload failures
+4. Confirm the schedule keeps upload latency under 7 days from the conversion event
+
+> ⚠️ **Latency decides whether the upload reaches the bidding model.** Conversions uploaded more than 7 days after the event still land in standard reports, but attribution modeling skips them. A weekly batch that drifts to eight or nine days reports fine and teaches Smart Bidding nothing.
 
 ### 4.5 Final checklist
 
@@ -333,6 +350,7 @@ Once manual uploads are verified:
 - [ ] First manual upload completed successfully
 - [ ] Conversions appear in Google Ads reports within 48 hours
 - [ ] Automated import schedule active
+- [ ] Upload latency under 7 days from the conversion event
 - [ ] Primary/secondary classification set correctly
 
 ---
@@ -358,7 +376,7 @@ Once OCT is live and importing:
 | Week 1-2 | Monitor import reliability, fix any failed uploads |
 | Week 2-4 | Compare Smart Bidding performance on OCT vs. web conversions |
 | Month 2 | Switch web form submission to secondary, OCT to sole primary |
-| Ongoing | Implement Conversion Adjustments to restate lead values as they progress |
+| Ongoing | [SOP – Configure Conversion Adjustments](../sops/SOP – Configure Conversion Adjustments.md) to restate lead values as they progress |
 
 **If issues arise:**
 
@@ -379,7 +397,7 @@ A: Daily is recommended. More frequent uploads give Smart Bidding faster feedbac
 
 **Q: What if my sales cycle exceeds 90 days?**
 
-A: The maximum click-through conversion window is 90 days. If your sales cycle consistently exceeds this, consider importing an earlier funnel stage (MQL or SQL) that falls within the 90-day window as your primary conversion, with the closed deal as a secondary for reporting.
+A: The maximum click-through conversion window is 90 days. If your sales cycle consistently exceeds this, import an earlier funnel stage (MQL or SQL) that falls within the 90-day window as your primary conversion, with the closed deal as a secondary for reporting. Separately, keep upload latency under 7 days from the conversion event. Beyond 7 days the upload is still accepted and still reported, but attribution modeling bypasses it and Smart Bidding never sees it.
 
 **Q: Should I import all funnel stages or just the final conversion?**
 
@@ -422,17 +440,18 @@ A: The ProfitMetrics Conversion Booster is designed for ecommerce. For Lead Gen 
 | GCLID not stored in CRM | Hidden field script broken or form handler not mapped | Test with ?gclid=test123, verify CRM record |
 | Conversion name mismatch | Upload template name does not match Google Ads exactly | Copy-paste the conversion action name, do not retype |
 | Date format rejected | Wrong timestamp format in upload file | Use format: YYYY-MM-DD HH:MM:SS with timezone |
-| Conversions outside attribution window | Upload happened more than 90 days after the click | Import conversions within the click-through window |
+| Upload rejected by Google Ads | Upload happened more than 90 days after the click (the acceptance limit) | Import an earlier funnel stage that falls inside 90 days |
+| Upload accepted but invisible to bidding | Upload happened more than 7 days after the conversion event | Tighten the upload schedule so latency stays under 7 days |
 | Multiple OCT stages set as primary | All funnel stages marked primary | Only one stage should be primary for Smart Bidding |
 | Switched web conversion to secondary too early | OCT not yet stable | Keep web conversion primary for 30+ days during transition |
-| Low EC4L match rate | Email formatting issues or low Google account coverage | Verify email is plain text, no whitespace, consider Hybrid method |
+| Low EC4L match rate | Email formatting issues or low Google account coverage | Verify email is plain text with no whitespace, then switch to the Hybrid method |
 
 ---
 
 ### Version details
 
-- **Version:** 1.0
-- **Last Updated:** February 2026
+- **Version:** 4.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

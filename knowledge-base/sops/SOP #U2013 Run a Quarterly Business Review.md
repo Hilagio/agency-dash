@@ -18,7 +18,7 @@ This SOP guides you through a quarterly business review (QBR) that assesses stra
 
 > ❓ **The big question:** Are we solving the right problems with the right structure, and do our goals still reflect business reality?
 
-Quarterly reviews are not extended monthly reviews. Monthly reviews calibrate baselines and catch drift. Quarterly reviews question the goals, structure, and strategy themselves. This is where you decide if the engine is pointed in the right direction, not just running smoothly.
+Monthly reviews calibrate baselines and catch drift. Quarterly reviews question the goals, structure, and strategy themselves.
 
 ---
 
@@ -190,8 +190,8 @@ Review budget allocation across campaign types and channels:
 | Search (non-brand) | ___ | ___% | ___ | ___ | ↑ / → / ↓ |
 | Shopping | ___ | ___% | ___ | ___ | ↑ / → / ↓ |
 | PMax | ___ | ___% | ___ | ___ | ↑ / → / ↓ |
-| Display / Video | ___ | ___% | ___ | ___ | ↑ / → / ↓ |
-| **Total** | ___ | 100% | ___ | ___ | — |
+| Demand Gen / Video | ___ | ___% | ___ | ___ | ↑ / → / ↓ |
+| **Total** | ___ | 100% | ___ | ___ | n/a |
 
 Assess:
 
@@ -224,7 +224,7 @@ Pull Auction Insights at account and top-campaign level for the full quarter. Co
 
 | Competitor | Impression share (this Q) | Impression share (last Q) | Change | Overlap rate | Outranking share |
 |-----------|--------------------------|--------------------------|--------|-------------|-----------------|
-| You | ___% | ___% | ___ | — | — |
+| You | ___% | ___% | ___ | n/a | n/a |
 | Competitor A | ___% | ___% | ___ | ___% | ___% |
 | Competitor B | ___% | ___% | ___ | ___% | ___% |
 | Competitor C | ___% | ___% | ___ | ___% | ___% |
@@ -303,7 +303,7 @@ Plan experiments for the quarter:
 Compile the QBR document using the outputs from all phases:
 
 ```
-Quarterly Business Review — Q[X] [Year]
+Quarterly Business Review: Q[X] [Year]
 Account: [Name]
 Reviewer: [Name]
 Date: [Date]

@@ -1,5 +1,6 @@
 # SOP – Migrate from Manual to Smart Bidding
 Created: 2026-02-04
+Updated: 2026-10-05
 
 Agent_Executable: No
 Category: Bidding
@@ -88,9 +89,9 @@ Before making any changes, document these metrics for the last 4 weeks (excludin
 | IS lost to rank | | Shows current competitiveness |
 | IS lost to budget | | Shows budget headroom |
 
-### 1.2 Identify conversion delay
+### 1.2 Identify conversion lag
 
-Check the bid strategy report or conversion columns for your average conversion delay. You will need this to:
+Check the bid strategy report or conversion columns for the `Average conversion delay` field, which is Google's label for conversion lag. You will need this to:
 
 - Determine how long to wait before evaluating results
 - Exclude incomplete data from performance comparisons
@@ -131,10 +132,10 @@ Define in advance when you would revert to manual bidding:
 | Criterion | Threshold | Action |
 |-----------|-----------|--------|
 | Cost exceeds 2x historical daily average for 3+ consecutive days | Budget protection | Reduce daily budget, do not revert strategy |
-| CPA exceeds 2x target after learning period ends | Sustained poor performance | Tighten target or revert |
+| CPA exceeds 2x target after the 7-14 day learning phase ends | Sustained poor performance | Tighten target or revert |
 | Conversions drop to near zero | Tracking issue or starvation | Check tracking first, then revert if tracking is fine |
 
-> ⚠️ **Do not revert during the learning period:** Volatility during the first two conversion cycles (See: [Smart Bidding Mechanics Reference](../references/Smart Bidding Mechanics Reference.md)) is normal. Only consider reverting if there are clear anomalies (tracking breaks, extreme cost spikes beyond 2x daily budget).
+> ⚠️ **Do not revert while either waiting clock is still running:** Two clocks start at the switch, the 7-14 day learning phase and the 1-2 conversion cycle post-change wait, and the longer one governs (See: [Smart Bidding Mechanics Reference](../references/Smart Bidding Mechanics Reference.md)). Volatility inside that window is normal. Only consider reverting if there are clear anomalies (tracking breaks, extreme cost spikes beyond 2x daily budget).
 
 ---
 
@@ -151,7 +152,7 @@ Define in advance when you would revert to manual bidding:
 
 ### 3.2 Campaign experiment method
 
-1. Go to campaign > Experiments
+1. Go to Campaigns > Experiments
 2. Create a new experiment
 3. Set the experiment variable: bid strategy only
 4. Set the experiment strategy to your target strategy with initial target
@@ -172,16 +173,18 @@ Define in advance when you would revert to manual bidding:
 Send a brief communication covering:
 
 - What changed and why
-- Expected learning period (two conversion cycles)
-- What to expect during learning (fluctuating CPAs, inconsistent volume)
-- When the first evaluation will happen (after learning period + one conversion cycle)
+- Two waiting clocks that both start at the switch: a 7-14 day learning phase and a post-change wait of 1-2 conversion cycles
+- What to expect during that window (fluctuating CPAs, inconsistent volume)
+- When the first evaluation will happen (once the longer of the two clocks has run)
 - Clear instruction: no panic, no requests to revert during learning
 
 ---
 
 ## Phase 4️⃣: Manage learning and stabilize
 
-### 4.1 Learning period (Days 1-14)
+### 4.1 Hold the campaign until both clocks have run
+
+Run the 7-14 day learning phase and the 1-2 conversion cycle post-change wait from the switch date. The longer one governs (See: [Smart Bidding Mechanics Reference](../references/Smart Bidding Mechanics Reference.md)).
 
 | Do | Do not |
 |----|--------|
@@ -192,11 +195,11 @@ Send a brief communication covering:
 
 ### 4.2 Post-learning evaluation
 
-After the learning period (two conversion cycles) plus one conversion cycle:
+Once both clocks from 4.1 have run:
 
 1. Pull performance data with these filters:
-   - Exclude the learning period (two conversion cycles)
-   - Exclude last [conversion delay] days (incomplete attribution)
+   - Exclude the first 7-14 days (the learning phase)
+   - Exclude last [conversion lag] days (incomplete attribution)
 2. Compare to Phase 1 baseline
 
 | Metric | Compare to baseline | Interpretation |
@@ -219,7 +222,7 @@ After the learning period (two conversion cycles) plus one conversion cycle:
 After 30+ days with statistical significance above 80%:
 
 1. Compare experiment vs. original using conversion value as primary metric (for value strategies) or conversions (for volume strategies)
-2. Exclude learning period (first two conversion cycles) and conversion delay from analysis
+2. Exclude the first 7-14 days (the learning phase) and conversion lag from analysis
 3. If experiment wins: apply experiment
 4. If original wins: end experiment, keep original strategy
 
@@ -235,8 +238,8 @@ This SOP is complete when:
 
 - [ ] Baseline metrics documented before migration
 - [ ] Smart bidding strategy is active and configured correctly
-- [ ] Learning period has completed without interference
-- [ ] Post-learning evaluation performed (excluding learning period and conversion delay)
+- [ ] The 7-14 day learning phase completed without interference and 1-2 conversion cycles elapsed from the switch date
+- [ ] Post-learning evaluation performed (excluding the 7-14 day learning phase and conversion lag)
 - [ ] Performance is within acceptable range of baseline (or experiment applied)
 - [ ] Stakeholders briefed on results and next steps
 - [ ] Bid Strategy Health Checklist passes
@@ -271,11 +274,11 @@ A: Use a campaign experiment for high-stakes campaigns where you need statistica
 
 **Q: What if performance drops after the switch?**
 
-A: First, ensure the learning period is over and you are excluding conversion delay from your analysis. If performance is genuinely worse after a full evaluation, check the Bid Strategy Health Checklist troubleshooting table. Common causes: insufficient conversion volume, unrealistic targets, or tracking issues.
+A: First, ensure the learning period is over and you are excluding conversion lag from your analysis. If performance is genuinely worse after a full evaluation, check the Bid Strategy Health Checklist troubleshooting table. Common causes: insufficient conversion volume, unrealistic targets, or tracking issues.
 
 **Q: How long should I wait before concluding the migration was successful?**
 
-A: At minimum, wait one full learning period (two conversion cycles) plus two full conversion cycles. For most accounts, this means 3-6 weeks of data before making a definitive conclusion.
+A: Wait until the longer of the two clocks has run: the 7-14 day learning phase, and 1-2 conversion cycles from the switch date.
 
 ---
 
@@ -307,18 +310,18 @@ A: At minimum, wait one full learning period (two conversion cycles) plus two fu
 
 | Failure | Why it happens | How to avoid |
 |---------|----------------|--------------|
-| Reverting during learning period | Stakeholder panic from volatile metrics | Brief stakeholders before migration, set clear evaluation timeline |
+| Reverting before both waiting clocks have run | Stakeholder panic from volatile metrics | Brief stakeholders before migration, set clear evaluation timeline |
 | Setting initial target too tight | Using calculated target instead of current average | Start generous, tighten gradually |
 | Forgetting to document baseline | Cannot compare pre/post performance | Complete Phase 1 before any changes |
-| Not excluding conversion delay from evaluation | Incomplete data makes performance look worse | Always exclude last [conversion delay] days |
+| Not excluding conversion lag from evaluation | Incomplete data makes performance look worse | Always exclude last [conversion lag] days |
 | Making multiple changes alongside the strategy switch | Cannot isolate the strategy's impact | Only change the bid strategy, nothing else |
 
 ---
 
 ### Version details
 
-- **Version:** 1.0
-- **Last Updated:** February 2026
+- **Version:** 4.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

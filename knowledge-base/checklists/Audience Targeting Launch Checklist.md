@@ -12,7 +12,7 @@ Pillar: 7
 
 ## Purpose
 
-Validates that Display, Video, and Demand Gen audience targeting is correctly configured before launch or after significant targeting changes.
+Validates that Video and Demand Gen audience targeting is correctly configured before launch or after significant targeting changes.
 
 ---
 
@@ -25,7 +25,7 @@ This checklist confirms:
 - Expansion features are configured per campaign type
 - Audience sizes meet minimum thresholds
 - Lookalike segments are properly seeded (Demand Gen)
-- Content targeting complements audience targeting (Display/Video)
+- Content targeting complements audience targeting (Video, Demand Gen)
 - Exclusion lists protect against waste and overlap
 
 This checklist does **NOT:**
@@ -42,7 +42,7 @@ This checklist does **NOT:**
 Run this checklist:
 
 - After completing [SOP – Set Up Audience Targeting](../sops/SOP – Set Up Audience Targeting.md)
-- Before launching a new Display, Video, or Demand Gen campaign
+- Before launching a new Video or Demand Gen campaign
 - After modifying audience targeting structure in any campaign
 - During campaign audits to verify targeting foundation
 
@@ -66,11 +66,11 @@ Run this checklist:
 
 ### Expansion features
 
-- [ ] Correct feature identified per campaign type: optimized targeting (Display, Video Sales/Leads/Traffic, Demand Gen) vs audience expansion (Video Consideration/Awareness)
-- [ ] Optimized targeting ON for conversion-focused prospecting campaigns
+- [ ] Correct feature identified per campaign type: optimized targeting (Demand Gen) vs audience expansion (Video reach, Video views)
+- [ ] Optimized targeting on Demand Gen prospecting is set deliberately, with the ON vs OFF comparison recorded
 - [ ] Optimized targeting OFF for remarketing campaigns
-- [ ] Audience expansion setting (Video consideration/awareness) matches reach vs precision goal
-- [ ] Demand Gen optimized targeting demographic behavior acknowledged (may serve beyond demographic selections when ON)
+- [ ] Audience expansion setting (Video reach, Video views) matches reach vs precision goal
+- [ ] Every Demand Gen campaign with optimized targeting ON has a documented decision accepting serving outside its demographic selections
 
 ### Audience size requirements
 
@@ -81,14 +81,14 @@ Run this checklist:
 ### Lookalike segments (Demand Gen only)
 
 - [ ] Seed list contains 1,000+ matched users
-- [ ] Seed list is high-quality (converters or high-value customers, not all visitors)
+- [ ] Seed list contains converters or high-value customers only
 - [ ] Reach setting matches campaign goal (Narrow for efficiency, Balanced for default, Broad for scale)
 - [ ] Lookalike is built from a segment that has been active for 30+ days
 
-### Content targeting (Display/Video only)
+### Content targeting (Video, Demand Gen)
 
-- [ ] Content targeting complements audience targeting (if used)
-- [ ] AND logic between audiences and content is intentional (narrows reach significantly)
+- [ ] Content targeting, where used, is themed to the same product or service as the audience targeting
+- [ ] Combining audience and content targeting has a documented decision
 - [ ] Topic targeting is relevant to product/service category
 - [ ] Placement exclusions cover brand-unsafe categories
 
@@ -96,9 +96,9 @@ Run this checklist:
 
 - [ ] Recent converters excluded from remarketing (7-30 day window based on purchase cycle)
 - [ ] Existing customers excluded from new customer acquisition campaigns
-- [ ] Brand-unsafe content categories excluded (Display/Video)
+- [ ] Brand-unsafe content categories excluded (Video campaign level, Demand Gen account level)
 - [ ] Competitor brand terms excluded where relevant
-- [ ] Exclusion lists are current and refreshed
+- [ ] Every exclusion list was refreshed within the last 30 days
 
 ---
 
@@ -108,7 +108,7 @@ Run this checklist:
 |----------|-------------|
 | [Audience Segment Catalog](../catalogs/Audience Segment Catalog.md) | Segment type options and combined segment patterns |
 | [Audience Targeting Reference](../references/Audience Targeting Reference.md) | Targeting mode mechanics, expansion features, size requirements |
-| [Content Targeting Reference](../references/Content Targeting Reference.md) | Content targeting specs for Display/Video |
+| [Content Targeting Reference](../references/Content Targeting Reference.md) | Content targeting specs for Video and Demand Gen |
 | [SOP – Set Up Audience Targeting](../sops/SOP – Set Up Audience Targeting.md) | Execution procedure validated by this checklist |
 | [Audience Targeting Health Checklist](../checklists/Audience Targeting Health Checklist.md) | Ongoing performance validation (run after 30+ days of data) |
 

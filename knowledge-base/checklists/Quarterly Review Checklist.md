@@ -35,7 +35,7 @@ This checklist does **NOT**:
 - Replace daily or weekly monitoring (See: [Account Health Checklist](../checklists/Account Health Checklist.md))
 - Provide step-by-step procedures (See: [SOP – Run a Quarterly Business Review](../sops/SOP – Run a Quarterly Business Review.md))
 - Cover operational campaign-level settings drift (monthly review scope)
-- Repeat the monthly checklist (builds on [Monthly Performance Review Checklist](../checklists/Monthly Performance Review Checklist.md), which covers operational checks. This checklist covers quarterly-specific strategic items only.)
+- Repeat the monthly checklist: [Monthly Performance Review Checklist](../checklists/Monthly Performance Review Checklist.md) covers the operational checks, this checklist covers quarterly-specific strategic items only
 
 > ↪️ **Strategic scope:** This checklist is about questioning the goals, structure, and strategy themselves, not re-running operational checks with a 90-day window. Monthly reviews handle operational depth. Quarterly reviews handle strategic direction.
 
@@ -63,59 +63,59 @@ Run this checklist:
 
 ### Goal and target reassessment `[Layer 3️⃣]`
 
-- [ ] Goal equation reviewed: growth targets, efficiency targets, and revenue/profit goals still reflect business reality
-- [ ] Annual trajectory assessed: projected year-end performance vs. annual targets
-- [ ] Business context changes identified: pricing changes, capacity shifts, new products, seasonal factors
-- [ ] CPA/ROAS targets validated against current unit economics (not just last quarter's actuals)
-- [ ] Growth vs. efficiency balance confirmed with stakeholders: are we scaling, optimizing, or maintaining?
+- [ ] Growth targets, efficiency targets and revenue/profit goals are confirmed or restated for the coming quarter
+- [ ] Projected year-end performance is compared against annual targets
+- [ ] Business context changes are listed: pricing changes, capacity shifts, new products, seasonal factors
+- [ ] CPA/ROAS targets are recalculated from current unit economics
+- [ ] Stakeholders have confirmed in writing whether the quarter is scaling, optimizing or maintaining
 
 ### Account structure review `[Layer 3️⃣]`
 
-- [ ] Campaign structure assessed for strategic fit: does the structure serve the current strategy?
-- [ ] Consolidation opportunities identified: campaigns or ad groups that should merge for better signal density
-- [ ] Expansion opportunities identified: segments that warrant dedicated campaigns
-- [ ] Volume distribution across campaigns reviewed: is spend flowing to the highest-value segments?
-- [ ] Orphaned or dormant entities identified: campaigns, ad groups, or assets running without active oversight
+- [ ] Campaign structure is confirmed to serve the current strategy, or a restructure is documented
+- [ ] Every consolidation candidate is listed: campaigns or ad groups that should merge for better signal density
+- [ ] Every expansion candidate is listed: segments that warrant dedicated campaigns
+- [ ] Spend share per campaign is compared against value share per campaign
+- [ ] Every orphaned or dormant campaign, ad group or asset is listed with a keep-or-remove decision
 
 ### Channel and budget allocation `[Layer 3️⃣]`
 
-- [ ] Budget split across campaign types reviewed (Search, Shopping, PMax, Display, Video)
-- [ ] Channel weighting assessed against performance data: is each channel earning its budget share?
-- [ ] New channel opportunities evaluated: campaign types not yet tested that could serve the strategy
-- [ ] Budget ceiling reviewed with stakeholders: is the current budget appropriate for the opportunity?
-- [ ] Budget pacing reviewed at quarterly level: total quarterly spend vs. plan
+- [ ] Budget split across campaign types is recorded (Search, Shopping, PMax, Display, Video)
+- [ ] Every channel's budget share is compared against its contribution share
+- [ ] Every untested campaign type that fits the strategy is listed with a test-or-skip decision
+- [ ] Stakeholders have confirmed the budget ceiling for the coming quarter
+- [ ] Total quarterly spend is compared against quarterly plan
 
 ### Competitive strategy `[Layer 3️⃣]`
 
-- [ ] 3-month auction insights trends reviewed (not single-month snapshots)
-- [ ] Market position shifts identified: gaining or losing ground against key competitors
-- [ ] New competitor entries or exits noted and impact assessed
-- [ ] Competitive response plan documented for significant shifts
-- [ ] Pricing and offer competitiveness reviewed against market (ecommerce: Merchant Center price benchmarks)
+- [ ] 3-month auction insights trends are recorded
+- [ ] Market position against each key competitor is recorded as gaining, holding or losing
+- [ ] Every competitor entry or exit this quarter is listed with its impact
+- [ ] Every position shift larger than 10 percentage points has a documented response
+- [ ] Pricing and offer competitiveness is compared against market (ecommerce: Merchant Center price benchmarks)
 
 ### Technology and measurement stack `[Layer 1️⃣ strategic]`
 
-- [ ] Conversion tracking setup assessed: still appropriate for current business model and goals?
-- [ ] Attribution model fit reviewed: does the current model reflect the actual buying journey?
-- [ ] Automation and tooling reviewed: scripts, rules, third-party tools still serving the strategy?
-- [ ] New Google Ads features evaluated: relevant betas or new capabilities worth testing next quarter?
-- [ ] Data quality assessed: enhanced conversions, offline imports, consent mode all functioning correctly?
+- [ ] Conversion tracking setup is confirmed to match the current business model and goals, or a change is documented
+- [ ] Attribution model is confirmed to match the actual buying journey, or a change is documented
+- [ ] Every script, rule and third-party tool has a keep-or-retire decision
+- [ ] Every relevant new Google Ads feature or beta has a test-or-skip decision
+- [ ] Enhanced conversions, offline imports and consent mode all report healthy status
 
 ### Constraint and sprint retrospective `[Layer 3️⃣]`
 
-- [ ] Constraints identified this quarter listed with resolution status
-- [ ] Sprint velocity assessed: how many constraints were identified, addressed, and resolved?
-- [ ] Current active constraint validated: is it still the true bottleneck, or has it shifted?
-- [ ] Backlog reviewed and reprioritized based on quarter's learnings
-- [ ] Recurring patterns identified: constraints that keep resurfacing indicate structural issues
+- [ ] Every constraint identified this quarter is listed with its resolution status
+- [ ] Counts of constraints identified, addressed and resolved are recorded
+- [ ] The current active constraint is confirmed as the binding one, or replaced
+- [ ] The backlog is reprioritized against this quarter's learnings
+- [ ] Every constraint that resurfaced this quarter is listed
 
 ### Next quarter roadmap `[Layer 3️⃣]`
 
-- [ ] Top 3 priorities for next quarter defined and documented
-- [ ] Testing roadmap established: experiments planned with clear hypotheses
-- [ ] Budget proposals prepared for stakeholder approval (if changes needed)
-- [ ] Stakeholder alignment confirmed: agreement on goals, priorities, and constraint focus
-- [ ] QBR document completed with performance summary, retrospective, and forward plan
+- [ ] Top 3 priorities for next quarter are documented
+- [ ] Every planned experiment has a written hypothesis
+- [ ] Budget proposals are prepared for stakeholder approval (if changes needed)
+- [ ] Stakeholders have confirmed goals, priorities and constraint focus
+- [ ] QBR document contains performance summary, retrospective and forward plan
 
 ---
 

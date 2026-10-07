@@ -13,7 +13,7 @@ Pillar: 8
 
 ## Purpose
 
-Documents image ad specifications, quality guidelines, and technical requirements for Display, Demand Gen, and Performance Max campaigns.
+Documents image ad specifications, quality guidelines, and technical requirements for Demand Gen and Performance Max campaigns.
 
 ---
 
@@ -36,14 +36,6 @@ Documents image ad specifications, quality guidelines, and technical requirement
 ---
 
 ## Quick reference: Image specifications
-
-### Display campaigns
-
-| Aspect Ratio | Dimensions (px) | Priority | Use case |
-| --- | --- | --- | --- |
-| Landscape (1.91:1) | 1200 × 628 | Required | Standard display placements |
-| Square (1:1) | 1200 × 1200 | Required | Native, social-style placements |
-| Portrait (9:16) | 900 x 1600 | Recommended | Mobile-first placements |
 
 ### Demand Gen campaigns
 
@@ -69,7 +61,6 @@ Documents image ad specifications, quality guidelines, and technical requirement
 
 | Campaign Type | Minimum | Recommended | Maximum |
 | --- | --- | --- | --- |
-| Display | 1 per ratio | 3-5 per ratio | 15 total |
 | Demand Gen | 3 total | 5-10 total | 20 total |
 | Performance Max | 3 total | 10-15 total | 20 total |
 
@@ -125,7 +116,7 @@ Documents image ad specifications, quality guidelines, and technical requirement
 
 ### The rule of thirds
 
-Divide image into 9 equal parts with 2 horizontal and 2 vertical lines. Place key elements along these lines or at their intersections.
+Two horizontal and two vertical lines divide the image into 9 equal parts. Key elements sit along those lines or at their intersections.
 
 ```
 ┌─────┬─────┬─────┐
@@ -144,6 +135,7 @@ Divide image into 9 equal parts with 2 horizontal and 2 vertical lines. Place ke
 | Center 80% | Safe for critical content (product, faces, text) |
 | Outer 10% | May be cropped on some placements |
 | Corners | Avoid critical elements (overlay buttons may appear) |
+| AI content disclosure label | Sits clear of the very corners and edges: Google gives no guarantee a label survives cropping or trimming |
 
 ### Composition principles
 
@@ -152,7 +144,7 @@ Divide image into 9 equal parts with 2 horizontal and 2 vertical lines. Place ke
 | Single focal point | One clear subject, not competing elements |
 | High contrast | Subject stands out from background |
 | Minimal text | Let image do the work (text in headlines instead) |
-| Clean backgrounds | Simple > busy; solid colors or subtle patterns |
+| Clean backgrounds | Simple beats busy: solid colors or subtle patterns |
 | Real photography | Authentic images outperform stock |
 | People when relevant | Faces drive engagement (when appropriate) |
 
@@ -183,8 +175,8 @@ Google recommends **minimal or no text** on images. Text-heavy images:
 | --- | --- |
 | Coverage | Max 20% of image area |
 | Legibility | Large, high-contrast, readable at small sizes |
-| Placement | Don't obscure key visual elements |
-| Redundancy | Don't duplicate headline/description text |
+| Placement | Clear of the key visual elements |
+| Redundancy | Not a repeat of the headline or description text |
 
 ---
 
@@ -279,8 +271,9 @@ Google recommends **minimal or no text** on images. Text-heavy images:
 | Generic stock photos | Inauthentic, low engagement | Use real/custom photography |
 | Logo too small | Not visible at small sizes | Test at 50×50 px |
 | Critical content at edges | Cropped on some placements | Keep key elements in center 80% |
+| AI content disclosure label in a corner | No guarantee the label survives cropping or trimming | Place the label clear of the very corners and edges |
 | Inconsistent branding | Confusing, unprofessional | Maintain visual consistency |
-| Image enhancements enabled | Quality degradation | Disable — create all sizes yourself |
+| Image enhancements enabled | Quality degradation | Disable, create all sizes yourself |
 
 ---
 
@@ -288,10 +281,6 @@ Google recommends **minimal or no text** on images. Text-heavy images:
 
 ```
 Which campaign type?
-│
-├─ Display
-│  ├─ REQUIRED: Landscape (1.91:1) + Square (1:1)
-│  └─ RECOMMENDED: Add Portrait (9:16)
 │
 ├─ Demand Gen
 │  ├─ REQUIRED: Landscape (1.91:1) + Square (1:1)
@@ -311,19 +300,8 @@ Which campaign type?
 | [Image Creative Quality Checklist](../checklists/Image Creative Quality Checklist.md) | Validates images against these standards |
 | [Asset Optimization Control Guidelines](../guidelines/Asset Optimization Control Guidelines.md) | Settings for image enhancement/auto-generation |
 | [Video Creative Reference](../references/Video Creative Reference.md) | Parallel reference for video assets |
-| SOP — Display Campaign Structure | Display image requirements |
-| SOP — Demand Gen Campaign Structure | Demand Gen image requirements |
-| SOP — Performance Max Campaign Structure | PMax image requirements |
-
----
-
-## Resources
-
-| Resource | Link |
-| --- | --- |
-| Image ad specs (Google Ads Help) | [About image ads](https://support.google.com/google-ads/answer/6363750) |
-| Asset requirements by campaign | [Google Ads Help](https://support.google.com/google-ads/answer/10724833) |
-| Performance Max asset guide | [Create assets for PMax](https://support.google.com/google-ads/answer/13257498) |
+| [SOP – Launch a Demand Gen Campaign](../sops/SOP – Launch a Demand Gen Campaign.md) | Demand Gen image requirements |
+| [SOP – Launch PMax Full Assets Ecommerce Campaign](../sops/SOP – Launch PMax Full Assets Ecommerce Campaign.md) | PMax image requirements |
 
 ---
 

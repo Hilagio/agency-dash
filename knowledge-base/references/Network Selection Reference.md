@@ -1,5 +1,6 @@
 # Network Selection Reference
 Created: 2026-02-05
+Updated: 2026-06-29
 
 Support_ID: REFERENCE_39
 Status: Done
@@ -26,7 +27,7 @@ Documents network selection options and recommended settings for Search, Shoppin
 
 **This reference does NOT:**
 
-- Cover PMax network behavior (automated, cannot control)
+- Cover PMax asset, audience, or bidding configuration (See: [PMax Configuration Guidelines](../guidelines/PMax Configuration Guidelines.md)). PMax network selection is summarized in the PMax section below
 - Explain campaign creation (See: campaign launch SOPs)
 - Cover Display or Demand Gen networks (automated within those campaign types)
 
@@ -62,7 +63,7 @@ Search Partners delivers ads on non-Google search engines and partner sites (AOL
 
 **Why "Test" is the recommendation:**
 
-Search Partners can work great or perform poorly (roughly 50/50 chance). Performance is highly dependent on vertical. Always test and closely monitor after a couple of weeks/months.
+Search Partners performance splits roughly evenly between strong and poor, and the split is driven by vertical. The setting is therefore tested and monitored by network segment rather than assumed either way.
 
 **Considerations:**
 
@@ -71,11 +72,9 @@ Search Partners can work great or perform poorly (roughly 50/50 chance). Perform
 - No control over which partner sites show your ads
 - Performance data is aggregated, not site-specific
 
-**How to monitor when enabled:**
+**How performance is read when enabled:**
 
-1. Go to campaign → Segment → Network (with search partners)
-2. Compare performance metrics between Google Search and Search Partners
-3. If Search Partners CPA/ROAS is unacceptable, disable
+The Network (with search partners) segment splits campaign metrics between Google Search and Search Partners. An unacceptable Search Partners CPA or ROAS in that split is the disable signal.
 
 > ⚠️ **Search Partners performance cannot be optimized independently:** You accept aggregate performance or disable entirely.
 
@@ -85,7 +84,7 @@ Search Partners can work great or perform poorly (roughly 50/50 chance). Perform
 |---------|----------------|
 | **Display Network** | **OFF** (always) |
 
-> ⚠️ **Display Network on Search campaigns is the #1 budget-wasting misconfiguration:** Google enables this by default. Verify it is OFF on every new Search campaign.
+> ⚠️ **Display Network on Search campaigns is the #1 budget-wasting misconfiguration.** Google enables it by default, which makes it a per-campaign verification point at launch.
 
 **Why this is critical:**
 
@@ -94,15 +93,9 @@ Search Partners can work great or perform poorly (roughly 50/50 chance). Perform
 - Users see banner ads instead of responding to search queries
 - Fundamentally different conversion behavior
 
-**What to do instead:**
+**Where Display reach belongs instead:**
 
-If you want Display reach, create a dedicated Display campaign with:
-- Its own budget
-- Its own targeting
-- Its own bid strategy
-- Its own creative
-
-This keeps your Search budget focused on search intent.
+A separate Demand Gen campaign, with its own budget, targeting, bid strategy, and creative. Demand Gen serves the Google Display Network alongside YouTube, Discover, Gmail, and Maps, with a GDN-exclusive serving option for that inventory alone. The Search budget then stays on search intent.
 
 ---
 
@@ -122,13 +115,11 @@ Required for Shopping campaigns to serve product listings in Google Search resul
 |---------|----------------|
 | **Search Partners** | **Test** |
 
-Same recommendation as Search campaigns: can work great or perform poorly depending on vertical. Always test and monitor.
+Same position as Search campaigns: performance depends on vertical, so the setting is tested and monitored rather than assumed.
 
-**How to monitor:**
+**How performance is read:**
 
-1. Segment by network in reporting
-2. Compare Search vs Search Partners performance
-3. Disable if metrics are unacceptable
+The network segment in reporting splits Search from Search Partners. Unacceptable Search Partners metrics in that split are the disable signal.
 
 > 💡 **Display Network does NOT apply to Standard Shopping:** The only network option besides Search Network is Search Partners.
 
@@ -167,54 +158,50 @@ Video partners extends your video ads to third-party websites and apps in the Go
 - When seeking incremental reach at lower CPMs
 - With robust content exclusions in place
 
-**Monitoring when enabled:**
+**How performance is read when enabled:**
 
-1. Segment by network (Where ads showed)
-2. Compare YouTube vs Video Partners metrics
-3. Monitor placement report for low-quality sites
+The "Where ads showed" network segment separates YouTube from Video Partners, and the placement report surfaces the low-quality sites behind the partner numbers.
 
 ---
 
 ## PMax: network behavior
 
-PMax automatically serves across all Google surfaces. You cannot control network selection.
+PMax serves across all Google surfaces by default. You can opt out of two of them at the campaign level: the Search Partner Network and the Google Display Network. The rest stay automatic.
 
 | Surface | Control |
 |---------|---------|
 | Search | Automatic |
 | Shopping | Automatic |
-| Display | Automatic |
 | YouTube | Automatic |
 | Gmail | Automatic |
 | Discover | Automatic |
+| Search Partner Network | Selectable (on by default, can exclude) |
+| Display Network | Selectable (on by default, can exclude) |
 
 **What you can control in PMax:**
 
+- Search Partner Network and Display Network on/off (campaign level)
 - Brand exclusions (prevents brand queries)
 - Listing groups (which products)
 - Asset groups (creative by segment)
 - Audience signals (targeting guidance)
 
-You cannot disable specific networks in PMax.
+### Search Partner and Display network selection
 
----
+| Setting | Recommendation |
+|---------|----------------|
+| **Search Partner Network** | Leave on, test and monitor |
+| **Display Network** | Leave on, test and monitor |
 
-## Display campaigns: network behavior
+Both networks are on by default, which gives PMax full inventory to optimize across, and the channel split in reporting is where their contribution shows. A single network that is wildly out of line (high spend, near-zero conversions, unacceptable CPA/ROAS) and stays that way is excluded on its own, ahead of pausing the campaign. A pre-emptive disable removes inventory before any data exists on it.
 
-Display campaigns automatically serve across the Google Display Network. Network selection is not configurable in the same way as Search.
-
-**What you can control:**
-
-- Placements (specific sites/apps)
-- Topics (content categories)
-- Content exclusions (brand safety)
-- App exclusions (mobile apps vs web)
+> ⚠️ **A PMax network exclusion is a last-resort fix, not a setup step.** Excluding Display or Search Partners narrows where PMax can find conversions, which only pays off against clear, sustained underperformance.
 
 ---
 
 ## Demand Gen: network behavior
 
-Demand Gen serves across YouTube, Discover, Gmail, and GDN. While campaign-level network selection is automated, you can control channel selection at the **ad group level**.
+Demand Gen serves across YouTube, Discover, Gmail, Maps, and the GDN. While campaign-level network selection is automated, you can control channel selection at the **ad group level**.
 
 ### Default (campaign level)
 
@@ -223,6 +210,7 @@ Demand Gen serves across YouTube, Discover, Gmail, and GDN. While campaign-level
 | YouTube (in-stream, in-feed, Shorts) | ✅ Included |
 | Discover feed | ✅ Included |
 | Gmail | ✅ Included |
+| Maps | ✅ Included |
 | GDN | ✅ Included |
 
 ### Ad group-level channel selection
@@ -239,14 +227,11 @@ At the ad group level, you can select specific channels:
 | **Gmail** | Gmail promotions tab |
 | **GDN** | Google Display Network |
 
-**How to configure:**
+**Where the control sits:**
 
-1. Create or edit an ad group
-2. Find channel selection settings
-3. Choose "All Google channels" or select specific combinations
-4. Different ad groups can target different channel combinations
+Channel selection lives in ad group settings, offering "All Google channels" or a specific combination. Ad groups in the same campaign can carry different combinations.
 
-> 💡 **Use ad group-level channel selection for A/B testing:** Create separate ad groups targeting different channels to compare performance.
+> 💡 **Ad group-level channel selection doubles as a test surface.** Separate ad groups targeting different channels make the per-channel performance comparison direct.
 
 ---
 
@@ -260,11 +245,7 @@ After creating any Search or Shopping campaign:
 | Search Partners | Test (monitor by segment) |
 | Display Network | OFF |
 
-**How to verify:**
-
-1. Go to campaign settings
-2. Click "Networks"
-3. Confirm each setting matches expectations
+These settings are read from the Networks section of campaign settings.
 
 ---
 
@@ -275,7 +256,7 @@ After creating any Search or Shopping campaign:
 | Display Network ON in Search campaigns | Budget silently diverted to Display | Verify OFF on every new campaign |
 | Search Partners ON without monitoring | Uncontrolled spend on lower-quality traffic | Turn OFF or actively monitor by segment |
 | Video Partners ON without content exclusions | Ads on low-quality placements | Add exclusions before enabling partners |
-| Assuming PMax network control exists | Expecting to disable networks | Understand PMax serves everywhere automatically |
+| Disabling a PMax network without data | Narrows inventory, can suppress conversions | Leave Display and Search Partners on, monitor, exclude only on sustained wild underperformance |
 | Not segmenting reports by network | Missing performance differences | Always check network-level data |
 
 ---
@@ -293,8 +274,8 @@ After creating any Search or Shopping campaign:
 
 ## Version details
 
-- **Version:** 2.0
-- **Last Updated:** February 2026
+- **Version:** 4.0
+- **Last Updated:** June 2026
 - **Creator:** Bob Meijer
 
 ---

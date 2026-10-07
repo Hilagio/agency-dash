@@ -1,5 +1,6 @@
-﻿# Demand Gen Performance Reference
+# Demand Gen Performance Reference
 Created: 2026-02-14
+Updated: 2026-10-05
 
 Support_ID: REFERENCE_46
 Status: Done
@@ -28,9 +29,9 @@ Documents Demand Gen campaign performance benchmarks, attribution mechanics, aud
 
 **This reference does NOT:**
 
-- Provide step-by-step Demand Gen campaign setup (See: Demand Gen launch SOPs)
+- Provide step-by-step Demand Gen campaign setup (See: [SOP - Launch a Demand Gen Campaign](../sops/SOP – Launch a Demand Gen Campaign.md))
 - Cover frequency capping for Demand Gen (frequency capping is NOT available in Demand Gen, See: [Frequency Capping Reference](../references/Frequency Capping Reference.md))
-- Cover Display or Video campaign performance separately (See: [Placement Performance Reference](../references/Placement Performance Reference.md))
+- Cover GDN or Video placement performance separately (See: [Placement Performance Reference](../references/Placement Performance Reference.md))
 - Explain upper-funnel campaign structure decisions (See: [Upper Funnel Campaign Structure Mental Model](../mental-models/Upper Funnel Campaign Structure Mental Model.md))
 
 ---
@@ -44,8 +45,9 @@ Documents Demand Gen campaign performance benchmarks, attribution mechanics, aud
 | CVR | 1-5% | Search (3-10%), Display (0.5-2%) |
 | CPA | 1.5-2x Non-Branded Search tCPA | Set Demand Gen-specific targets, not Search targets |
 | ROAS | 50-70% of Non-Branded Search tROAS | Set Demand Gen-specific targets |
+| Daily budget floor | 10x target CPA, minimum €100/day on Maximize conversions | Below this, delivery is throttled |
 
-> ⚠️ **Do NOT compare Demand Gen performance to Search benchmarks:** Demand Gen is upper-funnel and has fundamentally different economics. A 1.5-2x higher CPA than Non-Branded Search is normal and expected. Set Demand Gen-specific performance targets from day one.
+> ⚠️ **Demand Gen benchmarks do not sit on the same scale as Search benchmarks.** Demand Gen is upper-funnel with fundamentally different economics, and a CPA 1.5-2x above Non-Branded Search is the normal state, not a failure condition.
 
 ---
 
@@ -64,14 +66,7 @@ The Optimized Targeting setting controls how audience targeting works in Demand 
 
 Optimized Targeting is enabled by default on all new Demand Gen campaigns.
 
-### When to enable vs disable
-
-| Campaign type | Expansion setting | Rationale |
-|---------------|-------------------|-----------|
-| Remarketing | OFF (always) | You want to reach specific past visitors only |
-| Prospecting (new campaign) | OFF (initial test) | Validate your defined audiences first |
-| Prospecting (scaling) | Test ON vs OFF | Monitor reach vs efficiency tradeoff |
-| Broad awareness | ON | Maximum reach is the goal |
+> ↪️ **Which scenarios take Optimized Targeting on and which take it off** is owned by the scenario table in [Audience Targeting Guidelines](../guidelines/Audience Targeting Guidelines.md).
 
 ---
 
@@ -87,15 +82,11 @@ Three settings influence the balance between reach and similarity to your seed a
 
 Seed quality is the primary control lever for lookalike performance. A high-quality seed list (converters, high-LTV customers) matters more than the reach setting, because Google uses the seed as a modeling signal regardless of which threshold you select.
 
-Advertisers who need strict audience boundaries can [opt out of suggestion mode](https://support.google.com/google-ads/contact/lookalike_suggestion_opt_out) and revert to hard targeting.
+Advertisers who need strict audience boundaries can opt out of suggestion mode (Google provides an opt-out form) and revert to hard targeting.
 
 ### Progression path
 
-1. Start with **Balanced** for the first 4-6 weeks
-2. If Balanced CPA is within target, test **Broad** in a separate ad group
-3. If Balanced CPA is too high, test **Narrow** to improve efficiency
-4. Never skip from Narrow directly to Broad
-5. Invest in seed quality at every stage: differences between settings are softer than they appear
+Balanced is the entry point, held for the first 4-6 weeks. From there the direction depends on the result: a CPA within target opens a Broad test in a separate ad group, a CPA above target points to Narrow. The path is stepwise, and Narrow to Broad in one move skips the reading that would justify it. At every stage the seed does more work than the setting: the differences between the three are softer than they appear.
 
 ---
 
@@ -106,7 +97,8 @@ Advertisers who need strict audience boundaries can [opt out of suggestion mode]
 | Requirement | Minimum | Recommended |
 |-------------|---------|-------------|
 | Seed audience size | 1,000 users | 5,000+ users |
-| Seed freshness | Updated within 90 days | Updated within 30 days |
+| Seed freshness, website-visitor segment | Updated within 90 days | Updated within 30 days |
+| Seed freshness, Customer Match list | Updated within 30 days | Updated within 30 days |
 | Seed quality | Active site visitors | Converters or high-value customers |
 
 ### Seed quality tiers
@@ -143,14 +135,16 @@ Every new Demand Gen campaign enters a learning period where Google's algorithm 
 | Bidding is less efficient | Cost per result is higher than steady state |
 | Creative testing is exploratory | Not all creatives get equal impressions |
 
-### Rules during learning period
+### What holds during the learning period
 
-- Do NOT change targeting, budgets, or bids during the learning period
-- Do NOT pause and restart the campaign (this resets learning)
-- Do NOT evaluate performance based on the first 7 days
-- Do NOT compare learning-period CPA to Search campaign CPA
-- Do monitor daily spend to ensure the campaign is delivering
-- Do check that ads are approved and serving
+| Constraint | Consequence of breaking it |
+|------------|----------------------------|
+| Targeting, budgets and bids stay unchanged | Every change restarts the calibration |
+| The campaign is not paused and restarted | A restart resets learning entirely |
+| Performance is not read from the first 7 days | The data is exploratory, not representative |
+| Learning-period CPA is not compared to Search CPA | Two different funnels at two different maturities |
+
+Two things remain readable during learning: daily spend, which shows whether the campaign is delivering at all, and ad approval status.
 
 ### After learning ends
 
@@ -180,12 +174,16 @@ View-through conversions (VTCs) measure users who saw your ad but did not click,
 | Identifying high-impact creative and audiences | Inflating Demand Gen performance numbers |
 | Budget allocation discussions | Replacing click-through as the primary metric |
 
+> ⚠️ **View-through conversion optimization is a trap for performance campaigns.** The toggle lets Smart Bidding optimize toward view-through conversions across YouTube, Display and the Discover Feed, and every new Demand Gen campaign starts with it ON. Only video assets are eligible for it. Google states it does not directly measure incrementality. On any performance or acquisition campaign, switch it OFF at launch, because it inflates apparent results and degrades real CPA accountability. The only case for it is a pure brand-awareness campaign where view-through is the explicit goal.
+
 ### Reporting view-through conversions
 
-- Always report VTCs separately from click-through conversions
-- Label VTCs clearly in dashboards ("View-through" not "Total conversions")
-- Present VTCs as an "influence metric" to stakeholders
-- Use a blended metric if needed: click-through conversions + (VTCs x discount factor of 0.3-0.5)
+| Convention | Detail |
+|------------|--------|
+| Separate columns | VTCs never sit inside the click-through conversion total |
+| Explicit labelling | "View-through", never "Total conversions" |
+| Framing | An influence metric, not a performance metric |
+| Blended figure, where one is needed | Click-through conversions + (VTCs x a discount factor of 0.3-0.5) |
 
 ---
 
@@ -197,10 +195,11 @@ View-through conversions (VTCs) measure users who saw your ad but did not click,
 | Discover | Intent-rich browsing context | Medium | Medium |
 | Gmail | Direct inbox placement | Lowest | Lowest reach |
 | GDN (within Demand Gen) | Broad reach, retargeting | Low-medium | High |
+| Maps | Local intent, proximity to physical locations | Medium | Medium-low |
 
 ### Channel control
 
-You can select specific channels at the ad group level. Available channels: YouTube in-stream, YouTube in-feed, YouTube Shorts, Discover, Gmail, and GDN. Use separate ad groups per channel combination for clearer performance data.
+Channels are selectable at ad group level: YouTube in-stream, YouTube in-feed, YouTube Shorts, Discover, Gmail, GDN, and Maps. Because the selection is per ad group, one ad group per channel combination is what makes channel performance separable at all.
 
 | Approach | Setup | Best for |
 |----------|-------|----------|
@@ -261,20 +260,29 @@ The same standards apply as Shopping campaigns:
 | Prices | Accurate, matches landing page price |
 | Availability | Up to date, no "out of stock" products showing |
 | Product descriptions | Complete, highlight key selling points |
+| Minimum inventory | At least 4 approved, in-stock products across at least 4 Group IDs |
 
 ### DPA campaign structure
 
 | Approach | Setup | Best for |
 |----------|-------|----------|
 | DPA remarketing | Feed-enabled Demand Gen + past visitor audiences | Recovering abandoned browsers/carts |
-| DPA prospecting | Feed-enabled Demand Gen + lookalike/in-market audiences | New customer acquisition at scale |
+| DPA prospecting | Feed-enabled Demand Gen + lookalike/in-market audiences | Reaching buyers new to the brand, at scale |
 | Hybrid | Feed-enabled Demand Gen + both audience types in separate ad groups | Full-funnel within one campaign |
+
+> ⚠️ **"New customer acquisition" is also the name of a goal setting.** Reaching new customers is the business purpose of the prospecting row above. The Google Ads new customer acquisition goal is a separate campaign setting, and it cannot be combined with Lookalike segments.
+
+> ⚠️ **Inventory depth is a serving gate.** Product formats stop serving when approved in-stock inventory drops below 4 products across 4 Group IDs. Stock movement alone can trip this, so re-check it after feed changes rather than only at launch.
 
 ### DPA limitations
 
 - You cannot select specific products to show in ads (Google selects dynamically)
 - Feed-enabled campaigns cannot also run non-feed creative in the same ad group
 - DPA creatives inherit feed data: fix feed issues to fix ad quality
+
+### Checkout links
+
+Checkout links let users move toward checkout directly from the ad. They depend on the same Merchant Center feed and feed quality standards as DPA, so feed accuracy on price and availability is what determines whether the path works.
 
 ---
 
@@ -291,7 +299,7 @@ Starting a new Demand Gen campaign?
     |   +-- Set CPM or Maximize Conversions bid
     |   +-- Expect highest CPAs, evaluate on reach metrics
     |
-    +-- New customer acquisition (prospecting)
+    +-- Prospecting for buyers new to the brand
     |   +-- Use lookalike audiences (start Balanced, focus on seed quality)
     |   +-- Disable Optimized Targeting initially
     |   +-- Match creative to active channels (video for YouTube, images for Discover/Gmail/GDN)
@@ -336,14 +344,15 @@ Starting a new Demand Gen campaign?
 | [Upper Funnel Campaign Structure Mental Model](../mental-models/Upper Funnel Campaign Structure Mental Model.md) | Framework: strategic context for Demand Gen campaigns |
 | [Frequency Capping Reference](../references/Frequency Capping Reference.md) | Related: frequency capping is NOT available in Demand Gen |
 | [Placement Performance Reference](../references/Placement Performance Reference.md) | Companion: channel and placement performance data |
-| [Upper Funnel Campaign Structure Mental Model](../mental-models/Upper Funnel Campaign Structure Mental Model.md) | Framework: where Demand Gen fits in campaign structure |
+| [Audience Targeting Guidelines](../guidelines/Audience Targeting Guidelines.md) | Guideline: owns the Optimized Targeting scenario table |
+| [SOP - Launch a Demand Gen Campaign](../sops/SOP – Launch a Demand Gen Campaign.md) | Execution: Demand Gen campaign setup |
 
 ---
 
 ## Version details
 
-- **Version:** 3.0
-- **Last Updated:** March 2026
+- **Version:** 6.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

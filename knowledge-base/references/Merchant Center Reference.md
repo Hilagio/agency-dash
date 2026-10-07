@@ -1,5 +1,6 @@
 # Merchant Center Reference
 Created: 2026-02-04
+Updated: 2026-10-05
 
 Support_ID: REFERENCE_13
 Status: Done
@@ -42,7 +43,7 @@ This reference does **not:**
 | **Shipping settings** | Delivery time, cost | Affects ranking and competitiveness |
 | **Return policy** | Return window, cost | Required for approval, affects ranking |
 
-> 💡 Merchant Center is the missing link between your webshop and Google Ads. Without proper configuration, even perfect feeds cannot power Shopping campaigns.
+> 💡 **Merchant Center is the link between the webshop and Google Ads.** Without proper configuration, even a perfect feed cannot power Shopping campaigns.
 
 ---
 
@@ -92,6 +93,8 @@ This reference does **not:**
 
 > ⚠️ **Visibility vs Status:** You control visibility (show/hide products). Google controls status (approved/not approved). A product must be both visible AND approved to serve.
 
+> 💡 **Archiving removes a product from the product list, diagnostics, and serving while keeping its data.** Use archive for long-term hiding and the pause attribute (Edit dropdown) for temporary pauses. Products archived in the UI are restorable only in the UI, not via a data source or the Merchant API.
+
 ### Common disapproval reasons
 
 | **Category** | **Examples** | **Resolution** |
@@ -115,14 +118,14 @@ This reference does **not:**
 | **Standalone use** | Yes | No: must link to primary |
 | **Typical use** | Full product catalog | Custom labels, price overrides, Labelizer |
 
-> 💡 Google recommends submitting all products in a single primary data source. Use `excluded_destination` to exclude products rather than separate feeds.
+> 💡 **One primary data source per catalog.** Google recommends submitting all products in a single primary data source, with `excluded_destination` rather than separate feeds as the exclusion mechanism.
 
 ### Upload methods
 
 | **Method** | **Best for** | **Automation** | **Scalability** | **Recommendation** |
 |------------|--------------|----------------|-----------------|-------------------|
 | **Scheduled file fetch** | Most retailers | High | High | S-tier: Preferred method |
-| **Content API** | Large/complex catalogs, real-time updates | High | High | A-tier: For frequent changes |
+| **Merchant API** | Large/complex catalogs, real-time updates | High | High | A-tier: For frequent changes |
 | **Google Sheets** | Small catalogs, manual control | Medium | Low | B-tier: Simple setup |
 | **Automated (website crawl)** | Basic setup, low maintenance | High | Medium | C-tier: Lagging, inaccurate |
 | **Manual product editor** | Handful of products | None | Very low | D-tier: Last resort only |
@@ -134,11 +137,13 @@ This reference does **not:**
 - Works with multiple channels beyond Google
 - Time-efficient with high return on effort
 
-**Content API advantages:**
+**Merchant API advantages:**
 - Real-time synchronization
 - Efficient for large, complex catalogs
 - Frequent updates without file uploads
 - Programmatic management
+
+> ⚠️ **The Merchant API is the programmatic feed interface.** Most retailers never touch it directly: a Feed Management Tool (Channable, ProductHero, DataFeedWatch) or a platform integration handles the connection.
 
 ### Creating a data source
 
@@ -162,6 +167,8 @@ This reference does **not:**
 | **Labelizer integration** | Performance-based labels |
 | **Regional pricing** | `id`, `region_id`, `price`, `availability` |
 
+> ⚠️ **Rules outlive the source they reference.** A supplemental data source cannot be removed while an attribute rule in the primary data source still references it, so those rules clear from the primary source's Attribute rules tab first.
+
 ---
 
 ## Automatic item updates
@@ -182,7 +189,7 @@ This reference does **not:**
 3. Updates product data in Merchant Center
 4. Prevents mismatches between feed and site
 
-> ⚠️ Automations are not a replacement for regular feed updates. They fix temporary problems for a small percentage of products. Continue updating product data frequently.
+> ⚠️ **Automations are not a replacement for regular feed updates.** They correct temporary problems on a small percentage of products, and the underlying product data still needs frequent updates. A product whose price or availability changes more than once per day sits outside what automations cover: a detected mismatch can get it disapproved instead of updated.
 
 ### Schema.org mapping
 
@@ -192,11 +199,11 @@ This reference does **not:**
 | `availability` | `availability` (InStock, OutOfStock, PreOrder) |
 | `condition` | `itemCondition` (NewCondition, UsedCondition, RefurbishedCondition) |
 
-### Enabling automations
+### Where automations are configured
 
-1. Go to **Products** > **Automations** tab
-2. Select specific automation to configure
-3. Toggle updates **on** or **off** per attribute
+The Automations tab under Products holds a per-attribute on/off toggle for each available automation.
+
+> ↪️ **For the configuration sequence:** See [SOP – Set Up and Optimize Product Feed](../sops/SOP – Set Up and Optimize Product Feed.md).
 
 ---
 
@@ -221,17 +228,20 @@ Attribute rules transform product data within Merchant Center without changing y
 ### Setting up attribute rules
 
 1. Go to **Settings** > **Data sources**
-2. Select a product source
+2. Select a primary product source
 3. Click **Attribute rules** tab
 4. Click **Add attribute rule** and select attribute
 5. Configure rule operations
 6. Click **Save as draft**
-7. Click **Test rules** to preview
-8. Click **Apply changes** to activate
+7. Click **Test rules** and wait 10 to 20 minutes for the report to generate
+8. Click **View test results** and confirm the rules do what you intended
+9. Click **Apply changes** to activate
+
+> 💡 **Attribute rules are scoped to a primary data source.** Rules are configured, tested and previewed from one, so with no primary source selected the tab has nothing to work on. **Show preview** on a saved draft gives an instant per-product check ahead of the full test run.
 
 ### Conditions
 
-Apply rules only to products meeting specific criteria:
+Conditions narrow a rule to products meeting specific criteria:
 
 | **Operator** | **Use** |
 |--------------|---------|
@@ -241,11 +251,11 @@ Apply rules only to products meeting specific criteria:
 | **AND** | Both conditions must be true |
 | **OR** | Either condition can be true |
 
-> 💡 Rules execute in cascade order. First rule runs, then second uses that output, and so on.
+> 💡 **Rules execute in cascade order.** The first rule runs, the second reads that output, and so on down the list.
 
 ### Advanced data source management
 
-Enable the "Advanced data source management" add-on to access:
+The "Advanced data source management" add-on gates three capabilities:
 - Supplemental data sources
 - Full attribute rules functionality
 - ID rules configuration
@@ -258,21 +268,22 @@ Enable the "Advanced data source management" add-on to access:
 
 | **Requirement** | **Details** |
 |-----------------|-------------|
-| **Where to link** | Settings > Linked accounts > Google Ads |
+| **Where to link** | Settings > Access and services > Apps and services > Add service > Google Ads |
 | **Account access** | Admin access to both accounts required |
-| **Link direction** | Link initiated from Merchant Center |
+| **Link direction** | Start from either side. Merchant Center sends the request from Apps and services, Google Ads from Tools > Data manager |
+| **Approval** | The receiving account approves the request: Google Ads under Data manager > Connected products, Merchant Center under Access and services > Apps and services > Third-party apps. The link approves itself when the same person is admin on both accounts |
 | **Multiple accounts** | One Merchant Center can link to multiple Google Ads accounts |
 
 ### Third-party platform integrations
 
 | **Platform** | **Integration type** | **Notes** |
 |--------------|---------------------|-----------|
-| **Shopify** | Direct integration via Google & YouTube channel | Content API, automatic sync |
+| **Shopify** | Direct integration via Google & YouTube channel | Merchant API, automatic sync |
 | **WooCommerce** | Plugin (Google Listings & Ads or third-party) | Various options available |
-| **Magento** | Extension or Content API | Multiple solutions |
+| **Magento** | Extension or Merchant API | Multiple solutions |
 | **BigCommerce** | Built-in integration | Channel Manager app |
 
-> ⚠️ Platform integrations have limitations. For advanced feed optimization, use a dedicated Feed Management Tool (FMT) like Channable, DataFeedWatch, or Feedonomics.
+> ⚠️ **Platform integrations have limitations.** Advanced feed optimization runs through a dedicated Feed Management Tool (FMT) such as Channable, DataFeedWatch, or Feedonomics.
 
 ---
 
@@ -280,7 +291,7 @@ Enable the "Advanced data source management" add-on to access:
 
 ### Shipping service configuration
 
-| **Element** | **What to configure** |
+| **Element** | **What it sets** |
 |-------------|----------------------|
 | **Service name** | Descriptive name (e.g., "Standard Shipping - US") |
 | **Countries served** | Target countries for this service |
@@ -296,7 +307,7 @@ Enable the "Advanced data source management" add-on to access:
 | **Lower shipping cost** | Better price competitiveness |
 | **Free shipping** | Significant ranking boost |
 
-> 💡 Don't underestimate shipping costs. Google factors shipping into total price competitiveness. Free shipping can significantly improve ranking.
+> 💡 **Shipping cost is part of price competitiveness.** Google factors it into the total, which is why free shipping moves ranking materially.
 
 ---
 
@@ -319,13 +330,37 @@ Enable the "Advanced data source management" add-on to access:
 | **Lower return cost** | Better customer experience |
 | **Free returns** | Competitive advantage |
 
-> ⚠️ You must have a return policy even if you don't accept returns. State your policy explicitly on your website.
+> ⚠️ **A return policy is required even where returns are not accepted.** The policy has to be stated explicitly on the website.
+
+### Creating a return policy
+
+1. Go to **Shipping and returns** under **Products & store**
+2. Open the **Return policies** tab
+3. Set the countries the policy covers
+4. Set the return window and the item condition you accept back
+5. Set the return methods, the policy currency, and any restocking fee
+6. Review the summary and save
+
+### Exception policies
+
+An exception is a variation on top of your standard policy for a subset of products. Build it from the plus button next to the policy you are extending, working through the same tabs:
+
+1. On the "Countries and policy" tab, name the exception in the "Exception label" field
+2. On the "Condition and window" tab, set the shorter or longer window, or block returns entirely
+3. On the "Methods and fees" tab, set the currency and restocking fee that apply to these products
+4. Save, then add a `return_policy_label` column to your data source and put the exception label on every affected product
+
+Products that follow the standard policy keep that column blank or set it to `default`. Google verifies every policy before it serves: check the verification state on the **Returns Policies** tab.
 
 ---
 
 ## Diagnostics and troubleshooting
 
 ### Diagnostics tab
+
+> ⚠️ **Auto-fix cards apply a Google recommendation.** The Issue Details Page offers automation cards that fix flagged feed issues automatically. They carry the same review requirement as any other recommendation, and a blanket accept applies changes nobody has read.
+
+> 💡 **The AI-content label setting is generally available in Merchant Center.** AI-generated or AI-edited product imagery is disclosed here as well as in Google Ads. Applying an AI label switches off the Merchant Center image enhancement automations for that product, so labelled imagery keeps exactly the treatment it was given.
 
 | **Section** | **What it shows** |
 |-------------|-------------------|
@@ -348,7 +383,7 @@ Enable the "Advanced data source management" add-on to access:
 | **Missing GTIN** | No GTIN provided | Add GTIN or set `identifier_exists` to false |
 | **Price mismatch** | Feed price differs from landing page | Update feed or enable automatic updates |
 | **Availability mismatch** | Feed shows in stock, page shows out of stock | Sync feed more frequently |
-| **Image too small** | Image below minimum resolution | Use images 100x100px minimum (1500x1500 recommended) |
+| **Image too small** | Image below minimum resolution | Use images 500x500px minimum (1500x1500 recommended) |
 | **Missing required attribute** | Category-specific attribute missing | Add required attribute per category |
 
 ### Downloading issue reports
@@ -372,8 +407,7 @@ Enable the "Advanced data source management" add-on to access:
 | **Dynamic remarketing** | Show products to past visitors | Remarketing tag, dynamic feed |
 | **Local inventory ads** | Show local store availability | Business Profiles, local inventory feed |
 | **Promotions** | Show special offers with products | Promotions feed or manual entry |
-| **Product ratings** | Display star ratings on PLAs | Approved ratings provider |
-| **Buy on Google** | Checkout on Google (US) | Enrollment, payments setup |
+| **Product ratings** | Display star ratings on PLAs | Interest Form approval, a standalone Merchant Center account or sub-account with admin access (Multi-Client Accounts are excluded), at-least-monthly review uploads, unique product identifiers (GTIN/brand/MPN) in reviews data. Google runs a data-quality and policy review and ratings go live 2 to 4 weeks after it passes |
 
 ### Promotions
 
@@ -451,8 +485,8 @@ Available in select countries. Affects ranking in Shopping tab for retailers wit
 
 ## Version details
 
-- **Version:** 1.0
-- **Last Updated:** February 2026
+- **Version:** 5.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

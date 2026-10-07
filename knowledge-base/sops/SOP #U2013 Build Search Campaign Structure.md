@@ -1,6 +1,6 @@
 # SOP – Build Search Campaign Structure
 Created: 2026-02-04
-Updated: 2026-02-15
+Updated: 2026-10-05
 
 Agent_Executable: No
 Category: Structure
@@ -92,11 +92,7 @@ Open your completed keyword clusters from the upstream clustering SOP. For each 
 
 ### 1.2 Apply the default: consolidate
 
-Start with the assumption that all non-brand clusters belong in a single campaign. This is the default because:
-
-- Smart Bidding bids at the query level, not the campaign level
-- More data per campaign means faster learning and better optimization
-- Fewer campaigns means lower management overhead
+Start with the assumption that all non-brand clusters belong in a single campaign (See: [Modern Search Campaign Mental Model](../mental-models/Modern Search Campaign Mental Model.md)).
 
 ### 1.3 Check the 8 valid segmentation reasons
 
@@ -171,9 +167,9 @@ Use these guidelines to check your ad group count. These are not hard rules but 
 
 - **Typical range:** 5-25 ad groups per campaign
 - **If over 25:** review whether some ad groups can be consolidated (re-run the Single Ad Test with broader creative themes)
-- **If over 40:** consider splitting into separate campaigns with a documented segmentation reason
+- **If over 40:** split into separate campaigns with a documented segmentation reason
 
-> 💡 **There are no hard rules for keyword count per ad group either:** Use the keyword count as a signal: if an ad group has 50+ keywords, it may contain multiple creative themes that need splitting. If it has 1-2 keywords, consider merging with a related ad group. The Single Ad Test is the deciding factor, not an arbitrary count.
+> 💡 **Keyword count per ad group is a signal, not a rule:** Re-run the Single Ad Test on any ad group with 50+ keywords, and on any ad group with 1-2 keywords. The Single Ad Test is the deciding factor.
 
 ### 2.4 Document your ad group map
 
@@ -203,15 +199,15 @@ Open the [Keyword and Match Type Selection Guidelines](../guidelines/Keyword and
 
 Apply match type based on account maturity and data:
 
-| Condition | Match type | Rationale |
-|-----------|-----------|-----------|
-| Established account + tCPA/tROAS + 30+ conversions/month | Broad match | Default: smart bidding has enough data to control broad match effectively |
-| New account (no conversion history) | Exact and/or phrase match | Smart bidding has no query-level data to learn from. Broad match generates waste. Test broad later via 50/50 campaign experiment |
-| Low-volume campaign (<30 conversions/month) | Exact and/or phrase match | Insufficient data for smart bidding to optimize broad match. Concentrate spend on known high-intent queries |
-| Limited budget | Exact and/or phrase match | Control traffic relevance and temperature. Broad match is viable when budget increases or data proves efficiency |
-| Niche B2B with predictable keywords | Exact and/or phrase match | Query space is narrow enough to cover manually. Broad match produces mostly irrelevant queries with low incremental uplift |
-| Brand keywords | Phrase and/or exact match | Protect brand terms. Broad match is unnecessary for brand campaigns: use phrase/exact only |
-| Proven keywords with strong performance history | Keep current match type | Do not change what is working |
+| Condition | Match type |
+|-----------|-----------|
+| Established account + tCPA/tROAS + 30+ conversions/month (tCPA) or 50+ (tROAS) | Broad match |
+| New account (no conversion history) | Exact and/or phrase match |
+| Low-volume campaign (<30 conversions/month for tCPA, <50 for tROAS) | Exact and/or phrase match |
+| Limited budget | Exact and/or phrase match |
+| Niche B2B with predictable keywords | Exact and/or phrase match |
+| Brand keywords | Phrase and/or exact match |
+| Proven keywords with strong performance history | Keep current match type |
 
 ### 3.3 Create and link negative keyword lists
 
@@ -219,7 +215,7 @@ Build the shared negative keyword list infrastructure and link lists to campaign
 
 **Step 1️⃣: Create required lists**
 
-In Google Ads, navigate to Tools > Shared Library > Negative keyword lists. Create these three lists:
+In Google Ads, navigate to Tools > Shared library > Exclusion lists > Negative keyword lists. Create these three lists:
 
 | List name | Purpose |
 |-----------|---------|
@@ -368,7 +364,6 @@ For each campaign, set:
 |---------|--------|
 | Networks | Disable Search Partners and Display Network (unless Guidelines specify otherwise) |
 | Locations | Set target locations per campaign map. Start with "Presence or interest" (default), restrict to "Presence only" based on location report data. |
-| Languages | Set to the language(s) of your target audience |
 | Ad schedule | Set to "All day" unless a specific schedule is required per your campaign map |
 | Ad rotation | Set to "Optimize: prefer best performing ads" |
 | Start/end dates | Set start date to your planned launch date. No end date unless running a time-bound promotion. |
@@ -390,15 +385,15 @@ For each campaign, apply the budget from [SOP – Allocate Budget Across Campaig
 2. Enter the daily budget
 3. Confirm the budget aligns with your allocation plan
 
-### 6.4 Configure DSA settings (if applicable)
+### 6.4 Configure final URL expansion (if applicable)
 
-If using Dynamic Search Ads within any campaign:
+If using final URL expansion (AI Max keywordless matching) within any campaign:
 
-1. Add a DSA ad group with page feeds or URL targets
-2. Set DSA-specific negatives to prevent overlap with keyword-targeted ad groups
-3. Verify DSA targets do not duplicate keyword-targeted landing pages
+1. Enable final URL expansion at the campaign level and turn text customization ON
+2. Add a keywordless ad group with a page feed and ad-group URL inclusions
+3. Set campaign URL exclusions to prevent overlap with keyword-targeted landing pages
 
-> ⚠️ **Only add DSA if your campaign strategy calls for it:** DSA is not required in every Search campaign. If your keyword coverage is comprehensive, DSA adds complexity without clear benefit.
+> ↪️ **Final URL expansion is one rung of the AI Max testing ladder:** Enable it only as the rung under test, per [SOP – Configure AI Max for Search](../sops/SOP – Configure AI Max for Search.md).
 
 ### 6.5 Final settings check
 
@@ -406,7 +401,7 @@ For each campaign, confirm:
 
 - [ ] Networks are set correctly (Search Partners and Display Network off by default)
 - [ ] Location targeting is set (default: "Presence or interest", restrict to "Presence only" if data warrants)
-- [ ] Language targeting matches your audience
+- [ ] Ad copy and landing pages are in a single consistent language per ad group
 - [ ] Bid strategy and target are configured
 - [ ] Daily budget is set
 - [ ] Conversion goals are correct
@@ -498,8 +493,8 @@ Once the campaign structure is built and all settings are configured:
 
 ### Version details
 
-- **Version:** 2.0
-- **Last Updated:** February 2026
+- **Version:** 5.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---
@@ -512,4 +507,4 @@ Violations may be detected through embedded document fingerprints and will be pu
 
 Full terms: https://www.ppcmastery.com/terms-and-conditions
 
-(c) 2026 PPC Mastery B.V. All rights reserved.
+© 2026 PPC Mastery B.V. All rights reserved.

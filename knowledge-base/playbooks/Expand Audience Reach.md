@@ -24,12 +24,12 @@ Audience expansion is **not** about adding more segments or enabling every avail
 It is the result of having:
 
 1. **High-quality PMax signals** that give Google accurate data to learn from
-2. **Properly configured targeting** across Display, Video, and Demand Gen campaigns
+2. **Properly configured targeting** across Video and Demand Gen campaigns
 3. **Active first-party data** (Customer Match) refreshed and matched at healthy rates
 
 This playbook **does not contain tactics**. It tells you **which audience foundation to fix first** and routes you to the correct SOP.
 
-> Never expand audience reach before your foundation is solid. Expanding on weak signals or misconfigured targeting wastes budget on low-quality traffic.
+> ⚠️ **Never expand audience reach before your foundation is solid.** Expanding on weak signals or misconfigured targeting wastes budget on low-quality traffic.
 
 ---
 
@@ -41,7 +41,7 @@ Use audience coverage and data quality to determine your starting point.
 
 ```
 1. Are PMax signals high-quality and layered? → If NO, fix first
-2. Are Display/Video/DG audiences configured correctly? → If NO, fix next
+2. Are Video/DG audiences configured correctly? → If NO, fix next
 3. Is Customer Match active and refreshed? → If NO, fix next
 4. All foundations solid? → Proceed to expansion
 ```
@@ -72,7 +72,7 @@ Do your Performance Max asset groups have **high-quality, layered audience signa
 | All PMax asset groups have layered Tier 1-3 signals | **PASS:** Proceed to Phase 2 |
 | No PMax campaigns exist | **PASS:** Proceed to Phase 2 |
 
-> Signal quality determines learning speed. PMax with only demographic signals takes significantly longer to optimize than PMax with Customer Match + website converters + custom segments.
+> 💡 **Signal quality determines learning speed.** PMax with only demographic signals takes significantly longer to optimize than PMax with Customer Match + website converters + custom segments.
 
 ---
 
@@ -80,7 +80,7 @@ Do your Performance Max asset groups have **high-quality, layered audience signa
 
 ### What you're checking
 
-Are your Display, Video, and Demand Gen campaigns **properly configured** with the right audience segments, targeting mode, and expansion settings?
+Are your Video and Demand Gen campaigns **properly configured** with the right audience segments, targeting mode, and expansion settings?
 
 ### Signals
 
@@ -96,7 +96,7 @@ Are your Display, Video, and Demand Gen campaigns **properly configured** with t
 |-------|---------|
 | Any campaign has incorrect targeting mode or expansion settings | **STOP:** Run [SOP – Set Up Audience Targeting](../sops/SOP – Set Up Audience Targeting.md) |
 | All campaigns have correct configuration | **PASS:** Proceed to Phase 3 |
-| No Display/Video/DG campaigns exist | **PASS:** Proceed to Phase 3 |
+| No Video/DG campaigns exist | **PASS:** Proceed to Phase 3 |
 
 ---
 
@@ -109,7 +109,7 @@ Is Customer Match **active, properly formatted, and regularly refreshed** across
 ### Signals
 
 - No Customer Match list uploaded
-- Match rate below 29%
+- Match rate below 60%
 - List not refreshed in 30+ days
 - Only email identifiers uploaded (no phone/address)
 - List size below 1,000 matched users
@@ -122,7 +122,7 @@ Is Customer Match **active, properly formatted, and regularly refreshed** across
 | Customer Match is missing, stale, or poorly matched | **STOP:** Run [SOP – Build Customer Match Lists](../sops/SOP – Build Customer Match Lists.md) |
 | Customer Match is active, refreshed, and well-matched | **PASS:** Proceed to Phase 4 |
 
-> Customer Match is the single highest-impact audience asset. A well-maintained Customer Match list improves signal quality (PMax), targeting precision (Display/Video/DG), and lookalike quality (Demand Gen) simultaneously.
+> 💡 **Customer Match is the single highest-impact audience asset.** A well-maintained Customer Match list improves signal quality (PMax), targeting precision (Video/DG), and lookalike quality (Demand Gen) simultaneously.
 
 ---
 
@@ -139,7 +139,7 @@ All audience foundations are solid. The account is ready for **controlled audien
 | **Broaden PMax signals** | Current signals are narrow (efficiency-focused) | Add Tier 3-4 signals: more custom segments, adjacent in-market categories, search themes (if no Search cannibalization risk) |
 | **Add Demand Gen lookalikes** | Customer Match list is 1,000+ and Demand Gen is active | Create lookalike segment from high-value customer seed: start with Balanced reach |
 | **Test new audience segments** | Current audiences performing well, budget available | Add 1-2 new in-market or custom segments to existing campaigns: use Observation mode first to measure before committing |
-| **Expand to new campaign types** | Remarketing performing well, ready for prospecting | Launch prospecting campaign (Display or Demand Gen) with custom segments + in-market targeting |
+| **Expand to new campaign types** | Remarketing performing well, ready for prospecting | Launch prospecting campaign (Demand Gen) with custom segments + in-market targeting |
 | **Add Customer Match segments** | Only "All customers" list exists | Create high-value, churned, and product-specific segments for differentiated targeting |
 
 ### Expansion rules
@@ -160,7 +160,7 @@ START
 │   ├─ NO → STOP → SOP – Set Up Audience Signals
 │   └─ YES → Continue
 │
-├─ Phase 2: Display/Video/DG targeting configured correctly?
+├─ Phase 2: Video/DG targeting configured correctly?
 │   ├─ NO → STOP → SOP – Set Up Audience Targeting
 │   └─ YES → Continue
 │
@@ -183,7 +183,7 @@ START
 Once all audience foundations are solid and initial expansion is live:
 
 1. **Monitor signal performance:** Review PMax asset group performance by audience signal quality tier monthly
-2. **Refresh Customer Match:** Maintain weekly/monthly refresh cadence
+2. **Refresh Customer Match:** Refresh at least every 30 days
 3. **Test and graduate:** Move successful Observation-mode audiences to Targeting mode
 4. **Expand temperature:** Gradually move from warm → cool → cold audiences as performance data accumulates
 5. **Re-run this playbook:** Quarterly, to verify foundations remain solid before further expansion
@@ -222,7 +222,7 @@ This playbook routes to the following SOPs:
 | SOP | Purpose | When to run |
 |-----|---------|-------------|
 | [SOP – Set Up Audience Signals](../sops/SOP – Set Up Audience Signals.md) | Configure PMax audience signals | PMax signals missing or low-quality |
-| [SOP – Set Up Audience Targeting](../sops/SOP – Set Up Audience Targeting.md) | Configure Display/Video/DG targeting | Targeting misconfigured |
+| [SOP – Set Up Audience Targeting](../sops/SOP – Set Up Audience Targeting.md) | Configure Video/DG targeting | Targeting misconfigured |
 | [SOP – Build Customer Match Lists](../sops/SOP – Build Customer Match Lists.md) | Create and maintain Customer Match | No Customer Match or stale lists |
 
 ### Supporting documents
@@ -231,7 +231,7 @@ This playbook routes to the following SOPs:
 |----------|------|---------|
 | [Audience Strategy Mental Model](../mental-models/Audience Strategy Mental Model.md) | Mental Model | Conceptual framework for expansion phases |
 | [Audience Signal Catalog](../catalogs/Audience Signal Catalog.md) | Catalog | Signal type options for PMax |
-| [Audience Segment Catalog](../catalogs/Audience Segment Catalog.md) | Catalog | Segment type options for Display/Video/DG |
+| [Audience Segment Catalog](../catalogs/Audience Segment Catalog.md) | Catalog | Segment type options for Video/DG |
 | [Audience Signal Quality Checklist](../checklists/Audience Signal Quality Checklist.md) | Checklist | Validates PMax signal setup |
 | [Audience Targeting Launch Checklist](../checklists/Audience Targeting Launch Checklist.md) | Checklist | Validates targeting setup |
 | [Audience Targeting Health Checklist](../checklists/Audience Targeting Health Checklist.md) | Checklist | Validates ongoing targeting health |
@@ -245,8 +245,8 @@ This playbook routes to the following SOPs:
 This playbook is complete when:
 
 - [ ] All PMax asset groups have layered Tier 1-3 signals
-- [ ] All Display/Video/DG campaigns have correct targeting mode and expansion settings
-- [ ] Customer Match is active, matched at 29%+, and on a refresh schedule
+- [ ] All Video/DG campaigns have correct targeting mode and expansion settings
+- [ ] Customer Match is active, matched at 60% or above, and on a refresh schedule
 - [ ] At least one expansion action identified and initiated
 - [ ] Measurement plan in place to evaluate expansion impact
 

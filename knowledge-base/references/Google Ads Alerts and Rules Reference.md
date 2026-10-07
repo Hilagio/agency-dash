@@ -45,7 +45,7 @@ Documents the Google Ads automated rules system: rule types, available condition
 | **Display keyword rules** | Display keywords | Enable, Pause, Change bids |
 | **Asset group rules** | Asset groups (PMax) | Enable, Pause |
 
-> 💡 "Send email" rules are the foundation of an alerting system. They notify without taking action, giving you control over the response.
+> 💡 **"Send email" rules are the foundation of an alerting system.** They notify without taking action, which leaves the response under human control.
 
 ---
 
@@ -142,7 +142,7 @@ Any custom columns created in the account can be used as conditions in rules. Th
 | Last month | Previous full calendar month | Month-over-month comparisons |
 | All time | All available historical data | Lifetime performance thresholds |
 
-> ⚠️ **Use longer data ranges for conversion-based rules:** Conversions take time to report. A rule checking "conversions = 0 in the last day" will fire false positives due to conversion lag. Use 7-day or 14-day windows minimum for conversion metrics.
+> ⚠️ **Conversion-based rules need longer data ranges.** Conversions take time to report, so a rule checking "conversions = 0 in the last day" fires false positives on conversion lag. Conversion metrics need a 7-day or 14-day window as the minimum.
 
 ---
 
@@ -157,10 +157,7 @@ Any custom columns created in the account can be used as conditions in rules. Th
 
 ### Using labels for scope
 
-Labels provide the most flexible scoping mechanism:
-- Apply a label (e.g., "Monitor-Daily") to entities you want rules to cover
-- Set rule scope to "All [entities] with label: Monitor-Daily"
-- Add or remove entities from monitoring by adding or removing labels
+Labels are the most flexible scoping mechanism. A label (for example, "Monitor-Daily") marks the entities a rule covers, the rule scope reads "All [entities] with label: Monitor-Daily", and monitoring coverage then changes by adding or removing the label rather than by editing the rule.
 
 ---
 
@@ -175,7 +172,7 @@ Labels provide the most flexible scoping mechanism:
 
 You can add one or more email addresses as recipients.
 
-**Best practice:** Use "only if there are changes or errors" for action rules (pause, enable, bid changes). Use "every time this rule runs" for send-email-only monitoring rules to confirm the rule is active.
+Action rules (pause, enable, bid changes) pair with "only if there are changes or errors". Send-email-only monitoring rules pair with "every time this rule runs", which doubles as confirmation that the rule is still active.
 
 ---
 
@@ -189,7 +186,7 @@ You can add one or more email addresses as recipients.
 | **Rule order** | Multiple rules on the same entity execute in creation order |
 | **Conflict handling** | If two rules conflict (one enables, one pauses), both execute in order |
 | **MCC ownership** | Rules owned by an MCC can apply across all sub-accounts |
-| **Preview** | Use "Preview results" before saving to verify rule logic |
+| **Preview** | "Preview results" shows which entities the rule matches before it is saved |
 | **History** | All rule executions are logged in the Rules history |
 | **Data freshness** | Rules evaluate data at execution time: hourly rules may have incomplete "today" data |
 
@@ -197,11 +194,9 @@ You can add one or more email addresses as recipients.
 
 ## Rule management
 
-### Accessing rules
+Rules live under Tools > Bulk actions > Rules, where the list shows every rule with its status and execution history.
 
-1. Navigate to Tools & Settings
-2. Under Bulk Actions, select Rules
-3. View all rules, their status, and execution history
+> ↪️ **For the navigation and setup sequence:** See [SOP – Configure Account Alerts](../sops/SOP – Configure Account Alerts.md).
 
 ### Rule actions
 
@@ -220,9 +215,9 @@ You can add one or more email addresses as recipients.
 
 ### Schedule ads for promotions
 
-**One-time event (e.g., Memorial Day):** Create promotional ads in advance, keep them paused. Set two one-time rules: Rule 1 enables ads containing "Memorial Day" at the start of the weekend. Rule 2 pauses those same ads at the end. Use the Ad text condition to target the right ads.
+**One-time event (e.g., Memorial Day):** promotional ads sit paused until two one-time rules move them. Rule 1 enables ads containing "Memorial Day" at the start of the weekend, rule 2 pauses the same ads at the end. The Ad text condition is what selects them.
 
-**Recurring promotion (e.g., Free Shipping weekends):** Two weekly rules: Rule 1 enables ads containing "Free Shipping" every Saturday at 1:00 AM. Rule 2 pauses them every Sunday at 11:00 PM. Same concept works at the campaign level.
+**Recurring promotion (e.g., Free Shipping weekends):** two weekly rules. Rule 1 enables ads containing "Free Shipping" every Saturday at 1:00 AM, rule 2 pauses them every Sunday at 11:00 PM. The same pattern applies at campaign level.
 
 ### Pause low performers
 
@@ -232,15 +227,15 @@ You can add one or more email addresses as recipients.
 
 ### Budget control
 
-**Mid-day budget check:** Daily campaign rule to send email if cost exceeds a threshold by noon. Lets you decide whether to increase the budget for the rest of the day.
+**Mid-day budget check:** daily campaign rule that sends an email when cost exceeds a threshold by noon, leaving the rest-of-day budget decision to a human.
 
-**Monthly spend cap:** Daily campaign rule that pauses campaigns when cost exceeds your monthly cap using "This month" data range.
+**Monthly spend cap:** daily campaign rule that pauses campaigns when cost exceeds the monthly cap, using the "This month" data range.
 
-**Scale high performers:** Weekly rule that increases budget by 10% for campaigns with conversions > threshold AND cost/conv. < target. Set a maximum budget limit as a safety measure.
+**Scale high performers:** weekly rule that increases budget by 10% for campaigns with conversions > threshold AND cost/conv. < target. A maximum budget limit on the rule is the safety measure.
 
 ### Labeling by performance
 
-Use "Change labels" actions to auto-tag entities based on conditions: add a "Top Performer" label to keywords with ROAS > 5, or a "Review Needed" label to ads with CTR < 1% and significant spend.
+"Change labels" actions auto-tag entities on condition: a "Top Performer" label on keywords with ROAS > 5, or a "Review Needed" label on ads with CTR < 1% and significant spend.
 
 ---
 
@@ -248,19 +243,19 @@ Use "Change labels" actions to auto-tag entities based on conditions: add a "Top
 
 ### Safety measures
 
-- **Always set min/max limits** for bid and budget rules. Continuous bid increases lead to unnecessarily high CPCs. Continuous decreases kill traffic.
-- **Always preview before saving:** A single rule can affect a large portion of your account.
-- **Start with "Once" frequency:** Monitor the actual impact before switching to a recurring schedule.
+- **Min/max limits on bid and budget rules.** Without them, continuous bid increases drive CPCs up and continuous decreases starve traffic.
+- **Preview before saving.** A single rule can reach a large portion of an account.
+- **"Once" frequency first.** The one-off run shows the actual impact before a recurring schedule locks it in.
 
 ### Data and timing
 
-- **Use enough data:** Rules on conversion metrics need 7-30 day windows to account for conversion lag. Add minimum impression/click thresholds as secondary conditions.
-- **Stagger start times:** Schedule rules at different times so the earliest runs first. Do not schedule overlapping rules on the same entities.
-- **Account for the 2-hour execution window:** A rule scheduled for 9:00 AM may run anytime between 9:00 AM and 11:00 AM.
+- **Enough data.** Rules on conversion metrics need 7-30 day windows to absorb conversion lag, with minimum impression or click thresholds as secondary conditions.
+- **Staggered start times.** Rules scheduled at different times execute in a known order. Overlapping rules on the same entities do not.
+- **The 2-hour execution window.** A rule scheduled for 9:00 AM can run any time between 9:00 AM and 11:00 AM.
 
 ### Bid rule cautions
 
-- **Watch for CTR-bid spirals:** A rule that lowers bids when CTR is low can create a negative spiral: lower bid → lower position → lower CTR → lower bid. Add impression share or position conditions as safeguards.
+- **CTR-bid spirals.** A rule that lowers bids when CTR is low feeds a negative spiral: lower bid, lower position, lower CTR, lower bid. Impression share or position conditions are the safeguard.
 - **Percentage reversal formula:** When using increase/decrease rules in pairs (e.g., raise bids during peak hours, lower them off-peak), the decrease percentage is not the same as the increase. Formula: `decrease % = (100 * increase %) / (100 + increase %)`. Example: 25% increase requires 20% decrease to return to original. 50% increase requires 33.3% decrease.
 
 ---
@@ -286,7 +281,7 @@ Use "Change labels" actions to auto-tag entities based on conditions: add a "Top
 
 ## Beyond native rules
 
-Native rules cover basic threshold monitoring but have significant gaps. Here is what each alternative tool type adds:
+Native rules cover basic threshold monitoring but have significant gaps. Each alternative tool type closes a different set:
 
 | **Capability** | **Native rules** | **Google Ads Scripts** | **Third-party tools** | **AI agents** |
 |----------------|-----------------|----------------------|----------------------|---------------|
@@ -304,18 +299,9 @@ Native rules cover basic threshold monitoring but have significant gaps. Here is
 
 ### Google Ads Scripts overview
 
-Google Ads Scripts provide JavaScript-based automation with full Google Ads API access. They run on Google's servers (no hosting needed), can read and write account data, send emails, write to Google Sheets, and make external HTTP calls.
+Google Ads Scripts provide JavaScript-based automation with full Google Ads API access. They run on Google's servers, read and write account data, send emails, write to Google Sheets, and make external HTTP calls.
 
-**Key capabilities for monitoring:**
-- Custom metric calculations (relative % changes, rolling averages, composite metrics)
-- Scheduled execution (hourly, daily, weekly)
-- Multi-account execution via MCC scripts
-- Google Sheets integration for baselines and dashboards
-- Email notifications with custom formatting
-- URL checking via UrlFetchApp
-- Labeling entities based on custom conditions
-
-**Limitations:** 30-minute execution limit per run, JavaScript only, no real-time triggers, limited external API access.
+> ↪️ **For the full capability and limit tables:** See [Monitoring Automation Reference](../references/Monitoring Automation Reference.md), which owns the per-tier Scripts breakdown.
 
 ### Third-party tool categories
 
@@ -357,8 +343,8 @@ Google Ads Scripts provide JavaScript-based automation with full Google Ads API 
 
 ## Version details
 
-- **Version:** 3.0
-- **Last Updated:** February 2026
+- **Version:** 4.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 - **Changelog:** v3.0: Major expansion from source. Added Asset Group and Display Keyword rule types. Added Hourly frequency, additional data ranges (This month, Last month, All time). Expanded campaign-only conditions (Setup, Change History, Competitive Metrics, Budget Simulator, Attributes). Added practical use cases and tips/best practices sections. AI agents column updated to "Yes" across all capabilities. Removed Multi-purpose optimization and Bid management tool categories. Updated feed-focused tool examples. Expanded limitations table with workarounds. v2.0: Added "Rule configuration by monitoring layer" section, "Beyond native rules" section with Scripts and third-party tool coverage, expanded limitations, sentence case headings
 

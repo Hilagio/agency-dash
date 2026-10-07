@@ -13,7 +13,7 @@ Pillar: 5
 
 ## Purpose
 
-Documents new vs. returning customer data implementation, the New Customer Acquisition (NCA) goal for Performance Max and Shopping campaigns, and segmented analysis methods for customer type reporting.
+Documents new vs. returning customer data implementation, the New Customer Acquisition (NCA) goal and its modes for Performance Max, Search, Shopping, and Demand Gen campaigns, and segmented analysis methods for customer type reporting.
 
 ---
 
@@ -28,7 +28,7 @@ Documents new vs. returning customer data implementation, the New Customer Acqui
 
 **This reference does NOT:**
 
-- Provide step-by-step PMax campaign setup (See: future SOP: Set Up Performance Max Campaign)
+- Provide step-by-step implementation (See: [SOP – Set Up New Customer Tracking](../sops/SOP – Set Up New Customer Tracking.md))
 - Explain Customer Match list building (See: [SOP – Build Customer Match Lists](../sops/SOP – Build Customer Match Lists.md))
 - Cover full conversion action configuration (See: [Conversion Action Reference](../references/Conversion Action Reference.md))
 
@@ -43,7 +43,7 @@ Documents new vs. returning customer data implementation, the New Customer Acqui
 | **Sent with** | Purchase/conversion event |
 | **Determined by** | Backend database lookup at conversion time |
 | **Where to view** | Campaign report > Segments > Conversions > New vs. Returning Customers |
-| **Used by** | NCA goal in PMax and Shopping campaigns |
+| **Used by** | NCA modes in Performance Max, Search, Shopping, and Demand Gen campaigns |
 | **Developer required** | Yes, for backend new/returning lookup logic |
 
 ---
@@ -90,53 +90,17 @@ The new/returning determination requires a server-side database lookup. This is 
 | Order history lookup | Check if email/phone has prior orders | High |
 | Cookie-based (not recommended) | Check for returning visitor cookie | Low (cookies clear, cross-device fails) |
 
-> ⚠️ **Server-side lookup is required for accuracy:** Cookie-based methods fail when users clear cookies, switch devices, or use private browsing. Always use a database lookup against email or account ID.
+> ⚠️ **Server-side lookup is required for accuracy.** Cookie-based methods fail when users clear cookies, switch devices, or use private browsing. Only a database lookup against email or account ID survives all three.
 
-### GTM setup
+### GTM path
 
-**Step 1️⃣: Push to data layer**
+The `new_customer` value rides on the purchase data layer push, a Data Layer Variable (version 2) named `new_customer` reads it, and the Google Ads Conversion Tracking tag maps that variable under its "New customer data" section.
 
-Your developer adds the `new_customer` value to the purchase data layer push:
+### gtag path
 
-```javascript
-dataLayer.push({
-  'event': 'purchase',
-  'transaction_id': 'ORD-12345',
-  'value': 149.99,
-  'currency': 'USD',
-  'new_customer': true
-});
-```
+The `new_customer` parameter is added to the purchase event alongside `transaction_id`, `value` and `currency`.
 
-**Step 2️⃣: Create data layer variable**
-
-| **Setting** | **Value** |
-|-------------|----------|
-| Variable type | Data Layer Variable |
-| Variable name | `new_customer` |
-| Data Layer version | Version 2 |
-
-**Step 3️⃣: Configure conversion tag**
-
-1. Open your Google Ads Conversion Tracking tag
-2. Scroll to "New customer data" section
-3. Check "Send new customer data"
-4. Data source: Data Layer
-5. Map the `new_customer` variable
-
-### gtag setup
-
-Add the `new_customer` parameter to the purchase event:
-
-```javascript
-gtag('event', 'purchase', {
-  'send_to': 'AW-XXXXXXXXX/XXXXXXXXXXXXX',
-  'transaction_id': 'ORD-12345',
-  'value': 149.99,
-  'currency': 'USD',
-  'new_customer': true
-});
-```
+> ↪️ **For the tag code and the configuration sequence:** See [SOP – Set Up New Customer Tracking](../sops/SOP – Set Up New Customer Tracking.md).
 
 ---
 
@@ -144,12 +108,7 @@ gtag('event', 'purchase', {
 
 ### Report segmentation
 
-| **Step** | **Action** |
-|----------|-----------|
-| 1 | Open any campaign, ad group, or keyword report in Google Ads |
-| 2 | Click the "Segment" icon |
-| 3 | Select Conversions > New vs. Returning Customers |
-| 4 | Report splits each row into "New" and "Returning" segments |
+The New vs. Returning Customers segment sits under Conversions in the Segment control, and applies to campaign, ad group and keyword reports. Applied, it splits each row into a "New" and a "Returning" line.
 
 ### Key metrics to compare
 
@@ -162,18 +121,21 @@ gtag('event', 'purchase', {
 
 ---
 
-## NCA goal in Performance Max
+## NCA goals and modes
 
 ### What it does
 
-The New Customer Acquisition (NCA) goal tells PMax to prioritize acquiring new customers over re-converting existing ones. It uses the `new_customer` parameter and Customer Match lists to identify who is new.
+The New Customer Acquisition (NCA) goal tells the campaign to prioritize acquiring new customers over re-converting existing ones. It uses the `new_customer` parameter and Customer Match lists to identify who is new.
 
-### Two NCA modes
+### Three NCA modes
 
 | **Mode** | **Behavior** | **Best for** |
 |---------|-------------|-------------|
 | **Value mode (bid higher)** | Adds a bonus value to new customer conversions, making Google bid more aggressively for them | Accounts that want both new and returning customer conversions |
-| **New customers only** | Only counts and optimizes for new customer conversions | Accounts focused purely on customer acquisition |
+| **New customers only** | Only counts and optimizes for new customer conversions, stops serving existing customers entirely | Accounts focused purely on customer acquisition |
+| **New prospects mode (BETA)** | Goes further than new vs. returning: targets brand-unaware "cold" audiences only. A bundle of automated exclusions filters out anyone who purchased (via Customer Match and tags), searched your brand terms, visited your site or used your app, or engaged with your content or ads across Google and YouTube | Genuine top-of-funnel prospecting where reaching net-new, brand-unaware demand is the explicit goal |
+
+> ⚠️ **New prospects mode is a deliberate, measured bet.** It is the most restrictive mode and hands the most control to Google's automated exclusions. It maximally restricts reachable volume, which pays off only where reaching brand-unaware demand is the explicit goal and incrementality measurement is already in place. Value mode is the default for most accounts, and a volume-sensitive campaign moving to new prospects mode needs a holdout to show the incremental new customers cover the lost volume.
 
 ### NCA setup requirements
 
@@ -181,7 +143,7 @@ The New Customer Acquisition (NCA) goal tells PMax to prioritize acquiring new c
 |-----------------|------------|
 | `new_customer` parameter | Must be implemented on conversion tag (see setup above) |
 | Customer Match list | Upload existing customer email list so Google can identify returning customers |
-| PMax or Shopping campaign | NCA goal only available in these campaign types |
+| Performance Max, Search, Shopping, or Demand Gen campaign | NCA modes are available in these campaign types |
 | Conversion tracking | Purchase conversion action must be active and primary |
 
 ### Value mode configuration
@@ -194,7 +156,7 @@ In value mode, you set an additional value for new customers:
 
 Google adds this value to each new customer conversion, causing Smart Bidding to bid higher for users it identifies as likely new customers.
 
-> 💡 **Start conservative with new customer value:** Begin at 50% of your estimated additional CLV and increase gradually. Setting the value too high causes Smart Bidding to overpay for new customers at the expense of total profitability.
+> 💡 **New customer value starts conservative.** 50% of estimated additional CLV is the opening position, raised gradually. A value set too high has Smart Bidding overpaying for new customers at the expense of total profitability.
 
 ---
 
@@ -225,8 +187,8 @@ Google adds this value to each new customer conversion, causing Smart Bidding to
 
 ## Version details
 
-- **Version:** 1.0
-- **Last Updated:** February 2026
+- **Version:** 2.0
+- **Last Updated:** June 2026
 - **Creator:** Bob Meijer
 
 ---

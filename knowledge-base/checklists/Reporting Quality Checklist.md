@@ -61,7 +61,7 @@ Run this checklist:
 - [ ] Current period vs. previous period is shown
 - [ ] Percentage change is calculated (not just raw numbers)
 - [ ] Date ranges are clearly labeled
-- [ ] Conversion lag is accounted for (recent periods marked incomplete if needed)
+- [ ] Every period shorter than the conversion lag is labelled incomplete
 
 ### Attribution Consistency
 
@@ -73,7 +73,7 @@ Run this checklist:
 ### Data Accuracy
 
 - [ ] Conversion tracking is verified working
-- [ ] Data matches Google Ads UI (spot-check key numbers)
+- [ ] Key numbers match the Google Ads UI
 - [ ] Filters are correctly applied (no accidental exclusions)
 - [ ] Date range is complete (full weeks/months for clean comparison)
 - [ ] Timezone is consistent
@@ -81,14 +81,14 @@ Run this checklist:
 ### Audience Matching
 
 - [ ] Report depth matches audience (executive = top-line, specialist = granular)
-- [ ] Jargon is appropriate for audience
+- [ ] Every platform term is defined or replaced with business language for the audience
 - [ ] Action items are clear for the audience
 - [ ] Frequency matches decision cadence (weekly for tactical, monthly for strategic)
 
 ### Formatting
 
 - [ ] Primary KPIs are visually prominent (top of report)
-- [ ] Numbers are rounded appropriately (no excessive decimals)
+- [ ] Numbers carry no more than two decimal places
 - [ ] Currency symbols are consistent
 - [ ] Tables have clear headers and alignment
 - [ ] Charts use appropriate visualization (trends = line, comparison = bar)
@@ -104,7 +104,7 @@ Run this checklist:
 
 - [ ] Each metric can inform a specific optimization action
 - [ ] "So what?" is answered for each data point
-- [ ] Next steps or recommendations are included (if report type warrants)
+- [ ] Next steps or recommendations are included, or the report is documented as data-only
 - [ ] Issues are prioritized by impact
 
 ### Documentation

@@ -49,51 +49,50 @@ Run this checklist:
 
 ### Video-specific checks
 
-- [ ] Campaign subtype matches objective (Reach, Views, Frequency, Sequences)
-- [ ] Video creative formats appropriate: vertical (Shorts), horizontal (in-stream), square (Discover)
-- [ ] Video length appropriate for format (6s bumper, 15-30s skippable, 15s non-skippable)
-- [ ] Frequency capping configured and appropriate for campaign objective
+- [ ] Campaign subtype matches objective (Video reach, Video views, Ad sequence, Audio reach)
+- [ ] Headline and description are added to unlock in-feed and Shorts serving
+- [ ] Vertical, horizontal and square video creative are all uploaded
+- [ ] Video length matches its format: 5-6s bumper, 15-30s skippable, 15s non-skippable
+- [ ] Frequency capping is set to the documented cap for the campaign objective
 - [ ] View-through conversion tracking enabled
-- [ ] View-through attribution window set correctly (typically 1 day)
+- [ ] View-through attribution window is set to 1 day, or an exception is documented
 - [ ] YouTube channel/video exclusions in place (brand safety)
 - [ ] Companion banners configured (for in-stream ads)
-- [ ] YouTube channel authority signals reviewed for top video placements (age, upload pattern, subscribers)
+- [ ] Channel age, upload pattern and subscriber count are recorded for the top video placements
 
 > ↪️ **Video creative validation.** See [Video Creative Quality Checklist](../checklists/Video Creative Quality Checklist.md) for full creative format and quality gates.
 
 ### Budget health
 
 - [ ] Budget allocation between remarketing and prospecting campaigns documented
-- [ ] No single campaign consuming disproportionate budget without justification
-- [ ] Monthly spend pacing on track
+- [ ] Every campaign consuming more than half the upper funnel budget has a documented decision
+- [ ] Month-to-date spend is within 10% of pace
 
 ### Bid strategy health
 
-- [ ] Video awareness campaigns using awareness-appropriate bidding (Target CPM, Max CPV)
-- [ ] Video conversion campaigns using conversion-based bidding (tCPA or Max Conversions)
-- [ ] CPA target set to upper funnel benchmarks (typically 1.5-2x of Non-Branded Search tCPA)
-- [ ] ROAS target set to upper funnel benchmarks (typically 50-70% of Non-Branded Search tROAS)
+- [ ] Video campaigns using view or impression bidding (Target CPM, Max CPV)
 - [ ] Bid strategy not stuck in "Learning" for 14+ days
+
+> ↪️ **Conversion-focused video work belongs in Demand Gen.** Every live auction Video subtype bids Target CPM or CPV, so there is no conversion-based bidding, CPA target or ROAS target to validate here. See [Demand Gen Performance Reference](../references/Demand Gen Performance Reference.md).
 
 ### Brand safety
 
 - [ ] Sensitive content exclusions configured
 - [ ] Content types and labels exclusions applied
-- [ ] Inventory type setting appropriate (Standard for most, Limited for brand-sensitive)
+- [ ] Inventory type is Moderate or Limited on every campaign
 - [ ] Placement exclusion lists applied
 
 > ↪️ **Placement analysis.** See [Placement Performance Reference](../references/Placement Performance Reference.md) for placement evaluation and exclusion methodology.
 
 ### Audience health
 
-- [ ] Audience segments configured and relevant
+- [ ] Every audience segment maps to the campaign's funnel stage
 - [ ] Remarketing audiences have sufficient size (1,000+ users)
 - [ ] Converters excluded from prospecting campaigns
-- [ ] Correct expansion feature identified: optimized targeting (Video Sales/Leads/Traffic) vs audience expansion (Video Consideration/Awareness only)
-- [ ] Expansion feature OFF for remarketing campaigns
-- [ ] Expansion impact checked via "Total: Expansion and optimized targeting" row (if expansion is ON)
-- [ ] Observation-mode segments reviewed: no segments dormant for 60+ days without analysis
-- [ ] Demographic performance reviewed: no demographic group with CPA > 2x campaign average and 50+ clicks unaddressed
+- [ ] Audience expansion OFF for remarketing campaigns
+- [ ] Expanded performance is recorded from the "Total: Expansion and optimized targeting" row (if audience expansion is ON)
+- [ ] No Observation-mode segment has been dormant for 60+ days
+- [ ] Every demographic group with 50+ clicks and CPA above 2x the campaign average has a documented decision
 
 ---
 
@@ -113,8 +112,8 @@ Run this checklist:
 
 ## Version details
 
-- **Version:** 5.0
-- **Last Updated:** June 2026
+- **Version:** 6.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

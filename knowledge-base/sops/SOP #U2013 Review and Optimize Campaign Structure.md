@@ -1,5 +1,6 @@
 # SOP – Review and Optimize Campaign Structure
 Created: 2026-02-14
+Updated: 2026-08-27
 
 SOP_ID: SOP_86
 Status: Done
@@ -26,7 +27,7 @@ This SOP does **not:**
 
 - Optimize bids, budgets, or bid strategies (See: [SOP – Handle Budget-Limited Campaigns](../sops/SOP – Handle Budget-Limited Campaigns.md))
 - Rebuild a campaign from scratch (See: [SOP – Launch a Search Campaign](../sops/SOP – Launch a Search Campaign.md))
-- Cover Shopping, PMax, or Display campaign structures (each has its own structural model)
+- Cover Shopping, PMax, or Demand Gen/Video campaign structures (each has its own structural model)
 - Provide the conceptual framework for why structure matters (See: [Modern Search Campaign Mental Model](../mental-models/Modern Search Campaign Mental Model.md))
 - Run a full optimization cycle across all levers (See: [SOP – Run Search Campaign Optimization Cycle](../sops/SOP – Run Search Campaign Optimization Cycle.md))
 
@@ -203,8 +204,8 @@ The Copy + Paste method preserves learning on the stronger segment by keeping it
 | Timeframe | Action |
 |-----------|--------|
 | Day 1-3 | Verify both campaigns are serving impressions without errors |
-| Week 1 | Learning period: do not make changes unless a campaign is not serving at all |
-| Week 2-3 | Compare performance between the two campaigns against pre-split baselines |
+| Days 1-14 | The 7-14 day learning phase runs. Make no changes unless a campaign is not serving at all |
+| Week 2-3 | Compare performance between the two campaigns against pre-split baselines, once 1-2 conversion cycles have also elapsed from the split date |
 | Week 4 | Evaluate: is the original campaign performing better without the drag of the weaker segment? |
 | Week 4 decision | If the weaker segment campaign is unprofitable after 4 weeks, pause it and reallocate budget to the original |
 
@@ -326,7 +327,7 @@ Document every change made during this review:
 | Timeframe | Check |
 |-----------|-------|
 | Week 1 | All campaigns and ad groups are serving, no errors or disapprovals |
-| Week 2 | Bid strategies have exited learning period, impressions are flowing as expected |
+| Week 2 | The 7-14 day learning phase has completed, impressions are flowing as expected |
 | Week 4 | Compare performance against pre-restructure baselines: CPA, ROAS, conversion volume |
 | Week 8 | Full performance evaluation: did the structural changes improve or hurt overall account performance? |
 
@@ -409,8 +410,8 @@ After completing the structural review:
 
 ## Version details
 
-- **Version:** 2.0
-- **Last Updated:** March 2026
+- **Version:** 3.0
+- **Last Updated:** August 2026
 - **Creator:** Bob Meijer
 
 ---

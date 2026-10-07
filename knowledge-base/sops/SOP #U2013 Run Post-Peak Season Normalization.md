@@ -27,7 +27,7 @@ This SOP does **not:**
 
 - Cover peak-period execution or immediate post-event reversion (See: [SOP – Plan and Execute Seasonal Adjustments](../sops/SOP – Plan and Execute Seasonal Adjustments.md))
 - Define the seasonal optimization framework (See: [Seasonal Optimization Mental Model](../mental-models/Seasonal Optimization Mental Model.md))
-- Handle general negative keyword management (See: [SOP – Add Negative Keywords](../sops/SOP – Add Negative Keywords.md))
+- Handle general negative keyword management (See: [Negative Keyword Reference](../references/Negative Keyword Reference.md))
 - Cover general search term analysis (See: [SOP – Analyze Search Term Reports](../sops/SOP – Analyze Search Term Reports.md))
 
 ### When to run this SOP
@@ -213,7 +213,7 @@ A: No. Create a seasonal negative keyword list that you activate post-peak and d
 A: Still run Phase 3 (retrospective). Document competitor behavior, IS impact, and CPC changes. This data is valuable for deciding whether to participate next year.
 
 **Q: Can I skip Phase 3 if the event was small?**
-A: No. Phase 3 is the highest-leverage 30 minutes in seasonal optimization. The compounding effect of documented learnings year over year is the difference between average and exceptional seasonal performance.
+A: No. Run Phase 3 after every event. Documented learnings are the input to next year's Phase 1.
 
 ---
 
@@ -230,7 +230,6 @@ A: No. Phase 3 is the highest-leverage 30 minutes in seasonal optimization. The 
 | SOP | Relationship |
 |-----|-------------|
 | [SOP – Plan and Execute Seasonal Adjustments](../sops/SOP – Plan and Execute Seasonal Adjustments.md) | Upstream: Phases 1-4 |
-| [SOP – Add Negative Keywords](../sops/SOP – Add Negative Keywords.md) | Related: negative keyword mechanics |
 | [SOP – Analyze Search Term Reports](../sops/SOP – Analyze Search Term Reports.md) | Related: search term analysis |
 | [SOP – Run a Daily Account Health Check](../sops/SOP – Run a Daily Account Health Check.md) | Downstream: return to standard monitoring |
 

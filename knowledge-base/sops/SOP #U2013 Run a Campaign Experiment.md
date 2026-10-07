@@ -1,5 +1,6 @@
 # SOP – Run a Campaign Experiment
 Created: 2026-02-05
+Updated: 2026-10-05
 
 Agent_Executable: No
 Category: Operational
@@ -27,7 +28,7 @@ This SOP does **not:**
 
 - Explain when to test vs. implement directly (See: [Testing and Experimentation Mental Model](../mental-models/Testing and Experimentation Mental Model.md))
 - Detail all experiment configuration options (See: [Experiment Configuration Reference](../references/Experiment Configuration Reference.md))
-- Cover ad-level testing within RSAs (that's automatic)
+- Cover ad-level testing within RSAs (See: [SOP – RSA Testing with The Iteration Loop](../sops/SOP – RSA Testing with The Iteration Loop.md))
 - Replace pre/post analysis for changes where experiments aren't possible
 
 ## When to run this SOP
@@ -135,7 +136,7 @@ Duration = (Conversions needed per arm × 2) ÷ (Monthly conversions ÷ 30)
          = ___ days
 
 Add conversion lag: + ___ days
-Add learning period buffer: + 7 days (if testing Smart Bidding)
+Add learning period buffer: + 7-14 days (if testing Smart Bidding)
 
 Total duration: ___ days (minimum 14 days)
 ```
@@ -200,7 +201,7 @@ In the draft campaign, make ONLY the change being tested:
 | Setting | Value |
 |---------|-------|
 | Experiment name | `[Campaign] - [Test] - [Start date]` |
-| Traffic split | 50% (unless specific reason for different) |
+| Traffic split | 50% |
 | Start date | [Your start date] |
 | End date | [Your calculated end date] |
 | Sync | Daily |
@@ -220,7 +221,7 @@ Execute [Experiment Quality Checklist](../checklists/Experiment Quality Checklis
 
 ---
 
-## Phase 3️⃣: Launch and Monitor
+## Phase 3️⃣: Launch and monitor
 
 ### 3.1 Launch experiment
 
@@ -235,7 +236,10 @@ Execute [Experiment Quality Checklist](../checklists/Experiment Quality Checklis
 | Day 1 | Verify both arms receiving traffic |
 | Day 2-3 | Check for policy issues, delivery problems |
 | Weekly | Check for catastrophic failure (>30% worse) |
+| Weekly | Check spend deviation between arms. Under 20% is normal, do not correct it |
 | End date | Full analysis |
+
+> ⚠️ **Never force an even spend split.** The split governs auction eligibility, not spend, so each arm bids and filters independently and unequal spend is expected. Adjusting budgets or bids to equalize spend biases which auctions each arm enters and voids the result.
 
 ### 3.3 During-experiment rules
 
@@ -245,6 +249,7 @@ Execute [Experiment Quality Checklist](../checklists/Experiment Quality Checklis
 | Watch for catastrophic failure | Change anything in either arm |
 | Check for policy violations | Run other experiments on this campaign |
 | Document any external factors | Adjust budgets or bids |
+| Leave an uneven spend split alone | Rebalance budgets or bids to equalize spend between arms |
 
 ### 3.4 Early termination criteria
 
@@ -260,7 +265,7 @@ Only end early if:
 
 ---
 
-## Phase 4️⃣: Conclude and Apply
+## Phase 4️⃣: Conclude and apply
 
 ### 4.1 Wait for full duration + lag
 
@@ -278,6 +283,8 @@ In the Experiments section, review:
 | Primary: ___ | ___ | ___ | ___% | Yes/No |
 | Guardrail: ___ | ___ | ___ | ___% | Yes/No |
 | Guardrail: ___ | ___ | ___ | ___% | Yes/No |
+
+Then check over-delivery in Reports Editor against **Served Cost** rather than **Billed Cost**. Billed cost reflects over-delivery credits, which makes an arm look cheaper than it ran.
 
 ### 4.3 Interpret results
 
@@ -298,7 +305,7 @@ If treatment wins:
 
 If control wins:
 
-1. In Experiments, click **End experiment**
+1. In Experiments, click **End**
 2. Select **Keep original campaign settings**
 
 ### 4.5 Document learnings
@@ -336,6 +343,7 @@ This SOP is complete when:
 - [ ] Experiment ran for full planned duration
 - [ ] Results are statistically significant OR duration completed
 - [ ] Primary and guardrail metrics are analyzed
+- [ ] Spend split was left uncorrected for the full duration
 - [ ] Winner is applied OR control is kept
 - [ ] Results are documented
 - [ ] Learnings are shared with team
@@ -357,7 +365,7 @@ After experiment concludes:
 
 | Factor | Consider |
 |--------|----------|
-| Directional trend | If one arm trended better, cautiously apply |
+| Directional trend | Apply the arm that trended better, then monitor it for 14 days |
 | Simplicity | If equal, prefer simpler option |
 | Strategic alignment | Choose what fits broader strategy |
 | Extend test | If close to significant, add 1-2 weeks |
@@ -398,8 +406,8 @@ After experiment concludes:
 
 ## Version details
 
-- **Version:** 1.0
-- **Last Updated:** February 2026
+- **Version:** 3.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

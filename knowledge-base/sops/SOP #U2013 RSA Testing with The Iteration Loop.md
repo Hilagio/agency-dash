@@ -1,5 +1,6 @@
 # SOP – RSA Testing with The Iteration Loop
 Created: 2026-02-04
+Updated: 2026-08-27
 
 SOP_ID: SOP_4
 Status: Done
@@ -101,9 +102,9 @@ Before diving into the framework, understand why traditional RSA testing fails:
 
 | # Headlines | # 2-Headline combinations | # 3-Headline combinations | Min. Impressions needed |
 | --- | --- | --- | --- |
-| 6 | 9 | 120 | 12,000 |
-| 9 | 72 | 504 | 50,400 |
+| 6 | 30 | 120 | 12,000 |
 | 8 | 56 | 336 | 33,600 |
+| 9 | 72 | 504 | 50,400 |
 | 10 | 90 | 720 | 72,000 |
 | 15 | 210 | 2,730 | 273,000 |
 
@@ -166,21 +167,21 @@ Every RSA is built from these angle types:
 
 | Slot | Angle type | Purpose | Example |
 | --- | --- | --- | --- |
-| H1 | **Relevance Anchor** | Match the search query | `\{KeyWord:CRM Software\}` |
+| H1 | **Relevance Anchor** | Match the search query | `{KeyWord:CRM Software}` |
 | H2 | **Value Proposition** | Core offer + main benefit | "All-in-One Sales Platform" |
 | H3 | **USP / Benefit** | Why you're different/better | "Setup in Just 2 Minutes" |
 | H4 | **Social Proof** | Trust signals + credentials | "Trusted by 50,000+ Teams" |
 | H5 | **Risk Removal** | Lower barrier to action | "No Credit Card Required" |
-| H6 | **Call-to-Action** | What to do next | "Start Your Free Trial” |
+| H6 | **Call-to-Action** | What to do next | "Start Your Free Trial" |
 | H7 | **[Variable]** | 2nd headline for lead angle | (see note below) |
 | H8 | **[Optional]** | Additional angle (high-volume only) | (if 10k+ impressions/month) |
-| D1 | **Problem + Solution** | Pain recognition + benefit (include keyword) | "Tired of deals slipping through? Our CRM software keeps your pipeline organized.” |
-| D2 | **Proof + CTA** | Trust + action driver | "Join 12,000+ teams who've transformed their sales. Start your free trial today!” |
-| D3 | **Risk + Urgency (optional)** | Remove final barriers | "No credit card required. Start free and upgrade when ready.” |
+| D1 | **Problem + Solution** | Pain recognition + benefit (include keyword) | "Tired of deals slipping through? Our CRM software keeps your pipeline organized." |
+| D2 | **Proof + CTA** | Trust + action driver | "Join 12,000+ teams who've transformed their sales. Start your free trial today!" |
+| D3 | **Risk + Urgency (optional)** | Remove final barriers | "No credit card required. Start free and upgrade when ready." |
 
 **Note on the variable slot (H7)**
 
-Your initial RSA (from [SOP – RSA Testing with The Iteration Loop](../sops/SOP – RSA Testing with The Iteration Loop.md)) assigns H7 based on **traffic temperature** from your [SOP – Craft Your Offer Angles](../sops/SOP – Craft Your Offer Angles.md) document:
+Your initial RSA (from [SOP – Write Compelling RSAs](../sops/SOP – Write Compelling RSAs.md)) assigns H7 based on **traffic temperature** from your [SOP – Craft Your Offer Angles](../sops/SOP – Craft Your Offer Angles.md) document:
 
 | Traffic temperature | H7 angle type | Why |
 | --- | --- | --- |
@@ -222,9 +223,9 @@ Don't dedicate a slot to urgency alone. Weave it into other angle types when app
 
 | Ad Group | H1 (Relevance Anchor) | H3 (USP / Benefit) | H4 (Social Proof) |
 | --- | --- | --- | --- |
-| CRM Software | `\{KeyWord:CRM Software\}` | "Setup in 2 Minutes" | "Trusted by 50,000+ Teams" |
-| Sales CRM | `\{KeyWord:Sales CRM\}` | "Setup in 2 Minutes" | "Trusted by 50,000+ Teams" |
-| Enterprise CRM | `\{KeyWord:Enterprise CRM\}` | "Setup in 2 Minutes" | "Trusted by 50,000+ Teams" |
+| CRM Software | `{KeyWord:CRM Software}` | "Setup in 2 Minutes" | "Trusted by 50,000+ Teams" |
+| Sales CRM | `{KeyWord:Sales CRM}` | "Setup in 2 Minutes" | "Trusted by 50,000+ Teams" |
+| Enterprise CRM | `{KeyWord:Enterprise CRM}` | "Setup in 2 Minutes" | "Trusted by 50,000+ Teams" |
 
 > 20 ad groups × 5,000 impressions each = 100,000 impressions for "Setup in 2 Minutes". **Now you have real data to work with.**
 
@@ -303,12 +304,12 @@ Don't dedicate a slot to urgency alone. Weave it into other angle types when app
 
 **Example aggregated view:**
 
-| Angle | Headline type | Sub-angle | Angle type | Total conv. | CPI | Avg AIS |
+| Angle type | Sub-angle | Asset | Impressions | Total conv. | CPI | Avg AIS |
 | --- | --- | --- | --- | --- | --- | --- |
-| Benefit | Problem/Pain | Tool Chaos | "End Spreadsheet Chaos" | 0.25% | 34% | 124,000 |
-| Benefit | Problem/Pain | Missed Deals | Missed Deals | 178 | 24% |  |
-| Social Proof | User Count | "Trusted by 50,000+ Teams" | 156,000 | User count | 390 | 42% |
-| Risk Reversal | Risk Removal | "Try Free for 14 Days" | 67,000 | 201 | Trial | 18% |
+| Problem/Pain | Tool Chaos | "End Spreadsheet Chaos" | 124,000 | 310 | 0.25% | 34% |
+| Problem/Pain | Missed Deals | "Stop Losing Deals" | 57,000 | 178 | 0.31% | 24% |
+| Social Proof | User Count | "Trusted by 50,000+ Teams" | 156,000 | 390 | 0.25% | 42% |
+| Risk Removal | Trial | "Try Free for 14 Days" | 67,000 | 201 | 0.30% | 18% |
 
 > Instead of 5k impressions per asset in isolation, you have 100k+ per angle type. Patterns emerge and decisions become clear.
 
@@ -325,7 +326,7 @@ Don't dedicate a slot to urgency alone. Weave it into other angle types when app
 |  | High AIS | Low AIS |
 | --- | --- | --- |
 | **High CPI/RPI** | ✅ **Champions** | 🚀 **Hidden Gems** |
-| **Low CPI/RPI** | 💀 **Silent Killers** | 🗑️ **Trash** |
+| **Low CPI/RPI** | 💀 **Silent Killers** | 📉 **Underperformers** |
 
 **Quadrant Definitions:**
 
@@ -334,7 +335,7 @@ Don't dedicate a slot to urgency alone. Weave it into other angle types when app
 | **Champions** | High CPI, High AIS | Your best assets. Google shows them often AND they convert well. |
 | **Hidden Gems** | High CPI, Low AIS | Great converters that Google isn't showing enough. Opportunity! |
 | **Silent Killers** | Low CPI, High AIS | Google shows them a lot, but they don't convert. Dragging down performance. |
-| **Trash** | Low CPI, Low AIS | Bad converters that rarely show anyway. Low priority. |
+| **Underperformers** | Low CPI, Low AIS | Bad converters that rarely show anyway. Low priority. |
 
 **How to define "High" vs "Low":**
 
@@ -356,9 +357,9 @@ Don't dedicate a slot to urgency alone. Weave it into other angle types when app
 | **Champions** | **Protect** | - | Don't touch. Document in learning log. |
 | **Hidden Gems** | **Increase exposure** | High | Pin to position 1, or add variations in descriptions |
 | **Silent Killers** | **Kill immediately** | Critical | Remove or replace with new hypothesis |
-| **Trash** | **Replace when convenient** | Low | Swap out during next iteration cycle |
+| **Underperformers** | **Replace when convenient** | Low | Swap out during next iteration cycle |
 
-> 💡 **“Silent Killers” are the priority:** They're actively hurting performance because Google shows them frequently. Remove them first.
+> 💡 **"Silent Killers" are the priority:** They're actively hurting performance because Google shows them frequently. Remove them first.
 
 ---
 
@@ -393,7 +394,7 @@ Don't dedicate a slot to urgency alone. Weave it into other angle types when app
 
 | Level | What you're testing | Example | When to use |
 | --- | --- | --- | --- |
-| **Headline Type vs. Type** | Big categories against each other | Problem/Pain vs. Social Proof vs. Risk Removal | **Angle Type vs. Type** |
+| **Angle type vs. type** | Big categories against each other | Problem/Pain vs. Social Proof vs. Risk Removal | Exploration phase |
 | **Sub-angle vs. Sub-angle** | Variations within a headline type | Problem: Tool Chaos vs. Problem: Missed Deals | Refining winners |
 | **Asset vs. Asset** | Phrasing within a sub-angle | "End Spreadsheet Chaos" vs. "Stop the Chaos" | Optimizing proven angles |
 
@@ -401,7 +402,7 @@ Don't dedicate a slot to urgency alone. Weave it into other angle types when app
 
 ---
 
-### 4.2 Testing Maturity Phases
+### 4.2 Testing maturity phases
 
 **Goal:** Match your testing approach to account maturity.
 
@@ -417,7 +418,7 @@ Don't dedicate a slot to urgency alone. Weave it into other angle types when app
 
 - Test all 7 angle types
 - Don't optimize phrasing yet. Find winning concepts first
-- Expect high variance; some types will underperform
+- Expect high variance: some types will underperform
 
 #### Phase 2️⃣: Consolidation (Proven basic winners)
 
@@ -460,9 +461,7 @@ Don't dedicate a slot to urgency alone. Weave it into other angle types when app
 
 | Source | What to look for | Example |
 | --- | --- | --- |
-| **Offer Angles** 
-(from [SOP – Craft Your Offer Angles](../sops/SOP – Craft Your Offer Angles.md)) | **Offer Angles** 
-(from [SOP – Craft Your Offer Angles](../sops/SOP – Craft Your Offer Angles.md)) | "If we test a 'Risk Removal' headline, CPI will improve because our guarantee is stronger than competitors" |
+| [SOP – Craft Your Offer Angles](../sops/SOP – Craft Your Offer Angles.md) | Documented angles not yet tested in this cluster | "If we test a 'Risk Removal' headline, CPI will improve because our guarantee is stronger than competitors" |
 | Customer reviews | Repeated praise/complaints | "If we emphasize 'easy setup' in Problem/Pain, CPI will improve because it's mentioned in 70% of positive reviews" |
 | Competitor ads | Gaps in messaging | "If we highlight '24/7 support' in USP/Benefit, we'll differentiate because no competitor mentions it" |
 | Sales team | Common objections | "If we address pricing concerns in Risk Removal, CVR will improve because it's the #1 objection" |
@@ -482,7 +481,7 @@ The angles document from [SOP – Craft Your Offer Angles](../sops/SOP – Craft
 | **Risk Removal** | Different guarantee types, different trial framings, different commitment levels |
 | **Call-to-Action** | Soft vs. hard CTAs, benefit-focused CTAs, urgency CTA |
 
-> ⚠️ **Traffic temperature affects hypothesis priority:** If you're optimizing a cold traffic cluster, prioritize Problem/Pain sub-angle tests. For hot traffic, prioritize Social Proof and Risk Removal tests. Reference your traffic classification from [SOP – Craft Your Offer Angles](../sops/SOP – Craft Your Offer Angles.md) .
+> ⚠️ **Traffic temperature affects hypothesis priority:** If you're optimizing a cold traffic cluster, prioritize Problem/Pain sub-angle tests. For hot traffic, prioritize Social Proof and Risk Removal tests. Reference your traffic classification from [SOP – Craft Your Offer Angles](../sops/SOP – Craft Your Offer Angles.md).
 
 ---
 
@@ -500,7 +499,7 @@ The angles document from [SOP – Craft Your Offer Angles](../sops/SOP – Craft
 
 **AI input sources:**
 
-- Your 6-angle extraction document ([SOP – Craft Your Offer Angles](../sops/SOP – Craft Your Offer Angles.md) )
+- Your 6-angle extraction document ([SOP – Craft Your Offer Angles](../sops/SOP – Craft Your Offer Angles.md))
 - Competitor ad scraping
 - Customer review mining
 - Search result analysis
@@ -535,7 +534,7 @@ teams care more about lost revenue than organization".
 ───────────────────────────────────────────────────────
 ANGLE TYPE TESTED
 ───────────────────────────────────────────────────────
-Slot: H4 (Problem/Pain)
+Slot: H7 (Problem/Pain)
 
 Control (Tool Chaos):
 - "End Spreadsheet Chaos"
@@ -662,8 +661,7 @@ Track these metrics over time:
 | **Data poverty** | Can't reach significance | Too many assets, too little traffic | Reduce to 7-8 headlines, aggregate across ad groups |
 | **Random testing** | No clear learnings | Testing without hypotheses | Use hypothesis framework + 6-angle document |
 | **CTR chasing** | High CTR, low conversions | Wrong metric | Switch to CPI/RPI |
-| **Template drift** | Can't aggregate data | Ad groups have different structures | Enforce template consistency |
-| **Template inconsistency** | Can't aggregate data | Different angle types in same slot across cluster | Enforce template: same slot = same angle type within cluster |
+| **Template drift** | Can't aggregate data | Different angle types in the same slot across the cluster | Enforce the template: same slot = same angle type within a cluster |
 | **Silent killer blindness** | Declining CPI | Not running quadrant analysis | Run diagnosis phase every cycle |
 | **Premature optimization** | Testing words before concepts | Asset-level tests before type-level | Start with angle type vs. type |
 | **Learning amnesia** | Repeating failed tests | Not maintaining learning log | Document every test |
@@ -671,7 +669,7 @@ Track these metrics over time:
 
 ---
 
-### Tools & Implementation
+### Tools and implementation
 
 #### Manual implementation (Spreadsheets)
 
@@ -701,7 +699,7 @@ Track these metrics over time:
 
 **Q: How often should I run cycles?**
 
-A: Every 2-8 weeks for active optimization, dependent on your account’s volume.
+A: Every 2-8 weeks for active optimization, dependent on your account's volume.
 
 **Q: How many assets should I test per cycle?**
 
@@ -750,8 +748,8 @@ A: Your traffic temperature (from [SOP – Craft Your Offer Angles](../sops/SOP 
 | Document | Relationship |
 | --- | --- |
 | [SOP – Create an Irresistible Offer](../sops/SOP – Create an Irresistible Offer.md)  | Foundational (offer must be solid) |
-| [Headline Angle Catalog](../catalogs/Headline Angle Catalog.md) | Foundational (6 angles + traffic temperature feed your hypotheses) |
-| [SOP – RSA Testing with The Iteration Loop](../sops/SOP – RSA Testing with The Iteration Loop.md)  | Foundational (creates testing-ready RSA structure) |
+| [SOP – Craft Your Offer Angles](../sops/SOP – Craft Your Offer Angles.md) | Foundational (6 angles + traffic temperature feed your hypotheses) |
+| [SOP – Write Compelling RSAs](../sops/SOP – Write Compelling RSAs.md) | Foundational (creates testing-ready RSA structure) |
 | [Awareness Stage Mental Model](../mental-models/Awareness Stage Mental Model.md)  | Reference (traffic temperature context) |
 | [Headline Angle Catalog](../catalogs/Headline Angle Catalog.md)  | Reference (7 angle types define your template) |
 | [Description Expansion Catalog](../catalogs/Description Expansion Catalog.md)  | Reference (description patterns) |
@@ -765,8 +763,8 @@ A: Your traffic temperature (from [SOP – Craft Your Offer Angles](../sops/SOP 
 
 ### Version details
 
-- **Version:** 3.0
-- **Last Updated:** January 2026
+- **Version:** 5.0
+- **Last Updated:** August 2026
 - **Creator:** Bob Meijer
 
 ---

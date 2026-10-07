@@ -1,6 +1,6 @@
 # SOP – Launch Standard Shopping Campaign
 Created: 2026-02-04
-Updated: 2026-02-05
+Updated: 2026-10-05
 
 SOP_ID: SOP_49
 Status: Done
@@ -114,7 +114,7 @@ Before creating the campaign, determine your structure:
 | **Campaign name** | `[Country]_[Language]_Shopping_[Segment]` | e.g., "US_EN_Shopping_AllProducts" |
 | **Country of sale** | Your target country | Must match feed target country |
 | **Campaign priority** | Low (default) | Use High/Medium for query sculpting only |
-| **Inventory filter** | None (default) | Use if excluding specific brands/products |
+| **Inventory filter** | Set the Channel option deliberately | Local product listings serve by default. Filter Channel to Online for an online-only campaign. This cannot be changed after creation |
 
 > 💡 **Display Network does NOT apply to Standard Shopping:** Only Search Network and Search Partners are available as network options.
 
@@ -135,7 +135,7 @@ Before creating the campaign, determine your structure:
 | **Search Network** | Enabled (required for Shopping) |
 | **Search Partners** | Test (monitor performance) |
 
-> 💡 **Search Partners:** Can work great or perform poorly. Highly dependent on vertical. Test and monitor.
+> 💡 **Search Partners:** Leave on and read the Network (with search partners) segment. An unacceptable Search Partners CPA or ROAS in that split is the disable signal. See [Network Selection Reference](../references/Network Selection Reference.md).
 
 > ↪️ **For network selection rationale:** See [Network Selection Reference](../references/Network Selection Reference.md).
 
@@ -208,7 +208,7 @@ Standard Shopping campaigns do not have manual creative. Product listings are ge
 | Situation | Recommended bid strategy | Why |
 |-----------|-------------------------|-----|
 | New account, <30 conversions/month | Manual CPC | Works at any volume, full control |
-| 30-50 conversions/month | Maximize Clicks | Build conversion history |
+| 30-49 conversions/month | Maximize Clicks | Build conversion history |
 | 50+ conversions/month | Target ROAS | Sufficient data for Smart Bidding |
 
 **Available bid strategies for Standard Shopping:**
@@ -216,6 +216,7 @@ Standard Shopping campaigns do not have manual creative. Product listings are ge
 - Manual CPC
 - Maximize Clicks
 - Target ROAS
+- Maximize Conversion Value (an alternative to Target ROAS when conversion history is limited)
 
 > ↪️ **For volume thresholds:** See [Conversion Volume Thresholds Reference](../references/Conversion Volume Thresholds Reference.md).
 
@@ -231,9 +232,8 @@ Standard Shopping campaigns do not have manual creative. Product listings are ge
 **If Target ROAS:**
 
 1. Go to campaign settings → **Bidding**
-2. Select **Maximize conversion value**
-3. Check **Set a target return on ad spend**
-4. Enter target ROAS (start at actual ROAS minus 10-20%)
+2. Select **Target ROAS** (a standalone strategy selection, also reachable by selecting Maximize conversion value and checking "Set a target return on ad spend")
+3. Enter target ROAS (start at actual ROAS minus 10-20%)
 
 ### 4.3 Set budget
 
@@ -251,7 +251,7 @@ Example: €500/day revenue at 400% ROAS = €125/day budget
 
 If running separate brand and non-brand campaigns, use a negative keyword list:
 
-1. Go to **Tools & Settings** → **Shared library** → **Negative keyword lists**
+1. Go to **Tools** → **Shared library** → **Exclusion lists** → **Negative keyword lists**
 2. Create list: `Branded` (or `[Client] - Branded`)
 3. Add brand terms as **broad match** (no brackets or quotes):
    - `brand name`
@@ -267,7 +267,7 @@ If running separate brand and non-brand campaigns, use a negative keyword list:
 
 For negatives shared across campaigns:
 
-1. Go to **Tools & Settings** → **Shared library** → **Negative keyword lists**
+1. Go to **Tools** → **Shared library** → **Exclusion lists** → **Negative keyword lists**
 2. Create list: `[Client] - Shopping Negatives`
 3. Add universal negatives (wrong intent, competitors you don't carry)
 4. Apply to all Shopping campaigns
@@ -281,7 +281,7 @@ For negatives shared across campaigns:
 - [ ] Campaign name follows naming convention
 - [ ] Correct Merchant Center account selected
 - [ ] Country of sale matches feed
-- [ ] Networks configured (Display disabled)
+- [ ] Networks configured
 - [ ] Location targeting set correctly
 - [ ] Product groups structured appropriately
 - [ ] Bid strategy selected
@@ -398,8 +398,8 @@ A: Initial impressions: 24-48 hours. Learning period: 1-2 weeks. Performance sta
 
 ## Version details
 
-- **Version:** 3.0
-- **Last Updated:** February 2026
+- **Version:** 5.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

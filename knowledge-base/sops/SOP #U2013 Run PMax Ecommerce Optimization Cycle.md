@@ -16,7 +16,7 @@ This SOP runs the optimization routine for ecommerce Performance Max campaigns (
 
 > ❓ **The big question:** What do I check, how often, and in what order to keep an ecommerce PMax campaign performing?
 
-**The core principle: less is sometimes more.** PMax needs time to learn. Over-optimization destroys the algorithm's ability to find patterns. Make deliberate changes, then wait for data. Respect 4-6 week learning periods after significant changes.
+**The core principle: make deliberate changes, then wait for data.** Respect the learning durations in Phase 1 after every significant change.
 
 > 💡 **Full Assets vs Feed-Only:** This SOP handles both. Feed-Only campaigns skip asset performance (Phase 4) and audience signals (Phase 6) since the product feed is the sole creative and targeting input. Sections with different guidance per type are labeled.
 
@@ -92,7 +92,7 @@ This SOP does **not:**
 
 ## Phase 2️⃣: Search term review (weekly, 15 min)
 
-PMax search term reports now work like Search campaign reports: fully visible, with impression, click, and conversion data at the query level.
+PMax search term reports work like Search campaign reports: fully visible, with impression, click, and conversion data at the query level.
 
 1. Navigate to the PMax campaign > **Insights and reports** > **Search terms**
 2. Set date range to last 7 days, sort by cost (highest first)
@@ -107,7 +107,7 @@ PMax search term reports now work like Search campaign reports: fully visible, w
 | **Competitor queries** | Contains competitor brand names | Evaluate: converting or wasting? |
 | **Low-intent informational** | "what is", "how to", "free" | Exclude unless top-of-funnel intent desired |
 
-4. Check brand vs. non-brand split: brand should be <30% of impressions. If brand dominates, your PMax reporting is inflated by easy wins.
+4. Check brand vs. non-brand split: brand is under 30% of impressions. Above that, the campaign reporting is inflated by brand wins.
 
 > ↪️ **For detailed search term management:** See [SOP – Manage PMax Search Terms and Brand Defense](../sops/SOP – Manage PMax Search Terms and Brand Defense.md).
 
@@ -117,7 +117,7 @@ PMax search term reports now work like Search campaign reports: fully visible, w
 
 PMax supports negative keyword lists linked directly to campaigns. Use shared lists the same way you manage negatives in Search.
 
-1. Open **Tools** > **Shared library** > **Negative keyword lists**
+1. Open **Tools** > **Shared library** > **Exclusion lists** > **Negative keyword lists**
 2. Add exclusion terms identified in Phase 2
 3. Confirm the list is linked to the PMax campaign
 4. For campaigns with sufficient volume, run N-gram analysis on 30-day search term exports to identify wasteful patterns at scale
@@ -159,7 +159,7 @@ PMax provides asset-level performance data: impressions, clicks, and conversions
 
 PMax distributes spend across Search, Shopping, Display, Video, Gmail, and Discover. Channel-level data is available in the interface and via the API.
 
-1. Navigate to the PMax campaign > **Insights** > **Campaign insights** for channel breakdown
+1. Navigate to the PMax campaign > **Insights and reports** > **Channel performance** for channel breakdown
 2. Compare against healthy ranges:
 
 **Full Assets:**
@@ -198,7 +198,7 @@ PMax distributes spend across Search, Shopping, Display, Video, Gmail, and Disco
 
 | Signal type | Review action |
 |-------------|---------------|
-| **Customer Match** | Refresh with latest purchaser data (quarterly minimum) |
+| **Customer Match** | Refresh with latest purchaser data (monthly minimum) |
 | **Website visitors** | Verify lists are populating correctly |
 | **High-value customers** | Update with latest purchase data |
 | **Cart abandoners** | Verify audience is active and growing |
@@ -283,7 +283,7 @@ If using performance-based segmentation (hero/sidekick/villain/zombie via Produc
 
 PMax provides impression-level placement data.
 
-1. Navigate to **Insights and reports** > **When and where ads showed** > **Placements**, sort by impressions
+1. Navigate to **Insights and reports** > **When and where ads showed** > **Where ads showed**, sort by impressions
 2. Flag suspicious placements:
 
 | Red flag | Action |
@@ -293,7 +293,7 @@ PMax provides impression-level placement data.
 | Irrelevant YouTube channels | Exclude |
 | Any single placement with >5% of spend and zero conversions | Exclude |
 
-3. Apply exclusions via **Tools** > **Content suitability** > **Placement exclusions**
+3. Apply exclusions via **Tools** > **Content suitability** > **Excluded placements**
 
 > ⚠️ **Placement exclusions are account-level.** They remove placements from all campaigns. Verify the placement is unwanted everywhere before excluding.
 
@@ -373,8 +373,8 @@ This SOP is complete when:
 
 ## Version details
 
-- **Version:** 1.0
-- **Last Updated:** March 2026
+- **Version:** 2.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

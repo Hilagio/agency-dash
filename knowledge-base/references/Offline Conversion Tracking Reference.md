@@ -1,6 +1,6 @@
 # Offline Conversion Tracking Reference
 Created: 2026-02-04
-Updated: 2026-02-05
+Updated: 2026-08-27
 
 Support_ID: CHEATSHEET_16
 Status: Done
@@ -61,7 +61,7 @@ Without OCT, you optimize for lead quantity. With OCT, you optimize for lead qua
 | **Budget allocation** | Based on lead volume | Based on revenue and profit contribution |
 | **Campaign evaluation** | Campaign A has lower CPL = "winner" | Campaign B has higher close rate and deal value = actual winner |
 
-> ⚠️ **Always implement OCT for lead gen and SaaS, regardless of volume:** Even if conversion volumes are too low to use offline conversions as a primary bidding signal, tracking them as secondary conversion actions provides critical business insights you cannot get any other way.
+> ⚠️ **OCT earns its place at any volume.** Where conversion volumes are too low for offline conversions to serve as a primary bidding signal, the same actions still run as secondary conversion actions and surface business insight available no other way.
 
 ---
 
@@ -94,7 +94,9 @@ Without OCT, you optimize for lead quantity. With OCT, you optimize for lead qua
 | **gbraid** | Shorter string | iOS app environments | 2nd (use when gclid is not available) |
 | **wbraid** | Shorter string | iOS web environments (Safari) | 3rd (last resort when neither gclid nor gbraid is available) |
 
-> ⚠️ **Capture all three click ID types:** Always add hidden fields for gclid, gbraid, and wbraid to every form. When uploading, follow the priority order: gclid first, gbraid second, wbraid last. Never upload the same conversion with multiple click ID types.
+> ⚠️ **All three click ID types need capture.** Every form carries hidden fields for gclid, gbraid, and wbraid. Uploads follow the priority order gclid, gbraid, wbraid, and a single conversion never carries more than one click ID type.
+
+> ⚠️ **External attribution covers gclid and gbraid, and rules out transaction ID deduplication.** If you upload conversions already scored by your own attribution model, you cannot also deduplicate them on transaction ID. Choose one: Google's attribution with transaction ID dedupe, or your own credit assignment without it.
 
 ### Hidden field requirements
 
@@ -136,7 +138,7 @@ A GTM Custom HTML script extracts click IDs from the URL, stores them in localSt
 |---------------|-----------|
 | Lower match rates than GCLID | Not all email addresses match a Google account |
 | Requires Enhanced Conversions setup | User-provided data tag must fire at form submission |
-| Google Ads UI settings required | Must enable both Enhanced Conversions and Enhanced Conversions for Leads |
+| Enhanced Conversions setting required | Enhanced Conversions is a single account-level setting that covers web and leads matching |
 
 ---
 
@@ -144,7 +146,7 @@ A GTM Custom HTML script extracts click IDs from the URL, stores them in localSt
 
 ### How it works
 
-Combine GCLID and EC4L with conditional logic:
+The hybrid method combines GCLID and EC4L with conditional logic:
 
 1. **Capture both** click IDs (hidden fields) and user-provided data (Enhanced Conversions) at form submission
 2. **Store both** in CRM: click IDs in dedicated fields, email/phone in standard contact fields
@@ -159,17 +161,25 @@ Combine GCLID and EC4L with conditional logic:
 | 3 | Does wbraid exist? | Yes: upload using wbraid + PII |
 | 4 | No click IDs available | Upload using EC4L (email/phone only) |
 
-> 💡 **Always include PII alongside click IDs:** When uploading with a GCLID, also send the hashed email and phone number. This enhances match rates beyond what either method achieves alone.
+> 💡 **PII alongside a click ID raises the match rate.** A GCLID upload that also carries the hashed email and phone number matches better than either identifier achieves alone.
 
-### Automation setup
+### Automation
 
-Use Zapier, Make, or a custom integration to automate the hybrid workflow:
+Zapier, Make, and custom integrations carry the hybrid workflow: a CRM stage change triggers the upload, the identifier is selected in gclid, gbraid, wbraid, EC4L order, and the timestamp carries the offset described under Upload timing.
 
-1. **Trigger**: CRM status changes to "Qualified Lead" or "Closed Deal"
-2. **Formatter**: Add 12-hour offset to timestamp (handles timezone differences)
-3. **Delay**: Wait 24 hours (Google needs time to process click IDs)
-4. **Path logic**: Route to the correct upload method based on available identifiers (gclid > gbraid > wbraid > EC4L)
-5. **Upload**: Send conversion to Google Ads with the selected identifier, value, and timestamp
+> ↪️ **For the automation build itself:** See [SOP – Set Up Offline Conversion Tracking](../sops/SOP – Set Up Offline Conversion Tracking.md).
+
+---
+
+## When native lead journey mapping fits instead
+
+Google Ads can define funnel stages natively, with per-stage conversion actions, delays and values configured inside the account instead of derived from your CRM. That removes the upload pipeline, and it hands the value definition to Google.
+| Situation | Path |
+|-----------|------|
+| A CRM is already in place | Integrate it with OCT. The business keeps its existing tool, CRM and lead-scoring stack instead of adopting something new |
+| No CRM, or no appetite to build an upload pipeline | Native lead journey mapping is a legitimate path. Weigh it against a light setup: a spreadsheet as the CRM plus an automation tool handling uploads |
+
+> ⚠️ **The tradeoff is who defines value.** OCT sends Google an outcome your business already scored. Native journey mapping asks Google to score it for you. Where that scoring logic already lives in a CRM, exporting it is worth more than rebuilding it inside the ad platform.
 
 ---
 
@@ -177,7 +187,7 @@ Use Zapier, Make, or a custom integration to automate the hybrid workflow:
 
 ### Creating offline conversion actions
 
-Create "Import" type conversion actions in Google Ads for each offline conversion stage:
+Each offline conversion stage has its own "Import" type conversion action:
 
 | **Conversion action** | **Goal category** | **Counting** | **Optimization** | **Value** |
 |----------------------|-------------------|-------------|-----------------|---------|
@@ -185,11 +195,11 @@ Create "Import" type conversion actions in Google Ads for each offline conversio
 | OCT: Closed Deal | Purchase/Sale | One | Primary (recommended for bottom-funnel campaigns) | Dynamic (actual deal value) |
 | OCT: Gross Profit | Purchase/Sale | One | Primary (for POAS-based bidding) | Dynamic (actual gross profit per deal) |
 
-> 💡 **Track both revenue and gross profit:** Create two offline conversion actions: one for revenue (use for ROAS bidding), one for gross profit (use for POAS bidding). This gives you both data points for decision making.
+> 💡 **Revenue and gross profit are separate actions.** Two offline conversion actions, one carrying revenue for ROAS bidding and one carrying gross profit for POAS bidding, keep both data points available for decision making.
 
 ### One conversion action per stage, not per method
 
-Use one conversion action per offline conversion stage (e.g., one for Qualified Lead, one for Closed Deal). Send both GCLID and EC4L imports to the same conversion action. This consolidates conversion signals and gives Smart Bidding a stronger dataset.
+A conversion action maps to an offline stage (Qualified Lead, Closed Deal), not to an import method. GCLID and EC4L imports land on the same conversion action, which consolidates the conversion signal and gives Smart Bidding a stronger dataset.
 
 ---
 
@@ -197,11 +207,13 @@ Use one conversion action per offline conversion stage (e.g., one for Qualified 
 
 | **Method** | **How** | **Best for** |
 |-----------|--------|-------------|
-| **Manual CSV upload** | Download template from Google Ads, fill in, upload via Goals > Conversions > Uploads | Testing, low volume, one-time imports |
+| **Manual CSV upload** | Google Ads template, filled and uploaded by hand | Testing, low volume, one-time imports |
 | **Google Sheets scheduled upload** | Link a Google Sheet, configure automatic upload schedule | Small accounts with simple CRM (Google Sheets as database) |
 | **CRM integration (native)** | Salesforce, HubSpot, Zoho native connectors | Accounts already using supported CRMs |
 | **Zapier / Make automation** | Trigger-based automated upload when CRM status changes | Most lead gen accounts: flexible, supports hybrid approach |
-| **Google Ads API** | Programmatic upload for high-volume or real-time imports | High-volume accounts, custom integrations |
+| **Data Manager API** | Programmatic upload for high-volume or real-time imports | High-volume accounts, custom integrations |
+
+> ⚠️ **GCLIDs carry the attribution.** They are required when no tag collects user-provided data, and they still add value alongside the EC-for-leads tag: the GCLID gives direct attribution, hashed identifiers fill the gaps.
 
 ---
 
@@ -211,10 +223,13 @@ Use one conversion action per offline conversion stage (e.g., one for Qualified 
 |-------------|-----------|
 | **Minimum delay** | Wait at least 24 hours after the click before uploading (Google needs time to process click IDs) |
 | **Maximum lookback** | 90 days from the click date (conversions uploaded after 90 days are rejected) |
+| **Attribution modeling window** | 7 days from the conversion event. Later uploads still appear in standard reports but are bypassed by attribution modeling, so they never shape Data-Driven Attribution |
 | **Recommended timing** | Upload within 24-48 hours of the offline conversion occurring |
 | **Timestamp format** | Include a 12-hour offset to handle timezone differences between your CRM and Google Ads |
 
 > ⚠️ **90-day lookback limit:** If your sales cycle exceeds 90 days, you must import an earlier funnel stage (qualified lead) that occurs within the 90-day window. The closed deal can still be tracked in your CRM but cannot be uploaded to Google Ads if it occurred more than 90 days after the click.
+
+> ⚠️ **Two limits, two different failures.** The 90-day lookback decides whether an upload is accepted at all. The 7-day attribution window decides whether it influences Data-Driven Attribution. An upload at day 30 is accepted, appears in your reports, and stays invisible to the model. Upload latency under 7 days keeps the bidding signal aligned with what actually closed.
 
 ---
 
@@ -293,8 +308,8 @@ When you import offline conversions with deal values, Smart Bidding can optimize
 
 ## Version details
 
-- **Version:** 1.0
-- **Last Updated:** February 2026
+- **Version:** 2.0
+- **Last Updated:** August 2026
 - **Creator:** Bob Meijer
 
 ---

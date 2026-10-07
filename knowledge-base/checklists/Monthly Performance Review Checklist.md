@@ -62,101 +62,102 @@ Run this checklist:
 
 ### Conversion tracking diagnostics `[Layer 1️⃣ deep dive]` `[auto-prep]`
 
-- [ ] Google Ads conversion totals compared to backend data (CRM, analytics, ecommerce platform)
-- [ ] Discrepancy percentage calculated and within acceptable band (typically <15%)
-- [ ] All primary conversion actions verified as active
-- [ ] Conversion action settings reviewed (window, counting, value)
-- [ ] Enhanced conversions match rate checked (if applicable)
-- [ ] Offline conversion import health verified (if applicable)
+- [ ] Backend conversion totals for the month are recorded (CRM, analytics, ecommerce platform)
+- [ ] Google Ads to backend conversion discrepancy is under 15%
+- [ ] Every primary conversion action shows status "Active"
+- [ ] Every primary conversion action's window, counting method and value setting matches its documented configuration
+- [ ] Enhanced Conversions match rate is 50% or higher (if configured)
+- [ ] Offline conversion imports for the month completed with no upload errors (if configured)
 
 ### Campaign settings review `[Layer 1️⃣ deep dive]` `[auto-prep]`
 
-- [ ] Location targeting settings unchanged from intended configuration
-- [ ] Network settings verified (Search Partners, Display Expansion)
-- [ ] Ad rotation settings confirmed as "Optimize"
-- [ ] Language targeting correct for all campaigns
-- [ ] Campaign-specific goals aligned with intended conversion actions
-- [ ] Brand exclusions/inclusions still accurate (PMax, Search)
+- [ ] Location targeting matches the documented configuration on every campaign
+- [ ] Network settings match the documented configuration on every campaign (Search Partners, Display Expansion)
+- [ ] Ad rotation is set to "Optimize" on every campaign
+- [ ] Language targeting matches the documented configuration on every Demand Gen, Video, Display and PMax campaign
+- [ ] Search ad copy and landing pages are in one language per ad group
+- [ ] Campaign-specific goals point to the intended conversion actions
+- [ ] Brand exclusions and inclusions match the documented configuration (PMax, Search)
 
 ### Landing page health `[Layer 1️⃣ deep dive]` `[auto-prep]`
 
-- [ ] Top landing pages load speed verified (Core Web Vitals)
-- [ ] No increase in bounce rate on primary landing pages
-- [ ] Landing page conversion rate trends reviewed
-- [ ] Landing page content still matches ad messaging
+- [ ] Every top landing page passes Core Web Vitals
+- [ ] No primary landing page increased its bounce rate versus the prior month
+- [ ] Landing page conversion rate change versus the prior month is recorded
+- [ ] Every primary landing page carries the messaging of the ads pointing at it
 
 ### Google Recommendations and auto-apply `[Layer 1️⃣]`
 
-- [ ] Auto-apply settings verified (all categories disabled per guidelines)
-- [ ] Change History reviewed for any auto-applied recommendations
-- [ ] Outstanding recommendations reviewed and dismissed or applied
-- [ ] Optimization score noted (for reference, not as a target)
+- [ ] Every auto-apply category is disabled
+- [ ] Change History for the month contains no auto-applied recommendations
+- [ ] Every outstanding recommendation is applied or dismissed
+- [ ] Optimization score is recorded
 
 ### Audience health `[Layer 2️⃣]`
 
-- [ ] Remarketing list sizes reviewed (not shrinking unexpectedly)
-- [ ] Customer Match list freshness verified (uploaded within 90 days)
-- [ ] Audience segment performance reviewed for actionable patterns
-- [ ] No audience segments with zero impressions that should be active
+- [ ] No remarketing list shrank versus the prior month
+- [ ] Customer Match list refreshed within the last 30 days
+- [ ] Every audience segment with a CPA above 2x the campaign average has a documented decision
+- [ ] Every audience segment intended to be active has impressions in the last 30 days
 
 ### Quality Score review (Search) `[Layer 2️⃣]` `[auto-prep]`
 
-- [ ] Weighted non-brand Quality Score calculated and compared to prior month
-- [ ] High-volume keywords with QS <5 identified and flagged
-- [ ] QS component trends reviewed (Expected CTR, Ad Relevance, Landing Page Experience)
-- [ ] Keywords with declining QS investigated or queued for action
+- [ ] Weighted non-brand Quality Score is calculated and compared to the prior month
+- [ ] Every high-volume keyword with QS below 5 is flagged
+- [ ] QS component values are recorded for the month (Expected CTR, Ad Relevance, Landing Page Experience)
+- [ ] Every keyword whose QS fell versus the prior month has a documented decision
 
 ### Baseline recalibration `[Layer 2️⃣]`
 
-- [ ] Status Board green/orange/red thresholds reviewed against last 30 days of data
-- [ ] Thresholds adjusted if baseline performance shifted significantly
-- [ ] Alert thresholds recalibrated if false positive rate was high
-- [ ] Volume tier classification confirmed (has the account moved tiers?)
+- [ ] Status Board green/orange/red thresholds are compared against the last 30 days of data
+- [ ] Every threshold sitting outside its baseline band is adjusted
+- [ ] Every alert whose false positive rate exceeded its documented limit is recalibrated
+- [ ] Volume tier classification matches the last 30 days of conversion volume
 
 ### Competitive landscape `[Layer 2️⃣/3️⃣]` `[auto-prep]`
 
-- [ ] Auction Insights reviewed for impression share trends over last 3 months
-- [ ] New competitors identified (if any appeared)
-- [ ] Competitor disappearances noted (and CPC impact assessed)
-- [ ] Outranking share trends assessed for top 3-5 competitors
-- [ ] Merchant Center price competitiveness reviewed (ecommerce only)
+- [ ] Auction Insights impression share trend over the last 3 months is recorded
+- [ ] Every competitor new to Auction Insights this month is listed
+- [ ] Every competitor that left Auction Insights this month is listed with its CPC impact
+- [ ] Outranking share trend is recorded for the top 3-5 competitors
+- [ ] Merchant Center price competitiveness is recorded (ecommerce only)
 
 ### Bid strategy performance `[Layer 2️⃣/3️⃣]` `[auto-prep]`
 
-- [ ] Each bid strategy's target vs. actual performance reviewed
+- [ ] Target versus actual performance is recorded for every bid strategy
 - [ ] Bid strategy status is "Eligible" for all active strategies
-- [ ] Portfolio bid strategy CPC caps still appropriate
-- [ ] Strategies with <30 conversions/month flagged for consolidation consideration
-- [ ] Seasonality adjustments reviewed and updated if needed
+- [ ] Every portfolio bid strategy CPC cap is at least 3x the average CPC of its top converting search terms
+- [ ] Every strategy under 30 conversions per month has a documented consolidation decision
+- [ ] Seasonality adjustments for the coming month are set, or recorded as not needed
 
 ### Performance trend analysis `[Layer 3️⃣]` `[auto-prep]`
 
-- [ ] Primary KPIs (conversions, CPA/ROAS, revenue) reviewed for 30-day vs. prior 30-day comparison
-- [ ] Primary KPIs reviewed for year-over-year comparison (seasonality adjustment)
-- [ ] Month-over-month trajectory assessed against annual targets
-- [ ] Significant outlier campaigns identified and noted
-- [ ] Top-performing and bottom-performing campaigns documented
+- [ ] Primary KPIs are compared 30-day versus prior 30-day (conversions, CPA/ROAS, revenue)
+- [ ] Primary KPIs are compared year over year
+- [ ] Month-over-month trajectory against annual targets is recorded
+- [ ] Every campaign deviating more than 30% from its prior month is listed
+- [ ] Top-performing and bottom-performing campaigns are documented
 
 ### Account structure `[Layer 3️⃣]`
 
-- [ ] Campaigns with <30 conversions/month reviewed for consolidation
-- [ ] Ad groups with low impression volume reviewed for merging
-- [ ] Campaign count appropriate for account volume and complexity
-- [ ] No orphaned or forgotten campaigns running without oversight
+- [ ] Every campaign under 30 conversions per month has a documented consolidation decision
+- [ ] Every ad group under 1,000 impressions per week has a documented merge decision
+- [ ] Campaign count matches the documented structure for the account's volume tier
+- [ ] Every active campaign has a named owner
 
 ### Budget and allocation `[Layer 3️⃣]` `[auto-prep]`
 
-- [ ] Monthly spend vs. monthly budget assessed
-- [ ] Budget allocation across campaigns reviewed for optimal distribution
-- [ ] Budget-limited campaigns identified and prioritized
-- [ ] Next month's budget confirmed with stakeholders (if applicable)
+- [ ] Month-to-date spend is within 10% of pace
+- [ ] Budget allocation across campaigns matches the documented allocation plan
+- [ ] Every campaign flagged "Limited by budget" has a documented decision
+- [ ] Next month's budget is confirmed with stakeholders (if applicable)
 
 ### Strategic alignment `[Layer 3️⃣]`
 
-- [ ] Account activity aligned with quarterly roadmap
-- [ ] Constraint sprints on track (current bottleneck being addressed)
-- [ ] Testing roadmap reviewed: experiments running, completed, or planned
-- [ ] Action items documented for next month
+- [ ] Every action taken this month maps to an item on the quarterly roadmap
+- [ ] The current constraint sprint has a dated status entry
+- [ ] Experiments running, completed and planned are listed
+- [ ] Action items for next month are documented
 
 ---
 
@@ -178,8 +179,8 @@ Run this checklist:
 
 ## Version details
 
-- **Version:** 5.0
-- **Last Updated:** February 2026
+- **Version:** 6.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 - **Changelog:** v5.0: Reordered checklist sections from Layer 1️⃣ to Layer 3️⃣ for logical progression. v4.0: Linked quarterly forward reference to published Quarterly Review Checklist. v3.0: Added quarterly review forward reference. v2.0: Added layer mapping per section, automation context tags, frequency flexibility, baseline recalibration section, cross-referenced Account Monitoring Mental Model, sentence case headings
 

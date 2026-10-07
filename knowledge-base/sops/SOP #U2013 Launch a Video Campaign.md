@@ -1,12 +1,12 @@
 # SOP – Launch a Video Campaign
 Created: 2026-02-05
-Updated: 2026-04-01
+Updated: 2026-10-05
 
 SOP_ID: SOP_56
 Status: Done
 Category: Operational
-Primary Outcome: Live Video campaign optimized for awareness or consideration goals
-Secondary Outcomes: Frequency capping in place, brand safety configured, audience targeting active
+Primary Outcome: Live Video campaign under the YouTube reach, views, and engagements objective
+Secondary Outcomes: Frequency capping in place, brand safety configured, audience targeting active with audience expansion set
 Agent_Executable: No
 Human_Approval_Required: Yes
 Domain: Upper Funnel
@@ -14,11 +14,11 @@ Pillar: 6
 
 ## Purpose
 
-This SOP launches a Video campaign for awareness or consideration goals, with proper targeting, frequency management, and brand safety.
+This SOP launches a Video campaign under the YouTube reach, views, and engagements objective, with proper targeting, frequency management, and brand safety.
 
-> ❓ **The big question:** How do I set up a Video campaign that builds awareness efficiently while maintaining brand safety?
+> ❓ **The big question:** How do I set up a Video campaign that reaches the right audience efficiently while maintaining brand safety?
 
-Video campaigns are for awareness and consideration. For conversion-focused video campaigns, use Demand Gen instead.
+Video campaigns run under the YouTube reach, views, and engagements objective. For conversion-focused video campaigns, use Demand Gen instead.
 
 ---
 
@@ -46,7 +46,7 @@ Run this SOP when:
 
 ### Required inputs
 
-- Clear awareness or consideration goal
+- Clear reach, views or engagement goal
 - Video assets (uploaded to YouTube)
 - Target audiences or content targeting plan
 - Budget allocation
@@ -59,6 +59,7 @@ Run this SOP when:
 | [Upper Funnel Campaign Structure Mental Model](../mental-models/Upper Funnel Campaign Structure Mental Model.md) | Campaign structure decisions |
 | [Universal Campaign Settings Reference](../references/Universal Campaign Settings Reference.md) | Location, language settings |
 | [Audience Targeting Reference](../references/Audience Targeting Reference.md) | Targeting options |
+| [Audience Targeting Guidelines](../guidelines/Audience Targeting Guidelines.md) | Audience expansion settings per scenario |
 | [Network Selection Reference](../references/Network Selection Reference.md) | YouTube and Video Partners |
 | [Content Exclusion Guidelines](../guidelines/Content Exclusion Guidelines.md) | Recommended exclusion settings |
 | [Frequency Capping Reference](../references/Frequency Capping Reference.md) | Frequency management |
@@ -72,13 +73,14 @@ Select campaign subtype based on your goal:
 
 | If your goal is... | Select subtype | Bidding | Key metric |
 |-------------------|----------------|---------|------------|
-| Maximum reach at lowest cost | Video Reach - Efficient Reach | Target CPM | CPM, Reach |
-| Guaranteed message delivery | Video Reach - Non-skippable | Target CPM | CPM, Completion |
-| Repeated exposure | Video Reach - Target Frequency | Target CPM | Frequency, Reach |
-| Sequential storytelling | Video - Ad Sequence | Target CPM | Sequence completion |
-| Views and engagement | Video Views | CPV | Views, View rate |
+| Maximum reach at lowest cost | Efficient reach | Target CPM | CPM, Reach |
+| Guaranteed message delivery | Non-skippable reach | Target CPM | CPM, Completion |
+| Repeated exposure | Target frequency | Target CPM | Frequency, Reach |
+| Sequential storytelling | Ad sequence | Target CPM | Sequence completion |
+| Views and engagement | Video views | CPV | Views, View rate |
+| Reach on audio inventory | Audio reach | Target CPM | CPM, Reach |
 
-> ⚠️ **Video campaigns are for awareness/consideration only:** For conversion goals, use Demand Gen.
+> ⚠️ **Video campaigns serve reach, views and engagement goals only:** For conversion goals, use Demand Gen.
 
 ---
 
@@ -87,7 +89,7 @@ Select campaign subtype based on your goal:
 | Phase | Purpose | Output |
 |-------|---------|--------|
 | **Phase 1️⃣: Campaign shell and settings** | Configure campaign settings | Campaign shell |
-| **Phase 2️⃣: Structure and targeting** | Set audiences and content targeting | Targeting structure |
+| **Phase 2️⃣: Structure and targeting** | Set audiences, audience expansion and content targeting | Targeting structure |
 | **Phase 3️⃣: Creative setup** | Add video ads | Video ads uploaded |
 | **Phase 4️⃣: Bidding and budget** | Configure bid strategy | Bidding set |
 | **Phase 5️⃣: Brand safety and exclusions** | Configure inventory and exclusions | Brand-safe environment |
@@ -100,7 +102,7 @@ Select campaign subtype based on your goal:
 ### 1.1 Create new campaign
 
 1. In Google Ads, click **+ New campaign**
-2. Select **Brand awareness and reach** or **Product and brand consideration**
+2. Select **YouTube reach, views, and engagements**
 3. Select **Video** as campaign type
 4. Select campaign subtype (from decision gate)
 
@@ -108,7 +110,7 @@ Select campaign subtype based on your goal:
 
 | Setting | Recommendation | Notes |
 |---------|----------------|-------|
-| **Campaign name** | `[Country]_[Language]_Video_[Goal]` | e.g., "US_EN_Video_Awareness" |
+| **Campaign name** | `[Country]_[Language]_Video_[Goal]` | e.g., "US_EN_Video_Reach" |
 | **Locations** | Your target markets | |
 | **Languages** | Audience languages | |
 
@@ -125,11 +127,11 @@ Select campaign subtype based on your goal:
 
 ### 1.4 Configure frequency capping
 
-| Campaign goal | Daily cap | Weekly cap |
-|---------------|-----------|------------|
-| Awareness (reach) | 2-3 | 7-10 |
-| Consideration | 3-4 | 10-14 |
-| Remarketing | 4-5 | 12-15 |
+| Campaign subtype | Daily cap | Weekly cap |
+|------------------|-----------|------------|
+| Video reach (Efficient reach, Non-skippable reach, Target frequency) | 2-3 | 7-10 |
+| Video views | 3-4 | 10-14 |
+| Any subtype on remarketing audiences | 4-5 | 12-15 |
 
 **How to configure:**
 
@@ -176,7 +178,25 @@ Based on campaign goal:
 
 > ↪️ **For audience targeting options:** See [Audience Targeting Reference](../references/Audience Targeting Reference.md).
 
-### 2.3 Content targeting (optional)
+### 2.3 Set audience expansion
+
+Set audience expansion on the ad group before adding content targeting:
+
+1. Open the ad group → **Audiences**
+2. Find **Audience expansion**
+3. Set it per the scenario below
+
+| Campaign scenario | Audience expansion |
+|-------------------|--------------------|
+| Video reach (Efficient reach, Non-skippable reach, Target frequency) | ON |
+| Video views | ON |
+| Remarketing audiences | OFF |
+| Testing specific segments | OFF |
+| Limited budget, controlled reach required | OFF, use specific placements instead |
+
+> ↪️ **For the reasoning behind each setting:** See [Audience Targeting Guidelines](../guidelines/Audience Targeting Guidelines.md).
+
+### 2.4 Content targeting (optional)
 
 Add content targeting to control WHERE ads appear:
 
@@ -187,15 +207,7 @@ Add content targeting to control WHERE ads appear:
 | Topics | Category relevance | "Auto - Buying Guide" |
 | Keywords | Contextual themes | "best suv 2026" |
 
-### 2.4 Configure Optimized Targeting
-
-| Campaign goal | Optimized Targeting |
-|---------------|---------------------|
-| Awareness | ON |
-| Consideration | Test |
-| Remarketing | OFF |
-
-**Verification:** Ad group created with audience segments attached and Optimized Targeting set per goal recommendation.
+**Verification:** Ad group created with audience segments attached and audience expansion set for the scenario.
 
 ---
 
@@ -211,7 +223,7 @@ Add content targeting to control WHERE ads appear:
 |--------|----------|-----------|----------|
 | Skippable in-stream | Any (15-60s recommended) | Yes (after 5s) | Consideration, engagement |
 | Non-skippable in-stream | 15s max | No | Awareness, full message |
-| Bumper | 6s max | No | Awareness, frequency |
+| Bumper | 5-6s | No | Awareness, frequency |
 | In-feed | Any | N/A (click to play) | Consideration, discovery |
 
 ### 3.2 Configure ad components
@@ -222,16 +234,22 @@ Add content targeting to control WHERE ads appear:
 | Final URL | Landing page |
 | Display URL | Path 1 and Path 2 (15 chars each) |
 | Call-to-action | Button text (10 chars) |
-| Headline | For in-feed (100 chars max) |
+| Headline | Required for in-feed and Shorts serving (100 chars max). Without it the campaign serves in-stream only |
+| Description | Required for in-feed and Shorts serving. Without it the campaign serves in-stream only |
 | Companion banner | Auto-generated or custom (300×60) |
+
+> ⚠️ **Headline and description gate multi-format serving.** Without both, the campaign serves
+> in-stream only. Adding them unlocks in-feed and Shorts inventory. Nothing warns you when they are
+> missing, the campaign simply reaches less than it should, so treat both as required rather than
+> optional and verify them on every campaign you inherit.
 
 ### 3.3 Video creative alignment
 
-| Campaign goal | Video approach |
-|---------------|----------------|
-| Awareness | Hook in first 5s, brand early, emotional appeal |
-| Consideration | Problem → solution, product demo, credibility |
-| Remarketing | Specific offer, urgency, familiar branding |
+| Campaign subtype | Video approach |
+|------------------|----------------|
+| Video reach | Hook in first 5s, brand early, emotional appeal |
+| Video views | Problem → solution, product demo, credibility |
+| Any subtype on remarketing audiences | Specific offer, urgency, familiar branding |
 
 > ↪️ **For video specifications:** See [Video Creative Reference](../references/Video Creative Reference.md).
 
@@ -245,12 +263,12 @@ Add content targeting to control WHERE ads appear:
 
 | Campaign subtype | Bid strategy |
 |------------------|--------------|
-| **Video Views** | Target CPV |
-| **Efficient Reach** | Target CPM |
-| **Non-skippable Reach** | Target CPM |
-| **Target Frequency** | Target CPM |
-| **Ad Sequence** | Target CPM or Maximum CPM |
-| **Audio Reach** | Target CPM |
+| **Video views** | Target CPV |
+| **Efficient reach** | Target CPM |
+| **Non-skippable reach** | Target CPM |
+| **Target frequency** | Target CPM |
+| **Ad sequence** | Target CPM or Maximum CPM |
+| **Audio reach** | Target CPM |
 
 ### 4.2 Set budget
 
@@ -271,9 +289,9 @@ Add content targeting to control WHERE ads appear:
 
 | Type | Content included | Recommendation |
 |------|------------------|----------------|
-| Expanded inventory | All monetizable | ❌ Avoid |
-| Standard inventory | Excludes most sensitive | ✅ Default |
-| Limited inventory | Only vetted content | ✅ Premium brands |
+| Maximum inventory | All monetizable | ❌ Avoid |
+| Moderate inventory | Excludes most sensitive | ⚠️ Acceptable for less brand-sensitive advertisers |
+| Limited inventory | Only vetted content | ✅ Recommended default |
 
 ### 5.2 Configure content exclusions
 
@@ -314,7 +332,7 @@ Add specific exclusions:
 | Competitor channels (if desired) | Strategic choice |
 | Low-quality video placements | Quality control |
 
-**Verification:** Inventory type set to Standard or Limited, sensitive content categories excluded, and placement exclusions added.
+**Verification:** Inventory type set to Limited (or Moderate where justified), sensitive content categories excluded, and placement exclusions added.
 
 ---
 
@@ -324,6 +342,7 @@ Add specific exclusions:
 
 - [ ] Campaign subtype matches goal
 - [ ] Targeting is correctly configured
+- [ ] Audience expansion is set for the scenario
 - [ ] Frequency capping is set
 - [ ] Inventory type and exclusions are configured
 - [ ] Video is uploaded and correct
@@ -357,6 +376,7 @@ This SOP is complete when:
 
 - [ ] Campaign is live with correct subtype
 - [ ] Targeting matches campaign goal
+- [ ] Audience expansion matches the campaign scenario
 - [ ] Brand safety settings are configured
 - [ ] Frequency capping is set
 - [ ] Video ads are approved
@@ -392,7 +412,8 @@ This SOP is complete when:
 |---------|----------------|--------------|
 | Using Video for conversions | Misunderstanding campaign types | Use Demand Gen for conversions |
 | No frequency cap | Default unlimited | Set caps at launch |
-| Ads on inappropriate content | No inventory type set | Use Standard or Limited inventory |
+| Audience expansion left ON for remarketing | Setting carried over from a prospecting build | Set expansion OFF on remarketing ad groups |
+| Ads on inappropriate content | No inventory type set | Set inventory type to Limited, or Moderate where justified |
 | Low view rate | Poor creative hook | Hook within first 5 seconds |
 | Expensive CPMs | Too narrow targeting | Balance reach vs precision |
 
@@ -406,6 +427,7 @@ This SOP is complete when:
 | [Universal Campaign Settings Reference](../references/Universal Campaign Settings Reference.md) | Reference | Phase 1 |
 | [Network Selection Reference](../references/Network Selection Reference.md) | Reference | Phase 1 |
 | [Audience Targeting Reference](../references/Audience Targeting Reference.md) | Reference | Phase 2 |
+| [Audience Targeting Guidelines](../guidelines/Audience Targeting Guidelines.md) | Guideline | Phase 2 |
 | [Frequency Capping Reference](../references/Frequency Capping Reference.md) | Reference | Phase 1 |
 | [Content Exclusion Guidelines](../guidelines/Content Exclusion Guidelines.md) | Guideline | Phase 5 |
 | [Post-Launch Monitoring Reference](../references/Post-Launch Monitoring Reference.md) | Reference | Phase 6 |
@@ -418,15 +440,14 @@ This SOP is complete when:
 | SOP | Relationship |
 |-----|--------------|
 | [SOP – Set Up Audience Targeting](../sops/SOP – Set Up Audience Targeting.md) | Upstream (audience creation) |
-| [SOP – Launch a Display Campaign](../sops/SOP – Launch a Display Campaign.md) | Parallel (alternative upper funnel) |
-| [SOP – Launch a Demand Gen Campaign](../sops/SOP – Launch a Demand Gen Campaign.md) | Alternative (for conversion goals) |
+| [SOP – Launch a Demand Gen Campaign](../sops/SOP – Launch a Demand Gen Campaign.md) | Parallel (alternative upper funnel), also the path for conversion goals |
 
 ---
 
 ## Version details
 
-- **Version:** 4.0
-- **Last Updated:** April 2026
+- **Version:** 9.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

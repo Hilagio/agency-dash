@@ -1,4 +1,4 @@
-﻿# Bid Modifier Reference
+# Bid Modifier Reference
 Created: 2026-02-14
 
 Support_ID: REFERENCE_42
@@ -57,7 +57,7 @@ Documents every bid modifier type in Google Ads: what it controls, its range, ho
 
 ### What it controls
 
-Adjusts bids up or down based on the user's device type: mobile, desktop, or tablet.
+Adjusts bids up or down based on the user's device type: computers, mobile phones, tablets, or TV screens.
 
 ### Range and default
 
@@ -69,7 +69,7 @@ Adjusts bids up or down based on the user's device type: mobile, desktop, or tab
 
 ### Smart Bidding interaction
 
-Device -100% is the only modifier Smart Bidding respects. Use it to exclude a device entirely from a campaign. All other device adjustments (e.g., +20% mobile) are ignored under Smart Bidding because the algorithm already adjusts bids per device at auction time.
+Device -100% is the only modifier Smart Bidding respects, and it excludes the device entirely from the campaign. All other device adjustments (e.g., +20% mobile) are ignored under Smart Bidding because the algorithm already adjusts bids per device at auction time.
 
 ### Best use cases
 
@@ -83,11 +83,9 @@ Device -100% is the only modifier Smart Bidding respects. Use it to exclude a de
 
 Collect 100+ clicks per device type before adjusting. For most accounts, desktop and mobile accumulate data quickly. Tablet data may take longer due to lower traffic volume.
 
-### Analysis approach
+### Analysis dimension
 
-1. Segment campaign data by device in Google Ads
-2. Compare CPA or ROAS per device against the campaign average
-3. Apply the adjustment formula (see Analysis method section below)
+Device analysis runs on campaign data segmented by device, compared against the campaign average. The procedure is owned by [SOP - Optimize Bid Modifiers](../sops/SOP – Optimize Bid Modifiers.md), Phases 1.3 to 3.1.
 
 ---
 
@@ -118,14 +116,11 @@ Ignored entirely. Smart Bidding uses location as one of its 18+ auction-time sig
 
 ### Minimum data for analysis
 
-100+ clicks per location segment. For granular locations (cities, radiuses), data accumulates slowly. Start with region-level analysis and only drill into cities when regions show enough volume.
+100+ clicks per location segment. For granular locations (cities, radiuses), data accumulates slowly, so region level reaches the threshold well before city level does.
 
-### Analysis approach
+### Analysis dimension
 
-1. Go to Locations tab in Google Ads
-2. Add the "Conversions" and "Cost / conv". columns
-3. Filter to locations with 100+ clicks
-4. Apply the adjustment formula to each qualifying location
+Location analysis runs on the Locations tab with the Conversions and Cost / conv. columns, filtered to locations meeting the click minimum above. The procedure is owned by [SOP - Optimize Bid Modifiers](../sops/SOP – Optimize Bid Modifiers.md), Phases 1.3 to 3.1.
 
 ---
 
@@ -159,14 +154,11 @@ Ignored entirely. Smart Bidding evaluates time-of-day and day-of-week signals at
 
 ### Minimum data for analysis
 
-100+ clicks per time segment. Break the week into 4-6 blocks (e.g., weekday morning, weekday afternoon, weekday evening, weekend daytime, weekend evening). Do not create hourly segments: the data will be too thin.
+100+ clicks per time segment. At 4-6 blocks per week (weekday morning, weekday afternoon, weekday evening, weekend daytime, weekend evening), segments reach the threshold. Hourly segments do not: the data is too thin.
 
-### Analysis approach
+### Analysis dimension
 
-1. Go to Ad Schedule tab in Google Ads
-2. Review performance by day-and-hour segments
-3. Group similar-performing hours into blocks
-4. Apply the adjustment formula to each block
+Schedule analysis runs on the Ad Schedule tab, with day-and-hour segments grouped into similar-performing blocks. The procedure is owned by [SOP - Optimize Bid Modifiers](../sops/SOP – Optimize Bid Modifiers.md), Phases 1.3 to 3.1.
 
 ---
 
@@ -193,7 +185,7 @@ Adjusts bids for users who belong to specific audience segments: remarketing lis
 
 ### Smart Bidding interaction
 
-Smart Bidding ignores audience bid adjustments. It already uses audience membership as a signal during auction-time bidding. Add audiences in Observation mode for reporting visibility, but do not expect bid adjustments to have any effect.
+Smart Bidding ignores audience bid adjustments. It already uses audience membership as a signal during auction-time bidding. Observation mode still yields reporting visibility under Smart Bidding, but the bid adjustment attached to it does nothing.
 
 ### Best use cases
 
@@ -256,9 +248,11 @@ Google Ads supports four demographic modifier types. All follow the same mechani
 
 ### Key rules for demographics
 
-- The "Unknown" segment is large (often 30-50% of traffic). Setting -90% on Unknown segments excludes a significant share of your audience.
-- Demographic data is inferred by Google. It is not always accurate.
-- Apply demographic modifiers only when you have clear evidence of performance differences with 100+ clicks per segment.
+| Rule | Detail |
+|------|--------|
+| The "Unknown" segment is large | Often 30-50% of traffic, so -90% on Unknown excludes a significant share of the audience |
+| Demographic data is inferred by Google | It is not always accurate |
+| Evidence bar | Clear performance differences with 100+ clicks per segment |
 
 ---
 
@@ -303,11 +297,11 @@ Adjusts bids for call interactions on call-only ads and call extensions.
 
 Smart Bidding processes 18+ signals at auction time, including device, location, time, audiences, and demographics. It calculates the optimal bid for each individual auction. Layering manual adjustments on top would conflict with the algorithm's predictions.
 
-### What to do instead
+### Alternatives on Smart Bidding
 
-On Smart Bidding campaigns, use these alternatives:
+The controls that do work in place of each ignored modifier:
 
-| Instead of | Use |
+| Instead of | The working control |
 |-----------|-----|
 | Location modifiers | Conversion value rules (for value-based strategies) or campaign-level location exclusions |
 | Schedule modifiers | Ad schedule pausing (to stop ads entirely during specific hours) |
@@ -347,7 +341,7 @@ Modifiers apply **multiplicatively**, not additively. Each modifier multiplies t
 - Audience: +50%
 - Effective bid: €2.00 x 1.30 x 1.20 x 1.50 = €4.68 (+134%)
 
-> ⚠️ **Stacking risk:** Three moderate modifiers can produce extreme bid increases. Monitor the combined effect. Audit campaigns with 3+ active modifier types quarterly.
+> ⚠️ **Stacking risk:** three moderate modifiers can produce extreme bid increases, and no single modifier's setting reveals the combined effect.
 
 ### Audience mode interaction
 
@@ -360,14 +354,17 @@ Modifiers apply **multiplicatively**, not additively. Each modifier multiplies t
 
 ## Analysis method
 
-### Step-by-step process
+### Inputs the formulas need
 
-1. **Collect data:** Run the campaign for at least 2-4 weeks
-2. **Segment:** Break performance data by the modifier dimension (device, location, time, audience, demographic)
-3. **Filter:** Include only segments with 100+ clicks
-4. **Calculate CPA per segment:** Cost / Conversions for each qualifying segment
-5. **Calculate campaign average CPA:** Total cost / Total conversions
-6. **Apply the formula**
+| Input | Definition |
+|-------|------------|
+| Data window | At least 2-4 weeks of campaign history |
+| Segmentation | Performance broken by the modifier dimension (device, location, time, audience, demographic) |
+| Qualifying segment | 100+ clicks |
+| Segment CPA | Cost / Conversions for that segment |
+| Campaign average CPA | Total cost / Total conversions |
+
+The procedure that gathers these and applies the result is owned by [SOP - Optimize Bid Modifiers](../sops/SOP – Optimize Bid Modifiers.md), Phases 1.3 to 3.2.
 
 ### Adjustment formulas
 
@@ -392,10 +389,12 @@ Modifiers apply **multiplicatively**, not additively. Each modifier multiplies t
 
 ### Safety rules
 
-- Cap initial adjustments at +/-30% regardless of what the formula produces
-- Re-analyze after 2 weeks
-- Increase or decrease by 10-15% increments in subsequent cycles
-- Remove a modifier (set to 0%) if the segment has fewer than 50 conversions after 30 days
+| Rule | Value |
+|------|-------|
+| Cap on the initial adjustment | +/-30%, regardless of what the formula produces |
+| Re-analysis interval | 2 weeks |
+| Step size in subsequent cycles | 10-15% |
+| Removal condition (modifier back to 0%) | Fewer than 50 conversions in the segment after 30 days |
 
 ---
 
@@ -451,8 +450,8 @@ Are you using Smart Bidding (tCPA, tROAS, Max Conv, Max Conv Value)?
 
 ## Version details
 
-- **Version:** 1.0
-- **Last Updated:** February 2026
+- **Version:** 2.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

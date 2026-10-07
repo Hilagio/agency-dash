@@ -1,6 +1,6 @@
 # Enhanced Conversions Reference
 Created: 2026-02-04
-Updated: 2026-04-02
+Updated: 2026-10-05
 
 Support_ID: CHEATSHEET_15
 Status: Done
@@ -22,7 +22,7 @@ Documents Enhanced Conversions (EC), how hashed first-party data improves attrib
 **This reference:**
 
 - Explains how Enhanced Conversions recover otherwise unmeasured conversions
-- Documents the three setup methods (GTM, gtag, Google Ads API) with comparison
+- Documents the three setup methods (GTM, gtag, API) with comparison
 - Covers data requirements, hashing, and diagnostics
 - Explains Enhanced Conversions for Leads (EC4L) as a variant for lead gen/SaaS
 
@@ -60,7 +60,7 @@ Enhanced Conversions recover conversions that standard pixel tracking misses. Wi
 |-----------|-----------------|------------|--------------------------|-------------|
 | **Google Tag Manager (GTM)** | Create user-provided data variables in GTM, link to conversion tracking tag | Automatic (GTM handles SHA-256) | Medium: data layer must expose user data | Most implementations: flexible, debuggable |
 | **gtag (hardcoded)** | Add enhanced_conversions snippet below the conversion event snippet | Automatic (gtag handles SHA-256) | Medium: developer adds snippet to conversion pages | Sites using hardcoded gtag without GTM |
-| **Google Ads API** | Programmatic submission of hashed user data via API calls | Manual (must pre-hash with SHA-256 before sending) | High: requires developer with API expertise | High-volume accounts, software integrations (e.g., ProfitMetrics Conversion Booster) |
+| **API (Data Manager or Google Ads)** | Programmatic submission of hashed user data via API calls, Data Manager API for new integrations | Manual (must pre-hash with SHA-256 before sending) | High: requires developer with API expertise | High-volume accounts, software integrations (e.g., ProfitMetrics Conversion Booster) |
 
 ---
 
@@ -77,7 +77,7 @@ Enhanced Conversions recover conversions that standard pixel tracking misses. Wi
 | **Conversion type** | Online conversions tracked by Google tag | Offline conversions imported via API or upload |
 | **Prerequisite** | Google tag or GTM firing on conversion page | Offline conversion tracking pipeline operational |
 
-> 💡 **Use both when applicable.** EC (Web) improves online conversion accuracy. EC for Leads improves offline conversion matching. They serve different conversion types and do not conflict.
+> 💡 **Two settings, two jobs.** Enhanced conversions and Enhanced conversions for leads are separate rows on the Conversion settings page, each with its own checkbox and implementation method. EC (Web) improves online conversion accuracy and EC for Leads improves offline conversion matching: they serve different conversion types and do not conflict.
 
 ---
 
@@ -87,7 +87,7 @@ Enhanced Conversions recover conversions that standard pixel tracking misses. Wi
 
 | **Field** | **Required** | **Format** | **Notes** |
 |----------|-------------|-----------|----------|
-| **Email address** | Yes (mandatory) | Lowercase, trimmed whitespace | Most important identifier: always send this |
+| **Email address** | Yes (mandatory) | Normalized per the rules below | Most important identifier: always send this |
 | **Phone number** | Optional (recommended) | E.164 format (+1234567890) | Increases match rate when combined with email |
 | **First name** | Optional | Lowercase | Minimal impact on match rate beyond email + phone |
 | **Last name** | Optional | Lowercase | Minimal impact on match rate beyond email + phone |
@@ -97,17 +97,30 @@ Enhanced Conversions recover conversions that standard pixel tracking misses. Wi
 | **Postal code** | Optional | No formatting | Rarely needed |
 | **Country** | Optional | ISO 3166-1 alpha-2 | Rarely needed |
 
-> 💡 **Email + phone number is sufficient for 95% of cases:** Sending additional fields (name, address) provides marginal match rate improvement. Focus on getting email and phone number correct.
+> 💡 **Email plus phone number carries almost all of the match rate.** Name and address fields add a marginal improvement on top, which is why the two mandatory-plus-recommended fields are the ones worth getting exactly right.
 
 ### Hashing
 
 | **Method** | **Hashing behavior** |
 |-----------|---------------------|
-| **GTM** | Automatic: GTM hashes user data with SHA-256 before sending to Google |
-| **gtag** | Automatic: gtag.js hashes user data with SHA-256 before sending |
-| **API** | Manual: you must pre-hash with SHA-256, lowercase and trim whitespace before hashing |
+| **GTM** | Automatic: GTM normalizes and hashes user data with SHA-256 before sending to Google |
+| **gtag** | Automatic: gtag.js normalizes and hashes user data with SHA-256 before sending |
+| **API** | Manual: you normalize every value yourself, then hash it with SHA-256 before sending |
 
 User data never leaves your site in plain text. All data is hashed with SHA-256 (one-way, irreversible) before transmission. Google matches hashes against its own hashed user database.
+
+### Normalization before hashing
+
+A hash only matches if both sides normalized the value the same way. Apply these steps in order, then hash:
+| **Step** | **Rule** | **Applies to** |
+|---|---|---|
+| 1 | Trim leading and trailing whitespace | Every field |
+| 2 | Lowercase the value | Email, name, and address fields |
+| 3 | Format the number as E.164, country code followed by the number with no spaces or punctuation | Phone |
+| 4 | Strip every period preceding the domain in `gmail.com` and `googlemail.com` addresses | Email |
+| 5 | Hash the normalized value with SHA-256 | Every field you send hashed |
+
+> ⚠️ **The gmail period rule is the one people miss.** `john.smith@gmail.com` and `johnsmith@gmail.com` reach the same mailbox but produce different hashes. Strip the periods for `gmail.com` and `googlemail.com` only and leave every other domain untouched. GTM and gtag apply all five steps for you. If you pre-hash for an API upload, your own pipeline has to do it, and a missed step shows up as a silently low match rate rather than an error.
 
 ---
 
@@ -119,17 +132,16 @@ User data never leaves your site in plain text. All data is hashed with SHA-256 
 - Google Ads conversion tracking tag already firing on conversion events
 - Data layer exposes user-provided data (email, phone) on the conversion event
 
-### Setup steps overview
+### The objects involved
 
-1. **Create data layer variables** in GTM for the user data fields (email, phone). The variable paths depend on your data layer structure (e.g., `fields.email.value` or `userProvidedData.email`).
+| Object | Where | What it holds |
+|--------|-------|---------------|
+| Data layer variables | GTM | The user data fields (email, phone), at paths set by the site's data layer structure |
+| User-Provided Data variable | GTM, Variables > User-Defined | The mapping from those data layer variables. Manual Configuration is the reliable mode |
+| Conversion tracking tag link | The Google Ads Conversion Tracking tag | "Include user-provided data from your website", pointed at the User-Provided Data variable |
+| Account switch | Goals > Conversions > Conversion settings > Enhanced conversions | Method set to "Google Tag Manager" |
 
-2. **Create a User-Provided Data variable** in GTM: Variables > User-Defined > New > select "User-Provided Data" type. Map email and phone fields to the data layer variables created in step 1. Use Manual Configuration for reliable results.
-
-3. **Link to conversion tracking tag**: Edit your Google Ads Conversion Tracking tag > check "Include user-provided data from your website" > select the User-Provided Data variable.
-
-4. **Enable in Google Ads UI**: Goals > Conversions > Settings > Enhanced Conversions > Turn on > Select "Google Tag Manager" as method.
-
-5. **Debug**: Use GTM Preview Mode to verify user data variables populate correctly and appear in the conversion tag's enhanced conversions payload.
+Configuring them is owned by [SOP - Implement Enhanced Conversions](../sops/SOP – Implement Enhanced Conversions.md), Phase 2A.
 
 ---
 
@@ -141,27 +153,26 @@ User data never leaves your site in plain text. All data is hashed with SHA-256 
 - Conversion event snippet already firing on conversion pages
 - User data (email, phone) accessible as JavaScript variables on the conversion page
 
-### Setup steps overview
+### The objects involved
 
-1. **Add allow_enhanced_conversions to the global site tag**: Insert `'allow_enhanced_conversions': true` in your gtag config call.
+| Object | Where | What it holds |
+|--------|-------|---------------|
+| `allow_enhanced_conversions` | The gtag config call | `true` |
+| `gtag('set', 'user_data', {...})` | Below the conversion event snippet | Email and phone, read from page variables |
+| Account switch | Goals > Conversions > Conversion settings > Enhanced conversions | Method set to "Google Tag" |
 
-2. **Add enhanced_conversions snippet below the conversion event**: Place a `gtag('set', 'user_data', {...})` call below your conversion event snippet, populating email and phone from page variables.
-
-3. **Enable in Google Ads UI**: Goals > Conversions > Settings > Enhanced Conversions > Turn on > Select "Google tag" as method.
-
-4. **Validate**: Check conversion action diagnostics for enhanced conversions status (may take up to 48 hours).
+Configuring them is owned by [SOP - Implement Enhanced Conversions](../sops/SOP – Implement Enhanced Conversions.md), Phase 2B. Conversion action diagnostics can take up to 48 hours to reflect the change.
 
 ---
 
 ## Google Ads UI configuration
 
-Regardless of implementation method (GTM, gtag, or API), enable these settings in Google Ads:
+Two Google Ads settings gate Enhanced Conversions regardless of implementation method (GTM, gtag, or API):
 
-| **Setting** | **Location** | **Action** |
+| **Setting** | **Location** | **What it requires** |
 |-----------|------------|----------|
-| **Customer Data Terms** | Goals > Conversions > Settings | Review and accept the customer data processing terms |
-| **Enhanced Conversions** | Goals > Conversions > Settings > Enhanced Conversions | Turn on, select implementation method (GTM, Google tag, or API) |
-| **Enhanced Conversions for Leads** | Goals > Conversions > Settings > Enhanced Conversions for Leads | Turn on if using EC4L for lead gen/SaaS (separate from standard EC) |
+| **Customer data terms** | Goals > Conversions > Conversion settings | Review and accept the customer data processing terms |
+| **Enhanced Conversions** | Goals > Conversions > Conversion settings > Enhanced conversions | Turn on, select implementation method (Google Tag, Google Tag Manager, or Google Ads API). Enhanced conversions for leads is a separate row on the same page, with its own checkbox and method (Google tag or Google Tag Manager). Multiple sources (tag, GTM, API) are accepted simultaneously, so mixed implementations do not conflict |
 
 ---
 
@@ -169,7 +180,7 @@ Regardless of implementation method (GTM, gtag, or API), enable these settings i
 
 ### Where to check
 
-Goals > Conversions > Summary > [Conversion Action] > Diagnostics
+Goals > Summary > [Conversion Action] > Diagnostics
 
 ### Status indicators
 
@@ -225,8 +236,8 @@ A variant of Enhanced Conversions designed specifically for lead gen and SaaS bu
 
 EC4L can serve as:
 
-- **Primary OCT method**: When you cannot capture Google Click IDs (GCLID), use EC4L as your sole offline conversion tracking method
-- **Backup OCT method** (recommended): Use GCLID as primary, EC4L as fallback for cases where GCLID was not captured. This hybrid approach maximizes match rates.
+- **Primary OCT method**: the only route where Google Click IDs (GCLID) cannot be captured at all
+- **Backup OCT method**: GCLID as primary with EC4L as the fallback for clicks where no GCLID was captured. This hybrid reaches the highest match rate of the two arrangements
 
 > ↪️ **See [Offline Conversion Tracking Reference](../references/Offline Conversion Tracking Reference.md)** for the full hybrid approach and OCT import workflows.
 
@@ -236,11 +247,11 @@ EC4L can serve as:
 
 | **Mistake** | **Problem** | **Fix** |
 |-------------|-------------|---------|
-| Not enabling Enhanced Conversions in Google Ads Settings | Tags send data but Google Ads ignores it | Enable Enhanced Conversions under Goals > Conversions > Settings |
+| Not enabling Enhanced Conversions in Google Ads Settings | Tags send data but Google Ads ignores it | Enable Enhanced Conversions under Goals > Conversions > Conversion settings |
 | Not accepting Customer Data Terms | Enhanced Conversions cannot activate without legal acceptance | Review and accept terms in conversion settings |
 | Using auto-detect instead of manual data layer configuration | Auto-detect is unreliable and may pick up wrong fields | Use manual configuration with explicit data layer variable mapping |
 | Sending unhashed data via API | Data rejected or privacy violation | Pre-hash all user data with SHA-256 before API submission |
-| Email not lowercase/trimmed before hashing | Hash mismatch: Google cannot match the conversion | Normalize email (lowercase, trim whitespace) before hashing |
+| Email not normalized before hashing | Hash mismatch: Google cannot match the conversion | Trim, lowercase, and strip gmail periods before hashing |
 | Expecting immediate results | EC reporting takes time to populate | Allow 48 hours for diagnostics, 1-2 weeks for meaningful uplift data |
 | Implementing EC without fixing base GACT setup | EC supplements existing tracking but cannot fix broken fundamentals | Ensure GACT pixel fires correctly first, then add EC |
 | Not sending user data at form submission (EC4L) | Google has no baseline hash to match against when offline conversion is imported | Fire user-provided data tag at the moment of form submission, not just at import |
@@ -262,8 +273,8 @@ EC4L can serve as:
 
 ## Version details
 
-- **Version:** 2.0
-- **Last Updated:** February 2026
+- **Version:** 5.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

@@ -1,6 +1,6 @@
 # Search PMax Query Routing Reference
 Created: 2026-02-04
-Updated: 2026-02-05
+Updated: 2026-08-27
 
 Support_ID: CHEATSHEET_8
 Status: Done
@@ -24,7 +24,7 @@ Documents how Google decides which campaign serves a query when Search and Perfo
 
 - Explains the keyword selection hierarchy (how Google routes queries between campaigns)
 - Documents brand exclusion coordination across Search + PMax
-- Covers Shopping vs. PMax auction priority (post-Q4 2024 Ad Rank change)
+- Covers Shopping vs. PMax auction priority (Ad Rank decides)
 - Provides query protection and discovery tactics
 
 **This reference does NOT:**
@@ -40,58 +40,69 @@ Documents how Google decides which campaign serves a query when Search and Perfo
 
 | **Scenario** | **Which Campaign Wins** | **Why** |
 | --- | --- | --- |
-| Query matches exact match keyword in Search | Search wins | Exact match keywords take priority over PMax |
-| Query matches phrase/broad match keyword in Search | Either can win | Google uses Ad Rank to decide between Search and PMax |
+| Query matches an exact match keyword in Search | Search wins | An exact match keyword, including its close variants, takes priority over everything |
+| Query is identical to phrase/broad keyword in Search | Either can win | Identical phrase/broad keywords (including AI Max keywords) and identical PMax search themes share one tier, Ad Rank decides |
 | Query has no keyword match in Search | PMax wins | PMax serves queries with no Search keyword coverage |
-| No option is identical to query | AI selects most relevant | Predicted performance determines winner |
+| No option matches the query at tier 1 or tier 2 | AI selects most relevant, then Ad Rank | Queries outside both tiers, including synonyms and paraphrases, fall to AI relevance with Ad Rank as tiebreaker |
 | Search text ad + PMax Shopping ad for same query | Both can serve | Different ad formats occupy different SERP slots |
 | Brand query with brand exclusion in PMax | Search wins (brand campaign) | PMax is excluded from brand auctions |
-| Shopping query, Standard Shopping + PMax both eligible | Ad Rank decides | Post-Q4 2024: PMax no longer automatically wins over Standard Shopping |
+| Shopping query, Standard Shopping + PMax both eligible | Ad Rank decides | PMax does not automatically win over Standard Shopping |
 
 ---
 
 ## The keyword selection hierarchy
 
-When Search and PMax run in the same account, Google follows this priority:
+When Search, AI Max, and PMax run in the same account, Google routes each query through four published priority tiers:
 
-### 1. Exact match keywords take priority
+### 1. Matching exact match keyword
 
-If a query matches an exact match keyword in your Search campaign, Search serves the ad. PMax does not compete for that query.
+If a query matches an exact match keyword in your Search campaign, that keyword serves. PMax does not compete for that query. Matching here covers the keyword's close variants, not only the character-identical query.
 
-**Implication:** Add your highest-value queries as exact match keywords in Search to protect them from PMax.
+**Implication:** An exact match keyword in Search holds its query against PMax and AI Max, and that protection extends across the keyword's close variants rather than only the exact strings entered.
 
-### 2. Phrase and broad match compete with PMax
+### 2. Identical phrase/broad keywords and search themes (tied tier)
 
-For phrase and broad match keywords, Google uses Ad Rank to decide whether Search or PMax serves the ad. This means PMax can capture queries you intended for Search if PMax has a higher Ad Rank.
+A phrase or broad match keyword identical to the query, including AI Max keywords, sits at the same priority as a Performance Max search theme identical to the query. This tier-2 equivalence is Google's published position: an identical search theme carries the same weight as an identical phrase or broad keyword. When more than one option is identical, Ad Rank decides between them. This means PMax can capture queries you intended for Search if its identical search theme outranks your keyword.
 
-**Implication:** If PMax is capturing important queries, promote them to exact match in Search.
+**Implication:** An exact match keyword that matches the query always wins over any search theme, so promotion to exact match is what recovers a query PMax is capturing.
 
-### 3. AI-based relevance for unmatched or equally-matched queries
+### 3. AI-based ad group relevance
 
-When no keyword is identical to the query, or when multiple options (Search keyword + PMax) have equal relevance, Google's AI selects the most relevant ad group based on predicted performance. This means PMax can win queries even when a Search keyword exists, if the Search keyword is only loosely related.
+When no keyword or search theme is identical to the query, Google's AI selects the most relevant ad groups based on predicted performance, and only the most relevant keywords from those ad groups are considered. This means PMax or AI Max can win queries even when a Search keyword exists, if the Search keyword is only loosely related.
 
-**Implication:** Do not over-keyword your Search campaigns with loosely-related broad match. Let PMax find incremental queries you did not anticipate. Promote genuinely high-value queries to exact match for guaranteed routing.
+**Implication:** Loosely-related broad match buys no routing guarantee at this tier, and it crowds out the incremental queries PMax exists to surface. Exact match is the only tier that routes a query with certainty.
 
-### 4. Shopping ad format exception
+### 4. Ad Rank
 
-For Shopping-format ads specifically, PMax and Standard Shopping now compete on Ad Rank (post-Q4 2024). However, text ads from Search campaigns and Shopping ads from PMax serve different formats and can both appear on the same results page. A Search text ad does not block a PMax Shopping ad or vice versa: they occupy different ad slots.
+When several keywords or search themes share equal priority after the first three tiers, the ad or asset group that generates the ad with the highest Ad Rank serves.
+
+> 💡 **What counts as a match, and at which tier.** An exact match keyword matches through its close variants, so plurals, misspellings, stemmings and same-intent rewordings stay inside tier 1. Tier 2 is narrower: a phrase keyword, broad keyword or PMax search theme has to be identical to the query, where identical includes spell-corrected terms but not plurals or synonyms. AI Max ad groups without keywords, Dynamic Search Ads (which are on Google's auto-upgrade path into AI Max), and Performance Max without search themes are all treated as non-identical and selected by highest Ad Rank across the account. For the full account-wide selection hierarchy, see [Match Type Reference](../references/Match Type Reference.md).
+
+### What the tiers protect, and what they do not
+
+The tiers describe auction eligibility, not attribution, and the protection is wider at tier 1 than at tier 2:
+
+- An exact match keyword protects its close variants. `[daycare near me]` holds "daycares near me" and "daycare near me" alike at tier 1. Tier 2 is stricter: a phrase or broad keyword has to be identical, where identical includes spell-corrections but excludes plurals and synonyms.
+- Every query outside those tiers falls to AI relevance and Ad Rank, where AI Max can claim it, even from another ad group. The close variants your phrase and broad keywords used to absorb are where AI Max claims traffic.
+- Reported AI Max conversions are therefore not automatically incremental, because much of that traffic is traffic your own keywords would have matched. Reports still show double-claiming in practice: the same query string can appear under AI Max in one auction and under your keyword in another.
+
+> ↪️ **For measuring AI Max incrementality:** See [AI Max for Search Reference](../references/AI Max for Search Reference.md) (Isolating AI Max performance).
+
+### Shopping ad format exception
+
+For Shopping-format ads specifically, PMax and Standard Shopping compete on Ad Rank. However, text ads from Search campaigns and Shopping ads from PMax serve different formats and can both appear on the same results page. A Search text ad does not block a PMax Shopping ad or vice versa: they occupy different ad slots.
 
 **Implication:** Running Search and PMax simultaneously for the same product is not always cannibalization. Search text ads and PMax Shopping ads can complement each other on the SERP.
 
 ---
 
-## Shopping vs. PMax auction priority (Q4 2024 change)
+## Shopping vs. PMax auction priority
 
-Before Q4 2024, PMax automatically won over Standard Shopping when both were eligible for the same Shopping placement. This is no longer the case.
-
-| **Period** | **Behavior** |
-| --- | --- |
-| Before Q4 2024 | PMax automatically won over Standard Shopping |
-| After Q4 2024 | Ad Rank determines the winner (same as Search vs. PMax) |
+When Standard Shopping and PMax are both eligible for the same Shopping placement, Ad Rank determines the winner (same as Search vs. PMax).
 
 **What this means for hybrid approaches:**
 
-- Standard Shopping and PMax can now coexist on the Shopping surface without PMax automatically dominating
+- Standard Shopping and PMax can coexist on the Shopping surface without PMax automatically dominating
 - If your Standard Shopping campaigns have strong Ad Rank (good feed quality, competitive bids), they can win auctions over PMax
 - You still need exclusion management to prevent the same products from competing against each other
 
@@ -101,37 +112,28 @@ Before Q4 2024, PMax automatically won over Standard Shopping when both were eli
 
 ## Brand exclusion coordination
 
-Brand traffic must be controlled across both Search and PMax to prevent metric inflation and ensure accurate attribution.
+Brand control operates separately in Search and in PMax. Uncontrolled brand traffic inflates the metrics of whichever campaign captures it and breaks non-brand attribution.
 
 ### Implementation
 
 | **Campaign Type** | **Brand Control Method** |
 | --- | --- |
 | **Search** | Dedicated Brand campaign + brand terms as negatives in non-brand campaigns |
-| **PMax** | Campaign-level brand exclusions (Settings > Brand exclusions > select your brand) |
+| **PMax** | Campaign-level brand exclusions |
 
 ### How PMax brand exclusions work
 
-1. Go to your PMax campaign Settings
-2. Navigate to Brand exclusions
-3. Select your brand from the list (Google auto-detects brands, or you can add custom brand names)
-4. PMax will no longer serve ads for queries that Google classifies as brand queries
+A brand list applied at campaign level stops PMax serving on queries that Google's own classifier reads as brand queries. Google auto-detects known brands, and custom brand names can be added to the list.
 
-> ⚠️ **Brand exclusions in PMax are not the same as negative keywords:** Google uses its own brand classification system. Some branded queries may still slip through if Google does not classify them as brand queries. Monitor your search terms report.
+> ⚠️ **Brand exclusions in PMax are not the same as negative keywords:** Google uses its own brand classification system, so branded queries it does not classify as brand still slip through. The search terms report is where that leakage surfaces.
 
-### Coordination checklist
-
-- [ ] Brand Search campaign exists with brand keywords
-- [ ] Non-brand Search campaigns have brand terms as negative keywords
-- [ ] PMax campaigns have brand exclusions enabled
-- [ ] Search terms report monitored weekly for brand leakage into PMax
-- [ ] Brand metrics tracked separately from non-brand metrics
+> ↪️ **Implementation and verification across Search, Standard Shopping and PMax:** See [Brand Separation Reference](../references/Brand Separation Reference.md).
 
 ---
 
 ## Query protection tactics
 
-Use these when you want Search to control specific queries instead of PMax.
+These tactics move control of specific queries from PMax to Search.
 
 | **Tactic** | **When to Use** | **How** |
 | --- | --- | --- |
@@ -139,21 +141,21 @@ Use these when you want Search to control specific queries instead of PMax.
 | **Add exact match negative in PMax** | PMax keeps winning despite having the keyword in Search (rare, but possible) | Add campaign-level negative keyword in PMax |
 | **Monitor search terms weekly** | Ongoing maintenance | Check PMax search terms for queries that belong in Search |
 
-> ⚠️ **PMax campaign-level negative keywords** are now available to all advertisers. You can add negatives directly in PMax campaign settings (no longer requires Google rep access).
+> ⚠️ **PMax campaign-level negative keywords** are available to all advertisers, added directly in PMax campaign settings.
 
 ---
 
 ## PMax as a discovery layer
 
-PMax is most valuable when it finds queries you did not anticipate. Structure your account to take advantage of this.
+PMax is most valuable when it finds queries you did not anticipate.
 
 | **Strategy** | **Implementation** |
 | --- | --- |
-| **Intentional under-keywording** | Do not add every possible keyword to Search. Let PMax discover long-tail and unexpected queries. |
+| **Intentional under-keywording** | Search carries only the keywords worth controlling, which leaves the long tail for PMax to discover. |
 | **Search term mining** | Review PMax search terms weekly. Promote high-performing queries to exact match in Search. |
-| **DSA complement** | If running DSA catch-all in Search, PMax expands even further into non-keyworded queries. |
+| **Final URL expansion complement** | If running final URL expansion as a catch-all in Search, PMax expands even further into non-keyworded queries. |
 
-> 💡 **Search and PMax are complementary:** Search gives you keyword-level control for queries you know. PMax finds queries you do not know. Structure Search to cover your known high-value terms, and let PMax expand beyond them.
+> 💡 **Search and PMax are complementary:** Search gives keyword-level control over queries you already know. PMax finds the ones you do not.
 
 ---
 
@@ -164,7 +166,7 @@ Search themes tell PMax which search categories to focus on. They interact with 
 | **Aspect** | **How It Works** |
 | --- | --- |
 | **What search themes do** | Suggest search categories to PMax (similar to broad match keywords) |
-| **Interaction with Search keywords** | Search themes do not override keyword priority. Exact match Search keywords still win. |
+| **Interaction with Search keywords** | An exact match Search keyword that matches the query, close variants included, still wins. An identical search theme shares priority with identical phrase and broad keywords, and Ad Rank decides between them. |
 | **When to use** | When you want PMax to focus on specific search categories beyond what your feed suggests |
 | **When to skip** | When your product feed already gives PMax sufficient signals |
 
@@ -179,7 +181,7 @@ Search themes tell PMax which search categories to focus on. They interact with 
 | No brand exclusion in PMax | PMax captures brand traffic, inflates its metrics | Add brand exclusions in PMax campaign settings |
 | Over-keywording Search | Leaves no room for PMax to discover incremental queries | Remove low-performing broad/phrase keywords, let PMax discover |
 | Ignoring PMax search terms | Missing opportunities to promote winners to Search | Review PMax search terms weekly |
-| Assuming PMax always wins Shopping auctions | Post-Q4 2024, Ad Rank decides. Standard Shopping can win. | Evaluate hybrid approaches without assuming PMax dominance |
+| Assuming PMax always wins Shopping auctions | Ad Rank decides. Standard Shopping can win. | Evaluate hybrid approaches without assuming PMax dominance |
 | Not using exact match for protection | Phrase/broad match queries may still go to PMax | Promote critical queries to exact match in Search |
 | Duplicate brand campaigns | Brand Search + PMax both targeting brand = internal competition | Brand Search campaign + brand exclusions in PMax |
 
@@ -195,13 +197,15 @@ Search themes tell PMax which search categories to focus on. They interact with 
 | [Shopping Campaign Type Mental Model](../mental-models/Shopping Campaign Type Mental Model.md) | Shopping vs. PMax hybrid approaches |
 | [Standard Shopping Campaign Structure Mental Model](../mental-models/Standard Shopping Campaign Structure Mental Model.md) | Standard Shopping-specific routing via campaign priorities |
 | [Brand Separation Reference](../references/Brand Separation Reference.md) | Brand separation rationale and implementation |
+| [AI Max for Search Reference](../references/AI Max for Search Reference.md) | AI Max matching mechanics, reporting, and incrementality measurement |
+| [Match Type Reference](../references/Match Type Reference.md) | Match type mechanics and the account-wide selection hierarchy |
 
 ---
 
 ## Version details
 
-- **Version:** 2.0
-- **Last Updated:** February 2026
+- **Version:** 7.0
+- **Last Updated:** August 2026
 - **Creator:** Bob Meijer
 
 ---

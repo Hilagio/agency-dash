@@ -1,5 +1,6 @@
 # Google Ads Metrics Reference
 Created: 2026-02-05
+Updated: 2026-08-27
 
 Support_ID: CHEATSHEET_42
 Status: Done
@@ -48,7 +49,7 @@ Documents core Google Ads metrics, their definitions, calculations, and interpre
 
 ---
 
-## 1️⃣ Traffic Metrics
+## 1️⃣ Traffic metrics
 
 ### Impressions
 
@@ -64,8 +65,10 @@ Documents core Google Ads metrics, their definitions, calculations, and interpre
 | **Type** | **Definition** | **Available in** |
 |----------|---------------|------------------|
 | Impressions | Total ad displays | All campaigns |
-| Viewable impressions | Ads meeting viewability standards (50%+ visible for 1+ second) | Display, Video |
-| Measurable impressions | Impressions where viewability could be measured | Display, Video |
+| Viewable impressions | 50% of the video ad creative in the viewable area for 2 continuous seconds | Video, Demand Gen |
+| Measurable impressions | Impressions where viewability could be measured | Video, Demand Gen |
+
+The opt-in Vertical Video Ads format is the exception: viewability is measured on the player, not on the creative.
 
 ### Clicks
 
@@ -84,6 +87,8 @@ Documents core Google Ads metrics, their definitions, calculations, and interpre
 | Engaged-view clicks | Clicks after 10+ seconds of video watched |
 | Invalid clicks | Filtered clicks (bots, accidents) |
 
+> 💡 **Read spend net of invalid-activity credits.** The Invalid Activity Credit Report breaks credits down by campaign and by network and gives the click and interaction counts behind each credit. Billing and transaction history only show them as line-item adjustments, so the campaign view overstates cost until you net the credits out.
+
 ### Click-Through Rate (CTR)
 
 | **Attribute** | **Details** |
@@ -100,15 +105,15 @@ Documents core Google Ads metrics, their definitions, calculations, and interpre
 | Search (branded) | <5% | 5-10% | 10-20% | >20% |
 | Search (non-branded) | <2% | 2-4% | 4-7% | >7% |
 | Shopping | <0.5% | 0.5-1% | 1-2% | >2% |
-| Display | <0.1% | 0.1-0.3% | 0.3-0.5% | >0.5% |
+| Demand Gen (GDN-only) | <0.1% | 0.1-0.3% | 0.3-0.5% | >0.5% |
 | Video | <0.3% | 0.3-0.8% | 0.8-1.5% | >1.5% |
 | Demand Gen | <0.5% | 0.5-1% | 1-2% | >2% |
 
-> ⚠️ **Benchmarks are directional:** Your industry, audience, and offer significantly affect expected CTR. Use these as starting points, not absolute standards.
+> ⚠️ **Benchmarks are directional.** Industry, audience, and offer all move expected CTR materially, which makes these starting points rather than absolute standards.
 
 ---
 
-## 2️⃣ Cost Metrics
+## 2️⃣ Cost metrics
 
 ### Cost (Spend)
 
@@ -143,7 +148,7 @@ Documents core Google Ads metrics, their definitions, calculations, and interpre
 | Search (branded) | <€0.50 | €0.50-2 | >€2 |
 | Search (non-branded) | <€1 | €1-5 | >€5 |
 | Shopping | <€0.30 | €0.30-1 | >€1 |
-| Display | <€0.25 | €0.25-1 | >€1 |
+| Demand Gen (GDN-only) | <€0.25 | €0.25-1 | >€1 |
 | Video (CPV) | <€0.03 | €0.03-0.10 | >€0.10 |
 
 ### Cost Per Mille (CPM)
@@ -157,7 +162,7 @@ Documents core Google Ads metrics, their definitions, calculations, and interpre
 
 ---
 
-## 3️⃣ Conversion Metrics
+## 3️⃣ Conversion metrics
 
 ### Conversions
 
@@ -179,7 +184,7 @@ Documents core Google Ads metrics, their definitions, calculations, and interpre
 
 | **Column** | **What it shows** |
 |------------|-------------------|
-| Conversions | All conversions (primary + secondary marked "yes") |
+| Conversions | Primary conversion actions only (the number Smart Bidding optimizes to) |
 | All conversions | All tracked actions including secondary |
 | Primary conversions | Only actions marked as primary |
 | View-through conversions | Conversions after ad view (no click) |
@@ -200,7 +205,7 @@ Documents core Google Ads metrics, their definitions, calculations, and interpre
 | Search (branded) | <5% | 5-10% | 10-20% | >20% |
 | Search (non-branded) | <2% | 2-4% | 4-7% | >7% |
 | Shopping | <1% | 1-3% | 3-5% | >5% |
-| Display | <0.5% | 0.5-1% | 1-2% | >2% |
+| Demand Gen (GDN-only) | <0.5% | 0.5-1% | 1-2% | >2% |
 | Demand Gen | <1% | 1-2% | 2-4% | >4% |
 
 ### Cost Per Acquisition (CPA)
@@ -218,7 +223,7 @@ Documents core Google Ads metrics, their definitions, calculations, and interpre
 CPA = CPC ÷ CVR
 ```
 
-To lower CPA, either lower CPC or raise CVR (or both).
+CPA falls when CPC falls, when CVR rises, or both.
 
 ### Conversion Value
 
@@ -246,11 +251,11 @@ To lower CPA, either lower CPC or raise CVR (or both).
 | Percentage | 350% | €3.50 revenue per €1 spent |
 | Ratio | 3.5:1 | €3.50 revenue per €1 spent |
 
-> 💡 **ROAS ≠ Profit:** A 300% ROAS means €3 revenue per €1 ad spend, but revenue must cover COGS and other costs. Calculate target ROAS from your unit economics. (See: [Unit Economics Mental Model](../mental-models/Unit Economics Mental Model.md))
+> 💡 **ROAS ≠ Profit.** A 300% ROAS means €3 revenue per €1 ad spend, and that revenue still has to cover COGS and other costs. Target ROAS derives from unit economics. (See: [Unit Economics Mental Model](../mental-models/Unit Economics Mental Model.md))
 
 ---
 
-## 4️⃣ Competitive Metrics
+## 4️⃣ Competitive metrics
 
 ### Impression Share
 
@@ -266,16 +271,15 @@ To lower CPA, either lower CPC or raise CVR (or both).
 | **Type** | **Definition** |
 |----------|---------------|
 | Search impression share | Share of Search impressions |
-| Display impression share | Share of Display impressions |
 | Absolute top IS | Share of very top position |
 | Top IS | Share of top positions (above organic) |
 
 ### Lost Impression Share
 
-| **Type** | **Definition** | **Fix** |
-|----------|---------------|---------|
-| Lost IS (budget) | Lost due to insufficient budget | Increase budget |
-| Lost IS (rank) | Lost due to low Ad Rank | Improve Quality Score or increase bids |
+| **Type** | **Definition** | **Lever** |
+|----------|---------------|-----------|
+| Lost IS (budget) | Lost due to insufficient budget | Budget |
+| Lost IS (rank) | Lost due to low Ad Rank | Quality Score, bids |
 
 **Diagnostic matrix:**
 
@@ -286,7 +290,7 @@ To lower CPA, either lower CPC or raise CVR (or both).
 | Both high | Multiple constraints | Address budget first, then rank |
 | Both low | Efficient delivery | Growth opportunity: increase budget |
 
-### Search Top Metrics
+### Search top metrics
 
 | **Metric** | **Definition** |
 |------------|---------------|
@@ -297,7 +301,7 @@ To lower CPA, either lower CPC or raise CVR (or both).
 
 ---
 
-## 5️⃣ Quality Metrics
+## 5️⃣ Quality metrics
 
 ### Quality Score
 
@@ -318,14 +322,14 @@ To lower CPA, either lower CPC or raise CVR (or both).
 
 **Quality Score interpretation:**
 
-| **Score** | **Status** | **Action** |
-|-----------|-----------|-----------|
-| 1-4 | Poor | Investigate and fix urgently |
-| 5-6 | Average | Identify improvement opportunities |
-| 7-8 | Good | Maintain, minor optimizations |
-| 9-10 | Excellent | Protect and replicate |
+| **Score** | **Status** | **What it signals** |
+|-----------|-----------|---------------------|
+| 1-4 | Poor | Urgent component failure, CPCs materially inflated |
+| 5-6 | Average | Headroom in at least one component |
+| 7-8 | Good | Components broadly aligned, marginal gains only |
+| 9-10 | Excellent | Alignment worth protecting and replicating elsewhere |
 
-> ⚠️ **Quality Score is diagnostic, not a KPI:** Don't optimize for QS directly: optimize for the components (CTR, relevance, landing page). QS improvement follows.
+> ⚠️ **Quality Score is diagnostic, not a KPI.** The score moves as a consequence of its components (expected CTR, ad relevance, landing page experience), never as a target in its own right.
 
 ### Optimization Score
 
@@ -340,7 +344,7 @@ To lower CPA, either lower CPC or raise CVR (or both).
 
 ---
 
-## 6️⃣ Video-Specific Metrics
+## 6️⃣ Video-specific metrics
 
 ### Views
 
@@ -373,7 +377,7 @@ To lower CPA, either lower CPC or raise CVR (or both).
 | **Formula** | Cost ÷ Views |
 | **What it measures** | Video view efficiency |
 
-### Watch Time Metrics
+### Watch time metrics
 
 | **Metric** | **Definition** |
 |------------|---------------|
@@ -384,7 +388,7 @@ To lower CPA, either lower CPC or raise CVR (or both).
 
 ---
 
-## Metric Flow Diagram
+## Metric flow diagram
 
 Understanding how metrics relate helps diagnose problems:
 
@@ -404,28 +408,30 @@ Impressions
     └── Impression Share → Competitive position
 ```
 
-**Diagnostic principle:** When a downstream metric changes, trace upstream to find root cause.
+**Diagnostic principle:** a downstream metric change traces upstream to its root cause.
+
+> ↪️ **For the full root cause walk and the per-branch diagnostic trees:** See [Metric Tree Reference](../references/Metric Tree Reference.md).
 
 ---
 
-## Metric Availability by Campaign Type
+## Metric availability by campaign type
 
-| **Metric** | **Search** | **Shopping** | **Display** | **Video** | **Demand Gen** | **PMax** |
-|------------|------------|--------------|-------------|-----------|----------------|----------|
-| Impressions | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Clicks | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| CTR | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| CPC | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Conversions | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| CVR | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Quality Score | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Impression Share | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
-| Views | ❌ | ❌ | ❌ | ✅ | ✅ | Limited |
-| CPV | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ |
+| **Metric** | **Search** | **Shopping** | **Video** | **Demand Gen** | **PMax** |
+|------------|------------|--------------|-----------|----------------|----------|
+| Impressions | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Clicks | ✅ | ✅ | ✅ | ✅ | ✅ |
+| CTR | ✅ | ✅ | ✅ | ✅ | ✅ |
+| CPC | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Conversions | ✅ | ✅ | ✅ | ✅ | ✅ |
+| CVR | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Quality Score | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Impression Share | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Views | ❌ | ❌ | ✅ | ✅ | Limited |
+| CPV | ❌ | ❌ | ✅ | ✅ | ❌ |
 
 ---
 
-## Common Mistakes
+## Common mistakes
 
 | **Mistake** | **Problem** | **Fix** |
 |-------------|-------------|---------|
@@ -438,7 +444,7 @@ Impressions
 
 ---
 
-## Related Documents
+## Related documents
 
 | **Document** | **Relationship** |
 |--------------|------------------|
@@ -451,10 +457,10 @@ Impressions
 
 ---
 
-## Version Details
+## Version details
 
-- **Version:** 1.0
-- **Last Updated:** February 2026
+- **Version:** 2.0
+- **Last Updated:** August 2026
 - **Creator:** Bob Meijer
 
 ---

@@ -71,18 +71,17 @@ Run immediately when campaign CPA/ROAS deviates 30%+ from target for two consecu
 
 ### 1.1 Export keyword performance data
 
-1. Navigate to Google Ads > Keywords > Search keywords.
+1. Navigate to Google Ads > Audiences, keywords, and content > Keywords.
 2. Set the date range to at least 30 days. For mature campaigns, use 60-90 days.
 3. Include these columns: keyword, match type, Quality Score, impressions, clicks, CTR, cost, conversions, cost/conversion, conversion value, ROAS, impression share, IS lost (rank), IS lost (budget).
 
 ### 1.2 Filter to actionable keywords
 
 1. Export to a spreadsheet.
-2. Remove keywords with fewer than 100 clicks in the analysis period.
-
-> ⚠️ **Do not act on keywords with fewer than 100 clicks:** Below this threshold, zero conversions are statistically meaningless. Mark as "Insufficient Data" and re-evaluate next cycle.
-
+2. Remove keywords with fewer than 100 clicks in the analysis period. Mark them "Insufficient Data" and re-evaluate next cycle.
 3. Sort remaining keywords by Cost (descending).
+
+> ⚠️ **Do not act on keywords with fewer than 100 clicks:** Below this threshold, zero conversions are statistically meaningless.
 
 ### 1.3 Establish campaign-level benchmarks
 
@@ -131,7 +130,7 @@ Work through quadrants in priority order: Q1 (protect winners), Q4 (stop the ble
 ### 3.1 Q1: Protect and scale
 
 1. If IS lost to budget > 10%, increase campaign budget or move to a higher-priority budget.
-2. If running on phrase or broad, consider adding as exact match to protect against PMax query routing.
+2. If running on phrase or broad, add as exact match to protect against PMax query routing.
 3. Monitor closely: run search term reviews on Q1 keywords monthly.
 
 ### 3.2 Q4: Diagnose or pause
@@ -165,10 +164,10 @@ For each Q4 keyword, run a four-point diagnosis:
 
 ### 3.4 Q3: Increase visibility
 
-1. If IS lost to budget is significant, increase budget or reallocate from paused Q4 keywords.
-2. Consider broadening match type (exact to phrase, phrase to broad with Smart Bidding).
+1. If IS lost to budget > 10%, increase budget or reallocate from paused Q4 keywords.
+2. Broaden match type (exact to phrase, phrase to broad with Smart Bidding).
 3. Verify the keyword is not being cannibalized by another campaign or PMax.
-4. If IS lost to rank is significant and the campaign uses Manual CPC, increase keyword bids in 10-15% increments. On Smart Bidding campaigns, rank issues are addressed through Quality Score improvement, not manual bid changes: the algorithm controls bids and any campaign-level or ad group-level adjustment affects all keywords and their triggered search terms.
+4. If IS lost to rank is significant and the campaign uses Manual CPC, increase keyword bids in 10-15% increments. On Smart Bidding campaigns, route rank issues to Quality Score improvement instead of changing bids (See: [Smart Bidding Mechanics Reference](../references/Smart Bidding Mechanics Reference.md)).
 
 > ⚠️ **Scale gradually:** Pushing bids too aggressively can shift a Q3 keyword into Q2.
 
@@ -200,7 +199,7 @@ Filter to all keywords with QS < 7, regardless of quadrant.
 
 ### 5.1 Select keywords for analysis
 
-Focus on Q1 and Q2 keywords with meaningful volume. These are where variant divergence has the most financial impact.
+Focus on Q1 and Q2 keywords with meaningful volume.
 
 ### 5.2 Pull and compare variants
 
@@ -213,9 +212,9 @@ Focus on Q1 and Q2 keywords with meaningful volume. These are where variant dive
 | Finding | Action |
 | --- | --- |
 | Variant outperforms parent (better CPA, meaningful volume) | Add as its own exact match keyword |
-| Variant underperforms parent (worse CPA, wasting spend) | Monitor and consider adding as a negative keyword if pattern persists |
+| Variant underperforms parent (worse CPA, wasting spend) | Monitor, then add as a negative keyword if the pattern persists |
 | Variant captures more volume than parent | Evaluate as potential primary keyword |
-| Multiple variants diverge significantly | Consider restructuring ad group around query clusters |
+| Multiple variants diverge significantly | Restructure the ad group around query clusters |
 
 > ↪️ **For search term analysis procedures:** See [SOP – Analyze Search Term Reports](../sops/SOP – Analyze Search Term Reports.md)
 
@@ -293,8 +292,8 @@ This SOP is complete when:
 
 ### Version details
 
-- **Version:** 2.0
-- **Last Updated:** March 2026
+- **Version:** 3.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

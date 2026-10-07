@@ -1,5 +1,6 @@
 # SOP – Set Up New Customer Tracking
 Created: 2026-02-04
+Updated: 2026-08-27
 
 Agent_Executable: No
 Category: Measurement
@@ -22,10 +23,10 @@ This SOP walks you through implementing new customer detection on your site, con
 
 This SOP does **not:**
 
-- Set up basic conversion tracking (prerequisite: purchase conversion must already exist)
-- Configure PMax campaign settings or asset groups (downstream SOP)
-- Define customer segmentation strategy (See: relevant mental model)
-- Cover offline conversion tracking for new customer attribution
+- Set up basic conversion tracking (See: [SOP – Set Up Google Ads Conversion Tracking](../sops/SOP – Set Up Google Ads Conversion Tracking.md))
+- Configure PMax campaign settings or asset groups (See: [PMax Configuration Guidelines](../guidelines/PMax Configuration Guidelines.md))
+- Define customer segmentation strategy (See: [Customer Lifecycle Optimization Reference](../references/Customer Lifecycle Optimization Reference.md))
+- Cover offline conversion tracking for new customer attribution (See: [SOP – Set Up Offline Conversion Tracking](../sops/SOP – Set Up Offline Conversion Tracking.md))
 
 ### When to run this SOP
 
@@ -51,9 +52,9 @@ Run this SOP when:
 
 | Document | Used for |
 |----------|----------|
-| Google Tag Manager workspace | Tag and variable configuration |
+| [New Customer Data Reference](../references/New Customer Data Reference.md) | Parameter syntax and NCA goal mechanics |
+| [Customer Lifecycle Optimization Reference](../references/Customer Lifecycle Optimization Reference.md) | New versus returning value framing |
 | Backend/CRM documentation | Customer lookup logic |
-| Google Ads campaign settings | NCA goal enablement |
 
 ---
 
@@ -88,7 +89,7 @@ The developer implements one of these approaches:
 | Platform-native | Use Shopify `first_time_buyer` or WooCommerce order count | Quick setup on supported platforms |
 | Cookie-based | Check for returning customer cookie | Fallback only, less accurate |
 
-> ⚠️ **Database lookup is the gold standard:** Cookie-based detection misses cross-device purchases and breaks when cookies are cleared. Always use server-side detection when possible.
+> ⚠️ **Database lookup is the gold standard:** Cookie-based detection misses cross-device purchases and breaks when cookies are cleared. Use server-side detection.
 
 ### 1.3 Data layer push example
 
@@ -200,15 +201,16 @@ Enable new customer acquisition bidding when:
 
 1. Open Google Ads
 2. Go to the Performance Max campaign > Settings
-3. Under "Customer acquisition", select your bidding mode:
+3. Under "Customer acquisition", select your bidding mode from the table below
+4. Set the new customer value (optional): the additional value assigned to a new customer conversion
+5. Save
+
+**Bidding modes:**
 
 | Mode | Behavior | Use when |
 |------|----------|----------|
 | Bid higher for new customers | Bids more aggressively for new customers while still targeting returning customers | You value new customers more but want both |
 | Only bid for new customers | Excludes returning customers entirely | You only want acquisition from this campaign |
-
-4. Set the new customer value (optional): the additional value assigned to a new customer conversion
-5. Save
 
 > 💡 **Start with "Bid higher" mode:** Only use "Only bid for new customers" if you have separate campaigns for retention. Starting with the exclusive mode reduces volume significantly.
 
@@ -291,8 +293,8 @@ A: NCA adds an acquisition premium on top of your Target ROAS. Google may exceed
 
 ### Version details
 
-- **Version:** 1.0
-- **Last Updated:** February 2026
+- **Version:** 2.0
+- **Last Updated:** August 2026
 - **Creator:** Bob Meijer
 
 ---

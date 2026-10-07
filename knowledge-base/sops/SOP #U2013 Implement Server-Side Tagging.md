@@ -27,7 +27,7 @@ This SOP does **not:**
 
 - Set up basic GACT from scratch (See: [SOP – Set Up Google Ads Conversion Tracking](../sops/SOP – Set Up Google Ads Conversion Tracking.md))
 - Replace client-side tracking (SST works alongside your web container, not instead of it)
-- Cover Consent Mode implementation (separate SOP)
+- Cover Consent Mode implementation (See: [SOP – Configure Google Consent Mode](../sops/SOP – Configure Google Consent Mode.md))
 - Configure Enhanced Conversions (See: [SOP – Implement Enhanced Conversions](../sops/SOP – Implement Enhanced Conversions.md))
 
 ### When to run this SOP

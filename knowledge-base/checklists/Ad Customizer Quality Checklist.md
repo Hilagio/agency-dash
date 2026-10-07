@@ -52,8 +52,8 @@ Run this checklist:
 
 ### Setup & syntax
 
-- [ ]  Attributes created in Business Data with correct data types
-- [ ]  Attribute names consistent across Business Data and RSA syntax
+- [ ]  Attributes created in Business data with correct data types
+- [ ]  Attribute names consistent across Business data and RSA syntax
 - [ ]  Syntax correct: `{CUSTOMIZER.AttributeName:Default}`
 - [ ]  Default text is strong standalone copy (not generic)
 - [ ]  Total character count (static + longest value) ≤ limit (30/90)
@@ -70,11 +70,11 @@ Run this checklist:
 
 - [ ]  All keywords have values assigned (no unintentional defaults)
 - [ ]  No empty cells where values are expected
-- [ ]  Values are appropriate length (won't cause truncation)
+- [ ]  No value pushes its headline past 30 characters or its description past 90
 
 ### Rendering verification
 
-- [ ]  Tested 5+ keywords in Ad Preview and Diagnosis
+- [ ]  At least 5 keywords have been checked in Ad Preview and Diagnosis
 - [ ]  Correct dynamic values appear (not defaults)
 - [ ]  Price/percent formatting displays correctly
 - [ ]  No truncation, overflow, or broken grammar
@@ -82,7 +82,7 @@ Run this checklist:
 
 ### Default behavior
 
-- [ ]  Defaults only appear when expected (untargeted scenarios)
+- [ ]  Defaults appear only on keywords with no assigned value
 - [ ]  Defaults don't create awkward or generic copy
 - [ ]  Defaults don't violate brand guidelines
 
@@ -97,7 +97,7 @@ Run this checklist:
 
 - [ ]  Scheduled upload configured and running
 - [ ]  Source data accurate and current
-- [ ]  Sync frequency appropriate for data change rate
+- [ ]  Sync frequency is at least as frequent as the source data changes
 
 ---
 
@@ -113,8 +113,8 @@ Run this checklist:
 
 ## Version details
 
-- **Version:** 2.0
-- **Last Updated:** January 2026
+- **Version:** 3.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

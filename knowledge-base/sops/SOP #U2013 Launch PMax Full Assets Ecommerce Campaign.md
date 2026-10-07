@@ -1,6 +1,6 @@
 # SOP – Launch PMax Full Assets Ecommerce Campaign
 Created: 2026-02-04
-Updated: 2026-02-05
+Updated: 2026-06-29
 
 SOP_ID: SOP_51
 Status: Done
@@ -19,6 +19,8 @@ This SOP launches a Performance Max campaign with full creative assets for cross
 > ❓ **The big question:** How do I set up PMax to leverage all Google surfaces for product visibility while maintaining Ecommerce focus?
 
 Full Assets PMax requires creative investment and serves across all Google surfaces. Use this when you want reach beyond Shopping and have quality assets to support it.
+
+> 💡 **Leave the Search Partner and Display network toggles on.** Both are selectable at the campaign level and default on. Keep them on so the campaign has full inventory, monitor the channel split, and exclude a single network only if it is wildly underperforming on sustained data. See [Network Selection Reference](../references/Network Selection Reference.md).
 
 ---
 
@@ -239,7 +241,7 @@ Add 2-5 longer headlines for Display and Discover.
 
 **Descriptions (max 90 characters):**
 
-Add 2-5 descriptions mixing:
+Add 4 descriptions mixing:
 
 - Product benefits
 - Shipping/returns
@@ -469,8 +471,8 @@ A: Not for the same products. Use listing groups to ensure products appear in on
 
 ## Version details
 
-- **Version:** 4.0
-- **Last Updated:** March 2026
+- **Version:** 5.0
+- **Last Updated:** June 2026
 - **Creator:** Bob Meijer
 
 ---

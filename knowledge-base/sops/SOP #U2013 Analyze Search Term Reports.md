@@ -1,6 +1,6 @@
 # SOP – Analyze Search Term Reports
 Created: 2026-02-04
-Updated: 2026-02-15
+Updated: 2026-10-05
 
 SOP_ID: SOP_46
 Agent_Executable: No
@@ -123,7 +123,7 @@ Confirm these columns are visible in the report:
 
 This phase identifies clearly irrelevant terms only. Do not evaluate individual search term performance metrics in this phase.
 
-Before scanning, **filter out all search terms with conversions > 0, and a status of "None" (not yet added as keywords)**. Converting search terms stay in the account regardless of how irrelevant they look. Your bias might be working against you: if a search term converts, the data is telling you something. Leave it alone.
+Before scanning, **filter out all search terms with conversions > 0, and a status of "None" (not yet added as keywords)**. Converting search terms stay in the account regardless of how irrelevant they look. Leave them alone.
 
 ### 2.1 Scan the alphabetical list for irrelevant words and themes
 
@@ -141,9 +141,9 @@ Discover irrelevant categories dynamically. Do not rely on a fixed list of categ
 | Explicit/spam terms | Adult terms, torrent/piracy terms | Never convert for legitimate businesses |
 | Wrong product/service | Terms for products or services you do not offer | Zero chance of conversion |
 
-> 💡 **Let the data drive category discovery:** The categories above are starting points, not a checklist. Your account will have unique irrelevance patterns. Group 3+ similar irrelevant terms into a named category, then use that category to systematically scan the rest of the report.
-
 > ⚠️ **When in doubt, do not exclude.** If you are unsure whether a search term is truly irrelevant, leave it in the account and make a note to revisit. Let the data speak: if the term is genuinely wasteful, it will surface in your N-gram analysis once you have enough data. See: [SOP – Run N-gram Analysis](../sops/SOP – Run N-gram Analysis.md).
+
+> ⚠️ **The shown term is an approximation, not a transcript.** For searches from advanced surfaces (Lens, AI Mode, AI Overviews, autocomplete), the term in the report is Google's best approximation of the user's intent, not the verbatim query. Do not negate on a single literal-string reading. Confirm waste patterns through aggregated N-gram analysis before excluding. See: [Search Term Report Reference](../references/Search Term Report Reference.md).
 
 ### 2.2 Record negation candidates
 
@@ -153,7 +153,7 @@ For each irrelevant word or theme identified, record:
 | --- | --- | --- | --- |
 | {word} | {example queries from report} | Phrase match | Irrelevant Keywords |
 
-**Match type rule:** Use phrase match for all irrelevant term negatives, including single words. Phrase match is the safest default: it blocks the exact word or sequence without the over-exclusion risk of broad match negatives (which block any query containing all words in any order).
+**Match type rule:** Use phrase match for all irrelevant term negatives, including single words (See: [Negative Keyword Reference](../references/Negative Keyword Reference.md)).
 
 > ⚠️ **This phase identifies clearly irrelevant terms only.** Do not negate terms based on individual search term performance data (high CPA, low ROAS, zero conversions). Performance-based negation requires aggregated data and is handled through N-gram analysis. See: [SOP – Run N-gram Analysis](../sops/SOP – Run N-gram Analysis.md).
 
@@ -201,7 +201,7 @@ For each term that passes all three conditions, record:
 
 Take the irrelevant term list from Phase 2 and add them directly to the **Irrelevant Keywords** shared negative keyword list in Google Ads:
 
-1. Navigate to Tools > Shared Library > Negative keyword lists.
+1. Navigate to Tools > Shared library > Exclusion lists > Negative keyword lists.
 2. Open the "Irrelevant Keywords" list.
 3. Add all formatted negatives from Phase 2 (lowercase, no special characters).
 4. Verify the list is linked to all relevant campaigns.
@@ -313,8 +313,8 @@ Once analysis is complete:
 
 ### Version details
 
-- **Version:** 2.0
-- **Last Updated:** February 2026
+- **Version:** 4.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---
@@ -327,4 +327,4 @@ Violations may be detected through embedded document fingerprints and will be pu
 
 Full terms: https://www.ppcmastery.com/terms-and-conditions
 
-(c) 2026 PPC Mastery B.V. All rights reserved.
+© 2026 PPC Mastery B.V. All rights reserved.

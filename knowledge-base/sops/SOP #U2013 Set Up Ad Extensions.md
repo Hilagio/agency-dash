@@ -1,5 +1,6 @@
 # SOP – Set Up Ad Extensions
 Created: 2026-04-02
+Updated: 2026-10-05
 
 SOP_ID: SOP_90
 Status: Done
@@ -176,7 +177,10 @@ Add for campaigns where phone calls are a conversion action:
 |---------|---------------|
 | Phone number | Local or toll-free number |
 | Call reporting | Enable (track calls as conversions) |
+| Call recording | Enable where available (US/CA): Google AI qualifies call conversions by lead quality instead of the raw duration threshold |
 | Schedule | Match business hours only |
+
+> ↪️ **Call outcomes tracked in a CRM or call system.** Use an import calls conversion action instead of the duration threshold. See [Extension Leverage Catalog](../catalogs/Extension Leverage Catalog.md) for the call conversion quality hierarchy.
 
 > ⚠️ **Do not add call extensions to campaigns where phone calls are not a goal.** Calls from non-phone campaigns inflate CPC without generating desired conversions.
 
@@ -192,7 +196,7 @@ Add only if you have a physical location customers visit:
 
 | Prerequisite | Action |
 |-------------|--------|
-| Google Business Profile linked | Link in Google Ads > Ads & assets > Assets > Location |
+| Google Business Profile linked | Link in Google Ads > Assets > Assets > Location |
 | Multiple locations | Link all relevant locations, use campaign-level filtering |
 | No physical location | Skip this extension entirely |
 
@@ -202,8 +206,8 @@ Add for Lead Gen campaigns where in-ad form submission is desired:
 
 | Consideration | Guidance |
 |--------------|---------|
-| Lead quality | Lead form leads are typically lower quality than landing page leads. Set expectations accordingly. |
-| Form fields | Use 3-5 fields maximum. More fields = fewer submissions but higher quality. |
+| Lead quality | Lead form leads run lower quality than landing page leads. Report on them separately from landing page leads. |
+| Form fields | Use 3-5 fields maximum. |
 | CRM integration | Connect to your CRM via webhook or Zapier for immediate follow-up. |
 | Organic message | Add a compelling reason to fill out the form (offer, download, consultation). |
 
@@ -224,14 +228,14 @@ Add only if you have a mobile app and want to drive installs from Search ads:
 
 ## Phase 4️⃣: Automated asset controls
 
-Navigate to Ads & assets > Assets > Automated assets (account level).
+Navigate to Assets > Assets > Automated assets (account level).
 
 | Auto-generated asset | Recommendation | Rationale |
 |---------------------|---------------|-----------|
 | Dynamic sitelinks | Enable | Supplements your manual sitelinks with relevant page links |
 | Dynamic callouts | Enable | Adds benefit highlights from your landing pages |
 | Dynamic structured snippets | Enable | Pulls category information from your site |
-| Seller ratings | Enable (if eligible) | Shows star ratings from third-party review sites |
+| Store ratings | Enable (if eligible) | Shows star ratings from third-party review sites |
 | Dynamic image extensions | Disable | Images from your site are often low-quality or irrelevant |
 | Longer ad headlines | Enable with monitoring | Google generates longer headlines from landing page content |
 | Automated business name/logo | Disable if manual versions are set | Prefer your controlled versions |
@@ -244,19 +248,12 @@ Navigate to Ads & assets > Assets > Automated assets (account level).
 
 ## Phase 5️⃣: Validation
 
-Run the [Extension Coverage Checklist](../checklists/Extension Coverage Checklist.md) against all campaigns:
+Run the [Extension Coverage Checklist](../checklists/Extension Coverage Checklist.md) against all campaigns and pass every applicable item. It owns the per-type counts and status checks.
 
-- [ ] 4+ sitelinks with descriptions at account level
-- [ ] 4+ callouts at account level
-- [ ] 2+ structured snippet headers at account level
-- [ ] 1+ image extension (square minimum) at account level
-- [ ] Business name and logo configured
-- [ ] Promotion extensions on campaigns with active offers (with end dates)
-- [ ] Price extensions on campaigns with fixed pricing
-- [ ] Call extensions on phone-conversion campaigns only (with schedule)
-- [ ] Location extensions on campaigns for physical businesses only
-- [ ] Lead form extensions on lead gen campaigns (with CRM integration)
-- [ ] Automated asset settings reviewed and configured
+Two items this SOP adds on top of that checklist:
+
+- [ ] Automated asset settings are configured per Phase 4
+- [ ] Every lead form extension is connected to the CRM
 
 ---
 
@@ -310,8 +307,8 @@ This SOP is complete when:
 
 ## Version details
 
-- **Version:** 1.0
-- **Last Updated:** April 2026
+- **Version:** 3.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

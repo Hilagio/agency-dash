@@ -1,5 +1,6 @@
-﻿# Shopping Product Performance Reference
+# Shopping Product Performance Reference
 Created: 2026-02-14
+Updated: 2026-08-27
 
 Support_ID: REFERENCE_44
 Status: Done
@@ -12,11 +13,11 @@ Pillar: 6
 
 ## Purpose
 
-Documents product-level performance metrics, competitiveness insights, segmentation strategies, and optimization levers for Shopping campaigns. Use this reference to diagnose underperforming products, prioritize optimization efforts, and build performance-based campaign structures.
+Documents product-level performance metrics, competitiveness insights, segmentation dimensions, and optimization levers for Shopping campaigns.
 
 ---
 
-## What this reference is / what this is NOT
+## What this reference is / What this is NOT
 
 **This reference:**
 
@@ -48,7 +49,7 @@ Documents product-level performance metrics, competitiveness insights, segmentat
 | ROAS | Revenue generated per ad euro spent | Calculated (conv. value / cost) | 30 days + 10 conversions |
 | Click share | Competitive visibility vs. eligible auctions | Google Ads > Products tab | 14 days |
 
-> 💡 **Wait for sufficient data before making product-level decisions:** Acting on 3 days of data leads to false conclusions. Use the minimum data windows above as hard gates.
+> 💡 **The minimum data windows above are hard gates:** Three days of product-level data supports no conclusion, and acting on it produces false ones.
 
 ---
 
@@ -93,7 +94,7 @@ Conversions require the longest data window because purchase events are sparse a
 
 ### Click share
 
-Click share reveals competitive headroom. A product with 30% click share has 70% more potential visibility available.
+Click share reveals competitive headroom. A product with 30% click share leaves 70 percentage points of available visibility unclaimed.
 
 | **Click share** | **Meaning** | **Action** |
 |---------------------|-------------|------------|
@@ -150,7 +151,7 @@ The product title is the single most impactful lever for Shopping impression vol
 
 ### Title optimization priority
 
-Optimize titles in order of business impact:
+Title optimization ranks by business impact:
 
 | **Priority** | **Product segment** | **Rationale** |
 |-------------|-------------------|---------------|
@@ -169,7 +170,7 @@ Optimize titles in order of business impact:
 | Key attribute | After product type | Specificity (color, size, material) |
 | Differentiator | End of title | Competitive distinction (quantity, model number) |
 
-> 💡 **Test one variable at a time:** Change brand position OR add a color attribute, not both. Otherwise you cannot attribute the performance change.
+> 💡 **One variable at a time:** Moving brand position and adding a colour attribute in the same edit makes the resulting performance change unattributable.
 
 ---
 
@@ -225,7 +226,9 @@ Product group structure determines how granularly you can control bids, budgets,
 | Level 3 | Custom label (performance tier) | When you use hero/sidekick/villain/zombie segmentation |
 | Level 4 | Item ID | Only for top sellers that justify individual bid control |
 
-> 💡 **Stop subdividing when a group has fewer than 30 clicks in 30 days:** Below this threshold, the data is too sparse for meaningful performance analysis or bid differentiation.
+**Ceiling:** 20,000 product groups. Data volume per group is the constraint that binds first: a tree runs out of conversions to differentiate bids on long before it runs out of product groups.
+
+> 💡 **Below 30 clicks in 30 days a group is too sparse to subdivide:** the data no longer supports meaningful performance analysis or bid differentiation.
 
 ### Catch-all spend analysis
 
@@ -238,7 +241,7 @@ The "Everything else" group in each product group tree captures all products not
 | 30-50% | Under-structured | Subdivide: identify the top-spending products in the catch-all and break them out |
 | Above 50% | Poorly structured | Restructure: the majority of spend has no granular control |
 
-To measure catch-all spend share: filter the Products tab by listing group, identify "Everything else" groups, and divide their cost by total campaign cost.
+Catch-all spend share is the cost of the "Everything else" groups in the Products tab, divided by total campaign cost.
 
 ### Granularity assessment
 
@@ -264,7 +267,7 @@ Shopping campaigns do not use keyword targeting. Google matches search queries t
 
 ### Assessing query relevance
 
-Pull the search terms report for Shopping campaigns (Google Ads > Campaigns > Insights and reports > Search terms). Filter by campaign type: Shopping or PMax (Shopping channel).
+Shopping search terms sit in the same report as Search, filtered to Shopping or PMax (Shopping channel). Column definitions and access paths are in [Search Term Report Reference](../references/Search Term Report Reference.md).
 
 | **Query pattern** | **Why it appears** | **Typical waste** |
 |-------------------|--------------------|-------------------|
@@ -276,11 +279,7 @@ Pull the search terms report for Shopping campaigns (Google Ads > Campaigns > In
 
 ### Irrelevant spend threshold
 
-Calculate the percentage of Shopping campaign spend going to irrelevant search terms:
-
-1. Export the search terms report for the last 30 days
-2. Flag queries that are clearly irrelevant to the product being shown
-3. Sum the cost of flagged queries and divide by total campaign cost
+Irrelevant spend share is the cost of queries clearly irrelevant to the product shown, over the last 30 days, divided by total campaign cost.
 
 | **Irrelevant spend share** | **Verdict** | **Action** |
 |---------------------------|-------------|------------|
@@ -330,7 +329,7 @@ Compare each product's current 30-day performance against the criteria used when
 - **Google Ads Scripts:** Automate tier recalculation based on ROAS and conversion thresholds
 - **Third-party tools:** ProductHero, ProfitMetrics, or similar tools that recalculate tiers automatically
 
-> 💡 **Always recalculate tiers after seasonal events:** Performance during Black Friday or other peaks distorts tier assignments. Run a tier refresh 2-3 weeks after the peak ends, using post-peak data only.
+> 💡 **Seasonal peaks distort tier assignments:** performance during Black Friday or a comparable peak does not describe the rest of the year. A tier refresh 2-3 weeks after the peak, on post-peak data only, restores the assignment.
 
 > ↪️ **Tier definitions and segmentation framework:** See [Feed Segmentation Catalog](../catalogs/Feed Segmentation Catalog.md)
 
@@ -406,8 +405,8 @@ Product has 0 impressions after 30 days?
 
 ## Version details
 
-- **Version:** 3.0
-- **Last Updated:** April 2026
+- **Version:** 4.0
+- **Last Updated:** August 2026
 - **Creator:** Bob Meijer
 
 ---

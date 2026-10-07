@@ -47,7 +47,7 @@ Run this checklist:
 
 ## Checklist
 
-### A — Attention
+### A: Attention
 
 - [ ]  Impact established in first 5 seconds
 - [ ]  Clear hook that demands attention (action, statement, surprise, or problem)
@@ -57,7 +57,7 @@ Run this checklist:
 - [ ]  Text overlays readable and well-timed (if used)
 - [ ]  No slow intro or excessive setup before main message
 
-### B — Branding
+### B: Branding
 
 - [ ]  Brand/product visible in first 5 seconds
 - [ ]  Brand presence maintained throughout (not just end card)
@@ -65,7 +65,7 @@ Run this checklist:
 - [ ]  Multiple branding elements used (logo, colors, product, tagline, etc.)
 - [ ]  Viewer who skips at 5 seconds would still know who the ad is from
 
-### C — Connection
+### C: Connection
 
 - [ ]  Features real people (not just product shots)
 - [ ]  One clear, focused message (not multiple competing messages)
@@ -74,12 +74,12 @@ Run this checklist:
 - [ ]  Simple, accessible language
 - [ ]  Shows human benefit, not just product features
 
-### D — Direction
+### D: Direction
 
 - [ ]  Clear CTA present
 - [ ]  CTA specifies exactly what action to take
 - [ ]  CTA reinforced with voice-over (audio and visual)
-- [ ]  Asset mix includes horizontal video (vertical-only mixes can stop serving in YouTube in-feed)
+- [ ]  Asset mix includes horizontal video
 - [ ]  CTA visible long enough to read and comprehend
 - [ ]  Only ONE primary action requested (not multiple CTAs)
 - [ ]  CTA appropriate for marketing objective (soft for awareness, strong for action)
@@ -99,7 +99,7 @@ Run this checklist:
 - [ ]  No competing audio elements (music vs. voice-over conflict)
 - [ ]  Text large enough to read on mobile
 - [ ]  High contrast between text and background
-- [ ]  Video resolution appropriate (1080p minimum recommended)
+- [ ]  Video resolution is 1080p or higher
 - [ ]  No quality degradation from compression
 
 ### Common mistakes avoided
@@ -118,9 +118,9 @@ Run this checklist:
 | --- | --- | --- | --- |
 | Skippable In-Stream | 12s | 15-60s | No limit (<3 min) |
 | Non-Skippable In-Stream | 15s | 15-30s | 60s |
-| Bumpers | — | 6s | 6s |
-| YouTube Shorts | — | 15-30s | 60s |
-| In-Feed | — | 30-90s | No limit |
+| Bumpers | 5s | 6s | 6s |
+| YouTube Shorts | n/a | 15-30s | 60s |
+| In-Feed | n/a | 30-90s | No limit |
 
 ---
 
@@ -146,8 +146,8 @@ Run this checklist:
 
 ## Version details
 
-- **Version:** 1.0
-- **Last Updated:** January 2026
+- **Version:** 2.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

@@ -5,15 +5,15 @@ Updated: 2026-04-02
 Support_ID: CHEATSHEET_1
 Status: Done
 Category: Creative
-Reference Type: Cheat Sheet
+Reference Type: Cheat Sheets
 Agent_Readable: No
 Human_Facing: No
 Domain: Creative
 Pillar: 8
 
-## Purpose:
+## Purpose
 
-Documents dynamic text insertion options available in Google Ads RSAs for automatic copy personalization
+Documents dynamic text insertion options available in Google Ads RSAs for automatic copy personalization.
 
 ---
 
@@ -72,7 +72,7 @@ Dynamically inserts the keyword that triggered the ad into your headline or desc
 | **Rule** | **Details** |
 | --- | --- |
 | **Character limit** | If keyword + surrounding text exceeds character limit, Default Text shows instead |
-| **Default required** | Always include strong default text: it will show when keyword is too long |
+| **Default required** | The default shows whenever the keyword is too long, so it carries the headline on its own |
 | **One per headline** | You can use multiple, but one per headline is typical |
 | **Works in** | Headlines, Descriptions, Paths |
 
@@ -127,8 +127,8 @@ Dynamically inserts the user's location (city, state, or country) into your ad.
 
 | **Rule** | **Details** |
 | --- | --- |
-| **Targeting required** | Only works if you're targeting the location level you're inserting |
-| **Default shows when** | Location can't be determined, or exceeds character limit |
+| **Targeting required** | Works only where the campaign targets the location level being inserted |
+| **Default shows when** | Location cannot be determined, or the inserted name exceeds the character limit |
 | **Character limits** | Some city/state names are long (test your defaults) |
 | **Works in** | Headlines, Descriptions |
 
@@ -154,7 +154,7 @@ Dynamically inserts the user's location (city, state, or country) into your ad.
 | **Situation** | **Why** | **Alternative** |
 | --- | --- | --- |
 | National campaigns | Location adds no value | Focus on other angles |
-| B2B/SaaS (usually) | Buyers don't care about your location | Focus on benefits |
+| B2B/SaaS (usually) | Buyer location is not a purchase factor | Focus on benefits |
 | When location is irrelevant | Forced personalization feels manipulative | Skip it |
 
 ---
@@ -221,7 +221,7 @@ Dynamically counts down to a specific date/time, creating urgency in your ad.
 | --- | --- | --- |
 | No real deadline | Fake urgency is unethical and ineffective | Authentic urgency or none |
 | Evergreen offers | Creates operational burden to update | Static messaging |
-| Long countdowns | "47 days left" isn't urgent | Start countdown closer to deadline |
+| Long countdowns | "47 days left" reads as no deadline at all | Start countdown closer to deadline |
 
 ---
 
@@ -252,7 +252,7 @@ Pulls dynamic values from a business data feed or keyword-level settings into yo
 | Singular/plural control per keyword | Use Keyword-Level Ad Customizers |
 | Dynamic pricing, inventory, promos | Use Dynamic Ad Customizers |
 
-> ⚠️ **Complexity warning:** Ad Customizers require advanced setup and maintenance. Start with Keyword Insertion before graduating to customizers. See the dedicated catalogs and SOPs for full implementation guidance.
+> ⚠️ **Complexity warning.** Ad Customizers require advanced setup and ongoing maintenance, where Keyword Insertion requires neither. The dedicated catalogs and SOPs carry the full implementation detail.
 
 ---
 
@@ -289,7 +289,7 @@ Do you need dynamic text?
 
 | **Mistake** | **Problem** | **Fix** |
 | --- | --- | --- |
-| **Weak default text** | When dynamic fails, ad is generic | Always write defaults as if they'll show 50% of time |
+| **Weak default text** | When dynamic fails, ad is generic | Write every default as if it will show half the time |
 | **Over-relying on DKI** | All headlines are `{KeyWord:X}` | Use DKI for H1, static for persuasion |
 | **Ignoring character limits** | Defaults show more than expected | Test with longest keywords |
 | **Fake countdown urgency** | Damages trust, policy risk | Only use for real deadlines |
@@ -301,20 +301,20 @@ Do you need dynamic text?
 
 | **Document** | **Relationship** |
 | --- | --- |
-| [SOP – Write Compelling RSAs](../sops/SOP – Write Compelling RSAs.md)  | Uses these for H1 relevance anchors |
-| [SOP – Improve Ad Relevance](../sops/SOP – Improve Ad Relevance.md)  | DKI as relevance fix |
-| [Headline Angle Catalog](../catalogs/Headline Angle Catalog.md)  | Relevance Anchor patterns |
-| [Keyword Ad Customizer Attribute Catalog](../catalogs/Keyword Ad Customizer Attribute Catalog.md)  | Keyword-level customizer attributes |
-| [Dynamic Ad Customizer Attribute Catalog](../catalogs/Dynamic Ad Customizer Attribute Catalog.md)  | Dynamic customizer attributes |
-| [SOP – Set Up Keyword-Level Ad Customizers](../sops/SOP – Set Up Keyword-Level Ad Customizers.md)  | Keyword customizer setup |
-| [SOP – Set Up Dynamic Ad Customizers](../sops/SOP – Set Up Dynamic Ad Customizers.md)  | Dynamic customizer setup |
+| [SOP – Write Compelling RSAs](../sops/SOP – Write Compelling RSAs.md) | Uses these for H1 relevance anchors |
+| [SOP – Improve Ad Relevance](../sops/SOP – Improve Ad Relevance.md) | DKI as relevance fix |
+| [Headline Angle Catalog](../catalogs/Headline Angle Catalog.md) | Relevance Anchor patterns |
+| [Keyword Ad Customizer Attribute Catalog](../catalogs/Keyword Ad Customizer Attribute Catalog.md) | Keyword-level customizer attributes |
+| [Dynamic Ad Customizer Attribute Catalog](../catalogs/Dynamic Ad Customizer Attribute Catalog.md) | Dynamic customizer attributes |
+| [SOP – Set Up Keyword-Level Ad Customizers](../sops/SOP – Set Up Keyword-Level Ad Customizers.md) | Keyword customizer setup |
+| [SOP – Set Up Dynamic Ad Customizers](../sops/SOP – Set Up Dynamic Ad Customizers.md) | Dynamic customizer setup |
 
 ---
 
 ## Version details
 
 - **Version:** 2.0
-- **Last Updated:** January 2026
+- **Last Updated:** April 2026
 - **Creator:** Bob Meijer
 
 ---

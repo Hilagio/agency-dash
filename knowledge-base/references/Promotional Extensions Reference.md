@@ -12,7 +12,7 @@ Pillar: 8
 
 ## Purpose
 
-Documents the technical specifications, timing requirements, and seasonal usage patterns for promotional advertising elements used during sales events and peak periods. Use this reference when preparing a seasonal campaign to determine which promotional elements to deploy, when to start, and how to configure them.
+Documents the technical specifications, timing requirements, and seasonal usage patterns for promotional advertising elements used during sales events and peak periods: which elements exist, what lead time each needs, and how each is configured.
 
 ---
 
@@ -59,16 +59,16 @@ Promotion extensions display a dedicated line below your ad with the offer detai
 
 | **Configuration** | **Options** | **Seasonal recommendation** |
 |-------------------|-----------|---------------------------|
-| Occasion | None, New Year, Valentine's Day, Easter, Mother's Day, Father's Day, Back to School, Halloween, Singles Day, Black Friday, Cyber Monday, Christmas, plus more | Always select the specific occasion: it adds a visual badge |
+| Occasion | None, New Year, Valentine's Day, Easter, Mother's Day, Father's Day, Back to School, Halloween, Singles Day, Black Friday, Cyber Monday, Christmas, plus more | The specific occasion adds a visual badge, "None" does not |
 | Promotion type | Monetary discount, Percent discount, Up to monetary, Up to percent | Match to your actual offer structure |
 | Item | 20 characters | Name the product category or offer (e.g., "all courses", "winter collection") |
 | Promo code | Optional | Include if applicable: drives perceived exclusivity |
-| Dates | Start/end | Always set explicit dates to prevent stale promotions |
+| Dates | Start/end | Explicit dates are what prevent a stale promotion from serving |
 
 ### Timing
-- Submit 2-3 business days before the event (allow for Google review)
-- Schedule start and end dates to automate activation/deactivation
-- Remove or let expire immediately after the event ends
+- Submission runs 2-3 business days before the event, which covers Google review
+- Scheduled start and end dates automate activation and deactivation
+- The extension expires or is removed as the event ends
 
 > ↪️ **Full extension type overview and setup:** See [Extension Leverage Catalog](../catalogs/Extension Leverage Catalog.md) and [SOP – Set Up Ad Extensions](../sops/SOP – Set Up Ad Extensions.md)
 
@@ -78,7 +78,7 @@ Promotion extensions display a dedicated line below your ad with the offer detai
 
 ### Seasonal usage
 
-Create sitelinks that link directly to specific deal categories or product pages. Replace evergreen sitelinks with promotional versions during peak periods.
+Promotional sitelinks link directly to specific deal categories or product pages, replacing the evergreen set for the duration of a peak period.
 
 **Example patterns:**
 
@@ -90,10 +90,10 @@ Create sitelinks that link directly to specific deal categories or product pages
 | All Black Friday Sales | Browse every deal in one place | /black-friday |
 
 ### Configuration notes
-- Create 4-8 promotional sitelinks to give Google rotation options
-- Use category-specific sitelinks for the categories or products you run promotions on
-- Schedule start/end dates matching the promotion period
-- After the event: revert to evergreen sitelinks or let scheduled ones expire
+- 4-8 promotional sitelinks give Google rotation options
+- Category-specific sitelinks map to the categories or products actually on promotion
+- Scheduled start and end dates match the promotion period
+- After the event, the evergreen set returns or the scheduled sitelinks expire
 
 ---
 
@@ -133,7 +133,7 @@ Countdown timers dynamically display the time remaining until a deadline. They c
 | Minimum effective period | 3 days: shorter creates urgency, longer diminishes it |
 | Timezone | Set to account timezone or target location timezone for multi-region campaigns |
 | Placement | Headlines only (descriptions truncate on mobile) |
-| Default text | Always set a default: "Soon" or "Limited Time" (shows when countdown cannot render) |
+| Default text | A default ("Soon", "Limited Time") is what shows when the countdown cannot render |
 
 **Example seasonal usage:**
 
@@ -162,10 +162,10 @@ Callout assets are underutilized by many advertisers during seasonal events. The
 | Convenience | + Free Shipping on All Orders, + Easy Returns, + Next Day Delivery |
 
 ### Configuration notes
-- Create 4-6 seasonal callouts to give Google rotation options
-- Prefix with "+" for visual prominence
-- Schedule start/end dates to automate seasonal rotation
-- Mix urgency, scarcity, and value categories for the strongest combination
+- 4-6 seasonal callouts give Google rotation options
+- A "+" prefix adds visual prominence
+- Scheduled start and end dates automate the seasonal rotation
+- A mix across urgency, scarcity, and value categories outperforms a single category
 
 ---
 
@@ -173,11 +173,11 @@ Callout assets are underutilized by many advertisers during seasonal events. The
 
 ### Text ad preparation
 
-Have holiday ads in place **2 weeks before the holiday starts** to allow for review and learning period.
+Holiday ads need to be live **2 weeks before the holiday starts**, which covers Google review and the learning period.
 
 **Five principles for seasonal RSA headlines:**
 
-| **Principle** | **What to do** | **Example** |
+| **Principle** | **What it does** | **Example** |
 |-------------|---------------|------------|
 | Sale as focal point | Lead with the offer, not the product | "Black Friday: 50% Off All Courses" |
 | UVP of the sale | Mention percentage off, savings amount, free shipping | "Save Up to 70% + Free Shipping" |
@@ -187,9 +187,9 @@ Have holiday ads in place **2 weeks before the holiday starts** to allow for rev
 
 ### Ad customizer usage for seasonal campaigns
 
-Use ad customizers to dynamically show:
+Ad customizers dynamically show:
 - Starting prices or discount percentages (via customizer attributes)
-- Stock levels to increase urgency and scarcity (if limited)
+- Stock levels, where limited, for urgency and scarcity
 - Countdown timers for sale end dates
 
 > ↪️ **Ad customizer syntax and feed setup:** See [Dynamic Text Reference](../references/Dynamic Text Reference.md)
@@ -201,11 +201,11 @@ Use ad customizers to dynamically show:
 ### Design principles
 
 - **Mobile first:** high-resolution, sharp, bold contrasting colors, big font sizes
-- **Simplify design:** given smaller screen sizes, avoid clutter
-- **Avoid blank spaces:** make the product or message the focus
-- **Overlays:** create versions with and without text overlays. Overlays can backfire in Responsive Display Ads (RDA/RVA). Images with overlays tend to outperform in static ad formats.
-- **LP match:** match images with landing page elements (message and design consistency)
-- **Multiple formats:** prepare landscape (1.91:1), vertical (4:5 where supported), and square (1:1)
+- **Simple design:** smaller screens punish clutter
+- **No blank space:** the product or message is the focus
+- **Overlays:** versions with and without text overlays. Overlays can backfire in responsive formats, and tend to outperform in static ad formats.
+- **LP match:** images consistent with landing page message and design
+- **Multiple formats:** landscape (1.91:1), vertical (4:5 where supported), and square (1:1)
 
 ### Specs by campaign type
 
@@ -229,8 +229,8 @@ Use ad customizers to dynamically show:
 
 | **Principle** | **Guidance** |
 |-------------|-------------|
-| Length | Keep short: typically 15 seconds |
-| Attention | You have mere seconds to capture attention. Grab the viewer immediately. |
+| Length | Short, typically 15 seconds |
+| Attention | Attention is won or lost in the first few seconds |
 | Pacing | Fast-paced to keep engagement |
 | Footage | High-quality footage (does not have to be expensive) |
 | Branding | Introduce brand early, ensure alignment with other ads and LPs |
@@ -280,7 +280,7 @@ Use ad customizers to dynamically show:
 
 ---
 
-## Related Documents
+## Related documents
 
 | **Document** | **Relationship** |
 |--------------|------------------|

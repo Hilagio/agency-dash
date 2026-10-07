@@ -72,6 +72,8 @@ Is the budget-limited campaign profitable (CPA at/below target, ROAS at/above ta
 |   |   |
 |   |   +-- YES --> Raise the budget. Go to Phase 1️⃣ to document
 |   |   |           baseline, then increase budget directly.
+|   |   |           Target-based campaigns scale predictably at the
+|   |   |           stated target when budget rises.
 |   |   |
 |   |   +-- NO --> Budget is fixed. Run the 5-step constrained
 |   |               budget approach (Phase 2️⃣) to optimize within limits.
@@ -162,6 +164,8 @@ If Steps 1-3 do not free enough budget, make the algorithm more selective:
 3. Wait 1-2 conversion cycles for each adjustment to stabilize
 4. Evaluate: did efficiency improve enough to offset the volume loss?
 
+> 💡 **The target is the reliable throttle.** Bidding delivers to the stated target even under a budget cap, so target adjustments are the dependable efficiency lever for budget-constrained campaigns. Do not rely on a tight budget to force efficiency: a budget cap does not preserve a better-than-target actual. If you inherit a campaign throttled by a low budget with a loose target, invert it: set the target you actually want and give the budget headroom.
+
 > ⚠️ **Do not make dramatic target changes (>20% at once):** Large jumps trigger extended learning periods and destabilize performance. Make 5-10% adjustments and wait for data.
 
 ### 2.5 Step 5️⃣: Protect best performers
@@ -182,8 +186,8 @@ If the campaign has very low budget and Steps 1-5 are insufficient, apply the lo
 ### 3.1 Identify areas to narrow
 
 1. Identify which keywords can be paused (low-intent, non-converting match types)
-2. Identify top-performing ad groups and consider narrowing to those only
-3. Identify top-performing geographic areas and consider narrowing location targeting
+2. Identify top-performing ad groups and narrow to those only
+3. Identify top-performing geographic areas and narrow location targeting to those
 4. Review the landing page report and identify ad groups sending traffic to underperforming pages
 
 ### 3.2 Decide: persist or restructure
@@ -195,7 +199,7 @@ After 30 days of low-budget escalation, use behavior metrics (micro conversions,
 | Exact match keywords are converting | Gradually reintroduce phrase match, expand location |
 | Behavior signals are strong but conversions are low | Conversion tracking issue or long sales cycle: investigate |
 | No conversions and poor behavior signals | Campaign targeting is fundamentally wrong: restructure or pause |
-| Budget is simply too small for the vertical | Consider restructuring or consolidating campaigns |
+| Budget is simply too small for the vertical | Restructure or consolidate campaigns |
 
 ---
 
@@ -206,7 +210,7 @@ Monitor for 2 weeks after completing any changes from Phases 2-3. Compare agains
 | Result | Next step |
 |--------|-----------|
 | IS Lost (Budget) below 10% AND efficiency maintained | Success. Document new baseline, resume normal monitoring |
-| IS Lost (Budget) reduced AND efficiency improved | Strong success. Consider scaling via [SOP – Scale Bids and Budgets](../sops/SOP – Scale Bids and Budgets.md) |
+| IS Lost (Budget) reduced AND efficiency improved | Strong success. Scale via [SOP – Scale Bids and Budgets](../sops/SOP – Scale Bids and Budgets.md) |
 | IS Lost (Budget) reduced BUT volume dropped significantly | Over-tightened. Ease Phase 2 restrictions (reintroduce paused keywords, broaden targeting) |
 | IS Lost (Budget) unchanged | Steps did not free enough budget. Budget increase is now justified: request additional spend from stakeholder |
 
@@ -269,7 +273,7 @@ A: Do not add budget. Route to the efficiency improvement track first: search te
 |----------|------|---------|
 | [Budget Pacing Reference](../references/Budget Pacing Reference.md) | Reference | Phase 1 (pacing mechanics) |
 | [Bid Scaling Mental Model](../mental-models/Bid Scaling Mental Model.md) | Mental Model | Decision gate (PAR zones) |
-| [Campaign Scaling Mental Model](../mental-models/Campaign Scaling Mental Model.md) | Mental Model | Phase 5 (scaling decision) |
+| [Campaign Scaling Mental Model](../mental-models/Campaign Scaling Mental Model.md) | Mental Model | Exit bridge (scaling decision) |
 | [Bid Strategy Health Checklist](../checklists/Bid Strategy Health Checklist.md) | Checklist | Exit bridge (troubleshooting) |
 | [Volume vs efficiency (more/better/new)](<../theory/Volume vs efficiency (more better new).md>) | Theory | Decision gate (tradeoff logic) |
 

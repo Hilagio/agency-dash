@@ -30,7 +30,7 @@ This checklist confirms:
 
 This checklist does **NOT**:
 
-- Teach headline writing patterns (See: [Headline Angle Catalog](../catalogs/Headline Angle Catalog.md) )
+- Teach headline writing patterns (See: [Headline Angle Catalog](../catalogs/Headline Angle Catalog.md))
 - Prescribe slot assignments (See: [SOP – Write Compelling RSAs](../sops/SOP – Write Compelling RSAs.md))
 - Validate strategic alignment (See: [SOP – Craft Your Offer Angles](../sops/SOP – Craft Your Offer Angles.md))
 
@@ -84,7 +84,7 @@ Run this checklist:
 ### Modifiers (if used)
 
 - [ ]  Urgency language appears in ≤2 headlines
-- [ ]  Price headlines only used where conversion intent supports
+- [ ]  Price headlines appear only in ad groups with bottom-of-funnel keywords
 
 ---
 

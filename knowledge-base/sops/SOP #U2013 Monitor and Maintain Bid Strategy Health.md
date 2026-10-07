@@ -1,6 +1,6 @@
 # SOP – Monitor and Maintain Bid Strategy Health
 Created: 2026-02-14
-Updated: 2026-04-02
+Updated: 2026-10-05
 
 SOP_ID: SOP_91
 Status: Done
@@ -39,7 +39,7 @@ This SOP does **not:**
 | After major campaign changes (budget, targeting, conversion actions) | Within 48 hours of change |
 | After onboarding a new account | First week |
 | Seasonal transition (pre-peak, post-peak) | At each transition |
-| After a learning period completes | Within 3 days of completion |
+| After a 7-14 day learning phase completes | Within 3 days of completion |
 
 ---
 
@@ -49,7 +49,7 @@ This SOP does **not:**
 
 - Access to Google Ads account with campaign management permissions
 - Bid strategy report for all active strategies (campaign-level and portfolio-level)
-- Last 30 days of conversion data (exclude conversion delay window)
+- Last 30 days of conversion data (exclude conversion lag window)
 - Current targets (CPA, ROAS, or POAS) for each bid strategy
 - Breakeven CPA/ROAS/POAS from unit economics
 - Impression share data (lost to rank, lost to budget)
@@ -59,7 +59,7 @@ This SOP does **not:**
 | Document | Used for |
 |----------|----------|
 | [Bid Strategy Health Checklist](../checklists/Bid Strategy Health Checklist.md) | Validation gates after each phase |
-| [Smart Bidding Mechanics Reference](../references/Smart Bidding Mechanics Reference.md) | Learning period triggers, signal mechanics, conversion delay |
+| [Smart Bidding Mechanics Reference](../references/Smart Bidding Mechanics Reference.md) | Learning period triggers, signal mechanics, conversion lag |
 | [Bid Scaling Mental Model](../mental-models/Bid Scaling Mental Model.md) | PAR zones, growth-efficiency slider for target adjustments |
 | [Bidding Configuration Guidelines](../guidelines/Bidding Configuration Guidelines.md) | Portfolio strategy config, CPC cap rules, bid adjustment cleanup |
 | [Conversion Volume Thresholds Reference](../references/Conversion Volume Thresholds Reference.md) | Minimum conversion volumes per strategy |
@@ -86,7 +86,7 @@ This SOP does **not:**
 
 Open each active bid strategy and record its status:
 
-1. Navigate to the campaign view or Tools > Budgets and Bidding > Bid Strategies
+1. Navigate to the campaign view or Tools > Budgets and bidding > Bid strategies
 2. Check the "Bid strategy type" column for each campaign
 3. Click the bid strategy name to view the strategy report
 4. Note the status indicator
@@ -102,7 +102,7 @@ Record in this table:
 | Status | Meaning | Action |
 |--------|---------|--------|
 | **Eligible** | Strategy is fully operational, past learning | Proceed to Phase 2️⃣ |
-| **Learning** | Algorithm is calibrating after a recent change | Do not make any changes. Wait for the learning period to complete (two conversion cycles). (See: [Smart Bidding Mechanics Reference](../references/Smart Bidding Mechanics Reference.md)) |
+| **Learning** | Algorithm is calibrating after a recent change | Do not make any changes. Wait 7-14 days for the learning phase to complete, then 1-2 conversion cycles before evaluating. (See: [Smart Bidding Mechanics Reference](../references/Smart Bidding Mechanics Reference.md)) |
 | **Learning (limited)** | Algorithm cannot exit learning due to insufficient data | Diagnose the cause (see 1.3). Do not make target changes. |
 | **Limited by budget** | Budget is restricting the strategy | Note for Phase 3️⃣ evaluation |
 | **Misconfigured** | Setup issue preventing operation | Fix configuration immediately (wrong conversion action, conflicting settings) |
@@ -120,14 +120,16 @@ If any strategy shows "Learning (limited)", check these causes in order and stop
 | Conversion tracking issue? | Fix tracking first (not a bidding problem) |
 | Target too aggressive? | Flag for Phase 4️⃣ (target loosening) |
 
+> ⚠️ **An empty Recommendations tab is a volume signal, not approval of the current target.** Google calculates no recommended bid target below 7 conversions. Where no recommended target is shown, record insufficient conversion volume and move to Phase 2️⃣.
+
 > ↪️ **See [Smart Bidding Mechanics Reference](../references/Smart Bidding Mechanics Reference.md)** for detailed learning period diagnostics.
 
 ### 1.4 Set hold flags
 
 For every strategy currently in "Learning" or "Learning (limited)":
 
-- Mark with a **HOLD** flag: no target, budget, or structural changes until learning completes
-- Record the expected learning completion date (last change date + 14 days)
+- Mark with a **HOLD** flag: no target, budget, geographic targeting, or structural changes until learning completes
+- Record the expected learning-phase completion date (last change date + 7-14 days) and the evaluation date (last change date + 1-2 conversion cycles)
 - Brief stakeholders: performance during learning is not representative
 
 ---
@@ -136,7 +138,7 @@ For every strategy currently in "Learning" or "Learning (limited)":
 
 ### 2.1 Pull conversion data
 
-For each bid strategy (campaign-level or portfolio-level), pull conversion data for a window of 30 days + your conversion delay. For example, if your conversion delay is 7 days, pull the last 37 days and exclude the most recent 7 days from analysis to avoid undercounting.
+For each bid strategy (campaign-level or portfolio-level), pull conversion data for a window of 30 days + your conversion lag. For example, if your conversion lag is 7 days, pull the last 37 days and exclude the most recent 7 days from analysis to avoid undercounting.
 
 | Campaign / Portfolio | Bid strategy | Conversions (30d) | Conv. with value (30d) | Threshold required | Sufficient? |
 |---------------------|-------------|-------------------|----------------------|-------------------|-------------|
@@ -150,7 +152,7 @@ Use the thresholds from the [Conversion Volume Thresholds Reference](../referenc
 |----------|--------------------|--------------------|-------------|
 | Maximize Conversions | 15/month | 30/month | 50+/month |
 | Target CPA | 15/month | 30/month | 50+/month |
-| Maximize Conversion Value | 15/month | 50/month | 50+/month |
+| Maximize Conversion Value | 30/month | 50/month | 50+/month |
 | Target ROAS | 30/month | 50/month | 50+/month |
 
 For **portfolio bid strategies**, apply the threshold to the combined total of all linked campaigns.
@@ -206,11 +208,11 @@ When a strategy is underperforming or failing, walk through this diagnostic in o
 
 | Step | Check | If YES |
 |------|-------|--------|
-| 1 | Campaign structure change disrupted learning? | Wait for learning to complete |
+| 1 | Campaign structure change disrupted learning? | Wait 7-14 days for the learning phase to complete |
 | 2 | Irrelevant queries eating budget? New competitors? | Add negatives, tighten match types, review auction insights |
 | 3 | Market shrinking (seasonal decline, trend change)? | Adjust expectations, review if target makes sense at lower volume |
 | 4 | Negatives blocking valuable queries? | Remove or modify overly broad negatives |
-| 5 | Evaluation window shorter than conversion cycle? | Extend window, exclude last [conversion delay] days |
+| 5 | Evaluation window shorter than conversion cycle? | Extend window, exclude last [conversion lag] days |
 | 6 | Seasonality or external factor (holidays, competitor promos)? | Use seasonality adjustments for short-term events |
 | 7 | Conversion rate dropped (LP or offer issue)? | Fix the landing page or offer (not a bidding problem) |
 
@@ -228,7 +230,7 @@ If a strategy shows 100% budget spend and high IS lost to budget:
 | 10-25% | Moderate limitation, leaving volume on the table | Consider budget increase if growth is a priority |
 | 25%+ | Severe limitation, significant lost volume | Increase budget (see Phase 4️⃣) or set targets just below recent performance to recapture volume within current budget |
 
-**Recapturing volume within budget constraints:** If you cannot increase budget, set the target less aggressive than recent actual performance. For CPA, set the target 5-10% above recent actual CPA. For ROAS, set the target 5-10% below recent actual ROAS. This gives the algorithm more auction flexibility to participate in additional auctions without increasing budget.
+Where budget cannot be increased, run 4.4 to reset the target.
 
 ---
 
@@ -248,13 +250,13 @@ All target changes follow the same incremental approach:
 
 | Adjustment type | Maximum single increment | Wait period between adjustments |
 |----------------|------------------------|-------------------------------|
-| CPA target increase (loosening) | 15-20% | 1-2 days monitoring, then one conversion cycle |
-| CPA target decrease (tightening) | 10-15% | 1-2 days monitoring, then one conversion cycle |
-| ROAS target decrease (loosening) | 15-20% | 1-2 days monitoring, then one conversion cycle |
-| ROAS target increase (tightening) | 10-15% | 1-2 days monitoring, then one conversion cycle |
+| CPA target increase (loosening) | 15-20% | 1-2 days monitoring, then 1-2 conversion cycles |
+| CPA target decrease (tightening) | 10-15% | 1-2 days monitoring, then 1-2 conversion cycles |
+| ROAS target decrease (loosening) | 15-20% | 1-2 days monitoring, then 1-2 conversion cycles |
+| ROAS target increase (tightening) | 10-15% | 1-2 days monitoring, then 1-2 conversion cycles |
 | POAS target: same rules as ROAS | | |
 
-> ⚠️ **Changes larger than 20% trigger a new learning period:** If your target needs a correction greater than 20%, break it into two or more increments spaced one conversion cycle apart.
+> ⚠️ **Changes larger than 20% trigger a new learning period:** If your target needs a correction greater than 20%, break it into two or more increments spaced 1-2 conversion cycles apart.
 
 ### 4.3 Execution steps for target adjustments
 
@@ -262,8 +264,8 @@ All target changes follow the same incremental approach:
 2. **Calculate the new target** using the increment limits above
 3. **Make the change** in Google Ads (campaign-level or portfolio-level)
 4. **Monitor for 1-2 days** for any immediate anomalies (spend spike, volume crash)
-5. **Wait one full conversion cycle** before evaluating the adjustment
-6. **Evaluate:** compare actual performance to the new target over a clean window (excluding conversion delay)
+5. **Wait 1-2 conversion cycles** before evaluating the adjustment
+6. **Evaluate:** compare actual performance to the new target over a clean window (excluding conversion lag)
 7. **If the target is not yet where it needs to be:** make another incremental adjustment and repeat
 
 ### 4.4 Target adjustments for budget-limited campaigns
@@ -336,7 +338,7 @@ When a strategy is ready for migration:
 
 1. **Do not switch overnight:** Use a campaign experiment (50/50 split) for 30+ days.
 2. Set the new strategy's target conservatively: slightly looser than current performance.
-3. Exclude the learning period (two conversion cycles) from evaluation.
+3. Exclude the first 7-14 days (the learning phase) from evaluation, and do not evaluate until 1-2 conversion cycles have elapsed from the switch date.
 4. Compare net profit or conversion volume (depending on strategy type) as the primary metric.
 5. If the experiment wins: apply the experiment. If the original wins: end the experiment and keep the current strategy.
 
@@ -394,7 +396,7 @@ Confirm that no non-exclusion bid adjustments are set on Smart Bidding campaigns
 | Audiences | 0% or removed |
 | Demographics | 0% or removed |
 
-Non-exclusion bid adjustments on Smart Bidding campaigns are ignored by the algorithm. They create false confidence and clutter the account.
+Remove every non-exclusion adjustment found. See [Bidding Configuration Guidelines](../guidelines/Bidding Configuration Guidelines.md) for the rule.
 
 ---
 
@@ -406,7 +408,7 @@ This SOP is complete when:
 - [ ] No changes are pending on strategies currently in learning
 - [ ] Conversion volume sufficiency is verified for every strategy
 - [ ] Underperforming strategies have been diagnosed with root causes identified
-- [ ] Target adjustments have been made using the gradual protocol (max 15-20% per increment)
+- [ ] Target adjustments have been made using the gradual protocol (10-15% per tightening increment, 15-20% per loosening increment)
 - [ ] Migration opportunities have been assessed against trigger conditions
 - [ ] Portfolio strategies have been reviewed for campaign grouping, CPC caps, and bid adjustments
 - [ ] All findings and changes are documented in the tracking sheet
@@ -421,7 +423,7 @@ Once the health check is complete:
 | Timeframe | Action |
 |-----------|--------|
 | 1-2 days after target adjustments | Spot-check spend rate and volume for anomalies |
-| One conversion cycle after adjustments | Evaluate adjusted strategies against new targets |
+| 1-2 conversion cycles after adjustments | Evaluate adjusted strategies against new targets |
 | 2 weeks | Run this SOP again if major adjustments were made |
 | Monthly (routine) | Schedule next full health check |
 | When unit economics change | Recalculate breakeven via [SOP – Calculate Bid Targets](../sops/SOP – Calculate Bid Targets.md) |
@@ -447,7 +449,7 @@ A: Monthly for stable accounts. Bi-weekly for accounts with recent changes, high
 
 **Q: What if a strategy is underperforming but still in learning?**
 
-A: Do not adjust targets during learning. The algorithm is calibrating and performance will be volatile. Wait for learning to complete (two conversion cycles), then evaluate. The only exception is fixing a genuine misconfiguration (wrong conversion action, missing tracking).
+A: Do not adjust targets during learning. The algorithm is calibrating and performance will be volatile. Wait 7-14 days for the learning phase to complete and 1-2 conversion cycles from the change date, whichever is longer, then evaluate. The only exception is fixing a genuine misconfiguration (wrong conversion action, missing tracking).
 
 **Q: Should I adjust targets for seasonal changes proactively?**
 
@@ -464,7 +466,7 @@ A: Seasonality adjustments tell Smart Bidding to expect a temporary conversion r
 | Document | Type | Used in |
 |----------|------|---------|
 | [Bid Strategy Health Checklist](../checklists/Bid Strategy Health Checklist.md) | Checklist | All phases (validation gates) |
-| [Smart Bidding Mechanics Reference](../references/Smart Bidding Mechanics Reference.md) | Reference | Phase 1️⃣ (learning periods), Phase 3️⃣ (conversion delay) |
+| [Smart Bidding Mechanics Reference](../references/Smart Bidding Mechanics Reference.md) | Reference | Phase 1️⃣ (learning periods), Phase 3️⃣ (conversion lag) |
 | [Conversion Volume Thresholds Reference](../references/Conversion Volume Thresholds Reference.md) | Reference | Phase 2️⃣ (volume thresholds) |
 | [Bidding Configuration Guidelines](../guidelines/Bidding Configuration Guidelines.md) | Guideline | Phase 6️⃣ (portfolio config, CPC caps) |
 | [Bid Scaling Mental Model](../mental-models/Bid Scaling Mental Model.md) | Mental Model | Phase 4️⃣ (PAR zones, scaling direction) |
@@ -492,9 +494,9 @@ A: Seasonality adjustments tell Smart Bidding to expect a temporary conversion r
 
 | Failure | Why it happens | How to avoid |
 |---------|----------------|--------------|
-| Making changes during learning period | Impatience, pressure from stakeholders to "fix" volatile performance | Brief stakeholders before changes, mark HOLD flags, wait for two conversion cycles |
-| Ignoring conversion delay in evaluations | Evaluating the last 7 days when your conversion cycle is 14 days | Always exclude the last [conversion delay] days from analysis |
-| Large target jumps (>25%) | Trying to fix underperformance in one move | Use 10-15% increments, space one conversion cycle apart |
+| Making changes while either waiting clock is still running | Impatience, pressure from stakeholders to "fix" volatile performance | Brief stakeholders before changes, mark HOLD flags, wait for the 7-14 day learning phase and 1-2 conversion cycles |
+| Ignoring conversion lag in evaluations | Evaluating the last 7 days when your conversion cycle is 14 days | Always exclude the last [conversion lag] days from analysis |
+| Large target jumps (>25%) | Trying to fix underperformance in one move | Use 10-15% increments, space 1-2 conversion cycles apart |
 | Forgotten CPC caps | Cap was set months ago and never reviewed | Check all portfolio CPC caps during every health check |
 | Not separating Shopping vs. Lead Gen assessment | Applying the same thresholds and logic to fundamentally different account types | Use the account type tables in Phase 2️⃣ and Phase 5️⃣ |
 | Treating volume decline as a bidding problem | Root cause is seasonal demand drop, competitor entry, or landing page issue | Run the Phase 3️⃣ diagnostic fully before adjusting targets |
@@ -504,8 +506,8 @@ A: Seasonality adjustments tell Smart Bidding to expect a temporary conversion r
 
 ### Version details
 
-- **Version:** 3.0
-- **Last Updated:** April 2026
+- **Version:** 6.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

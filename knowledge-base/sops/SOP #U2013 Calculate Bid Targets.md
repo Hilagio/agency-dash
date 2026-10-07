@@ -18,6 +18,8 @@ This SOP walks you through calculating CPA, ROAS, and POAS bid targets from unit
 
 > ❓ **The big question:** What bid target should you set to balance growth and profitability for this account?
 
+> ⚠️ **The stated target is what you get.** Bidding converges to the platform-measured target, so a target set looser than your economics is money handed to the auction, and platform-reported overdelivery is not a cushion you can count on. Calculate targets from backend unit economics (this SOP), validate against backend profit, and restate them whenever economics change.
+
 ---
 
 ## What this SOP is NOT
@@ -28,7 +30,7 @@ This SOP does **not:**
 - Calculate or validate unit economics (See: [SOP – Calculate and Validate Unit Economics](../sops/SOP – Calculate and Validate Unit Economics.md))
 - Set campaign goals or KPIs (See: [SOP – Set Campaign Goals and KPIs](../sops/SOP – Set Campaign Goals and KPIs.md))
 - Explain how bid scaling works (See: [Bid Scaling Mental Model](../mental-models/Bid Scaling Mental Model.md))
-- Configure bidding strategies in-platform (that is a separate SOP)
+- Configure bidding strategies in-platform (See: [SOP – Set Up Conversion-Based Bidding](../sops/SOP – Set Up Conversion-Based Bidding.md))
 
 ## When to run this SOP
 
@@ -127,7 +129,7 @@ Run this SOP when:
 
 ## Phase 2️⃣: Calculate breakeven levels
 
-Breakeven is the point where 100% of gross profit goes to acquisition. You make zero profit at breakeven.
+Breakeven definitions and the PAR framework are owned by [Bid Targets Reference](../references/Bid Targets Reference.md).
 
 ### 2.1 Lead Gen: CPA breakeven
 
@@ -162,17 +164,11 @@ Where effective margin = Profit margin % - Order expenses %
 **Example:** 50% profit margin - 15% order expenses = 35% effective margin.
 ROAS breakeven = 1 / 0.35 = 286% (or 2.86x)
 
-At 286% ROAS, every euro of ad spend returns exactly enough revenue to cover product cost, order expenses, and the ad cost itself. Zero profit remains.
-
 ### 2.3 POAS breakeven
 
 ```
 POAS breakeven = 100% (always)
 ```
-
-POAS (Profit on Ad Spend) uses profit as the conversion value instead of revenue. At 100% POAS, every euro of ad spend generates exactly one euro of gross profit. Breakeven by definition.
-
-> 💡 **POAS simplifies bid target math:** Because breakeven is always 100%, you skip the margin calculations in Phase 3. The margin is already baked into the conversion value.
 
 ### 2.4 Record breakeven levels
 
@@ -186,9 +182,9 @@ POAS (Profit on Ad Spend) uses profit as the conversion value instead of revenue
 
 ## Phase 3️⃣: Determine bid targets
 
-### 3.1 Understand the profit-to-acquisition ratio (PAR)
+### 3.1 Select the profit-to-acquisition ratio (PAR)
 
-PAR controls how much of your gross profit you allocate to acquisition (ad spend) vs. retain as net profit.
+Select the PAR value that matches the documented growth versus efficiency goal.
 
 | PAR value | Meaning | Use when |
 |-----------|---------|----------|
@@ -207,8 +203,6 @@ CPA target = Breakeven CPA x PAR
 
 **Example:** Breakeven CPA = €600. PAR = 0.50 (balanced).
 CPA target = €600 x 0.50 = €300
-
-At €300 CPA, you spend 50% of gross profit on acquisition and retain 50%.
 
 | PAR setting | CPA target | Profit retained per deal |
 |-------------|-----------|------------------------|
@@ -340,7 +334,7 @@ Once bid targets are validated:
 
 | Next step | When |
 |-----------|------|
-| Configure bidding strategies in-platform | Targets validated, campaigns ready for launch or migration |
+| Configure bidding strategies in-platform via [SOP – Set Up Conversion-Based Bidding](../sops/SOP – Set Up Conversion-Based Bidding.md) | Targets validated, campaigns ready for launch or migration |
 | Revisit unit economics | If validation reveals targets are not viable at any PAR level |
 | Revisit goals and KPIs | If validated targets cannot deliver the required volume |
 
@@ -395,7 +389,7 @@ A: Present the data to the stakeholder with three options: increase budget, lowe
 | [SOP – Calculate and Validate Unit Economics](../sops/SOP – Calculate and Validate Unit Economics.md) | Upstream: must complete before this SOP |
 | [SOP – Set Campaign Goals and KPIs](../sops/SOP – Set Campaign Goals and KPIs.md) | Upstream: goals determine PAR selection |
 | [SOP – Set Up Conversion-Based Bidding](../sops/SOP – Set Up Conversion-Based Bidding.md) | Downstream: uses bid targets to configure in-platform |
-| *SOP: Set Up Cart Data and Profit Tracking* | Parallel: required before POAS targeting is available |
+| [SOP – Set Up Cart Data and Profit Tracking](../sops/SOP – Set Up Cart Data and Profit Tracking.md) | Parallel: required before POAS targeting is available |
 
 ---
 

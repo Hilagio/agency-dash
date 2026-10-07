@@ -1,6 +1,6 @@
 # Bid Strategy Selection Reference
 Created: 2026-02-04
-Updated: 2026-02-05
+Updated: 2026-08-27
 
 Support_ID: CHEATSHEET_25
 Status: Done
@@ -13,7 +13,7 @@ Pillar: 9
 
 ## Purpose
 
-Documents the decision trees for selecting an initial bid strategy when creating a new campaign, covering all six campaign types: Search, Standard Shopping, Performance Max, Display, Video, and Demand Gen.
+Documents the decision trees for selecting an initial bid strategy when creating a new campaign, covering all five campaign types: Search, Standard Shopping, Performance Max, Video, and Demand Gen.
 
 ---
 
@@ -21,7 +21,7 @@ Documents the decision trees for selecting an initial bid strategy when creating
 
 **This reference:**
 
-- Provides a decision tree for each of the six campaign types
+- Provides a decision tree for each of the five campaign types
 - Helps you determine the correct initial bid strategy for a new campaign
 - Documents the key decision points: data availability, optimization goal, and efficiency control
 - Covers all available bid strategies per campaign type
@@ -43,11 +43,10 @@ Documents the decision trees for selecting an initial bid strategy when creating
 | **Search** | Yes | Yes | Yes | No | No | No | No | Yes | Yes | Yes | Yes |
 | **Standard Shopping** | Yes | Yes | No | No | No | No | No | No | No | No | Yes |
 | **Performance Max** | No | No | No | No | No | No | No | Yes | Yes | Yes | Yes |
-| **Display** | Yes | Yes | No | Yes | No | No | No | Yes | Yes | Yes | Yes |
 | **Video** | No | No | No | No | Yes | Yes | Yes | No | No | No | No |
 | **Demand Gen** | No | Yes | No | No | No | No | No | Yes | Yes | Yes | Yes |
 
-> 💡 **Target CPA and Target ROAS are not separate strategies:** They are Maximize Conversions and Maximize Conversion Value with an optional efficiency target enabled. In the Google Ads UI, enable tCPA by checking "Set a target cost per action" under Maximize Conversions. Enable tROAS by checking "Set a target return on ad spend" under Maximize Conversion Value.
+> 💡 **Target CPA and Target ROAS use the same bidding as Maximize Conversions and Maximize Conversion Value, with an efficiency target added.** They appear as standalone strategy selections in the UI. You can pick "Target CPA" or "Target ROAS" directly, or pick Maximize Conversions / Maximize Conversion Value and add the target: both routes configure the same underlying strategy.
 
 ---
 
@@ -107,7 +106,7 @@ Do you need full control over bids?
                                        └─ NO → Use Maximize Conversion Value
 ```
 
-> ⚠️ **New accounts without niche knowledge:** Start with Manual CPC to collect data conservatively. Once you understand which keywords perform, migrate to a conversion-focused strategy.
+> ⚠️ **New accounts without niche knowledge:** Manual CPC collects data conservatively, and the migration to a conversion-focused strategy waits until keyword-level performance is known.
 
 > 💡 **Niche knowledge means** you have run similar campaigns before: you know which keywords work, you have a negative keyword list ready, and you can target precisely enough to avoid wasteful spend on Maximize Clicks.
 
@@ -147,7 +146,7 @@ Do you need full control over bids?
                                        └─ YES → Use Target ROAS
 ```
 
-> 💡 **Standard Shopping defaults to Manual CPC for new accounts** because the default approach is more conservative than Search. Only switch to Maximize Clicks if you want to gather data aggressively and accept higher initial spend.
+> 💡 **Standard Shopping defaults to Manual CPC for new accounts** because the default approach is more conservative than Search. Maximize Clicks is the aggressive-data-gathering alternative, at the cost of higher initial spend.
 
 ---
 
@@ -181,61 +180,13 @@ Goal = Conversion volume?
                   └─ NO → Use Maximize Conversion Value
 ```
 
-> ⚠️ **No manual fallback:** Performance Max has no Manual CPC or Maximize Clicks option. If you lack conversion data, start with Maximize Conversions (no target) and ramp up spend to build data. Consider optimizing conversion tracking, switching to a micro conversion action, or increasing budgets to accelerate data collection.
-
----
-
-## Display
-
-Display adds Viewable CPM for awareness campaigns and follows a similar Smart Bidding structure for conversion goals.
-
-```
-Goal = Visibility (impressions)?
-│
-├─ YES → Use Viewable CPM
-│
-└─ NO → Goal = Traffic (clicks)?
-         │
-         ├─ YES → Need full control over CPC bids?
-         │        │
-         │        ├─ YES → Use Manual CPC
-         │        │
-         │        └─ NO → Use Maximize Clicks
-         │
-         └─ NO → Goal = Conversion volume?
-                  │
-                  ├─ YES → Sufficient conversion data?
-                  │        │
-                  │        ├─ YES → Want to control CPA?
-                  │        │        │
-                  │        │        ├─ YES → Use Target CPA
-                  │        │        │
-                  │        │        └─ NO → Use Maximize Conversions
-                  │        │
-                  │        └─ NO → Use Maximize Conversions
-                  │
-                  └─ NO → Goal = Conversion value?
-                           │
-                           └─ YES → Sufficient conversion data?
-                                    │
-                                    ├─ YES → Want to control ROAS?
-                                    │        │
-                                    │        ├─ YES → Use Target ROAS
-                                    │        │
-                                    │        └─ NO → Use Maximize Conversion Value
-                                    │
-                                    └─ NO → Use Maximize Conversion Value
-```
-
-> ⚠️ **Display Target CPA/ROAS rule of thumb:** Set your Target CPA at least 2x higher and your Target ROAS at least 2x lower than your Non-Branded Search CPA/ROAS. Display traffic converts at lower rates, and tight targets will choke volume.
-
-> 💡 **Display minimum threshold is 30+ conversions/month for Target CPA, 50+ for Target ROAS:** Ensure your budget can sustain that volume (budget = target conversions x average CPA).
+> ⚠️ **No manual fallback:** Performance Max has no Manual CPC or Maximize Clicks option. Without conversion data, the entry point is Maximize Conversions with no target, ramping spend to build data. The levers that accelerate data collection are conversion-tracking fixes, a micro conversion action, and higher budgets.
 
 ---
 
 ## Video
 
-Video campaigns are optimized for awareness and consideration goals only. Conversion-focused bidding strategies (Target CPA, Maximize Conversions, Target ROAS, Maximize Conversion Value) are **not available** in Video campaigns. For conversion-focused video advertising, use **Demand Gen** campaigns instead.
+Video campaigns carry the "YouTube reach, views, and engagements" objective. Conversion-focused bidding strategies (Target CPA, Maximize Conversions, Target ROAS, Maximize Conversion Value) are **not available** in Video campaigns. Conversion-focused video advertising runs on **Demand Gen**.
 
 ```
 Goal = Video views?
@@ -253,16 +204,14 @@ Goal = Video views?
 
 | Campaign subtype | Bid strategy |
 |------------------|--------------|
-| Video Views | Target CPV |
-| Efficient Reach | Target CPM |
-| Non-skippable Reach | Target CPM |
-| Target Frequency | Target CPM |
-| Ad Sequence | Target CPM or Maximum CPM |
-| Audio Reach | Target CPM |
+| Video views | Target CPV |
+| Efficient reach | Target CPM |
+| Non-skippable reach | Target CPM |
+| Target frequency | Target CPM |
+| Ad sequence | Target CPM or Maximum CPM |
+| Audio reach | Target CPM |
 
-> ⚠️ **Video Action Campaigns no longer exist:** They were migrated to Demand Gen in Q2 2025. If you want conversion-optimized video campaigns, use **Demand Gen**, not Video campaigns.
-
-> 💡 **Video is for awareness and consideration:** Use Video campaigns for brand building, reach, frequency, and video views. Use Demand Gen for conversion-focused objectives on YouTube, Discover, and Gmail inventory.
+> 💡 **Video bids to reach and views, never to conversions:** brand building, reach, frequency, and video views are what the "YouTube reach, views, and engagements" objective optimizes toward. Conversion-focused objectives on YouTube, Discover, and Gmail inventory belong to Demand Gen.
 
 ---
 
@@ -300,9 +249,11 @@ Goal = Traffic (clicks)?
                            └─ NO → Use Maximize Conversion Value
 ```
 
-> ⚠️ **Demand Gen Target CPA/ROAS rule of thumb:** Same as Display and Video: set Target CPA at least 2x higher and Target ROAS at least 2x lower than Non-Branded Search benchmarks.
+> ⚠️ **Demand Gen targets sit at least 2x looser than Non-Branded Search:** Target CPA at least 2x higher, Target ROAS at least 2x lower. Upper funnel traffic converts at lower rates, so Search-level targets choke volume.
 
-> 💡 **Demand Gen budget minimum:** Set your daily budget at least 5x higher than your average CPA for Smart Bidding to work properly. For example, if your average CPA is 50 EUR, set a minimum daily budget of 250 EUR.
+> 💡 **Demand Gen functional minimum is 30+ conversions/month for Target CPA, 50+ for Target ROAS.** The budget that sustains that volume is target conversions x average CPA.
+
+> 💡 **Demand Gen budget minimum:** at least 10x the target CPA per day, with a floor of €100 per day on Maximize conversions. At a €20 target CPA that is €200 per day. Below the floor, delivery is throttled.
 
 ---
 
@@ -319,21 +270,22 @@ The threshold depends on bid strategy (applies to campaigns that support convers
 | Search | 30+ | 50+ | 50+ |
 | Standard Shopping | N/A | 50+ | 50+ |
 | Performance Max | 30+ | 50+ | 50+ |
-| Display | 30+ | 50+ | 50+ |
 | Demand Gen | 30+ | 50+ | 50+ |
 
-> ⚠️ **Absolute minimum is 15 conversions/month:** Below 15, conversion-based strategies do not have enough signal. Between 15-29, expect high volatility. Consolidate campaigns or use Portfolio Bid Strategies to pool data if individual campaigns fall short.
+> ⚠️ **Absolute minimum is 15 conversions/month for volume strategies (Target CPA, Maximize Conversions) and 30 for value strategies (Target ROAS, Maximize Conversion Value):** below those floors the strategy does not have enough signal. Expect high volatility for the 15 conversions above each floor. Consolidate campaigns or use Portfolio Bid Strategies to pool data if individual campaigns fall short.
 
-> 💡 **Video campaigns do not support conversion-based bidding:** Use Demand Gen for conversion-focused video advertising.
+> 💡 **Video campaigns do not support conversion-based bidding.** Conversion-focused video advertising runs on Demand Gen.
 
-When you fall short, prioritize these tactics in order:
+The levers that close a volume shortfall, in priority order:
 
-1. Optimize conversion tracking (fix gaps, reduce lost data)
-2. Consolidate campaigns with similar intent/targets into fewer campaigns
-3. Apply a Portfolio Bid Strategy (PBS) to pool conversion data across campaigns that need separate budgets
-4. Switch to a micro conversion as primary conversion action (higher volume, earlier in funnel)
-5. Increase budgets to accelerate data flow
-6. Fall back to Maximize Clicks or Manual CPC until data accumulates
+| Priority | Lever | Effect |
+|----------|-------|--------|
+| 1 | Conversion tracking fixes | Recovers conversions already happening but not recorded |
+| 2 | Campaign consolidation | Pools volume from campaigns with similar intent and targets |
+| 3 | Portfolio Bid Strategy | Pools conversion data across campaigns that need separate budgets |
+| 4 | Micro conversion as primary action | Higher volume, earlier in the funnel |
+| 5 | Higher budgets | Accelerates data flow at the current conversion rate |
+| 6 | Maximize Clicks or Manual CPC | Holds position until data accumulates |
 
 > ↪️ **Full threshold details:** See [Conversion Volume Thresholds Reference](../references/Conversion Volume Thresholds Reference.md)
 
@@ -372,11 +324,11 @@ This means:
 | Mistake | Problem | Fix |
 |---------|---------|-----|
 | Starting with Target CPA/ROAS on a new account | Smart Bidding has no conversion data to optimize against, leading to erratic bids and wasted budget | Start with Maximize Clicks or Manual CPC, then migrate once you reach sufficient volume (30+ functional minimum for tCPA, 50+ recommended for stability) |
-| Setting Target CPA/ROAS targets based on Search benchmarks for Display or Demand Gen | Upper-funnel campaign types have lower conversion rates, so Search-level targets are unrealistically tight | Set Display/Demand Gen tCPA at 2x the Search CPA and tROAS at 0.5x the Search ROAS |
+| Setting Target CPA/ROAS targets based on Search benchmarks for Demand Gen | Upper-funnel campaign types have lower conversion rates, so Search-level targets are unrealistically tight | Set Demand Gen tCPA at 2x the Search CPA and tROAS at 0.5x the Search ROAS |
 | Using Maximize Clicks permanently | Maximize Clicks optimizes for traffic, not conversions, so it keeps spending on low-quality clicks indefinitely | Migrate to a conversion-focused strategy once you accumulate sufficient conversion data |
 | Choosing a conversion value strategy without conversion values | Maximize Conversion Value and Target ROAS require conversion value data to optimize, defaulting to arbitrary behavior without it | Ensure conversion tracking sends actual values before using value-based bidding |
 | Ignoring the unfamiliar targeting check | Launching a new keyword theme in an existing account and assuming Smart Bidding will work because the account has data | Check whether the new campaign targets queries Smart Bidding has already seen in other campaigns |
-| Setting daily budget below 5x average CPA on Demand Gen | Smart Bidding cannot find enough auctions within a constrained budget, leading to inconsistent delivery | Set daily budget to at least 5x your average CPA |
+| Setting daily budget below the Demand Gen serving floor | Smart Bidding cannot find enough auctions within a constrained budget, leading to inconsistent delivery | Set daily budget to at least 10x target CPA, minimum €100/day on Maximize conversions |
 
 ---
 
@@ -394,8 +346,8 @@ This means:
 
 ## Version details
 
-- **Version:** 1.0
-- **Last Updated:** February 2026
+- **Version:** 3.0
+- **Last Updated:** August 2026
 - **Creator:** Bob Meijer
 
 ---

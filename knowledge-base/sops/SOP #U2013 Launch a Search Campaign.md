@@ -94,7 +94,7 @@ Example: `US_EN_Search_NonBrand_Demo`
 |---------|----------|-------|
 | Locations | Target markets | |
 | Location method | Presence or interest (default) | Switch to Presence only if data shows waste |
-| Languages | Match ad language | |
+| Ad copy and landing page language | One language per ad group | No campaign-level language target on Search |
 | Ad schedule | All hours, all days | Unless exception applies |
 
 > ↪️ **For location, language, and schedule details:** See [Universal Campaign Settings Reference](../references/Universal Campaign Settings Reference.md).
@@ -109,7 +109,7 @@ Example: `US_EN_Search_NonBrand_Demo`
 
 > ⚠️ **Display Network ON is the #1 budget-wasting misconfiguration:** Verify it is OFF before launch.
 
-> 💡 **Search Partners:** Can work great or perform poorly (50/50 chance). Highly dependent on vertical. Test and monitor after a couple of weeks/months.
+> 💡 **Search Partners:** Leave on and read the Network (with search partners) segment. An unacceptable Search Partners CPA or ROAS in that split is the disable signal. See [Network Selection Reference](../references/Network Selection Reference.md).
 
 > ↪️ **For network selection rationale:** See [Network Selection Reference](../references/Network Selection Reference.md).
 
@@ -162,15 +162,14 @@ For each ad group:
 | Callouts | 4 | |
 | Structured snippets | 1 | |
 
-### 3.3 Verify AI Max settings (if enabled)
+### 3.3 Verify AI Max settings
 
-If using AI Max for Search:
+New Search campaigns are created with AI Max on. Verify the settings rather than assuming they are off:
 
 | Setting | Recommendation |
 |---------|----------------|
-| Text asset optimization | ON |
+| Text customization | OFF unless the configuration requires it (URL inclusions or final URL expansion force it on) |
 | Final URL expansion | OFF (for control), test ON later |
-| Automatically created assets | Review settings |
 
 > ↪️ **For AI Max configuration:** See [AI Max for Search Reference](../references/AI Max for Search Reference.md).
 
@@ -189,7 +188,7 @@ If using AI Max for Search:
 | Volume | Recommended strategy |
 |--------|---------------------|
 | Building history | Maximize Conversions (no target) |
-| 30-50 conversions/month | Maximize Conversions or Target CPA (loose) |
+| 30-49 conversions/month | Maximize Conversions or Target CPA (loose) |
 | 50+ conversions/month | Target CPA or Target ROAS |
 
 > ↪️ **For volume thresholds:** See [Conversion Volume Thresholds Reference](../references/Conversion Volume Thresholds Reference.md).
@@ -213,15 +212,14 @@ If using AI Max for Search:
 
 > ↪️ **For brand separation implementation:** See [Brand Separation Reference](../references/Brand Separation Reference.md).
 
-### 5.2 Verify DSA settings
+### 5.2 Verify final URL expansion settings
 
-If DSA ad groups exist:
+If keywordless ad groups exist:
 
 | Setting | Value |
 |---------|-------|
-| Domain | Correct website |
-| Targeting source | Page feed or website index |
-| DSA negatives | Brand terms excluded |
+| Controls | Ad-group URL inclusions set, page feed linked, text customization ON |
+| URL exclusions | Brand terms and irrelevant pages excluded |
 
 ---
 
@@ -368,8 +366,8 @@ This SOP is complete when:
 
 ## Version details
 
-- **Version:** 3.0
-- **Last Updated:** February 2026
+- **Version:** 4.0
+- **Last Updated:** June 2026
 - **Creator:** Bob Meijer
 
 ---

@@ -26,7 +26,7 @@ This SOP is for dedicated ecommerce LPs only. For standard product pages (with s
 This SOP does **not:**
 
 - Build standard product pages with site navigation (See: [SOP – Build a High-Converting Product Page](../sops/SOP – Build a High-Converting Product Page.md))
-- Build Lead Gen or SaaS landing pages (See: standard LP SOPs)
+- Build Lead Gen or SaaS landing pages (See: [SOP – Build a High-Converting Landing Page](../sops/SOP – Build a High-Converting Landing Page.md))
 - Optimize cart or checkout flow (See: [SOP – Optimize Cart and Checkout Flow](../sops/SOP – Optimize Cart and Checkout Flow.md))
 - Define the offer: pricing, promotion, and guarantee must be decided before this SOP runs
 
@@ -134,8 +134,6 @@ Based on the traffic source and audience, determine the primary messaging approa
 
 The dedicated ecommerce LP follows the Ecommerce Persuasion Sequence defined in the [Ecommerce Conversion Engine Mental Model](../mental-models/Ecommerce Conversion Engine Mental Model.md). Use the [Ecommerce Page Section Catalog](../catalogs/Ecommerce Page Section Catalog.md) (sections 4.1-4.7) for detailed patterns and examples.
 
-The key structural difference from Lead Gen/SaaS LPs: proof comes before benefits. The product image already communicates what's being offered, so the visitor's next question is "Does it actually work?" not "What does it do?"
-
 ### 2.1 Section 1: Product Showcase
 
 The product showcase must answer: "What exactly is being offered?"
@@ -149,7 +147,7 @@ The product showcase must answer: "What exactly is being offered?"
 
 ### 2.2 Section 2: Customer Evidence
 
-Curate the best evidence that the product delivers on its promises. This section comes early because the product image already established what's being offered.
+Curate the best evidence that the product delivers on its promises.
 
 1. **Aggregate proof:** "4.8/5 from 1,200+ reviews" or "50,000+ sold".
 2. **Customer reviews:** Select 5-10 best reviews with specific results, photos, and verified buyer badges.
@@ -158,7 +156,7 @@ Curate the best evidence that the product delivers on its promises. This section
 
 ### 2.3 Section 3: Product Benefits
 
-Translate product features into visitor outcomes. Now that the visitor has seen proof the product works, benefit claims land harder.
+Translate product features into visitor outcomes.
 
 1. **Lead with outcomes:** "Stay dry in any weather" not "Waterproof membrane".
 2. **Tie back to evidence:** "312 customers mentioned comfort in reviews" alongside the comfort benefit.

@@ -1,5 +1,6 @@
 # SOP – Set Up Performance-Based Shopping Segmentation
 Created: 2026-02-04
+Updated: 2026-08-27
 
 SOP_ID: SOP_52
 Status: Done
@@ -17,7 +18,6 @@ This SOP sets up performance-based product segmentation for Shopping campaigns u
 
 > ❓ **The big question:** How do I allocate budget efficiently across my product catalog based on historical performance data?
 
-Performance-based segmentation puts budget where it performs. Heroes get the most exposure, Zombies get tested, and Villains get restricted.
 
 ---
 
@@ -107,7 +107,7 @@ This SOP does **not:**
 | Field | Your answer |
 |-------|-------------|
 | Primary goal | Revenue / Profitability / Both |
-| Number of buckets | 2 / 3 |
+| Number of buckets | 2 / 3 / 4 |
 | Bucket structure | [List buckets] |
 
 ### 0.2 Choose your tool
@@ -166,7 +166,7 @@ Tool Threshold = Average ROAS × 0.75
 | Tool threshold (×0.75) | ___% |
 | Google Ads tROAS target | ___% |
 
-> ⚠️ Tool threshold should be ~25% lower than your Google Ads tROAS target. This creates a buffer for short-term dips.
+> ⚠️ **Leave a buffer.** Set the tool threshold ~25% lower than the reference ROAS so short-term dips do not demote a product.
 
 ### 1.2 Configure your selected tool
 
@@ -209,7 +209,7 @@ Tool Threshold = Average ROAS × 0.75
 | Villains | 25-40% of catalog |
 | Zombies | 30-50% of catalog |
 
-> ⚠️ If distribution is wrong, check threshold configuration. Too high = too many Villains/Zombies.
+> ⚠️ **Distribution off? Check the threshold.** A threshold set too high produces too many Villains and Zombies.
 
 ---
 
@@ -254,6 +254,8 @@ Tool Threshold = Average ROAS × 0.75
 2. In listing groups, subdivide by **Custom label 0**
 3. Include only the tiers for this bucket
 4. Exclude all other tier values
+
+> 💡 **Depth ceiling:** Google Ads allows 20,000 product groups. Subdividing further than Custom label 0 is bounded by conversion volume per group, not by this ceiling. Add a second subdivision only when the bucket still clears 30+ conversions/month after the split.
 
 ### 2.3 Set exclusions
 
@@ -397,8 +399,8 @@ A: Label sync: 24-48 hours. Campaign learning: 7-14 days. Performance stabilizat
 
 ## Version details
 
-- **Version:** 2.0
-- **Last Updated:** February 2026
+- **Version:** 4.0
+- **Last Updated:** August 2026
 - **Creator:** Bob Meijer
 
 ---

@@ -1,8 +1,10 @@
 # Shopping Campaign Settings Reference
 Created: 2026-02-04
+Updated: 2026-10-05
 
 Support_ID: REFERENCE_14
 Status: Done
+Category: Configuration
 Reference Type: Reference
 Agent_Readable: No
 Human_Facing: Yes
@@ -40,14 +42,14 @@ This reference does **not:**
 | Target ROAS | Yes | Yes |
 | Maximize Clicks | Yes | No |
 | Maximize Conversions | No | Yes |
-| Maximize Conversion Value | No | Yes |
+| Maximize Conversion Value | Yes | Yes |
 | Negative keywords | Yes (campaign + ad group) | Yes (campaign level) |
 | Negative keyword lists | Yes | Yes |
 | Brand exclusions | N/A (use negatives) | Yes (dedicated setting) |
-| Search Partners | Yes | No (controlled by Google) |
+| Search Partners | Yes | Yes (selectable, on by default) |
 | Listing groups | Yes | Yes (within Asset Groups) |
 | Inventory filter | Yes | Yes |
-| Local inventory ads | Yes | Yes |
+| Local inventory ads | Yes (serve by default) | Yes (serve by default) |
 | URL options | Yes | Yes |
 | Audience signals | No | No (not needed for Feed-Only) |
 
@@ -63,7 +65,7 @@ This reference does **not:**
 |-------------|--------------|-------------------|
 | Merchant Center account | Campaign settings > Shopping campaign settings | Select the correct Merchant Center account. Only one account per campaign. |
 
-> ⚠️ You cannot change the Merchant Center account after campaign creation. Create a new campaign if you need to switch.
+> ⚠️ **The Merchant Center account is fixed at campaign creation.** Switching accounts requires a new campaign.
 
 #### Target country
 
@@ -96,7 +98,9 @@ Use inventory filters to restrict which products from Merchant Center appear in 
 - Limiting to specific product types
 - Running separate campaigns by custom label
 
-> ⚠️ Inventory filters apply at campaign creation. Changes require a new campaign.
+> ⚠️ **Inventory filters apply at campaign creation.** Changing one requires a new campaign.
+
+**Local inventory ads serve by default.** Any campaign whose Merchant Center account carries local inventory data will show local product listings without you enabling anything. The inventory filter's Channel option is the control: filter to Online to keep a campaign online-only. Set this at creation, because the filter cannot be changed afterwards.
 
 ### Network settings
 
@@ -117,10 +121,10 @@ Use inventory filters to restrict which products from Merchant Center appear in 
 | Maximize Clicks | Yes | No | None |
 | Target ROAS | Yes | Yes | 50+ conversions/month |
 | Maximize Conversions | No | Yes | None |
-| Maximize Conversion Value | No | Yes | None |
+| Maximize Conversion Value | Yes | Yes | None |
 | Portfolio strategies (with Max CPC cap) | Yes | No | Varies |
 
-> ⚠️ **Maximize Conversion Value and Maximize Conversions are not available for Standard Shopping:** Standard Shopping uses Manual CPC, Maximize Clicks, or Target ROAS. PMax uses Maximize Conversions or Maximize Conversion Value (with optional targets).
+> ⚠️ **Maximize Conversions is not available for Standard Shopping:** Standard Shopping uses Manual CPC, Maximize Clicks, Target ROAS, or Maximize Conversion Value, which is a useful alternative to Target ROAS when conversion history is limited. PMax uses Maximize Conversions or Maximize Conversion Value (with optional targets).
 
 #### Manual CPC configuration
 
@@ -137,7 +141,7 @@ Use inventory filters to restrict which products from Merchant Center appear in 
 | **Setting** | **Location** | **Recommendation** |
 |-------------|--------------|-------------------|
 | Target ROAS percentage | Campaign settings > Bidding | Set based on historical performance (start with actual ROAS minus 10-20%) |
-| Portfolio bid strategy | Shared library > Bid strategies | Use when sharing target across campaigns |
+| Portfolio bid strategy | Tools > Budgets and bidding > Bid strategies | Use when sharing target across campaigns |
 | Max CPC bid limit | Portfolio strategies only | Set a ceiling to prevent runaway CPCs |
 
 > ⚠️ **Portfolio bid strategies with Max CPC cap** are exclusive to Standard Shopping. PMax does not allow bid caps.
@@ -146,9 +150,9 @@ Use inventory filters to restrict which products from Merchant Center appear in 
 
 | **Level** | **Where to add** | **Scope** |
 |-----------|-----------------|----------|
-| Campaign negatives | Campaign > Keywords > Negative keywords | Affects all ad groups in campaign |
-| Ad group negatives | Ad group > Keywords > Negative keywords | Affects only that ad group |
-| Negative keyword lists | Shared library > Negative keyword lists | Apply to multiple campaigns |
+| Campaign negatives | Campaign > Audiences, keywords, and content > Keywords > Negative keywords | Affects all ad groups in campaign |
+| Ad group negatives | Ad group > Audiences, keywords, and content > Keywords > Negative keywords | Affects only that ad group |
+| Negative keyword lists | Tools > Shared library > Exclusion lists > Negative keyword lists | Apply to multiple campaigns |
 
 **Supported match types for Shopping negatives:**
 - Broad match (no modifier)
@@ -181,6 +185,8 @@ Product groups define which products get which bids. Structure options:
 | Channel | Online, Local |
 | Channel exclusivity | Single-channel, Multi-channel |
 
+**Ceiling:** 20,000 product groups. Conversion volume per group binds long before that number does: subdivision that leaves groups with too few conversions to inform bidding reaches its practical limit far below the hard one.
+
 **Best practice:** Subdivide by the attribute that reflects your bidding strategy (custom label for performance tiers, brand for brand-level bidding, etc.).
 
 ---
@@ -201,7 +207,7 @@ Same as Standard Shopping. Select Merchant Center account at campaign creation.
 |-------------|-------------|-------------------|
 | Final URL expansion | ON | Turn OFF for Feed-Only |
 
-**Where to configure:** Campaign settings > Automatically created assets > Final URL expansion
+**Where to configure:** Campaign settings > Asset optimization > Final URL expansion
 
 #### Brand exclusions
 
@@ -213,11 +219,6 @@ Brand exclusions prevent your PMax campaign from showing on brand searches. This
 - Separating brand vs. generic performance
 - Preventing PMax from cannibalizing cheap brand traffic
 - Accurate measurement of new customer acquisition
-
-**How to add:**
-1. Go to Settings > Other settings > Brand exclusions
-2. Click "Add brand lists"
-3. Add your brand name(s)
 
 > ↪️ **For complete brand separation implementation:** See [Brand Separation Reference](../references/Brand Separation Reference.md).
 
@@ -271,7 +272,7 @@ In PMax, "Asset Groups" contain your listing groups. For Feed-Only:
 
 | **Setting** | **Location** | **Purpose** |
 |-------------|--------------|-------------|
-| Your data exclusions | Campaign settings > Additional settings > Your data | Exclude remarketing audiences from optimization |
+| Your data exclusions | Campaign settings > Other settings > Your data exclusions | Exclude remarketing audiences from optimization |
 
 Use data exclusions when:
 - ROAS looks artificially high (remarketing inflating numbers)
@@ -294,7 +295,7 @@ Use data exclusions when:
 - **Interest:** User has shown interest in the location
 - **Both:** Either condition
 
-> 💡 For Ecommerce with location-specific shipping, use "Presence" to avoid showing to users you cannot ship to.
+> 💡 **Location-specific shipping narrows the choice.** "Presence" is what keeps ads off users outside the shipping footprint.
 
 ### Schedule settings
 
@@ -309,7 +310,7 @@ Use data exclusions when:
 |-------------|-------------|-------------------|
 | Daily budget | Amount per day | Set based on your ROAS target and revenue goals. Budget = Target Revenue / Target ROAS. |
 
-> ⚠️ **Shared budgets** are available for Standard Shopping (via Shared Library) but not for PMax.
+> ⚠️ **Shared budgets** are available for Standard Shopping (via Tools > Budgets and bidding > Shared budgets) but not for PMax.
 
 ### URL options
 
@@ -330,17 +331,18 @@ Use data exclusions when:
 | **Maximize Clicks** | Yes | No |
 | **Target ROAS** | Yes | Yes |
 | **Maximize Conversions** | No | Yes |
-| **Maximize Conversion Value** | No | Yes |
+| **Maximize Conversion Value** | Yes | Yes |
 | **Portfolio strategies** | Yes (with Max CPC cap) | No |
 | **Negative keywords** | Campaign + Ad group | Campaign only |
 | **Negative keyword lists** | Yes | Yes |
 | **Brand exclusions** | Via negatives | Dedicated setting |
-| **Search Partners** | Configurable | Automatic |
+| **Search Partners** | Configurable | Selectable, on by default |
 | **Final URL expansion** | No | Yes (turn OFF) |
-| **Audience signals** | No | Yes (not needed for Feed-Only) |
+| **Audience signals** | No | No (not needed for Feed-Only) |
 | **Data exclusions** | No | Yes |
 | **Shared budgets** | Yes | No |
 | **Inventory filter** | Yes | Yes |
+| **Local inventory ads** | Yes (serve by default) | Yes (serve by default) |
 
 ---
 
@@ -395,8 +397,8 @@ Use data exclusions when:
 
 ## Version details
 
-- **Version:** 1.0
-- **Last Updated:** February 2026
+- **Version:** 5.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

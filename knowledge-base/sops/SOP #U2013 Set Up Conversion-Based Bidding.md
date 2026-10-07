@@ -1,5 +1,6 @@
 # SOP – Set Up Conversion-Based Bidding (Max Conversions / tCPA)
 Created: 2026-02-04
+Updated: 2026-10-05
 
 Agent_Executable: No
 Category: Bidding
@@ -65,7 +66,7 @@ Run this SOP when:
 |-------|---------|--------|
 | **Phase 1️⃣: Configure strategy** | Set the bid strategy in Google Ads | Strategy active on campaign |
 | **Phase 2️⃣: Set initial target** | Configure CPA target (if applicable) | Target CPA configured or Max Conv running without target |
-| **Phase 3️⃣: Manage learning period** | Monitor without interfering | Stable performance after two conversion cycles |
+| **Phase 3️⃣: Manage learning period** | Monitor without interfering | 7-14 day learning phase closed and 1-2 conversion cycles elapsed |
 | **Phase 4️⃣: Post-learning optimization** | Evaluate and adjust | Validated strategy with documented next steps |
 
 ---
@@ -104,7 +105,7 @@ Before changing the bid strategy, confirm:
 
 If you use campaign-specific goals instead of account-level defaults:
 
-1. Campaign settings > Goals
+1. Campaign settings > Conversion goals
 2. Select "Use campaign-specific goal settings"
 3. Choose only your intended primary conversion action
 4. Deselect any conversion actions you do not want this campaign to optimize for
@@ -155,14 +156,15 @@ If you selected Target CPA:
 
 Before the strategy goes live, brief stakeholders:
 
-- Performance will fluctuate for approximately two conversion cycles (See: [Smart Bidding Mechanics Reference](../references/Smart Bidding Mechanics Reference.md))
-- CPAs may be above target during learning
-- Conversion volume may be inconsistent
-- No changes will be made during this period
+- The bid strategy enters a 7-14 day learning phase from the moment the strategy changes
+- The change is not evaluated until 1-2 conversion cycles have passed from the change date, which is the longer window on any conversion cycle above 14 days (See: [Smart Bidding Mechanics Reference](../references/Smart Bidding Mechanics Reference.md))
+- CPAs will be above target during learning
+- Conversion volume will be inconsistent
+- No changes will be made until both windows have closed
 
 ### 3.2 Monitor without reacting
 
-During the learning period (two conversion cycles):
+From the change date until both windows close, the 7-14 day learning phase and 1-2 conversion cycles:
 
 | Do | Do not |
 |----|--------|
@@ -171,13 +173,13 @@ During the learning period (two conversion cycles):
 | Note any external factors (competitor changes, seasonality) | Add or remove keywords |
 | Prepare your first optimization plan for post-learning | Panic if day-to-day CPAs are volatile |
 
-### 3.3 Identify learning period end
+### 3.3 Confirm both windows have closed
 
-The learning period has ended when:
+Move to Phase 4 when all three are true:
 
-- Daily performance stabilizes (less extreme day-to-day swings)
-- Two conversion cycles have passed since the strategy change
-- At least one full conversion cycle has elapsed
+- 7-14 days have passed since the strategy change, closing the learning phase
+- 1-2 conversion cycles have passed since the strategy change, closing the post-change wait
+- Daily performance has stabilized (less extreme day-to-day swings)
 
 ---
 
@@ -185,10 +187,10 @@ The learning period has ended when:
 
 ### 4.1 Evaluate results
 
-After the learning period ends:
+After both windows have closed:
 
-1. Pull performance data excluding the learning period (first two conversion cycles)
-2. Also exclude the most recent [conversion delay] days (incomplete attribution)
+1. Pull performance data excluding the 7-14 day learning phase
+2. Also exclude the most recent [conversion lag] days (incomplete attribution)
 3. Compare actual CPA to target CPA
 4. Compare conversion volume to growth goals
 
@@ -197,8 +199,8 @@ After the learning period ends:
 | Result | Action |
 |--------|--------|
 | CPA near target, volume meets goals | No change needed, continue monitoring |
-| CPA above target by more than 20% | Tighten target by 10-15%, wait one conversion cycle |
-| CPA well below target | Consider loosening target to capture more volume |
+| CPA above target by more than 20% | Tighten target by 10-15%, wait 1-2 conversion cycles |
+| CPA well below target | Loosen target by 10-15% to capture more volume |
 | Volume below growth goals | Increase target by 10-15% or increase budget |
 | Volume above goals, CPA within target | Opportunity to tighten target for more profit |
 
@@ -225,7 +227,7 @@ This SOP is complete when:
 - [ ] Correct conversion action is selected as primary
 - [ ] Initial CPA target is set (if using Target CPA) based on calculated or historical data
 - [ ] Stakeholders have been briefed on learning period expectations
-- [ ] Learning period has been completed without interference
+- [ ] 7-14 day learning phase completed without interference and 1-2 conversion cycles have passed since the change
 - [ ] Post-learning evaluation has been performed
 - [ ] Bid Strategy Health Checklist passes
 
@@ -237,7 +239,7 @@ Once the strategy is stable and post-learning evaluation is complete:
 
 | Timeframe | Action |
 |-----------|--------|
-| Week 3-4 | Make first target adjustment if needed (10-15% increments) |
+| Once 1-2 conversion cycles have passed | Make first target adjustment if needed (10-15% increments) |
 | Month 2+ | Begin regular optimization cadence |
 | When considering value-based bidding | Begin [SOP – Set Up Value-Based Bidding](../sops/SOP – Set Up Value-Based Bidding.md) |
 | When scaling beyond current performance | Begin [SOP – Scale Bids and Budgets](../sops/SOP – Scale Bids and Budgets.md) |
@@ -300,14 +302,14 @@ A: The minimum is 15 conversions per month. Below 50, expect more volatility and
 | Making changes during learning period | Impatience, stakeholder pressure | Brief stakeholders before launch, commit to hands-off period |
 | Wrong conversion action selected | Account defaults include micro-conversions | Verify campaign-specific goals before activating strategy |
 | Insufficient budget for target CPA | Budget below 10x target CPA | Set budget to at least 10x target CPA daily |
-| Forgetting to exclude learning period in evaluation | Includes volatile data in performance analysis | Always filter out the learning period (two conversion cycles) when evaluating |
+| Forgetting to exclude learning phase data in evaluation | Includes volatile data in performance analysis | Filter out the 7-14 day learning phase, and run the evaluation only once 1-2 conversion cycles have passed |
 
 ---
 
 ### Version details
 
-- **Version:** 1.0
-- **Last Updated:** February 2026
+- **Version:** 5.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

@@ -1,5 +1,6 @@
 # Metric Tree Reference
 Created: 2026-02-05
+Updated: 2026-09-16
 
 Support_ID: REF_47
 Status: Done
@@ -12,7 +13,7 @@ Pillar: 0
 
 ## Purpose
 
-Documents the Metric Tree framework for root cause analysis of Google Ads performance changes. Use this framework to systematically trace performance shifts to their origin and identify the right lever to pull.
+Documents the Metric Tree framework for root cause analysis of Google Ads performance changes: how performance shifts trace back to their origin, and which lever sits at each node.
 
 ---
 
@@ -33,15 +34,15 @@ Documents the Metric Tree framework for root cause analysis of Google Ads perfor
 
 ---
 
-## The Metric Tree Concept
+## The Metric Tree concept
 
-Every downstream metric is the product of upstream metrics. Performance changes always trace to a root cause: walk the tree to find where the change originated.
+A metric tree decomposes an outcome into counts, rates, values and costs. Its equations locate the arithmetic drivers of a change. They do not establish which business or advertising condition caused it.
 
-**Core principle:** When ROAS drops or CPA rises, don't react to the symptom. Walk the metric tree upstream to find the metric that actually moved first, the root cause that triggered the cascade.
+**Core principle:** a ROAS drop or a CPA rise is a symptom. The tree locates the changed components. A causal explanation requires comparable definitions, mature cohorts, a mix check and evidence that distinguishes competing explanations. The first metric to move is not automatically the cause.
 
 ---
 
-## Ecommerce Metric Tree
+## Ecommerce metric tree
 
 ```
 ROAS
@@ -84,7 +85,7 @@ ROAS
 
 ---
 
-## Lead Gen / SaaS Metric Tree
+## Lead Gen / SaaS metric tree
 
 For Lead Gen and SaaS, the tree adapts to track cost per acquisition rather than revenue return:
 
@@ -134,7 +135,7 @@ Revenue / Closed Deals
 
 ---
 
-## Metric Relationships (the math)
+## Metric relationships (the math)
 
 ### Before the click
 
@@ -167,10 +168,10 @@ ROAS = Conversion Value / Cost
 Or equivalently:
 
 ```
-ROAS = (CTR × Conv. Rate × AOV) / CPC
+ROAS = (Conv. Rate × AOV) / CPC
 ```
 
-This simplified ROAS formula reveals the four levers you can actually pull: CTR, conversion rate, AOV, and CPC.
+This identity uses click-based conversion rate as a decimal, purchase conversions and matched revenue/cost scope. Clicks cancel between revenue and cost, so CTR is not a separate multiplier. Conversion rate, AOV and CPC are the three arithmetic components. They are not independent causal levers: targeting and bidding changes can affect several together.
 
 **Lead Gen:**
 
@@ -189,20 +190,20 @@ To lower CPA, either lower CPC or raise conversion rate.
 
 ---
 
-## Root Cause Analysis Method
+## Root cause analysis method
 
 ### Step 1️⃣: Start at the outcome metric
 
-Start at your primary outcome metric. This could be:
+The walk starts at the primary outcome metric:
 
 - **Efficiency metric:** ROAS dropped, CPA increased
 - **Growth metric:** Conversions dropped, Revenue declined, Leads decreased
 
-Ask: Did the inputs change (cost, clicks, impressions) or the outputs (conversions, value)? And which moved more?
+The first question splits inputs from outputs: did cost, clicks and impressions change, or did conversions and value, and which moved more?
 
 ### Step 2️⃣: Walk up each branch
 
-For whichever side moved, keep asking "why?" by going one level up.
+Each level identifies the components behind the arithmetic movement. Explanations for those components remain candidates until supported by evidence.
 
 **If ROAS dropped:**
 
@@ -260,11 +261,11 @@ Revenue dropped
     └── Product mix shift, discounting, or seasonal?
 ```
 
-### Step 3️⃣: Identify the root node
+### Step 3️⃣: Locate the changed component
 
-Keep climbing until you find the metric that actually moved first, the one that caused the cascade.
+The changed component identifies the next investigation. The patterns below are consistent with several explanations, including mix, measurement and timing changes. Chronology alone does not establish causation.
 
-| Root cause | What moved | Category |
+| Candidate explanation | Observed pattern | Investigation area |
 |---|---|---|
 | Market changed | Search volume up/down | External |
 | Budget constraint | Lost IS (Budget) high | Budget |
@@ -279,7 +280,7 @@ Keep climbing until you find the metric that actually moved first, the one that 
 
 ### Step 4️⃣: Classify the constraint
 
-Once you've found the root cause, classify where the constraint sits:
+The symptom sits at a location in the tree. Its explanation can sit elsewhere in the business system:
 
 | Location | Problem type | Examples |
 |----------|--------------|----------|
@@ -287,11 +288,11 @@ Once you've found the root cause, classify where the constraint sits:
 | At the click | Relevance or cost problem | Low CTR, high CPC |
 | After the click | Conversion or value problem | Low CVR, low AOV |
 
-This tells you where to focus your optimization effort.
+Evidence, plausible impact on the primary goal and protection of the guardrail determine the chosen constraint. The largest metric movement does not automatically win.
 
 ---
 
-## Influencing Factors
+## Influencing factors
 
 Each metric in the tree is influenced by specific controllable factors:
 
@@ -308,13 +309,13 @@ Each metric in the tree is influenced by specific controllable factors:
 
 ---
 
-## Reading the Deltas
+## Reading the deltas
 
 When analyzing period-over-period changes:
 
-- **Green / positive doesn't always mean good:** CPC going up is "green" in absolute terms but bad for efficiency.
-- **Always read metrics in context of their parent:** Clicks up +50% means nothing if cost went up +80%.
-- **Compare growth rates across the chain:** If clicks grew faster than conversions, conversion rate dropped. If cost grew faster than conversion value, ROAS dropped.
+- **Green does not always mean good.** CPC going up is "green" in absolute terms and bad for efficiency.
+- **A metric reads against its parent.** Clicks up +50% means nothing if cost went up +80%.
+- **Growth rates compare across the chain.** Clicks growing faster than conversions means conversion rate dropped. Cost growing faster than conversion value means ROAS dropped.
 
 ### The key ratio check
 
@@ -328,11 +329,11 @@ If Conversion growth % > Cost growth % → CPA improved
 If Conversion growth % < Cost growth % → CPA worsened
 ```
 
-That's the only comparison that ultimately matters.
+That is the comparison that ultimately matters.
 
 ---
 
-## Common Patterns
+## Common patterns
 
 ### Pattern 1: Scaled but less efficient
 
@@ -340,19 +341,19 @@ That's the only comparison that ultimately matters.
 - Conversions up, but Conv. Rate down
 - ROAS / CPA worsened
 
-**Root cause:** Scaling brought in lower-quality traffic. Check search terms and audience segments.
+**Candidate explanations:** Changed traffic mix, weaker performance within comparable segments, immature conversions or changed measurement.
 
-**Diagnosis:** Traffic quality problem. The extra clicks aren't as qualified.
+**Distinguishing evidence:** Segment traffic shares and mature conversion rates separate a mix effect from a within-segment decline.
 
 ### Pattern 2: Market grew, we didn't
 
 - Search Volume up significantly, Impression Share flat or down
 - Lost IS (Rank) up
-- Competitors took the growth
+- Captured impressions failed to keep pace with estimated eligible demand
 
-**Root cause:** Ad Rank isn't keeping up. Quality Score and/or bids need work.
+**Candidate explanations:** Bids or targets, auction conditions, ad quality or changes in eligibility.
 
-**Diagnosis:** Rank constraint. Improve QS or increase bids to capture market growth.
+**Distinguishing evidence:** Bid history, quality components and auction insights provide context. Higher rank loss alone does not prove a quality problem or profitable headroom.
 
 ### Pattern 3: Paying more for the same
 
@@ -360,9 +361,9 @@ That's the only comparison that ultimately matters.
 - CPC up, Cost up
 - Conversions flat, ROAS / CPA worsened
 
-**Root cause:** Competition increased or Quality Score dropped. Check auction insights and QS components.
+**Candidate explanations:** Bidding changes, competition, quality or traffic mix.
 
-**Diagnosis:** Cost efficiency problem. Address QS or accept higher costs.
+**Distinguishing evidence:** Change history, comparable query/device segments and auction insights. Quality Score components are diagnostics, not auction inputs.
 
 ### Pattern 4: More traffic, same results
 
@@ -370,22 +371,22 @@ That's the only comparison that ultimately matters.
 - Conversions flat
 - Cost up, ROAS / CPA worsened
 
-**Root cause:** Traffic quality problem. The extra clicks aren't converting.
+**Candidate explanations:** Traffic mix shifted, comparable visitors converted less often, or measurement/cohort maturity changed.
 
-**Diagnosis:** Audit search terms, audiences, and match types. Consider tightening targeting.
+**Distinguishing evidence:** Traffic weights and conversion rates within matched segments, followed by offer and site evidence.
 
 ### Pattern 5: Everything looks good but efficiency dropped
 
 - All metrics slightly positive
 - But Cost growth % > Conv. Value/Conversion growth %
 
-**Root cause:** CPC inflation outpacing conversion gains. The small +4% CPC increase matters more than the small +2% conv. rate gain.
+**Arithmetic:** With AOV fixed, CPC +4% and CVR +2% imply ROAS × 1.02 / 1.04, a decline of about 1.9%.
 
-**Diagnosis:** Run the ROAS/CPA formula to see which lever is lagging. Address the weakest component.
+**Interpretation:** The identity identifies the arithmetic contribution. Evidence and material goal-gap impact determine which underlying condition merits intervention.
 
 ---
 
-## Quick Reference: Diagnosis by Constraint Location
+## Quick reference: diagnosis by constraint location
 
 | Constraint location | Symptoms | First actions |
 |---------------------|----------|---------------|
@@ -395,7 +396,7 @@ That's the only comparison that ultimately matters.
 
 ---
 
-## Related Documents
+## Related documents
 
 | Document | Relationship |
 |----------|--------------|
@@ -407,10 +408,10 @@ That's the only comparison that ultimately matters.
 
 ---
 
-## Version Details
+## Version details
 
-- **Version:** 2.0
-- **Last Updated:** February 2026
+- **Version:** 3.0
+- **Last Updated:** September 2026
 - **Creator:** Bob Meijer
 
 ---
