@@ -1,6 +1,6 @@
 # Bidding Strategy Mental Model
 Created: 2026-02-04
-Updated: 2026-04-02
+Updated: 2026-08-27
 
 Support_ID: MENTALMODEL_19
 Status: Done
@@ -102,7 +102,7 @@ Bid strategies are not static. They follow a natural progression as campaigns ma
 | New campaign, familiar queries | Maximize Conversions | Smart bidding already knows these queries from your account |
 | Brand campaign | Manual CPC | Full control, prevent overpaying for branded terms |
 
-**Key rule:** Do not make significant changes during the learning period (approximately two conversion cycles, typically 7-10 days for short-cycle businesses, 14-30+ days for long-cycle businesses). Monitor, but do not react to fluctuations.
+**Key rule:** Do not make significant changes during the 7-14 day learning period, and wait 1-2 conversion cycles beyond it before reading results. Monitor, but do not react to fluctuations.
 
 ### Phase 2️⃣: Stabilize (Weeks 2-4)
 
@@ -118,7 +118,7 @@ Once you have conversion data:
 
 *"Gradually tighten toward your target".*
 
-- Make incremental adjustments (less than 25% per change) to avoid retriggering the learning period
+- Make incremental adjustments (10-15% per change) to avoid retriggering the learning period
 - Validate targets against growth goals using the profit-to-acquisition ratio
 - Consider consolidating campaigns or using Portfolio Bid Strategies to pool data across campaigns with shared goals
 
@@ -182,8 +182,8 @@ Before selecting a conversion-focused strategy, check your data readiness:
 | **Conversions per month** (Target CPA) | 15 | 30 | 50+ | Volatile results, longer learning, inconsistent CPA |
 | **Conversions per month** (Target ROAS) | 30 | 50 | 50+ | Value variance needs more data, expect instability |
 | **Conversions per month** (portfolio level) | 15 | 30 | 50+ | Same thresholds apply, but pooled across campaigns |
-| **Conversion delay** | Know it | Factor into analysis windows | Premature decisions, unfair experiment results |
-| **Historical data** | Some account history | 3+ months | Slow ramp-up, limited query-level learning |
+| **Conversion lag** | Know it | Factor into analysis windows | | Premature decisions, unfair experiment results |
+| **Historical data** | Some account history | 3+ months | | Slow ramp-up, limited query-level learning |
 
 If you cannot meet minimum thresholds at the campaign level, consolidate campaigns or use a Portfolio Bid Strategy to pool conversion data across campaigns with shared goals.
 
@@ -195,7 +195,7 @@ If you cannot meet minimum thresholds at the campaign level, consolidate campaig
 
 ### For lead gen
 
-The model predicts a natural progression from volume-based to value-based bidding as data matures:
+Lead gen runs a natural progression from volume-based to value-based bidding as data matures:
 
 | Stage | Strategy | Why this stage |
 |-------|----------|---------------|
@@ -204,11 +204,11 @@ The model predicts a natural progression from volume-based to value-based biddin
 | **Optimize** | Target CPA on lowest-funnel action (qualified leads or closed deals) | Moves optimization closer to business value, reducing wasted leads |
 | **Advanced** | Target ROAS via OCT with real deal values | Enables bidding based on actual deal value, not just lead count |
 
-**Value-based bidding for lead gen** is the highest stage of this progression. When real deal values flow through OCT, smart bidding pursues higher-value leads rather than treating all conversions equally. The model suggests testing this via a 50/50 experiment against a Target CPA baseline to validate the improvement.
+**Value-based bidding for lead gen** is the highest stage of this progression. When real deal values flow through OCT, smart bidding pursues higher-value leads rather than treating all conversions equally. Test it with a 50/50 experiment against a Target CPA baseline to validate the improvement.
 
 ### For ecommerce
 
-The model predicts a progression from revenue-based to profit-based bidding:
+Ecommerce runs a progression from revenue-based to profit-based bidding:
 
 | Stage | Strategy | Why this stage |
 |-------|----------|---------------|
@@ -217,11 +217,11 @@ The model predicts a progression from revenue-based to profit-based bidding:
 | **Optimize** | Target ROAS with POAS values | Profit tracking replaces average margins, so 100% always equals breakeven |
 | **Advanced** | Profit-optimum Target ROAS via bid simulators | Find the point on the profit curve where net profit peaks |
 
-**POAS replaces ROAS** when profit tracking is in place. The model predicts this produces better outcomes because optimization happens at the order level rather than relying on average margins that mask product-level profitability differences.
+**POAS replaces ROAS** when profit tracking is in place. It produces better outcomes because optimization happens at the order level rather than relying on average margins that mask product-level profitability differences.
 
 ### For SaaS
 
-The model predicts a progression from signup volume to subscriber value:
+SaaS runs a progression from signup volume to subscriber value:
 
 | Stage | Strategy | Why this stage |
 |-------|----------|---------------|
@@ -288,8 +288,8 @@ The model predicts a progression from signup volume to subscriber value:
 
 ## Version details
 
-- **Version:** 2.0
-- **Last Updated:** April 2026
+- **Version:** 4.0
+- **Last Updated:** August 2026
 - **Creator:** Bob Meijer
 
 ---

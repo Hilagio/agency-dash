@@ -1,5 +1,6 @@
 # Automated Assets Control Guidelines
 Created: 2026-02-04
+Updated: 2026-10-05
 
 Support_ID: GUIDELINE_1
 Status: Done
@@ -23,7 +24,7 @@ This guideline defines the boundaries and recommended configurations for Google'
 
 - Defines recommended on/off states for each automated asset type
 - Explains the rationale behind each recommendation
-- Establishes when exceptions may apply
+- Establishes when exceptions apply
 
 **This guideline does NOT:**
 
@@ -37,27 +38,7 @@ This guideline defines the boundaries and recommended configurations for Google'
 
 Google can automatically generate and display certain assets without explicit creation. These are configured at the account level (and well hidden 😉)
 
-**Location:** 
-
-- → Google Ads
-- → Ads & assets
-- → Assets
-- → Associations
-- → Account-level automated assets
-- → Account-level automated assets settings
-- → Advanced settings
-
-**Step 1️⃣:** Click “Account-level automated assets”.
-
-![](image.png)
-
-**Step 2️⃣:** Click “Advanced settings”.
-
-![](image%201.png)
-
-**Step 3️⃣:** Configure your settings.
-
-![](image%202.png)
+**Location:** Google Ads > Assets > Assets > Associations > Account-level automated assets > Account-level automated assets settings > Advanced settings
 
 ---
 
@@ -73,7 +54,7 @@ Google can automatically generate and display certain assets without explicit cr
 | Dynamic business logos | May auto-select logo from website |
 | Automated locations | Auto-adds location from Business Profile |
 | Automated apps | Auto-promotes app |
-| Seller ratings | Shows ratings from third-party sources |
+| Store ratings | Shows ratings from third-party sources |
 | Longer ad headlines | Extends headline character limits |
 
 ---
@@ -84,21 +65,23 @@ Google can automatically generate and display certain assets without explicit cr
 
 | Automated Asset | Recommendation | Rationale |
 | --- | --- | --- |
-| Dynamic sitelinks | **OFF** | Curated sitelinks are more strategic; auto-generated may link to irrelevant pages |
-| Dynamic callouts | **OFF** | Auto-generated callouts may be generic, off-message, or pull outdated content |
-| Dynamic structured snippets | **OFF** | May surface irrelevant or inconsistent information from site |
-| Dynamic images | **OFF** | May pull low-quality, irrelevant, or outdated images |
-| Dynamic business names | **OFF** | Brand name must remain consistent; auto-modification creates confusion |
-| Dynamic business logos | **OFF** | Official logo must be used; auto-selection may pull incorrect assets |
-| Automated locations | **OFF** | Locations should be added intentionally based on campaign strategy |
-| Automated apps | **OFF** | App promotion should only occur when strategically aligned with goals |
+| Dynamic sitelinks | **OFF** | Curated sitelinks are more strategic: auto-generated ones link to irrelevant pages |
+| Dynamic callouts | **OFF** | Auto-generated callouts run generic, off-message, or pull outdated content |
+| Dynamic structured snippets | **OFF** | Surfaces irrelevant or inconsistent information from the site |
+| Dynamic images | **OFF** | Pulls low-quality, irrelevant, or outdated images |
+| Dynamic business names | **OFF** | The brand name stays consistent: auto-modification creates confusion |
+| Dynamic business logos | **OFF** | Use the official logo: auto-selection pulls incorrect assets |
+| Automated locations | **OFF** | Add locations intentionally, based on campaign strategy |
+| Automated apps | **OFF** | Promote an app only when it is strategically aligned with campaign goals |
+
+> ⚠️ **Business name must match your verified legal name or domain name.** A business name asset that does not match triggers disapproval. Set it once, correctly, at the brand-guidelines level.
 
 ### Assets to ENABLE
 
 | Automated Asset | Recommendation | Rationale |
 | --- | --- | --- |
-| Seller ratings | **ON** | Free credibility boost from third-party sources; minimal message control risk |
-| Longer ad headlines | **ON** | Additional ad real estate with minimal risk; Google extends existing headlines |
+| Store ratings | **ON** | Free credibility boost from third-party sources, minimal message control risk |
+| Longer ad headlines | **ON** | Additional ad real estate with minimal risk: Google extends existing headlines |
 
 ---
 
@@ -106,13 +89,13 @@ Google can automatically generate and display certain assets without explicit cr
 
 ### 1️⃣ Message consistency
 
-Auto-generated assets may not align with value proposition, campaign strategy, or current messaging. 
+Auto-generated assets do not align with your value proposition, campaign strategy, or current messaging. 
 
 They pull content from website without understanding context.
 
 ### 2️⃣ Quality control
 
-Google pulls content from site pages, which may include:
+Google pulls content from site pages, which includes:
 
 - Outdated information
 - Irrelevant content from unrelated pages
@@ -131,10 +114,10 @@ Brand name, logo, and messaging represent the company. Auto-modification without
 
 ## Exception conditions
 
-### Seller ratings: Always ON (with qualification)
+### Store ratings: ON, with one qualification
 
 - **Prerequisite:** Business has positive ratings on third-party review platforms
-- **If ratings are poor:** Consider keeping OFF until ratings improve
+- **If ratings are poor:** Keep OFF until the ratings improve
 - **Benefit:** Social proof with no message control risk
 
 ### Longer ad headlines: Always ON
@@ -145,11 +128,12 @@ Brand name, logo, and messaging represent the company. Auto-modification without
 
 ### Dynamic assets: Rare exceptions
 
-Dynamic assets (sitelinks, callouts, snippets, images) may be temporarily enabled if:
+Enable dynamic assets (sitelinks, callouts, snippets, images) temporarily when either condition holds:
 
-- Account is brand new with no manual extensions created yet
-- Testing automated performance against manual baseline
-- **Important:** Should be temporary: manual assets should replace automated ones
+- The account is brand new with no manual extensions created yet
+- You are testing automated performance against a manual baseline
+
+Both cases are temporary. Manual assets replace the automated ones once they exist.
 
 ---
 
@@ -167,15 +151,25 @@ After configuring automated assets, verify:
 | Dynamic business logos | OFF |
 | Automated locations | OFF |
 | Automated apps | OFF |
-| Seller ratings | ON |
+| Store ratings | ON |
 | Longer ad headlines | ON |
+
+---
+
+## Related documents
+
+| Document | Relationship |
+| --- | --- |
+| [Asset Optimization Control Guidelines](../guidelines/Asset Optimization Control Guidelines.md) | Parallel (covers campaign and ad-level asset optimization settings) |
+| [Extension Leverage Catalog](../catalogs/Extension Leverage Catalog.md) | Manual extension options that replace automated assets |
+| [Extension Coverage Checklist](../checklists/Extension Coverage Checklist.md) | Validates extension coverage |
 
 ---
 
 ## Version details
 
-- **Version:** 1.0
-- **Last Updated:** January 2026
+- **Version:** 3.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

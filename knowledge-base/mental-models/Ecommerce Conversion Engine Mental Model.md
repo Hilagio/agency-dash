@@ -24,7 +24,7 @@ Ecommerce conversion is not a single-page event. It is a system of interconnecte
 
 - Not a single-page framework: ecommerce conversion happens across 6 page types, not on one landing page (for single-page Lead Gen/SaaS frameworks, see [Conversion Amplifier Mental Model](../mental-models/Conversion Amplifier Mental Model.md))
 - Not a product page template or wireframe: it provides the framework for thinking about page types, not pixel-level layout guidance
-- Not an A/B testing methodology for ecommerce pages (See: *Testing Mental Model* [TBD, Phase 6])
+- Not an A/B testing methodology for ecommerce pages (See: [Testing and Experimentation Mental Model](../mental-models/Testing and Experimentation Mental Model.md))
 - Not applicable to Lead Gen or SaaS landing pages: those follow the [LP Hierarchy Mental Model](../mental-models/LP Hierarchy Mental Model.md)
 
 ---
@@ -186,7 +186,7 @@ Category pages serve evaluation and filtering. They help visitors narrow down fr
 
 - Product cards are the conversion unit on category pages: every card must show enough information for the visitor to decide whether to click through (image, price, rating, key variants, availability)
 - Filtering must be effortless: if visitors can't quickly narrow results, they bounce
-- Grid vs list depends on product type: visual products (fashion, home) work best in grids; specification-driven products (electronics, tools) work better in lists
+- Grid vs list depends on product type: visual products (fashion, home) work best in grids, specification-driven products (electronics, tools) work better in lists
 - Badges ("bestseller", "new", "limited stock") act as decision shortcuts and reduce choice paralysis
 
 ---
@@ -234,7 +234,7 @@ The dedicated ecommerce LP is built for paid traffic campaigns: promotion pushes
 
 ### The Ecommerce Persuasion Sequence
 
-The dedicated ecommerce LP follows a 7-section sequence that is structurally different from the Lead Gen/SaaS LP hierarchy. The key difference: **proof comes before benefits:** In Lead Gen/SaaS, you promise then prove. In ecommerce, the product image already communicates the value proposition visually, so the visitor's next question is "Does it actually work?" not "What does it do?"
+The dedicated ecommerce LP follows a 7-section sequence that is structurally different from the Lead Gen/SaaS LP hierarchy. The key difference is that **proof comes before benefits**. In Lead Gen/SaaS, you promise then prove. In ecommerce, the product image already communicates the value proposition visually, so the visitor's next question is "Does it actually work?" not "What does it do?"
 
 | # | Section | Visitor question | Key elements |
 |---|---------|-----------------|-------------|
@@ -294,10 +294,10 @@ The cart page sits between decision and purchase. Its job is to confirm intent, 
 
 ### Key principles for cart pages
 
-- Never surprise the customer: all charges (shipping, tax, fees) should be visible or clearly indicated before checkout
+- Never surprise the customer: all charges (shipping, tax, fees) are visible or clearly indicated before checkout
 - The free shipping threshold bar is one of the highest-ROI cart features: it increases AOV by motivating visitors to add one more item
 - Cross-sell on cart must be low-friction: "add with one click" items that complement what's already in the cart
-- Coupon fields should be present but not prominent: a visible coupon field sends visitors to Google to search for codes, increasing abandonment
+- Keep coupon fields present but not prominent: a visible coupon field sends visitors to Google to search for codes, increasing abandonment
 
 ---
 
@@ -323,7 +323,7 @@ The checkout page has one job: collect payment with minimal friction. Every elem
 
 - Guest checkout is non-negotiable: forced registration is one of the top reasons for checkout abandonment
 - Request email first: if the visitor abandons checkout, you can trigger recovery emails
-- Remove all navigation: the checkout page should have no header nav, no footer links, no exits except "back to cart"
+- Remove all navigation: the checkout page carries no header nav, no footer links, and no exits except "back to cart"
 - Inline validation prevents frustration: validate each field as the visitor fills it, don't wait until they hit "submit"
 - The order total must match expectations: no surprise charges at the final step
 

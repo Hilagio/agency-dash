@@ -158,7 +158,7 @@ Seasonal patterns are expected changes, not anomalies. Account for them before f
 | **Competitor seasonality** | CPCs rise when competitors increase spend | Monitor auction insights alongside performance |
 | **Weather/events** | Unpredictable but explainable volume shifts | Check external factors before investigating internally |
 
-**Seasonality rule:** Always compare the same period year-over-year before concluding a trend exists. A 20% drop in January vs. December might be completely normal.
+**Seasonality rule:** Always compare the same period year-over-year before concluding a trend exists. A 20% drop in January vs. December is often completely normal.
 
 ---
 
@@ -200,11 +200,9 @@ Status Board thresholds determine when metrics are flagged. Set them based on ac
 
 ### How to set thresholds
 
-> 💡 **Maintain baselines programmatically:** Steps 1-3 below can be automated with a Google Ads Script or third-party tool that recalculates mean and standard deviation on a rolling basis (e.g., every 30 days). This removes manual calibration effort and keeps thresholds aligned with recent performance. See: [Monitoring Automation Reference](../references/Monitoring Automation Reference.md) for baseline management patterns.
+> 💡 **Maintain baselines programmatically:** Baseline collection and band calculation automate with a Google Ads Script or third-party tool that recalculates mean and standard deviation on a rolling basis (e.g., every 30 days). This removes manual calibration effort and keeps thresholds aligned with recent performance. See: [Monitoring Automation Reference](../references/Monitoring Automation Reference.md) for baseline management patterns.
 
-1. **Collect 90 days of data** for each metric at the entity level you'll monitor
-2. **Calculate the mean and standard deviation** for weekly values
-3. **Set bands:**
+The inputs are 90 days of weekly values per metric, at the entity level you monitor, reduced to a mean and a standard deviation. The bands sit around that mean.
 
 | **Status** | **Range** | **Meaning** |
 |------------|-----------|-------------|
@@ -212,7 +210,7 @@ Status Board thresholds determine when metrics are flagged. Set them based on ac
 | 🟡 Orange | 1-2 standard deviations from target | Monitor closely, potential issue |
 | 🔴 Red | More than 2 standard deviations from target | Investigate immediately |
 
-4. **Recalibrate monthly:** If you're consistently green, raise the bar. If you're always red, your targets may be unrealistic.
+Recalibrate monthly. Consistently green means the bar is set too low. Consistently red means the target is unrealistic, not that the account is failing.
 
 > 💡 **Start simple, refine over time:** If you don't have 90 days of data, use industry benchmarks as starting thresholds. After 3 months, switch to account-specific thresholds based on actual variance.
 
@@ -240,7 +238,7 @@ Not all parts of anomaly detection can be automated. The framework below separat
 
 ## Key principles
 
-1. **Most data movements are noise:** Your default response should be "wait and see", not "change something".
+1. **Most data movements are noise:** Your default response is "wait and see", not "change something".
 2. **Volume before analysis:** Never draw conclusions from insufficient data. Extend the window until you have enough.
 3. **Persistence confirms patterns:** A single bad week is a signal. Two bad weeks is a pattern. Three is a problem.
 4. **Breakage is the exception:** Tracking failures, disapprovals, and broken URLs get immediate action regardless of the persistence test.

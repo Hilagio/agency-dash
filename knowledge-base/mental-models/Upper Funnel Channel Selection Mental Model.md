@@ -17,7 +17,9 @@ This mental model helps you decide which advertising platform to use for upper f
 
 > ❓ **The core question:** When should I use Google Ads for upper funnel, and when are other platforms a better fit?
 
-Google Ads excels at capturing existing demand (Search, Shopping). For creating demand, Google's Display, Video, and Demand Gen inventory competes with Meta Ads (Facebook/Instagram), Pinterest Ads, TikTok Ads, and others. The right choice depends on your audience, creative assets, and budget.
+Google Ads excels at capturing existing demand (Search, Shopping). For creating demand, Google's Demand Gen and Video inventory competes with Meta Ads (Facebook/Instagram), Pinterest Ads, TikTok Ads, and others. The right choice depends on your audience, creative assets, and budget.
+
+> 💡 **Within Google, Demand Gen is the default mid-funnel container.** GDN inventory is served through Demand Gen. When you choose Google for upper funnel, Demand Gen is the answer. This does not change the cross-platform question below: still evaluate Meta and Pinterest before defaulting to Google.
 
 ---
 
@@ -36,7 +38,7 @@ This mental model does **not:**
 | | **Demand Capture** | **Demand Creation** |
 | --- | --- | --- |
 | **What it is** | Reaching users who already want your product | Making users aware of your product for the first time |
-| **Google Ads strength** | Search, Shopping (best-in-class) | Display, Video, Demand Gen (competitive but not dominant) |
+| **Google Ads strength** | Search, Shopping (best-in-class) | Demand Gen, Video (competitive but not dominant) |
 | **Other platforms** | Limited (no search intent data) | Meta, Pinterest, TikTok (often stronger for awareness) |
 
 ---
@@ -49,9 +51,9 @@ Choose your upper funnel platform based on your constraints, not platform featur
 | --- | --- | --- |
 | You have strong video, no static assets | YouTube (Google Video or Demand Gen) | YouTube is the only platform where long-form video performs well at scale |
 | You have strong static/carousel, no video | Meta Ads or Pinterest Ads | Both platforms are optimized for static and carousel engagement |
-| You need the lowest possible CPMs | Meta Ads or Pinterest Ads | Google Display/Video CPMs are typically 2-3x higher than Meta/Pinterest |
-| Your audience is B2B / professional | LinkedIn Ads or Google Display | LinkedIn has the best professional targeting, Google Display reaches business sites |
-| You need remarketing across Google surfaces | Google Display + YouTube | Cross-surface remarketing (Display + YouTube + Demand Gen) is a Google advantage |
+| You need the lowest possible CPMs | Meta Ads or Pinterest Ads | Google Demand Gen/Video CPMs are typically 2-3x higher than Meta/Pinterest |
+| Your audience is B2B / professional | LinkedIn Ads or Google Demand Gen | LinkedIn has the best professional targeting, Demand Gen reaches business sites via GDN |
+| You need remarketing across Google surfaces | Google Demand Gen + YouTube | Cross-surface remarketing across Demand Gen (GDN, Discover, Gmail) and YouTube is a Google advantage |
 | You want conversion-optimized upper funnel | Google Demand Gen | Demand Gen combines upper funnel reach with conversion-based bidding |
 | Your product is visual/lifestyle | Meta + Pinterest | Visual discovery platforms drive higher engagement for lifestyle products |
 | Your audience skews Gen Z | TikTok, Instagram | Strongest Gen Z engagement and content format fit |
@@ -61,9 +63,8 @@ Choose your upper funnel platform based on your constraints, not platform featur
 
 | Platform | CPM range | Audience size | Targeting precision | Attribution clarity |
 | --- | --- | --- | --- | --- |
-| Google Display | Higher (€5-15) | Largest (3M+ sites) | Moderate | Moderate (view-through inflation risk) |
+| Google Demand Gen | Medium (€5-15) | Large (YouTube, Discover, Gmail, GDN 3M+ sites, Maps) | Moderate + lookalikes | Low (30-50% GA4 gap, view-through inflation risk) |
 | Google Video (YouTube) | Medium-High (€8-20) | Large (YouTube) | Moderate | Low (view-through heavy) |
-| Google Demand Gen | Medium (€5-15) | Medium (YouTube, Discover, Gmail) | Moderate + lookalikes | Low (30-50% GA4 gap) |
 | Meta Ads | Lower (€3-10) | Large (Facebook + Instagram) | High | Low (cross-platform attribution) |
 | Pinterest Ads | Lowest (€2-8) | Smaller | Moderate | Moderate |
 | TikTok Ads | Lower (€3-10) | Medium | Moderate | Low |
@@ -100,7 +101,7 @@ Is your goal to capture existing demand?
 | --- | --- |
 | You already run Search/Shopping and want incremental reach | Consolidated reporting, audience sharing, cross-campaign learning |
 | YouTube is a primary channel for your audience | Direct access to YouTube inventory |
-| You need remarketing across Google surfaces | Dynamic remarketing on Display, retargeting on YouTube |
+| You need remarketing across Google surfaces | Dynamic remarketing across GDN via Demand Gen, retargeting on YouTube |
 | You want conversion-optimized upper funnel | Demand Gen with lookalikes is Google's social-like offering |
 
 ## When other platforms are a better fit
@@ -111,7 +112,7 @@ Is your goal to capture existing demand?
 | Social proof is your primary creative strategy | Meta (Facebook/Instagram) excels at social-proof-driven ads |
 | Younger demographic (Gen Z) | TikTok and Instagram have stronger Gen Z engagement |
 | Inspiration and discovery phase | Pinterest users are actively looking for ideas and products |
-| Lower CPMs are critical | Meta and Pinterest often offer lower CPMs than Google Display/Video |
+| Lower CPMs are critical | Meta and Pinterest often offer lower CPMs than Google Demand Gen/Video |
 
 ---
 
@@ -142,7 +143,7 @@ If you decide to use Google Ads for upper funnel alongside Search/Shopping:
 1. **Google captures demand, other platforms create it:** Google Search and Shopping are unmatched for intent-based advertising. For awareness and consideration, compare cross-platform.
 2. **Creative format determines platform:** Strong video = YouTube advantage. Strong static/carousel = Meta/Pinterest advantage.
 3. **Do not default to Google for upper funnel:** Evaluate CPMs, audience fit, and creative format before committing budget.
-4. **Remarketing is Google's upper funnel strength:** Dynamic remarketing on Display and YouTube retargeting are powerful. Prospecting may be better on other platforms.
+4. **Remarketing is Google's upper funnel strength:** Dynamic remarketing across GDN (served through Demand Gen) and YouTube retargeting are powerful. Prospecting may be better on other platforms.
 5. **Test, do not assume:** Run 30-day tests on multiple platforms before committing upper funnel budget.
 6. **Attribution is ambiguous across platforms:** Google and Meta both claim credit for the same conversions. When running multi-platform upper funnel, use third-party attribution or incrementality testing to isolate true platform contribution.
 
@@ -160,8 +161,8 @@ If you decide to use Google Ads for upper funnel alongside Search/Shopping:
 
 ## Version details
 
-- **Version:** 2.0
-- **Last Updated:** April 2026
+- **Version:** 3.0
+- **Last Updated:** June 2026
 - **Creator:** Bob Meijer
 
 ---

@@ -137,7 +137,7 @@ Most bottlenecks fall into one of four categories. In the rest of the OS, we cal
 
 ## Productive work that does not move the system
 
-This is the most dangerous trap in Google Ads management. Not lazy work. Not bad work. But, **productive work on the wrong thing**.
+This is the most dangerous trap in Google Ads management. Not lazy work. Not bad work. But **productive work on the wrong thing**.
 
 Examples:
 

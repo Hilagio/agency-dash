@@ -161,7 +161,6 @@ This is where most accounts either earn the right to scale or discover that the 
 - The CPA is profitable on paper but the business says the leads are low quality (that is a Business constraint, not a Traffic one: revisit Stage 0)
 - You have been "testing" for three months without committing to a single approach long enough for it to prove itself
 
-
 ## Stage 3️⃣: Scale
 
 *Enter more auctions. Win more. Push until the math starts to bend.*
@@ -179,7 +178,7 @@ Most accounts live at this stage longer than any other. The work is not glamorou
 
 **Focus here:**
 
-- Increase budgets on proven campaigns in 15-25% increments, giving Smart Bidding 1-2 weeks to adjust after each step
+- Increase budgets on proven campaigns in 15-20% increments, giving Smart Bidding 1-2 conversion cycles to adjust after each step
 - Recapture Lost Impression Share (Budget) on your best campaigns
 - Expand match types cautiously: broad match with tight tROAS/tCPA on campaigns with enough conversion data
 - Expand geographic targeting if the business can serve new areas
@@ -237,7 +236,6 @@ Diversification is not about replacing what works. It is about adding new volume
 - New channels are consuming budget without producing measurable results after 6+ weeks
 - You diversified before Search was fully scaled (go back to Stage 3)
 
-
 ## Stage 5️⃣: Refine
 
 *Win smarter. Bid sharper. Extract more value from every auction you enter.*
@@ -277,7 +275,6 @@ Refinement is the hardest stage because there are no dramatic wins. The gains co
 - Creative testing is happening but without a clear hypothesis or learning framework
 - You are avoiding the hard refinements (landing page, offer, pricing) in favor of easy ones (ad copy tweaks, bid adjustments)
 
-
 ## Stage 6️⃣: Multiply
 
 *You built a winning auction strategy. Now replicate it in every room that matters.*
@@ -297,7 +294,7 @@ This is the stage most Google Ads specialists never reach, not because it is tec
 
 - Expand into new geographic markets with adapted messaging and landing pages
 - Launch campaigns for new products or service lines using the approach that worked for the first
-- Build systems and processes so the current account can be managed by someone else
+- Build systems and processes so someone else can manage the current account
 - Explore adjacent channels (Microsoft Ads, Meta) using the same constraint-driven approach
 - Mentor or delegate: your knowledge compounds faster when applied across multiple accounts
 

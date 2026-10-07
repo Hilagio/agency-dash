@@ -1,6 +1,6 @@
 # Bid Scaling Mental Model
 Created: 2026-02-04
-Updated: 2026-04-02
+Updated: 2026-08-27
 
 Support_ID: MENTALMODEL_21
 Status: Done
@@ -141,7 +141,7 @@ The curve exists because:
 
 ## Finding your profit optimum
 
-The profit optimum is found by modeling net profit across multiple target scenarios and identifying the peak. Two tools support this:
+Find the profit optimum by modeling net profit across multiple target scenarios and identifying the peak. Two tools support this:
 
 ### Bid simulators
 
@@ -153,7 +153,7 @@ Performance Planner models forward-looking scenarios across campaigns or portfol
 
 ### Why experiments matter
 
-Both tools assume optimal conditions. The model predicts that real-world performance often differs from projections because of conversion delay, competitor behavior, and seasonality. A 50/50 campaign experiment running 30+ days produces conclusive data that projections cannot.
+Both tools assume optimal conditions. Real-world performance often differs from projections because of conversion lag, competitor behavior, and seasonality. A 50/50 campaign experiment running 30+ days produces conclusive data that projections cannot.
 
 > ↪️ **For step-by-step profit optimum analysis:** See [SOP – Scale Bids and Budgets](../sops/SOP – Scale Bids and Budgets.md)
 
@@ -163,23 +163,23 @@ Both tools assume optimal conditions. The model predicts that real-world perform
 
 ### Why incremental changes matter
 
-Smart Bidding learns from recent data patterns. The model predicts that large changes (over 20-30%) retrigger the learning period, causing temporary volatility. Smaller increments (10-20%) allow the algorithm to adapt without resetting its optimization signals. Scaling up tolerates slightly larger increments than scaling down, because loosening targets expands the available auction pool, while tightening targets restricts it.
+Smart Bidding learns from recent data patterns. Large target changes retrigger the learning period, causing temporary volatility. Increments of 10-15% let the algorithm adapt without resetting its optimization signals. Scaling up tolerates slightly larger increments than scaling down, because loosening targets expands the available auction pool, while tightening targets restricts it.
 
 ### When to scale up (more aggressive)
 
-The model suggests scaling up when these conditions are present:
+Scale up when these conditions are present:
 
 - Efficiency targets are consistently met with margin to spare, indicating the current PAR is too conservative
-- Impression share lost to budget is high, meaning profitable auctions are being missed
+- Impression share lost to budget is high, meaning you are missing profitable auctions
 - Growth goals are not being met at the current bid level
 - Unit economics have improved (higher margins, higher deal values), expanding the headroom between target and breakeven
 - Bid simulators show incremental volume at acceptable efficiency
 
 ### When to scale down (more conservative)
 
-The model suggests scaling down when these conditions are present:
+Scale down when these conditions are present:
 
-- Efficiency targets are being missed consistently, indicating the PAR is too aggressive
+- You miss efficiency targets consistently, indicating the PAR is too aggressive
 - CPA/ROAS is trending toward breakeven, eroding profitability
 - Conversion rate is declining (investigate root cause first: the issue may not be bidding)
 - Stakeholder requires higher profitability, shifting the growth-efficiency priority
@@ -187,10 +187,10 @@ The model suggests scaling down when these conditions are present:
 
 ### When NOT to scale
 
-The model predicts that scaling during these conditions produces unreliable results:
+Scaling during these conditions produces unreliable results:
 
-- **During learning period:** approximately two conversion cycles after major changes. The algorithm is still calibrating.
-- **During conversion delay window:** conversions have not yet attributed. Wait 1-2 conversion cycles for complete data.
+- **During learning period:** the 7-14 days after a major change. The algorithm is still calibrating.
+- **During conversion lag window:** conversions have not yet attributed. Wait 1-2 conversion cycles for complete data.
 - **When conversion tracking issues are present:** bad data produces bad scaling decisions.
 - **When external factors temporarily distort data:** holidays, outages, competitor promotions create anomalies that do not reflect sustainable performance.
 
@@ -200,7 +200,7 @@ The model predicts that scaling during these conditions produces unreliable resu
 
 ## The unit economics connection
 
-Your scaling ceiling is determined by your unit economics:
+Your unit economics set your scaling ceiling:
 
 | Better unit economics enable | Worse unit economics restrict |
 |-----------------------------|------------------------------|
@@ -219,7 +219,7 @@ Your scaling ceiling is determined by your unit economics:
 
 ### Scenario: Growth-primary account
 
-When the goal is to increase conversion volume (e.g., +30% this quarter), the model predicts you need to move the PAR slider toward growth:
+When the goal is to increase conversion volume (e.g., +30% this quarter), move the PAR slider toward growth:
 
 - **Current PAR determines headroom:** a PAR of 40% has room to push toward 60% before approaching breakeven. A PAR of 80% has almost no room left.
 - **Bid simulators reveal the tradeoff:** modeling a higher CPA target shows how many incremental conversions the margin sacrifice buys. If the incremental volume justifies the margin cost, the move makes sense.
@@ -227,15 +227,15 @@ When the goal is to increase conversion volume (e.g., +30% this quarter), the mo
 
 ### Scenario: Efficiency-primary account
 
-When the goal is to improve ROAS while maintaining volume (e.g., +15% ROAS this quarter), the model predicts you need to move the PAR slider toward efficiency:
+When the goal is to improve ROAS while maintaining volume (e.g., +15% ROAS this quarter), move the PAR slider toward efficiency:
 
 - **Current PAR determines risk:** a PAR of 70% has room to pull back toward 55%. A PAR of 30% is already conservative and further tightening risks starvation.
-- **Growth guardrails prevent starvation:** the model predicts that tightening efficiency targets reduces volume. If projected volume drops below the growth guardrail, the tightening has gone too far.
-- **Conversion cycle pacing:** the model works best when changes are spaced by at least one conversion cycle, allowing complete attribution data before the next adjustment.
+- **Growth guardrails prevent starvation:** tightening efficiency targets reduces volume. If projected volume drops below the growth guardrail, the tightening has gone too far.
+- **Conversion cycle pacing:** space changes 1-2 conversion cycles apart, so complete attribution data is in before the next adjustment.
 
 ### Scenario: Finding profit optimum
 
-When the goal is to maximize net profit across a portfolio, the model predicts that each campaign has a unique peak on the profit curve:
+When the goal is to maximize net profit across a portfolio, each campaign has its own peak on the profit curve:
 
 - **Multiple scenarios reveal the curve:** modeling 5-7 target levels per campaign produces enough data points to identify where net profit peaks.
 - **The peak varies by campaign:** high-volume campaigns often have a broad optimum zone, while low-volume campaigns have a narrow or unstable peak.
@@ -260,8 +260,8 @@ When the goal is to maximize net profit across a portfolio, the model predicts t
 | Failure | What happens | How to prevent |
 |---------|-------------|----------------|
 | **Scaling without knowing your PAR** | Changes are arbitrary because you do not know how far you are from breakeven or starvation | Calculate PAR before any scaling decision: current CPA (or inverse ROAS) divided by breakeven CPA (or inverse ROAS) |
-| **Scaling too fast** | Large target changes retrigger Smart Bidding learning, causing 1-2 weeks of volatile performance | Keep increments within 10-20% per adjustment and wait one full conversion cycle between changes |
-| **Scaling during learning period** | Performance data is unstable, so the scaling decision is based on noise rather than signal | Never scale during learning period, conversion delay window, or tracking incidents |
+| **Scaling too fast** | Large target changes retrigger Smart Bidding learning, causing 1-2 weeks of volatile performance | Keep increments within 10-15% per adjustment and wait 1-2 conversion cycles between changes |
+| **Scaling during learning period** | Performance data is unstable, so the scaling decision is based on noise rather than signal | Never scale during learning period, conversion lag window, or tracking incidents |
 | **Ignoring diminishing returns** | Each incremental conversion costs more than the last, eventually eroding all profit | Model the profit curve with bid simulators before scaling: the curve shows where incremental volume stops being profitable |
 | **Blaming bids when unit economics are the problem** | Scaling cannot fix a business model where breakeven CPA is too low or margins are too thin to support any PAR | If even 100% PAR (breakeven) cannot hit growth goals, the constraint is unit economics, not bidding |
 
@@ -283,8 +283,8 @@ When the goal is to maximize net profit across a portfolio, the model predicts t
 
 ## Version details
 
-- **Version:** 2.0
-- **Last Updated:** April 2026
+- **Version:** 4.0
+- **Last Updated:** August 2026
 - **Creator:** Bob Meijer
 
 ---

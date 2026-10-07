@@ -31,7 +31,7 @@ This mental model does **not:**
 - Explain product feed requirements (See: [Product Feed Quality Mental Model](../mental-models/Product Feed Quality Mental Model.md))
 - Provide volume thresholds (See: [Conversion Volume Thresholds Reference](../references/Conversion Volume Thresholds Reference.md))
 - Provide step-by-step PMax setup (See: [SOP – Launch PMax for Lead Gen/SaaS](../sops/SOP – Launch PMax for Lead Gen-SaaS.md))
-- Explain offline conversion import setup (See relevant conversion tracking documentation)
+- Explain offline conversion import setup (See: [SOP – Set Up Offline Conversion Tracking](../sops/SOP – Set Up Offline Conversion Tracking.md))
 
 ---
 

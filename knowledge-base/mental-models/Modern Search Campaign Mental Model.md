@@ -49,6 +49,8 @@ Modern Search operates on three golden rules that interact as a system:
 
 > These three rules are not independent. Consolidation requires broad match to capture volume. Broad match requires smart bidding to control efficiency. Smart bidding requires consolidated data to optimize. The system is circular.
 
+> 💡 **The keyword is now one intent signal, but your strongest controllable one.** Matching reads your landing pages and assets, not just the keyword string. The algorithm layers user history, location, device, and time on top. That means assets, landing pages, and bids now carry intent alongside the keyword. The keyword no longer acts as a hard target that fences the query space, it acts as the clearest signal you directly control. Choose it deliberately, then reinforce it with on-page content, asset themes, and conversion-based bids. Do not treat the keyword as the only lever, and do not abandon it: it remains the lever you control most precisely.
+
 ---
 
 ## Why the old playbook stopped working
@@ -61,7 +63,8 @@ Search behavior has evolved fundamentally. The tactics that dominated 2015-2020 
 |-----|----------------|--------------------|-----------|
 | **Early (pre-2016)** | Short-tail, simple queries ("pasta recipe") | Exact match, SKAGs, manual CPC | Worked because query space was small and predictable |
 | **Mid (2016-2020)** | Growing long-tails, synonym usage, mobile growth | Phrase match, expanded text ads, funneling structures | Query space expanded faster than keyword lists could cover |
-| **Modern (2021+)** | 4+ word queries growing 26% YoY, semantic intent, voice search, hyper-specific queries | Broad match + smart bidding, RSAs, consolidated structures | Manual approaches cannot cover the query space; algorithm must do the matching |
+| **Modern (2021-2023)** | 4+ word queries growing 26% YoY, semantic intent, voice search, hyper-specific queries | Broad match + smart bidding, RSAs, consolidated structures | Manual approaches cannot cover the query space, the algorithm must do the matching |
+| **Current** | 70%+ of queries trending long-tail and conversational, 800%+ rise in 8+ word queries, growth in visual and multimodal search (Lens), AI surfaces answering directly | Broad match + smart bidding, asset and landing-page driven matching, AI-assisted coverage. The keyword shifts from a hard target to one intent signal among several | No keyword list can enumerate the query space. Matching now reads landing pages and assets, not just keyword strings, so intent is carried by more than the keyword |
 
 ### What changed inside Google Ads
 
@@ -215,7 +218,7 @@ Before any keyword or structure decision, determine your bidding strategy. The b
 |----------|--------|-------|
 | Do you have clear efficiency targets (CPA/ROAS)? | tCPA or tROAS | Max Conversions or Max Conv. Value |
 | Are you using tCPA/tROAS with sufficient data? | Broad match is your default (check exceptions above) | Phrase/exact match is your default |
-| Do you have sufficient conversion volume (30+/month)? | Use campaign-level bidding | Consider portfolio bid strategy across campaigns |
+| Do you have sufficient conversion volume (30+/month)? | Use campaign-level bidding | Use a portfolio bid strategy across campaigns |
 
 > For bidding strategy selection: See [Bidding Strategy Mental Model](../mental-models/Bidding Strategy Mental Model.md)
 
@@ -223,14 +226,10 @@ Before any keyword or structure decision, determine your bidding strategy. The b
 
 Research keywords across your business, then cluster them by creative theme, not by keyword similarity or match type.
 
-| Step | Action | Output |
-|------|--------|--------|
-| Research | Use Keyword Planner, STR, competitor tools, ChatGPT | Raw keyword list with volume and CPC data |
-| Cluster | Group by creative theme: can one RSA serve this cluster? | Themed keyword groups with intent labels |
-| Prioritize | Color-code: green (include), orange (doubtful), red (irrelevant) | Prioritized keyword set ready for structure |
+The clustering question is the Single Ad Test asked early: can one RSA serve this cluster credibly? Clusters that fail it become separate ad groups. Clusters that pass it stay together however different the keyword strings look, because the string is not what the RSA has to satisfy.
 
 > For keyword research: See [SOP – Research Keywords](../sops/SOP – Research Keywords.md)
-> For keyword clustering: See [SOP – Cluster and Map Keywords](../sops/SOP – Cluster and Map Keywords.md)
+> For keyword clustering and prioritization: See [SOP – Cluster and Map Keywords](../sops/SOP – Cluster and Map Keywords.md)
 
 ### Stage 3: Design your structure
 
@@ -245,7 +244,7 @@ Apply the campaign and ad group mental models to map keyword clusters into campa
 
 | Phase | Focus | Key reference |
 |-------|-------|---------------|
-| Pre-launch | Validate structure against checklists | Search Campaign Launch Checklist |
+| Pre-launch | Validate structure against checklists | [Search Campaign Launch Checklist](../checklists/Search Campaign Launch Checklist.md) |
 | Week 1-2 | Monitor learning period, do not change targets | [Bidding Strategy Mental Model](../mental-models/Bidding Strategy Mental Model.md) |
 | Week 3-4 | Analyze STR, add negatives, promote performing search terms | [SOP – Analyze Search Term Reports](../sops/SOP – Analyze Search Term Reports.md) |
 | Ongoing | Creative iteration, negative keyword maintenance, structure review | [SOP – RSA Testing with The Iteration Loop](../sops/SOP – RSA Testing with The Iteration Loop.md) |
@@ -258,10 +257,11 @@ Apply the campaign and ad group mental models to map keyword clusters into campa
 2. **Consolidate by default:** Only segment when there is a concrete business reason: different budget, different target, different conversion goal, different geo/language needs.
 3. **One ad group per creative theme:** The Single Ad Test determines grouping. DKI, customizers, and keyword-level URLs solve most variation without splitting.
 4. **Match types follow bidding strategy:** Broad match + tCPA/tROAS is the modern default when the account has sufficient conversion history. Phrase/exact are for new accounts, low-volume campaigns, constrained budgets, niche B2B verticals, or non-conversion-based strategies. Test broad match via 50/50 campaign experiments before committing.
-5. **Feed the algorithm, do not fight it:** Smart bidding sees signals you cannot (user history, location context, browsing behavior). Let it optimize at auction level.
-6. **Volume enables everything:** Asset-level data needs 1,000+ impressions/week. Smart bidding needs 30+ conversions/month. Fragmentation kills both.
-7. **Free up time for higher-impact work:** Simplified structure reduces management overhead. Invest freed time in offer optimization, landing page improvement, and conversion rate optimization, as these compound with bidding power.
-8. **Complexity may impress, but simplicity coupled with AI impresses upon results:** The edge is no longer in structural tricks. It is in data quality, conversion rates, and creative excellence.
+5. **The keyword is one intent signal, but your strongest controllable one:** Assets, landing pages, and bids now carry intent alongside the keyword. Matching reads pages and assets, not just keyword strings. Choose keywords deliberately and reinforce them with on-page content and asset themes, but stop treating the keyword as the only lever.
+6. **Feed the algorithm, do not fight it:** Smart bidding sees signals you cannot (user history, location context, browsing behavior). Let it optimize at auction level.
+7. **Volume enables everything:** Asset-level data needs 1,000+ impressions/week. Smart bidding needs 30+ conversions/month. Fragmentation kills both.
+8. **Free up time for higher-impact work:** Simplified structure reduces management overhead. Invest freed time in offer optimization, landing page improvement, and conversion rate optimization, as these compound with bidding power.
+9. **Complexity may impress, but simplicity coupled with AI impresses upon results:** The edge is no longer in structural tricks. It is in data quality, conversion rates, and creative excellence.
 
 ---
 
@@ -271,9 +271,8 @@ Apply the campaign and ad group mental models to map keyword clusters into campa
 |----------|-------------|
 | [Search Campaign Structure Mental Model](../mental-models/Search Campaign Structure Mental Model.md) | Downstream: when and why to segment campaigns |
 | [Search Ad Group Structure Mental Model](../mental-models/Search Ad Group Structure Mental Model.md) | Downstream: when and why to segment ad groups |
-| [Dynamic Search Ads Mental Model](../mental-models/Dynamic Search Ads Mental Model.md) | Downstream: DSA as complementary targeting within modern Search |
-| [DSA Targeting Options Reference](../references/DSA Targeting Options Reference.md) | Reference: DSA targeting option specs, page feed format, custom labels |
-| [AI Max for Search Mental Model](../mental-models/AI Max for Search Mental Model.md) | Downstream: AI-driven automation option within Search campaigns |
+| [AI Max for Search Mental Model](../mental-models/AI Max for Search Mental Model.md) | Downstream: AI-driven automation and final URL expansion within Search campaigns |
+| [Final URL Expansion & Page Feed Reference](<../references/Final URL Expansion & Page Feed Reference.md>) | Reference: final URL expansion controls, page feed format, custom labels |
 | [AI Max for Search Reference](../references/AI Max for Search Reference.md) | Reference: AI Max feature specifications and settings |
 | [Bidding Strategy Mental Model](../mental-models/Bidding Strategy Mental Model.md) | Upstream: bidding strategy determines match type and structure approach |
 | [Match Type Reference](../references/Match Type Reference.md) | Reference: match type syntax, behavior, and keyword selection hierarchy |
@@ -288,8 +287,8 @@ Apply the campaign and ad group mental models to map keyword clusters into campa
 
 ## Version details
 
-- **Version:** 1.0
-- **Last Updated:** February 2026
+- **Version:** 2.0
+- **Last Updated:** June 2026
 - **Creator:** Bob Meijer
 
 ---

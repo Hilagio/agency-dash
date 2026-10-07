@@ -1,5 +1,6 @@
-﻿# Campaign Scaling Mental Model
+# Campaign Scaling Mental Model
 Created: 2026-02-14
+Updated: 2026-08-27
 
 Support_ID: MENTALMODEL_30
 Status: Done
@@ -79,10 +80,11 @@ Vertical scaling is the safest growth lever. You have proven campaigns with heal
 
 | Guardrail | Rule |
 |-----------|------|
-| Budget increase pace | Maximum 20-30% per change, wait one conversion cycle before next increase |
-| Target adjustment pace | Maximum 15-20% per change for CPA, 10-15% for ROAS |
+| Budget increase pace (Search, Shopping, PMax) | 15-20% per change is the safe increment, wait 1-2 conversion cycles before the next increase. A single increase above 30% disrupts Smart Bidding learning |
+| Target adjustment pace (Search, Shopping, PMax) | Maximum 10-15% per change for CPA and for ROAS |
+| Demand Gen edit pace | Google's 15% Rule: plus or minus 15% maximum across the campaign duration, in preferred steps of 5-10% per week, with no changes at all during the initial learning period and a separate 15% cap on budget changes |
 | Efficiency floor | Define a hard CPA ceiling or ROAS floor before scaling starts. Stop when you hit it. |
-| Learning period | Do not evaluate results during the learning period after a target change. The learning period lasts approximately two conversion cycles, which varies by account (7-10 days for short conversion cycles, 14-30+ days for long cycles). (See: [Smart Bidding Mechanics Reference](../references/Smart Bidding Mechanics Reference.md)) |
+| Learning period | Do not evaluate results during the 7-14 day learning period after a target change, and wait 1-2 conversion cycles beyond it for conversions to attribute. (See: [Smart Bidding Mechanics Reference](../references/Smart Bidding Mechanics Reference.md)) |
 
 > 💡 **Vertical scaling connects directly to the profit optimum curve:** Every budget or target change moves you along that curve. Generally, the goal is to find the peak of net profit, not the maximum volume, though the right balance depends on the advertiser's growth stage and strategic objectives (e.g., market share capture may justify pushing past the profit peak). (See: [Bid Scaling Mental Model](../mental-models/Bid Scaling Mental Model.md))
 
@@ -144,8 +146,8 @@ Diagonal scaling diversifies your Google Ads presence into fundamentally differe
 |--------|---------------|-----------------|
 | Launch PMax campaigns | Access all Google inventory with automated targeting | Incremental conversions, asset group performance, cannibalization vs. Search |
 | Launch Demand Gen campaigns | Reach audiences on YouTube, Discover, Gmail | View-through conversions, assisted conversions, CPM efficiency |
-| Launch Display campaigns | Remarketing and prospecting across Google Display Network | View-through conversions, frequency, assisted conversion path |
-| Launch Video campaigns | YouTube brand and direct-response campaigns | View rate, earned actions, brand lift (if measurable) |
+| Launch Demand Gen for Display reach | Remarketing and prospecting across the Google Display Network, served through Demand Gen | View-through conversions, frequency, assisted conversion path |
+| Launch Video campaigns | YouTube reach, views, and engagements | View rate, earned actions, brand lift (if measurable) |
 
 ### Signals that diagonal scaling is available
 
@@ -294,8 +296,8 @@ The key difference: More/Better/New diagnoses what type of lever to pull for a s
 
 ## Version details
 
-- **Version:** 1.0
-- **Last Updated:** February 2026
+- **Version:** 3.0
+- **Last Updated:** August 2026
 - **Creator:** Bob Meijer
 
 ---

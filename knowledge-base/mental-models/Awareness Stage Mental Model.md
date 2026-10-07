@@ -169,31 +169,31 @@ Different traffic sources typically correlate with awareness stages. The "Temper
 | **Competitor Search** | Product Aware | Comparing options |
 | **Product/Service Search** | Solution Aware | Looking for a solution |
 | **Problem Search** | Problem Aware | Researching their issue |
-| **Display/YouTube prospecting** | Unaware → Problem Aware | Interruption-based, cold |
+| **Demand Gen / Video prospecting** | Unaware → Problem Aware | Interruption-based, cold |
 | **Remarketing** | Product Aware → Most Aware | Already engaged |
 | **Email list** | Product Aware → Most Aware | Already opted in |
 
 > 💡 **Search campaigns typically reach Solution Aware → Most Aware audiences.**
 > Someone searching "CRM software" already knows they need a CRM. You don't need to educate them on why CRM matters.
-> 💡 **Display/Video campaigns often reach Unaware → Problem Aware audiences.**
+> 💡 **Demand Gen and Video campaigns often reach Unaware → Problem Aware audiences.**
 > You're interrupting them. They weren't looking for you.
 
 ---
 
 ## Angle prioritization by stage
 
-Your 6 message angles (from [SOP – Craft Your Offer Angles](../sops/SOP – Craft Your Offer Angles.md)) should be **weighted differently** based on awareness stage:
+Your 6 message angles (from [SOP – Craft Your Offer Angles](../sops/SOP – Craft Your Offer Angles.md)) carry **different weights** at each awareness stage:
 
 | **Angle** | **Unaware** | **Problem Aware** | **Solution Aware** | **Product Aware** | **Most Aware** |
 | --- | --- | --- | --- | --- | --- |
-| **Problem/Pain** | ★★★ | ★★★ | ★★ | ★ | — |
+| **Problem/Pain** | ★★★ | ★★★ | ★★ | ★ | - |
 | **Value Proposition** | ★ | ★★ | ★★★ | ★★★ | ★★★ |
-| **USPs** | — | ★ | ★★ | ★★★ | ★★★ |
-| **Value Boosters** | — | — | ★ | ★★ | ★★★ |
-| **Social Proof** | — | ★ | ★★ | ★★★ | ★★ |
-| **Risk Removal** | — | — | ★ | ★★ | ★★★ |
+| **USPs** | - | ★ | ★★ | ★★★ | ★★★ |
+| **Value Boosters** | - | - | ★ | ★★ | ★★★ |
+| **Social Proof** | - | ★ | ★★ | ★★★ | ★★ |
+| **Risk Removal** | - | - | ★ | ★★ | ★★★ |
 
-**★★★** = Lead with this | **★★** = Include | **★** = Light touch | **—** = Skip
+**★★★** = Lead with this | **★★** = Include | **★** = Light touch | **-** = Skip
 
 ---
 
@@ -201,16 +201,16 @@ Your 6 message angles (from [SOP – Craft Your Offer Angles](../sops/SOP – Cr
 
 ### For Search campaigns (Solution → Most Aware)
 
-Default RSA distribution should emphasize:
+Default RSA distribution emphasizes:
 
 - Value Proposition (what you offer)
 - USPs (why you're different)
 - Social Proof (why trust you)
 - Risk Removal (why act now)
 
-Problem/Pain can be used but isn't the lead. **They already know the problem.**
+Problem/Pain has a place but never leads. **They already know the problem.**
 
-### For Display/Demand Gen (Unaware → Problem Aware)
+### For Demand Gen and Video (Unaware → Problem Aware)
 
 Lead with:
 
@@ -250,7 +250,7 @@ They already know you. **Close the deal.**
 2. **Match message to stage:** The same offer needs different framing for different stages.
 3. **Traffic source = stage signal:** Use traffic source as a proxy for awareness when you can't measure directly.
 4. **Angle priority shifts:** Problem/Pain leads for cold traffic. Offer details lead for hot traffic.
-5. **One RSA can't do everything:** If you're targeting multiple awareness stages, you may need different ad groups or campaigns with different messaging strategies.
+5. **One RSA can't do everything:** Targeting multiple awareness stages means splitting into different ad groups or campaigns, each with its own messaging strategy.
 
 ---
 
@@ -259,7 +259,7 @@ They already know you. **Close the deal.**
 | **Document** | **Relationship** |
 | --- | --- |
 | [Audience Strategy Mental Model](../mental-models/Audience Strategy Mental Model.md) | Foundation (audience temperature framework maps to awareness stages) |
-| [Upper Funnel Campaign Structure Mental Model](../mental-models/Upper Funnel Campaign Structure Mental Model.md) | Applies awareness stages to Display/Video/Demand Gen campaign tiers |
+| [Upper Funnel Campaign Structure Mental Model](../mental-models/Upper Funnel Campaign Structure Mental Model.md) | Applies awareness stages to Demand Gen and Video campaign tiers |
 | [SOP – Craft Your Offer Angles](../sops/SOP – Craft Your Offer Angles.md)  | Uses this to prioritize angle extraction |
 | [SOP – Write Compelling RSAs](../sops/SOP – Write Compelling RSAs.md)  | Uses this to adjust slot distribution |
 | [Headline Angle Catalog](../catalogs/Headline Angle Catalog.md)  | Provides patterns for each angle type |
@@ -268,8 +268,8 @@ They already know you. **Close the deal.**
 
 ## Version details
 
-- **Version:** 2.0
-- **Last Updated:** February 2026
+- **Version:** 3.0
+- **Last Updated:** June 2026
 - **Creator:** Bob Meijer
 
 ---

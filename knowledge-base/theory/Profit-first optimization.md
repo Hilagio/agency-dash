@@ -87,7 +87,7 @@ Compare this to ROAS, which can look healthy while you bleed profit. A campaign 
 
 ### Target POAS by objective
 
-Your POAS target depends on what you are trying to accomplish. There is no universal "good" POAS, just like there is no universal "good" ROAS. The target follows from strategy (see [Volume vs. efficiency (more/better/new)](<../theory/Volume vs efficiency (more better new).md>) for the broader scaling framework).
+Your POAS target depends on what you are trying to accomplish. There is no universal "good" POAS, just like there is no universal "good" ROAS. The target follows from strategy (see [Volume vs efficiency (more better new)](<../theory/Volume vs efficiency (more better new).md>) for the broader scaling framework).
 | Objective | Target POAS | Rationale |
 |-----------|-------------|-----------|
 | Maximize short-term profit | ~200%+ | Conservative, high margins per sale, limited scale |
@@ -231,7 +231,7 @@ Every € you spend on ads either makes you money or costs you money. ROAS canno
 ## Related Documents
 
 - [No goal, no bottleneck](../theory/No goal, no bottleneck.md)
-- [Volume vs. efficiency (more/better/new)](<../theory/Volume vs efficiency (more better new).md>)
+- [Volume vs efficiency (more better new)](<../theory/Volume vs efficiency (more better new).md>)
 - [Unit Economics Mental Model](../mental-models/Unit Economics Mental Model.md)
 - [Cart Data and Profit Tracking Reference](../references/Cart Data and Profit Tracking Reference.md)
 

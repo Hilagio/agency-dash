@@ -24,9 +24,9 @@ Getting lost in tracking possibilities is the norm. This framework maps every hi
 
 This mental model does **not:**
 
-- Provide step-by-step implementation instructions (See: individual Conversion Tracking SOPs)
+- Provide step-by-step implementation instructions (See: the SOP column in the feature map below)
 - Explain how to configure conversion actions (See: [Conversion Action Reference](../references/Conversion Action Reference.md))
-- Cover bid strategy selection based on conversion data (See: *Bidding Strategy Mental Model* [TBD, Phase 5])
+- Cover bid strategy selection based on conversion data (See: [Bidding Strategy Mental Model](../mental-models/Bidding Strategy Mental Model.md))
 - Replace the [Goals and KPIs Mental Model](../mental-models/Goals and KPIs Mental Model.md): goals define what to measure, this model defines how to measure it
 
 ---
@@ -211,7 +211,7 @@ Better tracking input produces better Smart Bidding output. This is the core pre
 2. **Every technique serves a purpose:** Do not implement features you do not need. Cart Data is useless for Lead Gen. OCT is useless for pure Ecommerce.
 3. **Data quality over data quantity:** Tracking 20 micro-conversions badly is worse than tracking 3 macro-conversions well.
 4. **Audit regularly:** Conversion tracking degrades over time (website changes, CMS updates, tag manager modifications). Run the [Conversion Data Quality Checklist](../checklists/Conversion Data Quality Checklist.md) quarterly.
-5. **Foundation is never "done":** Even mature accounts should revisit Foundation techniques when launching new campaign types, expanding to new markets, or changing CMS platforms.
+5. **Foundation is never "done":** Even mature accounts revisit Foundation techniques when launching new campaign types, expanding to new markets, or changing CMS platforms.
 
 ---
 

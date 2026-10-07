@@ -79,7 +79,7 @@ Everything else is distraction. It might feel important. It might even look good
 
 ## The discipline of one
 
-For each account, you commit to one active Constraint per Sprint. Every non-maintenance task must justify itself as serving that Constraint, or not being done.
+For each account, you commit to one active Constraint per Sprint. Every non-maintenance task must justify itself as serving that Constraint, or it does not get done.
 
 This is harder than it sounds. You will see broken things. You will have ideas. Your stakeholder will ask "what about X?" Your inner optimizer will scream that the ad copy could be better, the audiences could be tighter, the bid strategy could be different.
 

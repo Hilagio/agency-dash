@@ -12,7 +12,7 @@ Pillar: 5
 
 ## Purpose
 
-Provides recommended configuration settings for all conversion tracking features across verticals. Use this as the single source of truth for how each conversion tracking feature should be configured.
+Provides recommended configuration settings for all conversion tracking features across verticals. Use this as the single source of truth for how each conversion tracking feature is configured.
 
 ---
 
@@ -43,7 +43,7 @@ Provides recommended configuration settings for all conversion tracking features
 | **Goal category** | Purchase | Lead / Submit Lead Form | Sign-up / Purchase |
 | **Optimization** | Primary | Primary | Primary |
 | **Attribution model** | Data-Driven | Data-Driven | Data-Driven |
-| **Click-through window** | 30 days (adjust per Path Metrics) | 30-60 days (adjust per sales cycle) | 30-60 days (adjust per trial length) |
+| **Click-through window** | 30 days (adjust per Path metrics) | 30-60 days (adjust per sales cycle) | 30-60 days (adjust per trial length) |
 | **View-through window** | 1 day | 1 day | 1 day |
 | **Engaged-view window** | 3 days | 3 days | 3 days |
 | **Counting method** | Every | One | One |
@@ -51,11 +51,7 @@ Provides recommended configuration settings for all conversion tracking features
 
 ### Click-through window calibration
 
-Do not accept the 30-day default without checking your actual conversion lag:
-
-1. Go to Goals > Measurement > Attribution > Path Metrics
-2. Check "Average days to conversion"
-3. Set the click-through window to at least 2x the average conversion lag
+The 30-day default holds only when it matches your actual conversion lag. The click-through window is at least 2x the average conversion lag, read from "Avg. days to conversion" under Goals > Measurement > Attribution > Path metrics.
 
 | Average conversion lag | Recommended window |
 |-----------------------|-------------------|
@@ -68,7 +64,7 @@ Do not accept the 30-day default without checking your actual conversion lag:
 
 Keep view-through at 1 day and engaged-view at 3 days unless you have specific upper-funnel attribution needs. Longer windows inflate conversion counts with passive attributions.
 
-**Exception:** Increase view-through to 3-7 days when running dedicated YouTube or Display campaigns and you want to measure their assisted conversion impact through a separate secondary conversion action.
+**Exception:** Increase view-through to 3-7 days when running dedicated YouTube or Demand Gen campaigns and you want to measure their assisted conversion impact through a separate secondary conversion action.
 
 ---
 
@@ -97,7 +93,9 @@ These are the core tracking technologies. Implement them in priority order.
 For ecommerce: pass the order ID as the transaction_id parameter.
 For lead gen: pass a unique form submission ID or CRM record ID.
 
-**Exception:** None. The cost of implementation is minimal and the benefits are significant.
+**Exception:** None for standard setups. The cost of implementation is minimal and the benefits are significant.
+
+> ⚠️ **External attribution is the one incompatibility.** Offline conversions scored by your own attribution model cannot also be deduplicated on transaction ID. An account running its own credit assignment chooses between Google's deduplication and its own attribution, not both.
 
 ### Enhanced Conversions
 
@@ -114,13 +112,15 @@ Recommended data: email + phone number + name + address.
 
 Requirements: Google Cloud server container, custom subdomain with SSL, developer involvement.
 
-**Exception:** Accounts under €5,000/month may not justify the infrastructure cost. Revisit when spend grows.
+**Exception:** Accounts under €5,000/month do not justify the infrastructure cost. Revisit when spend grows.
 
 ### Offline Conversion Tracking (OCT)
 
 **Required for Lead Gen and SaaS:** OCT imports downstream conversion data (qualified leads, closed deals, subscription purchases) from your CRM back into Google Ads, giving Smart Bidding real business outcomes instead of form submissions.
 
-**Exception:** Ecommerce accounts rarely need OCT unless tracking in-store conversions driven by online ads.
+Keep upload latency under 7 days from the conversion event. Later uploads still appear in standard reports, but attribution modeling bypasses them, so they never reach the bidding model.
+
+**Exception:** Ecommerce accounts need OCT only when tracking in-store conversions driven by online ads.
 
 ---
 
@@ -168,7 +168,7 @@ Implement these after the foundation is solid. Priority order varies by vertical
 
 ### GA4 cross-channel attribution
 
-If importing GA4 events as conversion actions, consider enabling the "paid and organic channels" attribution setting in GA4. This reduces over-attribution to paid clicks by including organic touchpoints in the model.
+If importing GA4 events as conversion actions, enable the "paid and organic channels" attribution setting in GA4 for any account with significant organic traffic. It reduces over-attribution to paid clicks by including organic touchpoints in the model.
 
 | Setting | Effect | Recommended for |
 |---------|--------|----------------|
@@ -177,7 +177,7 @@ If importing GA4 events as conversion actions, consider enabling the "paid and o
 
 ### Over-attribution calibration
 
-Google Ads typically over-attributes conversions compared to backend data. Know your over-attribution ratio and adjust targets accordingly.
+Google Ads over-attributes conversions compared to backend data. Know your over-attribution ratio and adjust targets accordingly.
 
 **Recalibration formula:** If Google reports 300% ROAS but backend shows 220%, set target ROAS to ~410% in Google Ads (300 / 220 x 300) to achieve real 300% performance.
 
@@ -199,7 +199,7 @@ Google Ads typically over-attributes conversions compared to backend data. Know 
 | Setting | Recommendation |
 |---------|---------------|
 | CMP (Consent Management Platform) | Use a Google-certified CMP from the CMP gallery in GTM |
-| Consent Mode version | V2 (required since March 2024) |
+| Consent Mode version | V2 (required) |
 | Consent signals | Enable all four: `ad_storage`, `analytics_storage`, `ad_user_data`, `ad_personalization` |
 | Default consent state | Set to "denied" for EU/EEA users, "granted" for other regions |
 | Conversion modeling | Enabled automatically when Consent Mode is active |
@@ -243,7 +243,7 @@ After implementation, verify in Google Ads:
 
 **Document every tracking outage** in a log (spreadsheet or project management tool) and apply the corresponding Data Exclusion within 24 hours.
 
-**Exception:** If the outage lasted less than 1 hour and affected less than 5% of daily traffic, the impact on Smart Bidding is negligible. Use judgment.
+**Exception:** If the outage lasted less than 1 hour and affected less than 5% of daily traffic, the impact on Smart Bidding is negligible.
 
 ---
 
@@ -270,7 +270,7 @@ After setting up or auditing conversion tracking, verify these settings:
 | Recommendation | Exception | Alternative |
 |---------------|-----------|-------------|
 | DDA attribution | None | Always use DDA |
-| 30-day click window | Sales cycle shorter or longer | Calibrate via Path Metrics |
+| 30-day click window | Sales cycle shorter or longer | Calibrate via Path metrics |
 | 1-day view-through | Upper funnel measurement needs | Increase to 3-7 days on a separate secondary action |
 | SST implementation | Spend under €5,000/month | Revisit when spend grows |
 | OCT for lead gen | None for lead gen/SaaS | Always implement for these verticals |
@@ -296,8 +296,8 @@ After setting up or auditing conversion tracking, verify these settings:
 
 ## Version details
 
-- **Version:** 1.0
-- **Last Updated:** February 2026
+- **Version:** 3.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

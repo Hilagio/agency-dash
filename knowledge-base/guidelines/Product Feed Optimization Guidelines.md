@@ -14,6 +14,8 @@ Pillar: 6
 
 This guideline provides optimization recommendations for every major product feed attribute group. It supports product feed setup by establishing best practices that maximize query matching, improve CTR, and reduce disapprovals.
 
+> ⚠️ **AI-generated or AI-edited product imagery needs disclosure labels.** Regulations in the European Union, India, and New York require labels on AI-generated/edited assets, and an AI label setting exists across Google Ads and Merchant Center. If feed images are AI-produced or AI-touched, account for the labels. Labelling also switches off Merchant Center image enhancement automations for that product, so the imagery serves exactly as you supplied it. See [Asset Optimization Control Guidelines](../guidelines/Asset Optimization Control Guidelines.md).
+
 ---
 
 ## What this is / What this is NOT
@@ -42,7 +44,7 @@ This guideline provides optimization recommendations for every major product fee
 | 3️⃣ Recommended | Variants (Color, Size), Custom Labels, Sale Price | Enables filtering, segmentation | Medium |
 | 4️⃣ Optional | Short Title, Product Highlights, Lifestyle Images | Upper funnel, differentiation | Low |
 
-> 💡 Optimize in priority order. Tier 1 attributes deliver the highest impact per effort invested.
+> 💡 **Optimize in priority order.** Tier 1 attributes deliver the highest impact per effort invested.
 
 ---
 
@@ -88,7 +90,7 @@ This guideline provides optimization recommendations for every major product fee
 - ❌ Guess or fabricate GTINs
 - ❌ Submit GTIN for products that don't have one
 
-> 💡 Missing GTINs? Check product packaging barcodes, contact manufacturer, or use barcode lookup services.
+> 💡 **Missing GTINs have three sources.** Product packaging barcodes, the manufacturer, and barcode lookup services.
 
 ### MPN [mpn]
 
@@ -148,7 +150,7 @@ This guideline provides optimization recommendations for every major product fee
 **Do:**
 - ✅ Use relevant titles that clearly describe the product
 - ✅ Front-load the most important product details
-- ✅ Try to use all 150 characters
+- ✅ Use all 150 characters
 - ✅ Add distinguishing details for variants
 
 **Do NOT:**
@@ -156,9 +158,32 @@ This guideline provides optimization recommendations for every major product fee
 - ❌ Use capital letters for emphasis
 - ❌ Use unknown words not used by customers
 
-> ⚠️ Google may automatically reorder your title to match searches. Front-loading remains important because it affects what users see in PLAs.
+> ⚠️ **Google reorders your title to match searches.** Front-loading still matters, because it decides what users see in PLAs.
 
 > ↪️ **For title examples by category:** See [Product Title Catalog](../catalogs/Product Title Catalog.md).
+
+### Short title [short_title]
+
+**Short title serves Performance Max visual surfaces:** It replaces the full title where space is limited, so it carries the whole message on its own.
+
+| **Recommendation** | **Rationale** |
+|--------------------|---------------|
+| Write under 40 characters | The length that fits the visual surfaces short title serves |
+| Treat 65 characters as the maximum | Spec ceiling for the attribute |
+| Lead with brand and product type | Recognition matters more than keyword coverage at this length |
+| Keep it consistent with the full title | Same product, two lengths, one message |
+
+**Do:**
+- ✅ Write short titles under 40 characters
+- ✅ Lead with brand and core product type
+- ✅ Submit a short title for every product running in Performance Max
+- ✅ Keep the short title consistent with the full title
+
+**Do NOT:**
+- ❌ Exceed 65 characters
+- ❌ Copy the full 150-character title into short title
+- ❌ Include promotional text
+- ❌ Pack keywords into short title (the title attribute drives matching)
 
 ### Description [description]
 
@@ -245,7 +270,7 @@ This guideline provides optimization recommendations for every major product fee
 - ❌ Use images larger than 16MB or 64 megapixels
 - ❌ Use borders or customized backgrounds
 - ❌ Include promotional content (prices, CTAs, watermarks, overlays)
-- ❌ Use AI-generated images without proper metadata
+- ❌ Submit AI-generated or AI-edited images without applying the AI content disclosure label
 
 > 💡 **Aspect ratio tip:** If competitors show vertical/portrait images and yours are square, experiment with vertical images. They take more visual space and can improve CTR.
 
@@ -276,7 +301,8 @@ This guideline provides optimization recommendations for every major product fee
 **Do:**
 - ✅ Show product in use: clothing on model, furniture in room
 - ✅ Use colorful backgrounds or nice-looking sets
-- ✅ Use portrait (2:3) aspect ratio when possible
+- ✅ Use portrait (2:3) aspect ratio
+- ✅ Submit up to 5 lifestyle images per product, covering different contexts
 
 **Do NOT:**
 - ❌ Use simple white background (defeats purpose of lifestyle image)
@@ -310,7 +336,7 @@ This guideline provides optimization recommendations for every major product fee
 - ❌ Use more than two decimal digits
 - ❌ Change price based on user location
 
-> 💡 If prices change multiple times daily, use Content API or a script to increase update frequency.
+> 💡 **Prices that change more than once a day need a faster channel.** Use the Merchant API or a script to raise the update frequency.
 
 ### Sale price [sale_price]
 
@@ -343,7 +369,7 @@ This guideline provides optimization recommendations for every major product fee
 
 **Format:** `YYYY-MM-DDThh:mm[±hhmm]/YYYY-MM-DDThh:mm[±hhmm]`
 
-> ⚠️ Without timezone, Google defaults to UTC. Without time, defaults to 00:00 start and 23:59 end.
+> ⚠️ **Omitted timezone and time both default.** Without a timezone Google uses UTC, and without a time it uses a 00:00 start and a 23:59 end.
 
 ### Cost of goods sold [cost_of_goods_sold]
 
@@ -367,7 +393,7 @@ This guideline provides optimization recommendations for every major product fee
 **Do:**
 - ✅ Keep availability synced with actual inventory
 - ✅ Enable automatic item updates for availability
-- ✅ Use Content API for real-time sync if inventory changes frequently
+- ✅ Use Merchant API for real-time sync if inventory changes frequently
 
 **Do NOT:**
 - ❌ Show in_stock when product is out of stock
@@ -437,7 +463,7 @@ This guideline provides optimization recommendations for every major product fee
 | custom_label_3 | Inventory level | high_stock, low_stock, critical |
 | custom_label_4 | Priority | featured, standard, deprioritize |
 
-> ⚠️ Custom labels must be populated before campaign launch. You cannot segment products that aren't labeled.
+> ⚠️ **Populate custom labels before campaign launch.** You cannot segment products that are not labeled.
 
 > ↪️ **For custom label strategies:** See [Feed Segmentation Catalog](../catalogs/Feed Segmentation Catalog.md).
 
@@ -502,7 +528,7 @@ This guideline provides optimization recommendations for every major product fee
 
 | **Recommendation** | **Rationale** |
 |--------------------|---------------|
-| Configure at account level when possible | Simpler management |
+| Configure at account level | Simpler management |
 | Use product-level for exceptions | Oversized items, special handling |
 | Include shipping costs in competitiveness | Google factors shipping into ranking |
 
@@ -513,7 +539,7 @@ This guideline provides optimization recommendations for every major product fee
 | Use to group products with same shipping rules | Oversized, fragile, perishable |
 | Reference in Merchant Center shipping settings | Maps products to shipping services |
 
-> 💡 Don't underestimate shipping costs. Google factors shipping into total price competitiveness. Free shipping can significantly improve ranking.
+> 💡 **Shipping costs move ranking.** Google factors shipping into total price competitiveness, and free shipping improves ranking.
 
 ---
 
@@ -524,6 +550,7 @@ After optimizing your feed, verify:
 | **Attribute** | **Check** |
 |---------------|-----------|
 | Title | Front-loaded, uses 150 characters, follows category formula |
+| Short title | Under 40 characters, 65 maximum, brand and product type first |
 | Price | Matches landing page, includes VAT where required |
 | Image | 1500x1500px minimum, 75-90% frame fill, white background |
 | GTIN | Provided for all products with GTINs |
@@ -553,8 +580,8 @@ After optimizing your feed, verify:
 
 ## Version details
 
-- **Version:** 1.0
-- **Last Updated:** February 2026
+- **Version:** 3.0
+- **Last Updated:** August 2026
 - **Creator:** Bob Meijer
 
 ---

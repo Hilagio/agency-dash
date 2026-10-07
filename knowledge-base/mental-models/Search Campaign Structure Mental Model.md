@@ -21,7 +21,7 @@ Campaigns are the **highest level of control** in Google Ads. They determine:
 
 - **Budget:** How much you spend per day/month on a given set of targeting
 - **Bid strategy:** What you're optimizing for and at what target
-- **Targeting scope:** Location, language, networks, scheduling
+- **Targeting scope:** Location, networks, scheduling
 - **Conversion goals:** Which actions you're optimizing toward
 
 ---
@@ -107,11 +107,11 @@ Segment campaigns when you need:
 | **Different bid strategies** | tCPA for leads, tSIS for brand | Bid strategy is set at campaign level |
 | **Different efficiency targets** | €30 CPA for high-margin, €50 CPA for low-margin | Targets are set at campaign level |
 | **Different conversion goals** | Lead form vs. phone call | Conversion goals can be set per campaign |
-| **Different geographies** | Different countries, regions with different performance | Location targeting, language, scheduling |
+| **Different geographies** | Different countries, regions with different performance | Location targeting and scheduling are campaign level, and per-language creative needs its own campaign |
 | **Different networks** | Search only vs. Search + Partners | Network settings at campaign level |
 | **Regulatory/compliance** | Pharma, finance, alcohol with restricted targeting | May require separate campaign settings |
 | **New vs. established** | New service launch vs. proven performers | Different targets, budget protection |
-| **Hero keywords** | Top 1-3 keywords driving >10% of spend | Dedicated budget and bid control |
+| **Hero keywords** | A keyword carrying >30% of Search spend or conversions | Dedicated budget and bid control |
 
 ---
 
@@ -148,7 +148,7 @@ Smart Bidding needs sufficient conversion volume to optimize effectively. Each c
                  │  • Bid strategy?                    │
                  │  • Targets (CPA/ROAS)?              │
                  │  • Conversion goals?                │
-                 │  • Location/language?               │
+                 │  • Location?                        │
                  │  • Network settings?                │
                  └──────────────┬──────────────────────┘
                                 │
@@ -172,8 +172,8 @@ Smart Bidding needs sufficient conversion volume to optimize effectively. Each c
 │  SPLIT  │        │ Consider:   │ │ AD GROUP│    │ Re-evaluate │
 │         │        │ • Portfolio │ │ SPLIT   │    │ the need    │
 └─────────┘        │   bid strat │ └─────────┘    └─────────────┘
-                   │ • Consolidate│
-                   │   & use labels│
+                   │• Consolidate│
+                   │ & use labels│
                    └─────────────┘
 ```
 
@@ -193,13 +193,13 @@ When running both Search and Performance Max in the same account, your Search ca
 
 > 💡 **PMax and Search are complementary:** Search gives you keyword-level control for queries you know. PMax finds queries you do not know. Structure Search to cover your known high-value terms, and let PMax expand beyond them.
 
-**AI Max as an additional option:** AI Max for Search campaigns adds DSA-style keywordless matching and AI-generated text customization within standard Search campaigns. If you run feed-only PMax (no creative assets), AI Max can provide the Search coverage you need without building separate DSA campaigns. However, AI Max lacks DSA's page feed controls and may expand beyond your intended focus. See [AI Max for Search Mental Model](../mental-models/AI Max for Search Mental Model.md) for when AI Max fits your structure.
+**AI Max within Search campaigns:** AI Max for Search adds final URL expansion (keywordless matching against your site) and AI-generated text customization within standard Search campaigns. If you run feed-only PMax (no creative assets), AI Max can provide the Search coverage you need within your existing keyword campaigns. Control its reach with ad-group URL inclusions, campaign URL exclusions, and page feeds, and keep text customization on. Without those controls it can expand beyond your intended focus. See [AI Max for Search Mental Model](../mental-models/AI Max for Search Mental Model.md) for when AI Max fits your structure.
 
 ---
 
 ## The Hero Keyword Pattern
 
-If you have 1-2 keywords representing **>30% of total Search spend and/or conversions**, consider a dedicated "Hero" campaign.
+Give a dedicated "Hero" campaign to any keyword representing **>30% of total Search spend or conversions**.
 
 ### Qualification Criteria
 
@@ -237,7 +237,7 @@ Each example shows the same principles applied: brand separated, campaigns split
 | Brand (Target Impression Share) | Protect brand queries, different bid strategy |
 | Hero: top keyword (tCPA €45) | >30% of conversions deserves dedicated budget |
 | Non-Brand: High Intent (tCPA €50) | Transactional keywords with proven conversion rates |
-| Non-Brand: Research (tCPA €80) + DSA ad group | Higher CPA tolerance for earlier-funnel keywords with DSA for long-tail discovery |
+| Non-Brand: Research (tCPA €80) + final URL expansion | Higher CPA tolerance for earlier-funnel keywords, with final URL expansion for long-tail discovery |
 
 ### Local Services (Multi-Location)
 
@@ -254,10 +254,10 @@ Each example shows the same principles applied: brand separated, campaigns split
 | --- | --- |
 | Brand (Target Impression Share) | Protect brand queries |
 | Hero: top keyword (tROAS 350%) | >30% of spend justifies dedicated control |
-| Category: Running (tROAS 350%) + DSA ad group | Category-specific ROAS target with DSA for long-tail discovery |
-| Category: Training (tROAS 400%) + DSA ad group | Higher margin = higher ROAS target with DSA for long-tail discovery |
+| Category: Running (tROAS 350%) + final URL expansion | Category-specific ROAS target, with final URL expansion for long-tail discovery |
+| Category: Training (tROAS 400%) + final URL expansion | Higher margin = higher ROAS target, with final URL expansion for long-tail discovery |
 
-> ↪️ For e-commerce, Search is typically complemented by Shopping/PMax. See [Shopping Campaign Type Mental Model](../mental-models/Shopping Campaign Type Mental Model.md) for Shopping vs. PMax decisions, and [PMax Structure Mental Model (Ecommerce)](<../mental-models/PMax Structure Mental Model (Ecommerce).md>) for PMax structure.
+> ↪️ For e-commerce, Shopping and PMax complement Search. See [Shopping Campaign Type Mental Model](../mental-models/Shopping Campaign Type Mental Model.md) for Shopping vs. PMax decisions, and [PMax Structure Mental Model (Ecommerce)](<../mental-models/PMax Structure Mental Model (Ecommerce).md>) for PMax structure.
 
 ---
 
@@ -268,14 +268,14 @@ Each example shows the same principles applied: brand separated, campaigns split
 | Segmenting for reporting | Creates fragmentation without control benefit | Use labels, custom columns, segments |
 | Campaign per keyword theme | Ad group's job, not campaign's | Use ad groups for themes |
 | Campaign per RSA/ad theme | Ad group's job, not campaign's | Use ad groups for messaging angles |
-| Campaign per device | Fragments data; Smart Bidding handles devices | Use device bid adjustments |
+| Campaign per device | Fragments data, and Smart Bidding already handles devices | Use device bid adjustments |
 | Campaign per audience | Fragments data unnecessarily | Use observation mode + bid adjustments |
-| Campaign per minor geo variation | Fragments without meaningful control | Use location targeting; split only for budget isolation |
+| Campaign per minor geo variation | Fragments without meaningful control | Use location targeting: split only for budget isolation |
 | Over-segmenting new accounts | Not enough data to feed multiple campaigns | Start consolidated, segment when data supports |
 | Under-segmenting brand | Brand inflates non-brand metrics | Separate brand at campaign level |
 | Mixing conversion goals | Confuses Smart Bidding optimization | One primary goal per campaign |
 | Too many campaigns with tROAS | Each needs 50+ conversions/month | Consolidate or use Portfolio Bid Strategy |
-| No catch-all/fallback | Miss long-tail opportunities | Add DSA ad groups within keyword campaigns (See: [Dynamic Search Ads Mental Model](../mental-models/Dynamic Search Ads Mental Model.md)) |
+| No catch-all/fallback | Miss long-tail opportunities | Cover the long tail with final URL expansion (See: [AI Max for Search Mental Model](../mental-models/AI Max for Search Mental Model.md)) |
 | Letting PMax steal brand | Inflates PMax metrics, lose brand control | Brand Search campaign + brand exclusions in PMax |
 
 ---
@@ -288,7 +288,7 @@ Each example shows the same principles applied: brand separated, campaigns split
 4. **Brand always separates:** Different metrics, different targets, different purpose. See [Brand Separation Reference](../references/Brand Separation Reference.md).
 5. **Hero keywords earn isolation.** >30% of spend/conversions = dedicated campaign.
 6. **Search + PMax are complementary:** Search controls known high-value queries (exact match). PMax discovers incremental queries. See [Search PMax Query Routing Reference](../references/Search PMax Query Routing Reference.md).
-7. **DSA catches what keywords miss:** Add DSA ad groups within keyword campaigns for long-tail discovery. Only create a separate DSA campaign when budget isolation or different efficiency targets are needed. (See: [Dynamic Search Ads Mental Model](../mental-models/Dynamic Search Ads Mental Model.md))
+7. **Final URL expansion catches what keywords miss:** It is a campaign-level setting, so it reaches every ad group in the campaign until you constrain it with ad-group URL inclusions, campaign URL exclusions, and page feeds, and text customization is required with it. When to turn it on belongs to the AI Max testing sequence. (See: [AI Max for Search Mental Model](../mental-models/AI Max for Search Mental Model.md) and [Final URL Expansion & Page Feed Reference](<../references/Final URL Expansion & Page Feed Reference.md>))
 
 ---
 
@@ -298,7 +298,7 @@ Each example shows the same principles applied: brand separated, campaigns split
 | --- | --- |
 | [Modern Search Campaign Mental Model](../mental-models/Modern Search Campaign Mental Model.md) | Upstream (overarching Search philosophy: consolidation, bidding-match type interaction, creative themes) |
 | [Search Ad Group Structure Mental Model](../mental-models/Search Ad Group Structure Mental Model.md) | Downstream (ad group decisions within campaigns) |
-| [Dynamic Search Ads Mental Model](../mental-models/Dynamic Search Ads Mental Model.md) | Downstream (DSA placement within campaign structure) |
+| [Final URL Expansion & Page Feed Reference](<../references/Final URL Expansion & Page Feed Reference.md>) | Reference (final URL expansion placement within campaign structure) |
 | [PMax Structure Mental Model (Ecommerce)](<../mental-models/PMax Structure Mental Model (Ecommerce).md>) | Parallel (coordinates with Search structure, Ecommerce) |
 | [PMax Structure Mental Model (Lead Gen/SaaS)](<../mental-models/PMax Structure Mental Model (Lead Gen-SaaS).md>) | Parallel (coordinates with Search structure, Lead Gen/SaaS) |
 | [Conversion Volume Thresholds Reference](../references/Conversion Volume Thresholds Reference.md) | Reference (bid strategy volume thresholds) |
@@ -308,14 +308,14 @@ Each example shows the same principles applied: brand separated, campaigns split
 | [Bid Strategy Selection Reference](../references/Bid Strategy Selection Reference.md) | Reference (bid strategy selection and requirements) |
 | [Match Type Reference](../references/Match Type Reference.md) | Reference (match type behavior and keyword selection hierarchy) |
 | [AI Max for Search Mental Model](../mental-models/AI Max for Search Mental Model.md) | Related (AI-driven automation option within Search campaigns) |
-| SOP: Build Search Campaign Structure | Execution (step-by-step campaign construction) |
+| [SOP – Build Search Campaign Structure](../sops/SOP – Build Search Campaign Structure.md) | Execution (step-by-step campaign construction) |
 
 ---
 
 ## Version details
 
-- **Version:** 6.0
-- **Last Updated:** February 2026
+- **Version:** 7.0
+- **Last Updated:** June 2026
 - **Creator:** Bob Meijer
 
 ---

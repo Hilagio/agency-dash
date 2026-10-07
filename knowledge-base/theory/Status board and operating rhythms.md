@@ -128,7 +128,7 @@ Operating without rhythm means you only look at an account when a client calls, 
 
 Rhythms flip this. Instead of waiting for the fire, you scan the weather station on a schedule. You catch drift at 5% and correct it before it compounds into a 40% problem.
 
-The math is simple. A 5% CVR drop caught in week one costs you one week of suboptimal performance. The same drop caught in week four costs you four weeks, plus all the bad decisions you made in the meantime because every downstream metric was contaminated by the drift. Rhythm does not make you faster at fixing problems. It **makes problems smaller** by the time you fix them.
+The math is simple. A 5% CVR drop caught in week one costs you one week of suboptimal performance. The same drop caught in week four costs you four weeks, plus all the bad decisions you made in the meantime because the drift contaminated every downstream metric. Rhythm does not make you faster at fixing problems. It **makes problems smaller** by the time you fix them.
 
 ### The compound effect of weekly corrections
 

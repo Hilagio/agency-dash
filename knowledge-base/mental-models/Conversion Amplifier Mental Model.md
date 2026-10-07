@@ -13,7 +13,7 @@ Pillar: 2
 
 ## Purpose
 
-This mental model gives you the complete methodology for building landing pages that convert. It provides the step-by-step framework for turning an irresistible offer into a deployed, high-converting page.
+This mental model gives you the complete methodology for building landing pages that convert. It provides the framework for turning an irresistible offer into a deployed, high-converting page.
 
 > ❓ **The core question:** How do I systematically build a landing page that turns the right visitors into leads, orders, or trials?
 
@@ -27,7 +27,7 @@ This mental model does **not:**
 
 - Provide detailed offer creation examples beyond the framework in Step 1 (Irresistible Offer Catalog planned for future release)
 - Provide copywriting formulas and examples in depth (See: [LP Section Catalog](../catalogs/LP Section Catalog.md), [LP Headline Catalog](../catalogs/LP Headline Catalog.md), [LP CTA Catalog](../catalogs/LP CTA Catalog.md))
-- Cover A/B testing methodology for landing pages (See: *Testing Mental Model* [TBD, Phase 6])
+- Cover A/B testing methodology for landing pages (See: [Testing and Experimentation Mental Model](../mental-models/Testing and Experimentation Mental Model.md))
 - Explain the page structure sections in detail (See: [LP Hierarchy Mental Model](../mental-models/LP Hierarchy Mental Model.md))
 
 ---
