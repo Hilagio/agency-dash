@@ -26,8 +26,8 @@ Without goals, you're aimless. Without the right KPIs, you can't measure progres
 This mental model does **not:**
 
 - Explain unit economics calculations (See: [Unit Economics Mental Model](../mental-models/Unit Economics Mental Model.md))
-- Provide step-by-step instructions for configuring conversion tracking (See: *Measurement Maturity Mental Model* [TBD, Phase 2])
-- Cover specific bid strategy selection (See: *Bidding Strategy Mental Model* [TBD, Phase 5])
+- Provide step-by-step instructions for configuring conversion tracking (See: [SOP – Set Up Google Ads Conversion Tracking](../sops/SOP – Set Up Google Ads Conversion Tracking.md))
+- Cover specific bid strategy selection (See: [Bidding Strategy Mental Model](../mental-models/Bidding Strategy Mental Model.md))
 - Replace stakeholder conversations: goals must be agreed upon with the business, not set by the specialist alone
 
 ---
@@ -115,7 +115,7 @@ Google Ads goals are tactical translations of business goals. They must:
 | Business goal | Google Ads translation | Key insight |
 |--------------|----------------------|-------------|
 | Increase revenue by 20% in 6 months | Increase conversion value by 20% in 6 months by growing conversions and AOV | Google Ads may need to overdeliver if other channels underperform |
-| Generate 100 closed deals/month | Generate 150 leads converting to 75 closed deals/month at 50% lead-to-sale rate through non-branded Search | Account for lead-to-sale rate in the translation |
+| Generate 100 closed deals/month | Generate 200 leads converting to 100 closed deals/month at 50% lead-to-sale rate through non-branded Search | Account for lead-to-sale rate in the translation |
 | Reduce CAC by 10% next quarter | Decrease CPA by 10% by reducing spend on generic high-volume queries and increasing CVR | Make it tactically actionable |
 | Hit blended ROAS of 500% | Achieve average ROAS of 350% in Google Ads, adjusting with other channels to hit blended target | Google Ads ROAS can be lower than blended ROAS because it's a paid channel |
 
@@ -208,7 +208,7 @@ The goal pyramid is not a one-time exercise. Goals feed execution, execution gen
 |--------|-------------------|-------------------|
 | Google Ads KPIs on track, business goals on track | Goals are valid, continue executing | No adjustment needed |
 | Google Ads KPIs on track, business goals off track | Attribution gap or channel conflict | Cross-check backend data against Google Ads (See: [SOP – Run a Monthly Performance Review](../sops/SOP – Run a Monthly Performance Review.md)) |
-| Google Ads KPIs off track, business goals on track | KPIs are too aggressive or wrong metric chosen | Recalibrate KPI targets using Step 3 |
+| Google Ads KPIs off track, business goals on track | KPIs are too aggressive or wrong metric chosen | Recalibrate KPI targets using Step 4 |
 | Both off track | Goals are unrealistic or strategy is wrong | Return to Step 1 (business goal alignment) |
 
 ### Goal validation before committing

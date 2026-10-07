@@ -205,7 +205,7 @@ When the business goal is margin protection, the model shifts toward conservativ
 
 ### When budgets are constrained
 
-When the stakeholder allocates less than the MVB, the model predicts a shortfall. The framework for navigating this:
+When the stakeholder allocates less than the MVB, you face a shortfall. The framework for navigating this:
 
 - **Tier 1 only:** limit allocation to proven performers because constrained budgets cannot afford experimentation
 - **Recalibrate goals:** the growth target must be reduced to match available budget, because the MVB formula is bidirectional
@@ -219,6 +219,7 @@ When the stakeholder allocates less than the MVB, the model predicts a shortfall
 ## Quantitative reallocation triggers
 
 Use these thresholds to identify campaigns that need budget increases, decreases, or structural changes.
+
 ### Increase candidates
 
 A campaign qualifies for a budget increase when it meets ALL criteria in a row:
@@ -230,7 +231,7 @@ A campaign qualifies for a budget increase when it meets ALL criteria in a row:
 | Conversion volume growing + budget constraint | Conversions up 20%+ MoM AND "Limited by budget" status | **High:** momentum campaign being throttled |
 | High-performing location + IS limited | Location CPA 20%+ below average AND location IS lost (budget) >10% | **Medium:** geographic pocket of opportunity |
 
-The model predicts that increases above 30% in a single adjustment disrupt Smart Bidding learning. Safe increments are 15-20%.
+Increases above 30% in a single adjustment disrupt Smart Bidding learning. Safe increments are 15-20%.
 
 ### Decrease candidates
 
@@ -244,7 +245,7 @@ A campaign qualifies for a budget decrease when it meets the criteria:
 | Declining conversion volume | Conversions down 30%+ MoM, not explained by seasonality | **Medium:** degrading campaign |
 | High IS, low efficiency | IS >80% AND CPA above target | **Medium:** dominating an unprofitable auction |
 
-The model predicts that decreases of 20-30% provide enough relief without destabilizing learning. A budget cut buys time while the underlying issue is investigated.
+Decreases of 20-30% provide enough relief without destabilizing learning. A budget cut buys time while you investigate the underlying issue.
 
 ### Shared budget conflict signals
 
@@ -253,11 +254,12 @@ When shared budgets create allocation problems, these signals indicate a structu
 | Conflict | Detection Signal | What it means |
 |----------|-----------------|---------------|
 | **Consumption imbalance** | One campaign consumes >70% of the shared budget | One campaign is starving others of budget |
+| **Loose-target leech** | The campaign with the loosest tCPA/tROAS target dominates spend | Target-based bidding spends up to the stated target, so the loosest target soaks a shared budget at the expense of tighter-target campaigns. Align targets before sharing a budget |
 | **Mixed objectives** | Campaigns on the same shared budget optimize for different conversion actions | Conflicting signals make optimization impossible |
 | **Mixed performance** | Campaign A has CPA 50%+ below target while Campaign B has CPA 50%+ above target, both on same shared budget | A high-performer is subsidizing a low-performer |
 | **Portfolio strategy conflict** | Shared budget combined with portfolio bid strategy where campaigns have different target efficiency levels | Contradictory optimization signals |
 
-The model suggests these conflicts indicate the campaigns do not belong on the same shared budget. The underlying principle: shared budgets work when campaigns share the same objective and similar efficiency levels. When those conditions are violated, individual budgets restore control.
+Each conflict says the campaigns do not belong on the same shared budget. The underlying principle: shared budgets work when campaigns share the same objective and similar efficiency levels. When either condition breaks, individual budgets restore control.
 
 ### Zero-spend active campaign signals
 

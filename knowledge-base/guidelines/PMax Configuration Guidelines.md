@@ -1,6 +1,6 @@
 # PMax Configuration Guidelines
 Created: 2026-02-04
-Updated: 2026-02-05
+Updated: 2026-10-05
 
 Support_ID: GUIDELINE_8
 Status: Done
@@ -19,12 +19,19 @@ PMax has many settings that affect performance. This guideline covers which sett
 
 ---
 
-## What this is NOT
+## What this is / What this is NOT
+
+**This guideline:**
+
+- Sets the recommended state for each PMax campaign setting, per vertical
+- States the exception conditions that change each default
+- Defines the asset minimums an asset group launches with
+- Separates Feed-Only configuration from Full Assets configuration
 
 This guideline does **not:**
 
 - Explain PMax structure decisions (See: [PMax Structure Mental Model (Lead Gen/SaaS)](<../mental-models/PMax Structure Mental Model (Lead Gen-SaaS).md>) or [PMax Structure Mental Model (Ecommerce)](<../mental-models/PMax Structure Mental Model (Ecommerce).md>))
-- Provide step-by-step setup (See relevant SOPs)
+- Provide step-by-step setup (See: [SOP – Launch PMax for Lead Gen/SaaS](<../sops/SOP – Launch PMax for Lead Gen-SaaS.md>), [SOP – Launch PMax Feed-Only Campaign](../sops/SOP – Launch PMax Feed-Only Campaign.md), [SOP – Launch PMax Full Assets Ecommerce Campaign](../sops/SOP – Launch PMax Full Assets Ecommerce Campaign.md))
 - List all available settings (See: [Shopping Campaign Settings Reference](../references/Shopping Campaign Settings Reference.md) for Ecommerce)
 - Explain audience signal types (See: [Audience Signals Reference](../references/Audience Signals Reference.md))
 
@@ -34,11 +41,12 @@ This guideline does **not:**
 
 | **Setting** | **Recommended** | **Why** |
 |-------------|-----------------|---------|
-| Final URL expansion | OFF (usually) | Control landing page destination |
+| Final URL expansion | OFF by default | Control landing page destination |
 | Brand exclusions | ON | Prevent brand cannibalization |
-| Customer acquisition | Consider | Optimize bidding for new customers |
+| Network selection (SPN + Display) | Leave ON, monitor | Full inventory to optimize across: exclude only on wild underperformance |
+| Customer acquisition | Recommended | Optimize bidding for new customers |
 | Audience signals | Add | Improve targeting efficiency |
-| Data exclusions | Consider | Control remarketing mix |
+| Audience exclusions | Conditional | Control remarketing mix, on the conditions in Audience exclusions |
 
 ---
 
@@ -98,6 +106,8 @@ If enabling Final URL expansion, use exclusion rules to prevent unwanted pages:
 | Career pages | `/careers/*` |
 | Policy pages | `/privacy`, `/terms` |
 
+> 💡 **Turning Final URL expansion off is what stops the campaign using unexpected URLs.** Text customization also generates image assets sourced from your landing pages, so Text customization and Landing page images both stay off to prevent unwanted auto-generated text and image assets. Setting changes take 24-48 hours to fully reflect.
+
 ---
 
 ## Brand exclusions
@@ -111,19 +121,16 @@ Brand exclusions prevent PMax from capturing your cheap brand traffic, which:
 
 ### Configuration
 
-| **Step** | **Action** |
-|----------|------------|
-| 1 | Go to Settings > Other settings > Brand exclusions |
-| 2 | Click "Add brand lists" |
-| 3 | Add your brand name(s) |
-| 4 | Add brand misspellings if common |
+**Where to configure:** Settings > Other settings > Brand exclusions
+
+The brand list carries your brand name or names, plus every common misspelling of them.
 
 ### What to exclude
 
 | **Include** | **Example** |
 |-------------|-------------|
 | Primary brand name | "PPC Mastery" |
-| Full company name | "PPC Mastery B.V". |
+| Full company name | "PPC Mastery B.V." |
 | Product names (if branded) | "Scaling OS" |
 | Common misspellings | "ppcmastery" |
 
@@ -135,11 +142,30 @@ PMax brand exclusions match exact brand names but do not catch variations:
 |----------------|------------|----------------|
 | Misspellings not caught | Brand queries with typos serve in non-brand PMax | Add common misspellings to negative keyword lists |
 | Abbreviations not caught | Shortened brand names bypass exclusions | Add abbreviations to negative keyword lists |
-| Word order variations | Different word arrangements may bypass filters | Build comprehensive negative keyword lists |
+| Word order variations | Different word arrangements bypass filters | Build comprehensive negative keyword lists |
 
 **Recommendation:** Treat brand exclusions as the first layer of defense. Use negative keyword lists as your primary mechanism for strict brand/non-brand separation.
 
 > ↪️ **For complete brand separation:** See [Brand Separation Reference](../references/Brand Separation Reference.md).
+
+---
+
+## Network settings
+
+PMax serves across all Google surfaces. Two of them, the Search Partner Network and the Google Display Network, are selectable at the campaign level: both are on by default and can be excluded.
+
+### Recommendation
+
+| **Network** | **Setting** | **Why** |
+|-------------|-------------|---------|
+| Search Partner Network | Leave on, monitor | Gives PMax full search inventory to optimize across |
+| Display Network | Leave on, monitor | Gives PMax full display inventory to optimize across |
+
+Leave both on so the campaign has the full inventory to find conversions, then watch the channel split in reporting. Exclude a single network only when its performance is wildly out of line (high spend, near-zero conversions, unacceptable CPA/ROAS) and stays that way.
+
+> ⚠️ **Do not disable networks pre-emptively:** Excluding Display or Search Partners narrows where PMax can convert. Use it as a targeted fix for a wildly underperforming network, not a default setup step.
+
+> ↪️ **For network selection across all campaign types:** See [Network Selection Reference](../references/Network Selection Reference.md).
 
 ---
 
@@ -161,14 +187,14 @@ Configure account-level customer lifecycle settings first:
 | **High value customer value** | Adds additional value for high-value new customers |
 | **Customer audience segments** | Defines who counts as an existing customer |
 
-**Where to configure:** Tools & Settings > Conversions > Customer lifecycle goals
+**Where to configure:** Goals > Summary > Customer lifecycle optimization
 
 ### Campaign-level settings
 
 | **Setting** | **Effect** |
 |-------------|------------|
 | **Off** | No bid optimization for new customers (tracking still works if enabled) |
-| **Bid more for new customers** | Higher bids for users not in your customer list |
+| **Bid higher for new customers** | Higher bids for users not in your customer list |
 | **Only bid for new customers** | Excludes returning customers from bidding entirely |
 
 **Where to configure:** Campaign settings > Customer acquisition
@@ -178,7 +204,7 @@ Configure account-level customer lifecycle settings first:
 | **Goal** | **Campaign setting** |
 |----------|---------------------|
 | Track customer mix only | Off (enable new customer data feature for tracking) |
-| Growth with balanced remarketing | Bid more for new customers |
+| Growth with balanced remarketing | Bid higher for new customers |
 | Pure acquisition (no remarketing) | Only bid for new customers |
 
 > ⚠️ **Start with "Bid more" not "Only bid":** Excluding returning customers entirely removes remarketing conversions, which may hurt overall performance.
@@ -187,11 +213,11 @@ Configure account-level customer lifecycle settings first:
 
 ---
 
-## Data exclusions (Your data)
+## Audience exclusions (Your data)
 
 ### What it does
 
-Data exclusions prevent PMax from optimizing toward specific audiences. Unlike audience signals (suggestions), exclusions are hard restrictions.
+Audience segment exclusions stop PMax from serving to the excluded users. Unlike audience signals, which are suggestions, exclusions are hard delivery restrictions.
 
 ### Common exclusion patterns
 
@@ -212,11 +238,9 @@ Data exclusions prevent PMax from optimizing toward specific audiences. Unlike a
 
 ### Configuration
 
-1. Campaign settings → Other settings → **Your data exclusions**
-2. Click to exclude audiences
-3. Select audiences to exclude
+**Where to configure:** Campaign settings > Other settings > Your data exclusions
 
-> ⚠️ **Don't exclude during learning period:** Let PMax learn first, then add exclusions if needed.
+> ⚠️ **Don't exclude during the learning period:** Let PMax learn first, then add exclusions on the conditions above.
 
 ---
 
@@ -234,7 +258,7 @@ Data exclusions prevent PMax from optimizing toward specific audiences. Unlike a
 | Custom segments (competitors) | Add 5-10 URLs | Medium |
 | Custom segments (search terms) | Add 10-15 terms | Medium |
 | In-market audiences | Add 3-5 relevant | Lower |
-| Demographics | Usually skip | Lowest |
+| Demographics | Skip | Lowest |
 
 ### Signal quantity
 
@@ -265,6 +289,8 @@ Data exclusions prevent PMax from optimizing toward specific audiences. Unlike a
 | Logos | 1 | 1-2 |
 | Videos | 0 | 1+ |
 
+Each asset group accepts up to 15 videos per orientation (horizontal, square, and vertical: minimum 1, maximum 15 each).
+
 ### Asset quality recommendations
 
 | **Recommendation** | **Why** |
@@ -273,6 +299,12 @@ Data exclusions prevent PMax from optimizing toward specific audiences. Unlike a
 | Diversify headlines | Different angles = different audiences |
 | Use high-quality images | Poor images hurt all placements |
 | Update assets quarterly | Prevents creative fatigue |
+
+### Ad Strength
+
+> ⚠️ **Ignore the Ad Strength score.** It is a completeness rating, not a performance signal. Fill asset slots for serving eligibility with your own assets, and judge creative by asset-level performance data.
+
+> ⚠️ **AI-content disclosure labels.** AI regulations in the European Union, India, and New York require disclosures or labels on ads with certain AI-generated or AI-edited assets. Google Ads provides an AI label setting for this. If your image or video assets are AI-generated or AI-edited, account for these labels. Google's own automatically enhanced images sit inside the same disclosure scope, so a campaign running image enhancement is in scope even when every asset you uploaded is your own. Keep labels clear of the very corners and edges of a creative: Google gives no guarantee that a label survives cropping or trimming. Using the label setting does not by itself guarantee compliance.
 
 > ↪️ **For asset specifications:** See [PMax Asset Group Strategy Reference](../references/PMax Asset Group Strategy Reference.md).
 
@@ -300,10 +332,12 @@ Data exclusions prevent PMax from optimizing toward specific audiences. Unlike a
 
 | **Approach** | **Attribute** | **When** |
 |--------------|---------------|----------|
-| All products | — | Starting point |
+| All products | None | Starting point |
 | By product type | product_type | Category-specific targets |
 | By custom label | custom_label_0-4 | Performance segmentation |
 | By brand | brand | Brand-specific budgets |
+
+> 💡 **Depth ceiling:** Google Ads allows 20,000 listing groups. Segmentation depth is bounded by conversion volume per group long before it is bounded by this ceiling.
 
 > ↪️ **For Feed-Only setup:** See [SOP – Launch PMax Feed-Only Campaign](../sops/SOP – Launch PMax Feed-Only Campaign.md).
 
@@ -317,18 +351,23 @@ PMax includes several asset optimization features that can enhance or modify you
 
 | **Setting** | **What it does** | **Recommendation** |
 |-------------|------------------|-------------------|
-| **Text customization** | AI-generated headlines/descriptions from site, landing pages, and ads | OFF (default) or Test with text guidelines configured |
+| **Text customization** | AI-generated headlines/descriptions from site, landing pages, and ads | OFF (default). Turn on only when the configuration requires it (Final URL expansion) or reach is deliberately chosen, with text guidelines configured before launch |
 | **Final URL expansion** | Google selects landing pages from your site (requires Text customization ON) | OFF for most campaigns |
-| **Image enhancement** | Google enhances or adds images from landing page | OFF (control your creative) |
-| **Video enhancement** | Google auto-generates video from images | OFF (auto-generated underperforms) |
+| **Image enhancement** | Google resizes images, adds or removes text and logos, and adds subtle motion | OFF (control your creative) |
+| **Landing page images** | Google pulls images from your website into your ads | OFF (control your creative) |
+| **Video enhancement** | Google resizes and shortens uploaded videos and adds voice-overs | OFF (control your creative) |
 
 **Where to configure:** Campaign settings > Asset optimization
 
-Text guidelines (term exclusions and messaging restrictions) are available when Text Customization is enabled. Configure these first to prevent off-brand messaging. Visual guidelines (brand colors, fonts) apply to image and video enhancement.
+Text guidelines are available when Text customization is enabled. A campaign with Text customization on and no text guidelines is not launch-ready: configure them before launch, every time. Visual guidelines apply to image and video enhancement. The limits and the full control list live in [Asset Optimization Control Guidelines](../guidelines/Asset Optimization Control Guidelines.md).
+
+> ⚠️ **Text customization reads the ads you already wrote.** It sources from your site, your landing pages, and the ads currently running in the campaign. Your own copy becomes raw material for variants you did not write and cannot review before they serve. Treat that as a reason to leave the setting off rather than a reassurance: the better your ad copy, the better the seed for headlines Google writes in your name.
+
+> ⚠️ **AI enrichment happens by default, beyond these toggles.** For campaigns with a Merchant Center feed, Google may use content from your landing page, images, feed, and other signals, including content created by Google AI, to enrich your ads. Opting out is only possible via a support request to your account manager or Google support, processed in 3-5 business days. Know that this default exists: use the assets labeled as created by Google AI in the asset reports as the audit trail for what enrichment wrote, and steer the output with text guidelines.
 
 > ↪️ **For detailed asset optimization guidance:** See [Asset Optimization Control Guidelines](../guidelines/Asset Optimization Control Guidelines.md).
 
-> 💡 **For Feed-Only:** Keep all asset optimization settings OFF. Your feed is your creative.
+> 💡 **For Feed-Only:** Keep all asset optimization settings OFF. Your feed is your creative. The AI enrichment default above still applies to feed-based ads, so review the asset reports for Google AI content even on Feed-Only campaigns.
 
 ---
 
@@ -357,9 +396,9 @@ Value rules allow you to adjust conversion values based on customer attributes.
 
 > ⚠️ **Only one rule executes per conversion:** If multiple rules match, only the highest-priority rule applies.
 
-> ⚠️ **We do not recommend using Value rules in most cases:** Value rules add complexity and can interfere with bid strategy learning. Use them only when you have clear, validated reasons for adjusting values by segment.
+> ⚠️ **Value rules stay OFF by default:** Value rules add complexity and interfere with bid strategy learning. Use them only when you have a validated, business-specific reason for adjusting values by segment. See [Bidding Configuration Guidelines](../guidelines/Bidding Configuration Guidelines.md).
 
-**Where to configure:** Tools & Settings > Conversions > Value rules
+**Where to configure:** Goals > Conversions > Value rules
 
 ---
 
@@ -394,7 +433,9 @@ Page feeds let you provide specific URLs for Google to use with Final URL expans
 |-------------|-------------------|
 | Languages | All languages your audience speaks |
 
-> 💡 **Use "Presence" for most campaigns.** "Presence or interest" can show ads to users not in your target location.
+The language setting applies to the YouTube, Display, Discover and Gmail portions of the campaign. It does not apply to the Search portion, where matching runs on the language of the ad creative and the landing page instead. Write creative and landing pages in the language you intend to reach: on the Search side that is the only language control you hold.
+
+> 💡 **Use "Presence".** "Presence or interest" shows ads to users who are not in your target location.
 
 ---
 
@@ -418,7 +459,7 @@ Page feeds let you provide specific URLs for Google to use with Final URL expans
 
 > 💡 **Brand exclusions are easier than negative keywords for brand protection:** Use the dedicated brand exclusion feature.
 
-> 💡 **You can also exclude irrelevant queries by reviewing the default search term report:** PMax now provides full search term visibility, allowing you to add negatives based on actual query data.
+> 💡 **The search term report is the other source of negatives:** PMax provides full search term visibility, so negatives come from actual query data.
 
 ---
 
@@ -431,7 +472,7 @@ Page feeds let you provide specific URLs for Google to use with Final URL expans
 | Default | Run 24/7 |
 | Custom schedule | Only if data shows clear patterns |
 
-> 💡 **Don't pre-optimize:** Let PMax learn when conversions happen, then consider schedules if data warrants.
+> 💡 **Don't pre-optimize:** Let PMax learn when conversions happen, then add a custom schedule only when the data shows a clear pattern.
 
 ### Budget recommendations
 
@@ -452,10 +493,11 @@ Page feeds let you provide specific URLs for Google to use with Final URL expans
 |-------------|-------------------|------------------------|--------------------------|
 | Final URL expansion | OFF or Test | OFF | Test |
 | Brand exclusions | Required | Required | Required |
+| Network selection (SPN + Display) | Leave on, monitor | Leave on, monitor | Leave on, monitor |
 | Customer acquisition | Recommended | Recommended | Recommended |
-| Data exclusions | Consider | Consider | Consider |
+| Audience exclusions | Consider | Consider | Consider |
 | Audience signals | Required | Not needed | Recommended |
-| Text customization | OFF or Test (with text guidelines) | OFF | OFF or Test (with text guidelines) |
+| Text customization | OFF or Test (text guidelines mandatory before launch) | OFF | OFF or Test (text guidelines mandatory before launch) |
 | Headlines | 5-11 | None | 5-11 |
 | Descriptions | 4 | None | 4 |
 | Video | 1+ (required) | None | 1+ (required) |
@@ -475,13 +517,15 @@ Page feeds let you provide specific URLs for Google to use with Final URL expans
 | [PMax Asset Group Strategy Reference](../references/PMax Asset Group Strategy Reference.md) | Asset specifications |
 | [Customer Lifecycle Optimization Reference](../references/Customer Lifecycle Optimization Reference.md) | Customer acquisition settings |
 | [Shopping Campaign Settings Reference](../references/Shopping Campaign Settings Reference.md) | Ecommerce settings |
+| [Asset Optimization Control Guidelines](../guidelines/Asset Optimization Control Guidelines.md) | Owns the asset optimization and text guideline limits |
+| [Bidding Configuration Guidelines](../guidelines/Bidding Configuration Guidelines.md) | Owns the conversion value rules stance |
 
 ---
 
 ## Version details
 
-- **Version:** 3.0
-- **Last Updated:** March 2026
+- **Version:** 7.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

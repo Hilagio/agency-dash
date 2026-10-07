@@ -68,7 +68,7 @@ RSA asset automation, auto-created assets, and automatically applied recommendat
 
 ### 4️⃣ Campaign structure
 
-Performance Max replaces manual campaign structure for many use cases. It consolidates Search, Shopping, Display, YouTube, and Discovery into a single campaign and lets the algorithm allocate across channels.
+Performance Max replaces manual campaign structure for many use cases. It consolidates Search, Shopping, Display, YouTube, and Discover into a single campaign and lets the algorithm allocate across channels.
 
 ### 5️⃣ Audiences
 

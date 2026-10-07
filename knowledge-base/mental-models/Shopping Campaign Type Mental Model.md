@@ -134,7 +134,7 @@ Reassess your campaign type when any of these triggers occur:
 | --- | --- | --- | --- |
 | Conversion volume exceeds 50/month consistently | Standard Shopping | PMax Feed-Only | Enough data for automated bidding to outperform manual |
 | Need cross-channel reach (YouTube, Display, Gmail) | Standard Shopping or PMax Feed-Only | PMax Full Assets | Product awareness beyond Shopping surface |
-| Losing control over search terms or placements | PMax (any) | Standard Shopping | PMax now supports negative keywords and negative keyword lists, but Standard Shopping still offers more granular control through campaign priorities and query sculpting |
+| Losing control over search terms or placements | PMax (any) | Standard Shopping | PMax supports negative keywords and negative keyword lists, but Standard Shopping offers more granular control through campaign priorities and query sculpting |
 | Creative assets now available (images, video) | PMax Feed-Only | PMax Full Assets | Can leverage all Google surfaces |
 | Performance declining with automation | PMax Feed-Only | Standard Shopping | Manual control may recover performance |
 | Budget constraints require precision | PMax (any) | Standard Shopping | Manual CPC and priorities give tighter control |
@@ -146,7 +146,7 @@ Reassess your campaign type when any of these triggers occur:
 
 ## Running both together (Hybrid approaches)
 
-As of Q4 2024, **Ad Rank determines auction priority**: PMax no longer automatically wins over Standard Shopping.
+**Ad Rank determines auction priority**: PMax does not automatically win over Standard Shopping.
 
 | **Hybrid approach** | **How it works** | **Best for** |
 | --- | --- | --- |
@@ -196,7 +196,7 @@ Standard Shopping works at any volume with Manual CPC. PMax requires 30+ convers
 | --- | --- | --- | --- |
 | **Bid control** | High (manual or portfolio) | Low (automated only) | Low (automated only) |
 | **Placement control** | Full (Shopping only) | Limited (mostly Shopping) | None (all surfaces) |
-| **Search term visibility** | Full | Full (now in standard report) | Full (now in standard report) |
+| **Search term visibility** | Full | Full | Full |
 | **Negative keyword support** | Full | Full | Full |
 | **Campaign priorities** | Yes (High/Medium/Low) | No | No |
 | **Manual CPC available** | Yes | No | No |

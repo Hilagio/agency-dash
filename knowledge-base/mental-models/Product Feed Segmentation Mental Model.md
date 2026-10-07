@@ -193,9 +193,9 @@ Combines multiple variables into a single weighted score.
 
 | **Score** | **Priority** | **Budget treatment** |
 | --- | --- | --- |
-| 7-10 | High | Highest allocation |
-| 5-7 | Medium | Standard allocation |
-| <5 | Low | Restricted allocation |
+| 7 and above | High | Highest allocation |
+| 5 to under 7 | Medium | Standard allocation |
+| Under 5 | Low | Restricted allocation |
 
 > 💡 **Advanced tactic:** Only use when you have reliable data across multiple dimensions. Garbage in = garbage out.
 

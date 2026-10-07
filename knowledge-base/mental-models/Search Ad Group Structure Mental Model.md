@@ -46,7 +46,7 @@ Understanding what belongs where prevents structural mistakes:
 | **Bid strategy** | ✅ tCPA, tROAS, etc. | ❌ Inherited |
 | **Efficiency targets** | ✅ CPA/ROAS targets | ❌ Inherited (but can be overruled) |
 | **Conversion goals** | ✅ Which actions to optimize | ❌ Inherited |
-| **Location/Language** | ✅ Geographic targeting | ❌ Inherited |
+| **Location** | ✅ Geographic targeting | ❌ Inherited |
 | **Ad scheduling** | ✅ Days/hours | ❌ Inherited |
 | **Keywords** | ❌ | ✅ Keywords live here |
 | **Ad copy (RSAs)** | ❌ | ✅ RSAs live here |
@@ -68,7 +68,7 @@ Understanding what belongs where prevents structural mistakes:
 
 **Why ad groups favor consolidation more than you think:**
 
-- RSAs with **7-8 headlines** can cover multiple angles without data poverty (See: SOP — [SOP – RSA Testing with The Iteration Loop](../sops/SOP – RSA Testing with The Iteration Loop.md) for the combinatorics)
+- RSAs with **7-8 headlines** can cover multiple angles without data poverty (See: [SOP – RSA Testing with The Iteration Loop](../sops/SOP – RSA Testing with The Iteration Loop.md) for the combinatorics)
 - **Dynamic Keyword Insertion** adapts H1 to the search query
 - **Keyword-level Final URLs** let you route to different pages without splitting
 - **Ad Customizers** let you vary messaging per keyword within one RSA
@@ -130,7 +130,7 @@ When the Single Ad Test fails, diagnose *what kind* of divergence you're seeing:
 | --- | --- | --- | --- |
 | **Funnel stage** | Informational vs. commercial vs. transactional | ✅ Always | Completely different ad messaging required |
 | **Audience segment** | SMB vs. Enterprise, B2B vs. B2C | ✅ Yes | Different pain points, proof points, CTAs |
-| **Problem / use case** | "CRM for sales" vs. "CRM for support" | ⚠️ Often | May need different value props; evaluate volume |
+| **Problem / use case** | "CRM for sales" vs. "CRM for support" | ⚠️ Often | May need different value props: evaluate volume |
 | **Product / service type** | "CRM" vs. "project management" | ✅ Always | Different products = different ad groups |
 | **Feature / attribute** | "CRM with email" vs. "CRM with reporting" | ⚠️ If high volume | Can often handle with multiple headlines |
 | **Commercial modifier** | "CRM" vs. "best CRM" vs. "CRM reviews" | ❌ No | Same intent, different query phrasing |
@@ -196,7 +196,7 @@ Split ad groups when:
 | **Situation** | **Why splitting is correct** |
 | --- | --- |
 | **Funnel stage differs** | "What is X" needs educational ad, "buy X" needs transactional ad |
-| **Audience segment differs** | SMB needs "affordable, easy" messaging; Enterprise needs "scalable, secure" |
+| **Audience segment differs** | SMB needs "affordable, easy" messaging. Enterprise needs "scalable, secure" |
 | **Landing page intent differs** | Keywords need fundamentally different page types (blog vs. product page) |
 | **Ad copy cannot be reconciled** | No single RSA can serve both keyword sets without being generic |
 | **Quality Score is suffering** | Ad Relevance = Below Average despite good keywords |
@@ -267,7 +267,7 @@ Each example shows the Single Ad Test in action: ad groups split only when one R
 | **Mixing funnel stages** | Can't write relevant ad for both | Split by funnel stage |
 | **Mixing audiences** | SMB and Enterprise need different messaging | Split by audience |
 | **Duplicating keywords across AGs** | Internal competition, wasted budget | One home per keyword |
-| **No catch-all / DSA** | Miss long-tail opportunities | Use DSA ad group for discovery |
+| **No catch-all / final URL expansion** | Miss long-tail opportunities | Use a keywordless ad group or a final URL expansion configuration (See: [AI Max Keywordless Configuration Catalog](../catalogs/AI Max Keywordless Configuration Catalog.md)) |
 
 ---
 
@@ -332,8 +332,8 @@ See: [SOP – RSA Testing with The Iteration Loop](../sops/SOP – RSA Testing w
 
 ## Version details
 
-- **Version:** 4.0
-- **Last Updated:** February 2026
+- **Version:** 5.0
+- **Last Updated:** June 2026
 - **Creator:** Bob Meijer
 
 ---

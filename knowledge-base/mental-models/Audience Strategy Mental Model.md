@@ -24,7 +24,7 @@ Google Ads has two fundamentally different audience systems. Using the wrong men
 
 This mental model does **not:**
 
-- List all available audience segment types or their specs (See: [Audience Signals Reference](../references/Audience Signals Reference.md) for PMax, [Audience Targeting Reference](../references/Audience Targeting Reference.md) for Display/Video/Demand Gen)
+- List all available audience segment types or their specs (See: [Audience Signals Reference](../references/Audience Signals Reference.md) for PMax, [Audience Targeting Reference](../references/Audience Targeting Reference.md) for Video/Demand Gen)
 - Provide step-by-step audience setup for any campaign type (See: campaign-specific SOPs)
 - Explain how to match messaging to audience awareness stage (See: [Awareness Stage Mental Model](../mental-models/Awareness Stage Mental Model.md))
 - Cover Upper Funnel campaign structure decisions (See: [Upper Funnel Campaign Structure Mental Model](../mental-models/Upper Funnel Campaign Structure Mental Model.md))
@@ -36,9 +36,9 @@ This mental model does **not:**
 | **System** | **Campaign types** | **Your role** | **Google's role** |
 | --- | --- | --- | --- |
 | **1️⃣ Signals** | Performance Max | Provide hints | Decides who sees ads |
-| **2️⃣ Targeting** | Display, Video, Demand Gen | Define audience | Delivers to your selections |
+| **2️⃣ Targeting** | Video, Demand Gen | Define audience | Delivers to your selections |
 
-> ⚠️ **This distinction is non-negotiable:** PMax inputs function as signals (hints to AI). Display/Video/Demand Gen inputs function as targeting (constraints on delivery). Treating one like the other causes the wrong expectations.
+> ⚠️ **This distinction is non-negotiable:** PMax inputs function as signals (hints to AI). Video/Demand Gen inputs function as targeting (constraints on delivery). Treating one like the other causes the wrong expectations.
 
 ---
 
@@ -86,7 +86,7 @@ In PMax, exclusions are the ONE element that works like traditional targeting. E
 
 ---
 
-## System 2️⃣: Targeting (Display, Video, Demand Gen)
+## System 2️⃣: Targeting (Video, Demand Gen)
 
 ### What targeting actually does
 
@@ -103,7 +103,7 @@ Exclusions                   →       Removes users from eligibility
 
 | **This is true** | **This is also true** |
 | --- | --- |
-| Your selections control who sees ads | Optimized targeting can expand (if enabled) |
+| Your selections control who sees ads | Optimized targeting can expand delivery on Demand Gen (if enabled) |
 | You can A/B test specific segments | You must balance reach vs. precision |
 | Exclusions remove users completely | Targeting mode affects bid behavior |
 
@@ -154,7 +154,7 @@ Regardless of system (signals or targeting), audiences have "temperature": a pro
 | **System** | **Hot audiences** | **Cold audiences** |
 | --- | --- | --- |
 | **Signals (PMax)** | Accelerate learning, may improve initial performance | Slower learning, AI discovers on its own |
-| **Targeting (Display/Video/DG)** | Highest efficiency, lowest reach | Lowest efficiency, maximum reach |
+| **Targeting (Video/DG)** | Highest efficiency, lowest reach | Lowest efficiency, maximum reach |
 
 ---
 
@@ -191,17 +191,16 @@ Regardless of system (signals or targeting), audiences have "temperature": a pro
 | **Campaign type** | **System** | **Lookalikes?** | **Content targeting?** | **Primary scaling lever** |
 | --- | --- | --- | --- | --- |
 | **Performance Max** | Signals | No | No | Signal quality + exclusions |
-| **Display** | Targeting | No | Yes | Segment expansion + content |
 | **Video** | Targeting | No | Yes | Segment expansion + content |
-| **Demand Gen** | Targeting | Yes (exclusive) | No | Lookalike expansion |
+| **Demand Gen** | Targeting | Yes (exclusive) | Yes (secondary layer) | Lookalike expansion |
 
 ---
 
 ### Demand Gen's unique position
 
-Demand Gen sits between Display/Video and PMax:
+Demand Gen sits between Video and PMax:
 
-| **Like Display/Video** | **Like PMax** |
+| **Like Video** | **Like PMax** |
 | --- | --- |
 | True targeting (you control who sees ads) | No content targeting |
 | Named audiences | Optimized targeting option |
@@ -221,12 +220,12 @@ Audience insights close the gap between "who I think converts" and "who actually
 CHECK INSIGHTS → FIND HIGH-INDEX SEGMENTS → ADD TO TARGETING → MEASURE → REPEAT
 ```
 
-| **Step** | **Action** | **Tool** |
+| **Stage** | **What it answers** | **Where the evidence lives** |
 | --- | --- | --- |
-| 1. Check insights | Review which audience segments drive conversions | Google Ads > Insights page > Audience insight cards |
-| 2. Identify opportunities | Find high-index segments (3x+ overrepresented) you are NOT currently targeting | Persona insights table |
-| 3. Add to targeting | Add discovered segments as targeting or in combined segments | Campaign / Ad group settings |
-| 4. Measure impact | Evaluate new segment performance after 30 days | Standard segment-level reporting |
+| Check insights | Which audience segments drive conversions | Audience insight cards |
+| Identify opportunities | Which high-index segments (3x+ overrepresented) you are NOT currently targeting | Persona insights table |
+| Add to targeting | Whether the segment is worth a targeting slot or a combined segment | The segment's own definition |
+| Measure impact | Whether the segment earns its place after 30 days | Standard segment-level reporting |
 
 > 💡 **Audience insights inform expansion phases:** When deciding which cold audiences to test next, check audience insights first. High-index untargeted segments are lower-risk expansion candidates because they already drive conversions through other channels.
 
@@ -261,8 +260,7 @@ Hot audiences = direct ROAS. Cold audiences = assisted conversions, brand lift.
 | [Audience Segments Reference](../references/Audience Segments Reference.md) | Segment mechanics, matching behavior, intent temperature |
 | [Audience Segment Catalog](../catalogs/Audience Segment Catalog.md) | Segment configurations and combined segment patterns |
 | [SOP – Set Up Audience Signals](../sops/SOP – Set Up Audience Signals.md) | PMax audience signal configuration |
-| [SOP – Set Up Audience Targeting](../sops/SOP – Set Up Audience Targeting.md) | Display, Video, Demand Gen audience targeting execution |
-| [SOP – Launch a Display Campaign](../sops/SOP – Launch a Display Campaign.md) | Display campaign setup |
+| [SOP – Set Up Audience Targeting](../sops/SOP – Set Up Audience Targeting.md) | Video and Demand Gen audience targeting execution |
 | [SOP – Launch a Video Campaign](../sops/SOP – Launch a Video Campaign.md) | Video campaign setup |
 | [SOP – Launch a Demand Gen Campaign](../sops/SOP – Launch a Demand Gen Campaign.md) | Demand Gen campaign setup |
 
@@ -270,8 +268,8 @@ Hot audiences = direct ROAS. Cold audiences = assisted conversions, brand lift.
 
 ## Version details
 
-- **Version:** 4.0
-- **Last Updated:** April 2026
+- **Version:** 5.0
+- **Last Updated:** June 2026
 - **Creator:** Bob Meijer
 
 ---

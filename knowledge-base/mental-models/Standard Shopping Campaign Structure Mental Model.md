@@ -1,5 +1,6 @@
 # Standard Shopping Campaign Structure Mental Model
 Created: 2026-02-04
+Updated: 2026-08-27
 
 Support_ID: MENTALMODEL_7
 Status: Done
@@ -102,6 +103,7 @@ Standard Shopping supports Manual CPC and portfolio bid strategies with Max CPC 
 | **Granularity** | Set different bids per product group (by brand, category, product type, custom label, item ID) |
 | **When to use** | New accounts (no conversion history), low volume accounts, when you need precise bid control |
 | **When to move away** | When you have 50+ conversions/month and want to use tROAS |
+| **Depth ceiling** | 20,000 product groups. Segmentation depth is bounded by conversion volume per group long before it is bounded by this ceiling |
 
 > ↪️ **For volume thresholds to transition from Manual CPC to Smart Bidding:** See [Conversion Volume Thresholds Reference](../references/Conversion Volume Thresholds Reference.md).
 
@@ -149,8 +151,8 @@ Standard Shopping supports Manual CPC and portfolio bid strategies with Max CPC 
 
 ## Version details
 
-- **Version:** 7.0
-- **Last Updated:** February 2026
+- **Version:** 8.0
+- **Last Updated:** August 2026
 - **Creator:** Bob Meijer
 
 ---

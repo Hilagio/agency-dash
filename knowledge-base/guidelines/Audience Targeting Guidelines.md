@@ -12,7 +12,7 @@ Pillar: 7
 
 ## Purpose
 
-Recommends audience targeting configuration for Display, Video, and Demand Gen campaigns: when to enable or disable expansion features, how to use targeting vs observation mode, demographic optimization patterns, and content targeting layering decisions.
+Recommends audience targeting configuration for Video and Demand Gen campaigns: when to enable or disable expansion features, how to use targeting vs observation mode, demographic optimization patterns, and content targeting layering decisions.
 
 ---
 
@@ -39,12 +39,7 @@ Recommends audience targeting configuration for Display, Video, and Demand Gen c
 
 | Campaign type | Goal | Feature | Recommended setting | Rationale |
 |--------------|------|---------|-------------------|-----------|
-| Display | Conversions (remarketing) | Optimized targeting | **OFF** | Remarketing audiences are curated. Expansion dilutes control. |
-| Display | Conversions (prospecting) | Optimized targeting | **ON** | Google's conversion data finds additional converters beyond your selections. |
-| Display | Testing specific segments | Optimized targeting | **OFF** | Clean performance data requires no audience expansion. |
-| Video | Sales/Leads/Traffic (remarketing) | Optimized targeting | **OFF** | Same as Display remarketing. |
-| Video | Sales/Leads/Traffic (prospecting) | Optimized targeting | **ON** | Same as Display prospecting. |
-| Video | Consideration/Awareness | Audience expansion | **ON** | Broader reach is the goal for awareness campaigns. |
+| Video | Reach and views goals | Audience expansion | **ON** | Broader reach is the goal for these campaigns. |
 | Demand Gen | Remarketing | Optimized targeting | **OFF** | Remarketing needs audience restriction. |
 | Demand Gen | Prospecting | Optimized targeting | **Test ON vs OFF** | Measure expansion CPA before committing. Run 14+ days with ON, compare to OFF. |
 
@@ -54,20 +49,20 @@ Recommends audience targeting configuration for Display, Video, and Demand Gen c
 |---------------|-------------|
 | Expansion OFF for remarketing | Remarketing audiences are too small (<1,000 users) and campaigns cannot serve. Enable temporarily while building audience volume. |
 | Expansion ON for prospecting | You need clean segment-level data to evaluate which audiences work. Turn OFF during initial 30-day testing phase. |
-| Expansion ON for Video awareness | Budget is limited and you need controlled reach. Turn OFF and use specific placements instead. |
+| Expansion ON for Video reach and views | Budget is limited and you need controlled reach. Turn OFF and use specific placements instead. |
 
 ### Measuring expansion impact
 
-Check the expansion/optimized targeting breakdown regularly to validate these settings. Navigate to Audiences, keywords, and content > Audiences > "Total: Expansion and optimized targeting" row.
+Validate these settings against the expansion and optimized targeting breakdown, reported under Audiences, keywords, and content > Audiences as the "Total: Expansion and optimized targeting" row.
 
 | Expanded CPA vs targeted CPA | Action |
 |------------------------------|--------|
 | < 1.5x | Expansion is working. Keep ON. |
 | 1.5-2x | Monitor for 14+ more days before deciding. |
 | > 2x | Expansion is inefficient. Turn OFF. |
-| Expansion delivers > 50% of conversions | Your audience selections may be too narrow. Review segments before disabling expansion. |
+| Expansion delivers > 50% of conversions | Your audience selections are too narrow. Review segments before disabling expansion. |
 
-> ⚠️ **Demand Gen demographic behavior.** When optimized targeting is ON in Demand Gen, Google may serve beyond your demographic selections. Review demographic performance after enabling. Restrict to age and gender only in ad group settings if needed.
+> ⚠️ **Demand Gen demographic behavior.** When optimized targeting is ON in Demand Gen, Google may serve beyond your demographic selections. Review demographic performance after enabling. Restrict to age and gender only in ad group settings when a group crosses the outlier threshold in Demographic Optimization.
 
 ---
 
@@ -126,7 +121,7 @@ Demographics function as a refinement layer on top of audience segments, not as 
 
 ---
 
-## Content Targeting Layering (Display/Video)
+## Content Targeting Layering (Video, Demand Gen)
 
 ### Recommended approach
 
@@ -142,10 +137,10 @@ Content targeting controls WHERE ads appear. It complements audience targeting (
 
 | Condition | Add content targeting? | Type |
 |-----------|----------------------|------|
-| High CPA on Display prospecting | Yes: add relevant topics to restrict placement context | Topics |
+| High CPA on Video prospecting | Yes: add relevant topics to restrict placement context | Topics |
 | Brand safety concerns | Yes: add specific placements you trust | Managed placements |
 | Strong performance on specific sites | Yes: target those sites directly | Managed placements |
-| Low volume on Display | No: content targeting restricts reach further | N/A |
+| Low volume on Video | No: content targeting restricts reach further | N/A |
 | Testing new audiences | No: content targeting masks audience-level signal quality | N/A |
 
 ### Exception conditions
@@ -155,7 +150,7 @@ Content targeting controls WHERE ads appear. It complements audience targeting (
 | No content targeting during audience testing | You have unlimited budget and want to test audience + context simultaneously. Run separate ad groups for clean comparison. |
 | Topics for CPA reduction | Zero-conversion topics remain after 30+ days: remove them rather than adding more topics. |
 
-> ⚠️ **Demand Gen does not support content targeting.** Only audience targeting is available.
+> ⚠️ **Demand Gen: layer, never standalone.** In Demand Gen, content targeting is a secondary layer on top of audience targeting, never standalone.
 
 ---
 
@@ -166,9 +161,11 @@ Content targeting controls WHERE ads appear. It complements audience targeting (
 | Setting | Recommendation | Rationale |
 |---------|---------------|-----------|
 | Seed source | Converters or high-LTV customers | Seed quality is the primary control lever. All-visitors seeds produce weak lookalikes. |
-| Seed size | 1,000+ matched users (5,000+ recommended) | Larger seeds give Google more data points for modeling. |
+| Seed size | No minimum enforced (5,000+ recommended) | Larger, cleaner seeds give Google more data points for modeling. |
 | Reach setting | Start with **Balanced** | Strongest similarity at reasonable scale. |
-| Mode | Suggestion mode (default) | Allows Google to serve to qualified users beyond the threshold. |
+| Mode | Suggestion mode (default) | Allows Google to serve to qualified users beyond the threshold. Opting out to strict targeting is an advanced control, requested via Google support. |
+
+> 💡 **Judge Lookalikes by segment-level performance, not targeting intent.** Suggestion mode means delivery is not confined to the modeled segment, and the reach slider is not a hard boundary. Evaluate the segment on its reported CPA/ROAS and let that data drive changes.
 
 ### When to change reach settings
 
@@ -189,24 +186,14 @@ Content targeting controls WHERE ads appear. It complements audience targeting (
 
 ## Campaign Settings Summary
 
-### Display
-
-| Setting | Recommended | Exception |
-|---------|------------|-----------|
-| Targeting mode | Targeting for remarketing, Observation for prospecting testing | Switch to Targeting for proven prospecting audiences |
-| Optimized targeting | OFF for remarketing, ON for prospecting | OFF during 30-day testing phases |
-| Frequency capping | 3-5 impressions per user per day | Higher for remarketing sequences, lower for awareness |
-| Content exclusions | Enable brand safety exclusions | N/A |
-
 ### Video
 
 | Setting | Recommended | Exception |
 |---------|------------|-----------|
 | Targeting mode | Targeting for remarketing, Observation for prospecting testing | Switch to Targeting for proven audiences |
-| Optimized targeting (Sales/Leads/Traffic) | OFF for remarketing, ON for prospecting | OFF during testing |
-| Audience expansion (Consideration/Awareness) | ON for reach | OFF when budget is limited |
+| Audience expansion (reach and views goals) | ON for reach | OFF when budget is limited |
 | Frequency capping | 2-3 impressions per user per day for video | Higher for sequential messaging |
-| Content exclusions | Limited inventory recommended, Standard minimum | Expanded only for maximum reach campaigns |
+| Content exclusions | Limited inventory recommended, Moderate minimum | Maximum inventory only for maximum reach campaigns |
 
 ### Demand Gen
 
@@ -214,6 +201,8 @@ Content targeting controls WHERE ads appear. It complements audience targeting (
 |---------|------------|-----------|
 | Optimized targeting | OFF for remarketing, test for prospecting | Keep OFF during first 30 days of a new campaign |
 | Lookalike reach | Balanced | Narrow for efficiency focus, Broad for volume |
+| Content targeting | Secondary layer on top of audience targeting, never standalone | N/A |
+| Content suitability | Managed at account level (applies account-wide) | N/A |
 
 ---
 

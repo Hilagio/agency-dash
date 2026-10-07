@@ -1,5 +1,4 @@
 # The compounding effect
-
 Created: 2026-02-14
 
 Support_ID: THEORY_11

@@ -105,7 +105,7 @@ Product feed quality has three distinct dimensions. Each requires different atte
 | **Image** | Basic product shot | High-resolution, white background, 75-90% frame fill |
 | **Price** | Set and forget | Competitive monitoring, sale price when applicable |
 
-**Optimization differentiates you from competitors with similar products:** Two sellers with the same GTIN compete on title quality, image quality, price, and seller ratings.
+**Optimization differentiates you from competitors with similar products:** Two sellers with the same GTIN compete on title quality, image quality, price, and store ratings.
 
 ---
 
@@ -151,7 +151,7 @@ Not all attributes matter equally. Prioritize based on impact and effort.
 | **Product detail** | Technical specs, unique features |
 | **Product highlight** | Key selling points, Shopping tab |
 | **Lifestyle image** | Upper funnel placements, visual differentiation |
-| **3D model** | AR experiences (US only, specific categories) |
+| **3D model** | AR experiences on free listings (US only, specific categories) |
 
 ---
 
@@ -253,8 +253,8 @@ Titles deserve special attention. They are your most impactful optimization leve
 
 ## Version details
 
-- **Version:** 1.0
-- **Last Updated:** February 2026
+- **Version:** 2.0
+- **Last Updated:** August 2026
 - **Creator:** Bob Meijer
 
 ---

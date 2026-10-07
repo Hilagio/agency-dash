@@ -1,6 +1,6 @@
 # Content Exclusion Guidelines
 Created: 2026-02-05
-Updated: 2026-04-01
+Updated: 2026-08-27
 
 Support_ID: GUIDELINE_9
 Status: Done
@@ -18,17 +18,24 @@ This guideline provides recommended content exclusion settings for Display and V
 
 Content exclusions control WHERE your ads do NOT appear. Proper exclusion configuration prevents ads from showing alongside inappropriate content and eliminates low-value placements that drain budget without delivering results.
 
-> 💡 **Demand Gen and content exclusions:** Demand Gen does not support content targeting (placements, topics, keywords) but does support content exclusions for brand safety. The inventory type, sensitive content, and digital content label settings in this guideline apply to Demand Gen campaigns.
+> 💡 **Demand Gen and content exclusions:** Demand Gen supports content targeting as a secondary layer on top of audience targeting, never standalone, and supports content exclusions for brand safety at account level. The inventory type, sensitive content, and digital content label settings in this guideline apply to Demand Gen campaigns.
 
 ---
 
-## What this is NOT
+## What this is / What this is NOT
+
+**This guideline:**
+
+- Sets the default inventory type, sensitive content, content theme, and placement exclusions
+- Explains the reach cost of each exclusion level
+- Establishes the level (account, campaign, ad group) each exclusion belongs at
+- States the advertiser types that override the defaults
 
 This guideline does **not:**
 
 - Explain content targeting options (See: [Content Targeting Reference](../references/Content Targeting Reference.md))
 - Cover audience exclusions (See: [Audience Targeting Reference](../references/Audience Targeting Reference.md))
-- Provide campaign setup steps (See: respective campaign SOPs)
+- Provide campaign setup steps (See: [SOP – Launch a Demand Gen Campaign](../sops/SOP – Launch a Demand Gen Campaign.md), [SOP – Launch a Video Campaign](../sops/SOP – Launch a Video Campaign.md))
 
 ---
 
@@ -40,16 +47,16 @@ Content exclusions balance two competing goals: brand safety (controlling where 
 |--------|----------------|-----------------|
 | Brand sensitivity | Premium/luxury brands, regulated industries | Mass-market, performance-focused advertisers |
 | Campaign goal | Awareness (brand perception matters) | Direct response (conversions matter more than context) |
-| Budget | Small budgets can afford to exclude (quality over quantity) | Large budgets may need broader inventory |
+| Budget | Small budgets can afford to exclude (quality over quantity) | Large budgets need broader inventory |
 
 ### Reach impact of exclusions
 
 | Exclusion level | Estimated reach reduction | Brand safety level |
 |----------------|--------------------------|-------------------|
 | Limited inventory + all sensitive categories + all apps excluded | 15-25% reach reduction | Maximum protection |
-| Standard inventory + selective categories + apps excluded | 5-15% reach reduction | Strong protection |
-| Standard inventory + selective categories only | 2-5% reach reduction | Moderate protection |
-| Expanded inventory + no exclusions | 0% reduction | No protection |
+| Moderate inventory + selective categories + apps excluded | 5-15% reach reduction | Strong protection |
+| Moderate inventory + selective categories only | 2-5% reach reduction | Moderate protection |
+| Maximum inventory + no exclusions | 0% reduction | No protection |
 
 > 💡 **Default: exclude aggressively, then test relaxing.** Start with maximum exclusions. If volume is insufficient after 30 days, selectively relax one exclusion at a time and measure CPA impact over 14 days.
 
@@ -61,7 +68,7 @@ After applying exclusions, validate they are not too aggressive:
 |--------|---------|--------|
 | CPA stable, volume decreased 10-20% | Normal reach trade-off | Acceptable. Keep current settings. |
 | CPA decreased (improved), volume decreased | Exclusions eliminated waste | Exclusions are working as intended. |
-| CPA increased, volume decreased significantly (>30%) | Exclusions may be too restrictive | Selectively relax one category and re-test over 14 days. |
+| CPA increased, volume decreased significantly (>30%) | Exclusions are too restrictive | Selectively relax one category and re-test over 14 days. |
 | No change in CPA or volume | Excluded inventory was not being served anyway | Keep exclusions as a safety net. |
 
 ---
@@ -72,14 +79,14 @@ After applying exclusions, validate they are not too aggressive:
 
 | Setting | Recommendation | Rationale |
 |---------|----------------|-----------|
-| **Inventory type** | Limited inventory | Most restrictive: only shows on content that has been reviewed and meets Google's strictest standards. Premium brands should always use this. |
+| **Inventory type** | Limited inventory | Most restrictive: only shows on content that has been reviewed and meets Google's strictest standards. Premium brands always use this. |
 
 **Inventory type options:**
 
 | Type | Content included | When to use |
 |------|------------------|-------------|
-| Expanded inventory | All monetizable content including sensitive | Never recommended |
-| Standard inventory | Excludes most sensitive content | Acceptable for less brand-sensitive advertisers |
+| Maximum inventory | All monetizable content including sensitive | Never recommended |
+| Moderate inventory | Excludes most sensitive content | Acceptable for less brand-sensitive advertisers |
 | **Limited inventory** | Only vetted, brand-safe content | **Recommended default** |
 
 ---
@@ -91,7 +98,7 @@ Enable exclusions for ALL sensitive content categories:
 | Category | Recommendation | Rationale |
 |----------|----------------|-----------|
 | Tragedy and conflict | **Exclude** | Avoid association with negative news, disasters, war |
-| Sensitive social issues | **Exclude** | Avoid polarizing topics that may alienate customers |
+| Sensitive social issues | **Exclude** | Avoid polarizing topics that alienate customers |
 | Profanity and rough language | **Exclude** | Maintain professional brand image |
 | Sexually suggestive | **Exclude** | Avoid inappropriate content adjacency |
 | Sensational and shocking | **Exclude** | Avoid clickbait and low-quality content environments |
@@ -156,7 +163,7 @@ Exclude these content themes at the campaign or account level:
 |----------------|-----------|
 | **Exclude all app categories** | In 95% of cases, app placements are wasted spend: accidental clicks, low intent, poor viewability, bot traffic |
 
-> ↪️ **App exclusion setup.** See [SOP – Launch a Display Campaign](../sops/SOP – Launch a Display Campaign.md) for step-by-step app exclusion configuration.
+> ↪️ **App exclusion setup.** See [SOP – Launch a Demand Gen Campaign](../sops/SOP – Launch a Demand Gen Campaign.md) for step-by-step app exclusion configuration.
 
 #### If you want to test apps
 
@@ -179,6 +186,8 @@ Set exclusions at the appropriate level:
 | **Account** | All campaigns | Sensitive content, brand safety, app exclusions |
 | **Campaign** | All ad groups in campaign | Campaign-specific exclusions |
 | **Ad group** | Single ad group | Granular, targeted exclusions |
+
+Account-level exclusions override the campaign and ad group levels rather than merging with them, so an account-level list is the one that decides. Performance Max placement exclusions are managed at account level, and an exclusion list set on a manager account is inherited by the accounts beneath it.
 
 **Recommended approach:**
 
@@ -206,12 +215,12 @@ Before launching any Display or Video campaign:
 
 | Scenario | Exception | Approach |
 |----------|-----------|----------|
-| News/media advertisers | May want news placements | Selectively enable News (sensitive) |
-| Gaming advertisers | May want game placements | Enable specific game categories, monitor closely |
+| News/media advertisers | Needs news placements | Selectively enable News (sensitive) |
+| Gaming advertisers | Needs game placements | Enable specific game categories, monitor closely |
 | Political advertisers | Require political content | Enable Politics (subject to Google policies) |
 | Religious organizations | Require religious content | Enable Religion for relevant content |
 
-> ⚠️ **Exceptions should be explicit decisions:** Document why you're deviating from defaults and monitor performance closely.
+> ⚠️ **Exceptions are explicit decisions:** Document why you are deviating from defaults and monitor performance closely.
 
 ---
 
@@ -222,15 +231,15 @@ Before launching any Display or Video campaign:
 | [Content Targeting Reference](../references/Content Targeting Reference.md) | Reference: content targeting options |
 | [Audience Targeting Reference](../references/Audience Targeting Reference.md) | Reference: audience exclusions |
 | [Upper Funnel Campaign Launch Checklist](../checklists/Upper Funnel Campaign Launch Checklist.md) | Checklist: pre-launch validation |
-| [SOP – Launch a Display Campaign](../sops/SOP – Launch a Display Campaign.md) | Execution: Display campaign setup |
+| [SOP – Launch a Demand Gen Campaign](../sops/SOP – Launch a Demand Gen Campaign.md) | Execution: Demand Gen campaign setup |
 | [SOP – Launch a Video Campaign](../sops/SOP – Launch a Video Campaign.md) | Execution: Video campaign setup |
 
 ---
 
 ## Version Details
 
-- **Version:** 3.0
-- **Last Updated:** April 2026
+- **Version:** 5.0
+- **Last Updated:** August 2026
 - **Creator:** Bob Meijer
 
 ---

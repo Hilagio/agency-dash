@@ -101,7 +101,7 @@ Minimum thresholds before making decisions:
 | Decision | Minimum data required |
 |----------|----------------------|
 | Judge keyword conversion potential | 50 clicks (at minimum) |
-| Evaluate a bid strategy change | 14-day learning period complete, do not touch during learning |
+| Evaluate a bid strategy change | Learning period complete (1-2 conversion cycles, typically 7-14 days), do not touch during learning |
 | Trust Smart Bidding performance | 30-50 conversions in the new state |
 | Draw conclusions from an A/B test | 2 weeks minimum runtime |
 | Judge CTR reliably | 100+ impressions per variant |
@@ -116,7 +116,7 @@ When you make a change based on noise, you create a new variable in the system. 
 Three practical rules:
 
 1. **Do not pause keywords before 50 clicks:** That keyword with 12 clicks and no conversions might convert on click 15. You do not know yet. Leave it.
-2. **Do not judge a bid strategy during learning:** The algorithm is exploring. Performance will look terrible. That is the point. Wait for learning to complete, then evaluate over a full 14-day post-learning window.
+2. **Do not judge a bid strategy during learning:** The algorithm is exploring. Performance will look terrible. That is the point. Wait for learning to complete, then evaluate over a full post-learning window of 1-2 conversion cycles.
 3. **Do not call A/B tests early:** A test that is "winning" after 3 days and 47 clicks is not winning. It is fluctuating. Let it run for the planned duration, then evaluate.
 
 > 💡 **The impatience trap:** Clients and managers will pressure you to "do something" when numbers look bad for a few days. Your job is to know when action helps and when it makes things worse. Premature action is not proactive management: it is panic dressed up as diligence.
@@ -196,7 +196,7 @@ You load the page on your phone. It takes 7 seconds to render. A hero image that
 
 **Account B:** Lead to SQL% crashed from 22% to 9%. The client changed their sales team. This is a Business bucket constraint. New reps are either not following up fast enough, not qualifying properly, or both. No Google Ads change will fix this. Your move: document the correlation (Lead to SQL% drop coincides with sales team change), present it to the client with specific data (response time, follow-up cadence if available), and recommend they address sales onboarding before you adjust campaign targeting or volume. This goes into your weekly diagnosis session as a Sprint planning candidate, but the action item is a client conversation, not an account change.
 
-**Account C:** Lost IS (Budget) at 45% on a proven campaign with an approved budget increase. This is a Traffic bucket constraint with a clear solution. The campaign has a track record, the budget is approved, and the execution is straightforward: increase budget in 20% steps over the next week, monitor CPA and ROAS daily to confirm efficiency holds.
+**Account C:** Lost IS (Budget) at 45% on a proven campaign with an approved budget increase. This is a Traffic bucket constraint with a clear solution. The campaign has a track record, the budget is approved, and the execution is straightforward: increase budget in 15-20% steps, one step per conversion cycle, monitor CPA and ROAS daily to confirm efficiency holds.
 
 ### Step 3️⃣: Sequence and execute
 

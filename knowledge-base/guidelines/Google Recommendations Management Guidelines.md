@@ -37,7 +37,7 @@ This guideline defines which Google Ads recommendations to accept, dismiss, or e
 
 The default position for all accounts managed under this system is: **disable auto-apply for all recommendation categories.**
 
-Google's recommendations optimize for Google's interests (increased spend, broader targeting, more automation) which do not always align with your business goals. Manual review ensures every change serves your strategy.
+Google's recommendations optimize for Google's interests (increased spend, broader targeting, more automation), not for your business goals. Manual review ensures every change serves your strategy.
 
 ---
 
@@ -51,15 +51,17 @@ Google organizes auto-apply into two sections: "Maintain your ads" (7 types) and
 |-------|--------------------|--------------------|---------------|
 | 1 | Use optimized ad rotation | ✅ Keep enabled | Safe: shows better-performing ads at auction time. No content changes. |
 | 2 | Improve your responsive search ads | ❌ Keep disabled | Modifies headline and description assets using existing content without review. Can overwrite intentional testing variants. |
-| 3 | Remove redundant keywords | ❌ Keep disabled | May remove structurally intentional keywords (e.g., same keyword in different ad groups for testing or different landing pages). |
+| 3 | Remove redundant keywords | ❌ Keep disabled | Removes structurally intentional keywords (e.g., same keyword in different ad groups for testing or different landing pages). |
 | 4 | Remove non-serving keywords | ✅ Conditional | Safe only with weekly review. Keywords had zero impressions, so removal risk is low. Check weekly that removed keywords were genuinely non-serving, not blocked by other issues. |
 | 5 | Remove conflicting negative keywords | ✅ Conditional | Safe only after verifying your negative keyword structure is intentional. Some conflicts are deliberate (e.g., funneling traffic to specific ad groups). Review weekly. |
-| 6 | Use optimized targeting | ❌ Keep disabled | Expands audience beyond your intended targeting. Particularly dangerous for lead gen where targeting precision matters. |
-| 7 | Upgrade conversion tracking | ⚠️ Case-by-case | Data-driven attribution is generally better than last-click, but switching changes reported data retroactively. Evaluate the impact on your reporting and bid strategy learning before applying. |
+| 6 | Use optimized targeting | ❌ Never auto-apply | Expands audience beyond your intended targeting, and auto-apply removes the scenario judgement the setting requires. Enable it deliberately per the scenario table in [Audience Targeting Guidelines](./Audience Targeting Guidelines.md), never because Google recommended it. |
+| 7 | Upgrade conversion tracking | ⚠️ Case-by-case | Data-driven attribution is better than last-click, but switching changes reported data retroactively. Evaluate the impact on your reporting and bid strategy learning before applying. |
 
 ### Grow your business (14 recommendations)
 
 All 14 are disabled by default. Our position: **keep all disabled.**
+
+> ⚠️ **Decline "Add responsive search ads" cards on doctrine.** Google recommends 2-3 RSAs per ad group. The OS runs one RSA per ad group and tests at the asset level: a second RSA competes in the same auctions with an Ad Rank-driven traffic split you do not control, fragments per-asset data, and enables cross-ad asset borrowing. See [SOP – RSA Testing with The Iteration Loop](../sops/SOP – RSA Testing with The Iteration Loop.md).
 
 #### Keywords and Targeting
 

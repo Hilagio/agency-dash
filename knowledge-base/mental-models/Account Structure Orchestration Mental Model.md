@@ -1,5 +1,6 @@
 # Account Structure Orchestration Mental Model
 Created: 2026-02-05
+Updated: 2026-06-04
 
 Support_ID: MENTALMODEL_11
 Status: Done
@@ -14,7 +15,7 @@ Pillar: 6
 
 This mental model helps you decide which campaign types to run and how they fit together in a full Google Ads account.
 
-> ❓ **The core question:** I run (or plan to run) Search, Shopping, PMax, and/or Display/Video/Demand Gen. How do they all work together without cannibalizing each other?
+> ❓ **The core question:** I run (or plan to run) Search, Shopping, PMax, and/or Demand Gen/Video. How do they all work together without cannibalizing each other?
 
 Individual campaign type mental models explain how to structure each type. This document explains how the types relate to each other: which to launch first, how to allocate budget between them, and how to prevent overlap.
 
@@ -48,7 +49,7 @@ This golden rule applies at every level: across campaign types, within campaign 
 
 **When to add a campaign type or split campaigns:**
 
-- You need to reach users on different networks (Search captures demand, Display/Video creates demand)
+- You need to reach users on different networks (Search captures demand, Demand Gen/Video creates demand)
 - You need different budget allocation, bid strategies, or conversion goals per product/service
 - You have sufficient conversion volume to support another campaign (30+ conversions/month per campaign minimum)
 
@@ -62,7 +63,7 @@ Not all campaign types serve the same purpose. Understanding their roles prevent
 | --- | --- | --- | --- |
 | **Demand capture** | Search, Shopping, PMax (Shopping surface) | User searches for you or your product | Highest |
 | **Demand expansion** | PMax (non-Shopping surfaces), Demand Gen | User didn't search, but AI predicts conversion | Medium |
-| **Demand creation** | Display, Video | User is interrupted during other activity | Lowest |
+| **Demand creation** | Demand Gen, Video | User is interrupted during other activity | Lowest |
 
 > ⚠️ **Start with demand capture:** If your budget is limited, allocate to bottom-funnel campaign types first (Search, Shopping). Only add demand creation when demand capture is profitable and not budget-constrained.
 
@@ -77,7 +78,7 @@ Performance Max is not a replacement for dedicated campaign types. It is an addi
 | Find converting queries you did not keyword | Replace keyword-level control in Search |
 | Serve across all Google surfaces from one campaign | Give you transparency into what works where |
 | Complement Search and Shopping coverage | Eliminate the need for dedicated campaign types |
-| Discover incremental demand | Replace strategic awareness campaigns (Display/Video) |
+| Discover incremental demand | Replace strategic awareness campaigns (Demand Gen/Video) |
 
 > ⚠️ **PMax will seek the easiest path to conversions:** This means it catches brand traffic, over-indexes on remarketing, and gravitates toward Shopping surfaces for e-commerce. Without brand exclusions and proper coordination, PMax metrics are inflated.
 
@@ -102,8 +103,8 @@ Performance Max is not a replacement for dedicated campaign types. It is an addi
 | **Non-Brand Search** | Capture high-intent product/category searches | Always (day one) | 10-20% |
 | **Standard Shopping / PMax Feed-Only** | Product visibility on Shopping surface | Always (day one) | 40-60% |
 | **PMax Full Assets** | Cross-channel product promotion | When Shopping is profitable and not budget-constrained | 20-40% |
-| **Remarketing (Display/Demand Gen)** | Re-engage cart abandoners, site visitors | When sufficient audience size (1,000+ users) | 5-10% |
-| **Prospecting (Display/Video/Demand Gen)** | Create demand for new products/categories | When bottom funnel is maxed and budget allows | 5-15% |
+| **Remarketing (Demand Gen)** | Re-engage cart abandoners, site visitors | When sufficient audience size (1,000+ users) | 5-10% |
+| **Prospecting (Demand Gen/Video)** | Create demand for new products/categories | When bottom funnel is maxed and budget allows | 5-15% |
 
 > 💡 **E-commerce budget allocation:** Shopping/PMax takes the largest share because product listing ads are the primary revenue driver. Search complements with text ads for category and informational queries.
 
@@ -114,8 +115,8 @@ Performance Max is not a replacement for dedicated campaign types. It is an addi
 | **Brand Search** | Protect brand queries | Always (day one) | 5-10% |
 | **Non-Brand Search** | Capture high-intent service searches | Always (day one) | 50-70% |
 | **PMax** | Cross-channel lead generation | When 30+ conversions/month AND offline conversion import configured | 15-25% |
-| **Remarketing (Display/Demand Gen)** | Re-engage form abandoners, site visitors | When sufficient audience size | 5-10% |
-| **Prospecting (Display/Video/Demand Gen)** | Create demand, build pipeline | When Search is maxed and budget allows | 10-20% |
+| **Remarketing (Demand Gen)** | Re-engage form abandoners, site visitors | When sufficient audience size | 5-10% |
+| **Prospecting (Demand Gen/Video)** | Create demand, build pipeline | When Search is maxed and budget allows | 10-20% |
 
 > 💡 **Lead Gen budget allocation:** Search takes the largest share because intent-based targeting produces the highest quality leads. PMax only adds value when lead quality signals are in place (offline conversion import).
 
@@ -125,9 +126,9 @@ Performance Max is not a replacement for dedicated campaign types. It is an addi
 | --- | --- | --- | --- |
 | **Brand Search** | Protect brand queries | When brand traffic exists | 5-10% |
 | **Non-Brand Search** | Capture service-intent queries | Always (day one) | 60-80% |
-| **Remarketing (Display)** | Re-engage past visitors | When sufficient audience size | 5-10% |
+| **Remarketing (Demand Gen)** | Re-engage past visitors | When sufficient audience size | 5-10% |
 | **PMax** | Local coverage expansion (Maps, Display) | When Search is profitable and conversion volume supports it | 10-20% |
-| **Prospecting (Display/Video)** | Build local awareness | Only with significant budget | 5-10% |
+| **Prospecting (Demand Gen/Video)** | Build local awareness | Only with significant budget | 5-10% |
 
 > 💡 **Local services budget allocation:** Search dominates because local intent queries ("plumber near me") are the primary lead driver. Upper funnel is rarely justified unless the business has a significant awareness budget.
 
@@ -160,10 +161,10 @@ Build your account bottom-up: start with the highest-efficiency campaign types a
 | **Action** | **Prerequisite** |
 | --- | --- |
 | Add Demand Gen prospecting | Bottom funnel maxed, 50+ conversions/month achievable per campaign |
-| Add Display/Video prospecting | Brand awareness goals, dedicated awareness budget |
+| Add Demand Gen/Video prospecting | Brand awareness goals, dedicated awareness budget |
 | Performance-based Shopping segmentation (H/S/V/Z) | 90+ days conversion data, labeling tool available |
 
-> ⚠️ **Do not skip phases:** Launching PMax before Search is established means PMax has no keyword-level control to fall back on. Launching Display prospecting before remarketing means you're creating demand you can't recapture.
+> ⚠️ **Do not skip phases:** Launching PMax before Search is established means PMax has no keyword-level control to fall back on. Launching prospecting before remarketing means you're creating demand you can't recapture.
 
 ---
 
@@ -189,19 +190,27 @@ When Search and PMax run simultaneously, query routing rules determine which cam
 | --- | --- | --- |
 | Brand queries | Brand Search (PMax excluded) | Brand exclusions in PMax |
 | High-value known queries | Search (exact match) | Add as exact match keywords |
-| Known queries (phrase/broad) | Search or PMax (Ad Rank decides) | Promote to exact match if PMax captures |
+| Known queries (phrase/broad) | Search or PMax (most relevant ad group, then Ad Rank) | Promote to exact match if PMax captures |
 | Unknown queries | PMax discovers | Let PMax expand |
 
 > ↪️ **For full routing rules:** See [Search PMax Query Routing Reference](../references/Search PMax Query Routing Reference.md).
 
+#### Overlap and escalating CPCs
+
+The automated layers stack deep: keyword Search, AI Max for Search, Performance Max, and AI Max for Shopping can all chase the same queries. When multiple campaign types in the same account compete for identical queries, they bid against each other in the auction. That internal competition risks escalating CPCs inside your own account: you pay more for the same clicks because your campaigns are the ones driving the price up.
+
+> ⚠️ **Do not let every automated layer fight over the same queries.** Keyword Search, AI Max for Search, PMax, and AI Max for Shopping overlapping on identical queries creates internal auction competition and risks escalating CPCs within the account. Decide which campaign type OWNS each query or intent, then enforce that ownership with brand exclusions, negatives, and match-type control so the layers complement each other instead of competing.
+
+Assign ownership explicitly, then enforce it. Brand queries belong to the dedicated Brand campaign (exclude them from AI Max and PMax). High-value known queries belong to exact-match Search (promote them out of the automated layers). Unknown and discovery queries belong to the automated layer. The goal is one clear owner per query or intent, not three layers bidding on the same term.
+
 ### Audience overlap (Upper Funnel + PMax)
 
-When running Display/Video/Demand Gen alongside PMax, define clear roles to avoid overlap.
+When running Demand Gen/Video alongside PMax, define clear roles to avoid overlap.
 
 | **Principle** | **Implementation** |
 | --- | --- |
-| PMax handles remarketing natively | Avoid running a separate remarketing Display campaign if PMax is active (unless you need creative control) |
-| Dedicate Display/Video to awareness | Use for cold/coldest audiences where PMax underperforms |
+| PMax handles remarketing natively | Avoid running a separate remarketing Demand Gen campaign if PMax is active (unless you need creative control) |
+| Dedicate Demand Gen/Video to awareness | Use for cold/coldest audiences where PMax underperforms |
 | Exclude recent converters from all campaigns | Prevent wasted spend across campaign types |
 | Use Demand Gen for Lookalikes | Lookalikes are exclusive to Demand Gen, not available in PMax |
 
@@ -245,11 +254,11 @@ Every structural decision must account for conversion volume. Campaigns without 
 ## Key principles
 
 1. **Consolidate by default:** More data in fewer campaigns means faster learning. Only add campaign types when you have the volume and a strategic reason.
-2. **Bottom funnel first:** Capture existing demand (Search, Shopping) before creating new demand (Display, Video). Each phase funds the next.
+2. **Bottom funnel first:** Capture existing demand (Search, Shopping) before creating new demand (Demand Gen, Video). Each phase funds the next.
 3. **PMax is complementary:** It fills gaps across channels and discovers queries you did not keyword. It does not replace Search or strategic awareness campaigns.
 4. **Brand separation is mandatory:** Across all campaign types, brand traffic must be isolated to see true acquisition costs.
 5. **Volume governs structure:** Every campaign needs sufficient conversion data. If you cannot feed it, do not create it.
-6. **Budget allocation follows funnel position:** Highest efficiency (Search, Shopping) gets the largest share. Lower efficiency (Display, Video) gets dedicated awareness budget only.
+6. **Budget allocation follows funnel position:** Highest efficiency (Search, Shopping) gets the largest share. Lower efficiency (Demand Gen, Video) gets dedicated awareness budget only.
 7. **Look holistically:** PMax is a piece of the puzzle, not the puzzle itself. The goal is account-level performance, not maximizing any single campaign type.
 
 ---
@@ -264,7 +273,7 @@ Every structural decision must account for conversion volume. Campaigns without 
 | [Standard Shopping Campaign Structure Mental Model](../mental-models/Standard Shopping Campaign Structure Mental Model.md) | Within-type structure (Standard Shopping) |
 | [PMax Structure Mental Model (Ecommerce)](<../mental-models/PMax Structure Mental Model (Ecommerce).md>) | Within-type structure (PMax for Ecommerce) |
 | [PMax Structure Mental Model (Lead Gen/SaaS)](<../mental-models/PMax Structure Mental Model (Lead Gen-SaaS).md>) | Within-type structure (PMax for Lead Gen/SaaS) |
-| [Upper Funnel Campaign Structure Mental Model](../mental-models/Upper Funnel Campaign Structure Mental Model.md) | Within-type structure (Display/Video/Demand Gen) |
+| [Upper Funnel Campaign Structure Mental Model](../mental-models/Upper Funnel Campaign Structure Mental Model.md) | Within-type structure (Demand Gen/Video) |
 | [Product Feed Segmentation Mental Model](../mental-models/Product Feed Segmentation Mental Model.md) | Product segmentation for Shopping/PMax Feed-Only |
 | [Audience Strategy Mental Model](../mental-models/Audience Strategy Mental Model.md) | Audience approach across campaign types |
 | [Brand Separation Reference](../references/Brand Separation Reference.md) | Brand separation implementation |
@@ -275,8 +284,8 @@ Every structural decision must account for conversion volume. Campaigns without 
 
 ## Version details
 
-- **Version:** 1.0
-- **Last Updated:** February 2026
+- **Version:** 3.0
+- **Last Updated:** June 2026
 - **Creator:** Bob Meijer
 
 ---

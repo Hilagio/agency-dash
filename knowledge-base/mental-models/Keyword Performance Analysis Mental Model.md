@@ -1,4 +1,4 @@
-﻿# Keyword Performance Analysis Mental Model
+# Keyword Performance Analysis Mental Model
 Created: 2026-02-14
 
 Support_ID: MENTALMODEL_31
@@ -165,7 +165,7 @@ These keywords spend money without converting. The question is whether they can 
 5. If diagnosis points to fixable issues (LP, ad copy, negatives), apply fixes and reset the evaluation window.
 6. If diagnosis shows fundamental intent mismatch (informational queries, wrong audience), pause the keyword.
 
-> ⚠️ **Do not pause keywords prematurely:** A keyword with fewer than 50 clicks and zero conversions has not failed. It has insufficient data. Apply the minimum data thresholds below before making permanent decisions.
+> ⚠️ **Do not pause keywords prematurely:** A keyword with fewer than 100 clicks and zero conversions has not failed. It has insufficient data. Apply the minimum data thresholds below before making permanent decisions.
 
 ---
 

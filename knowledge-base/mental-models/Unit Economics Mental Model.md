@@ -69,7 +69,7 @@ If you allocate 75% of gross profit back to acquisition:
 Target ROAS = 1 / (Gross Margin % x 0.75) = 925%
 ```
 
-**Why it matters:** An ecommerce account with 12% gross margins needs 758%+ ROAS just to break even. That's nearly impossible on non-branded traffic. The problem isn't Google Ads: it's the margin structure.
+**Why it matters:** An ecommerce account with 12% gross margins needs 833%+ ROAS just to break even. That's nearly impossible on non-branded traffic. The problem isn't Google Ads: it's the margin structure.
 
 **Key relationships:**
 
@@ -84,7 +84,7 @@ Target ROAS = 1 / (Gross Margin % x 0.75) = 925%
 | **Average Deal Value** | Revenue per closed deal | Revenue ceiling per customer |
 | **Profit Margin %** | Profit per deal / deal value | How much of each deal is available for acquisition |
 | **Lead-to-Sale Rate** | Closed deals / total leads | Conversion efficiency of the sales process |
-| **Target CPL** | Profit margin x lead-to-sale rate | Maximum cost per lead before losing money |
+| **Target CPL** | Deal value x profit margin % x lead-to-sale rate | Maximum cost per lead before losing money |
 | **CAC (Customer Acquisition Cost)** | Total acquisition spend / new customers | Actual cost to acquire each customer |
 
 **The target CPL calculation:**

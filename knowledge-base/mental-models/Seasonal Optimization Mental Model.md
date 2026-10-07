@@ -1,5 +1,6 @@
 # Seasonal Optimization Mental Model
 Created: 2026-04-04
+Updated: 2026-08-14
 
 Support_ID: MENTALMODEL_32
 Status: ready-to-publish
@@ -65,14 +66,9 @@ This phase answers: what happened last year, and what should we target this year
 | Campaign Performance Analysis | Best ROI campaigns, underperforming campaigns, target achievement |
 | Budget & Spend Analysis | Ad spend increase (percentage and absolute), budget limitations encountered, pacing accuracy |
 
-**YoY data analysis methodology:**
+The comparison that matters is non-brand, day-level, and split into pre-peak, peak and post-peak, because a blended number hides which of the three actually moved. Brand traffic rides the same seasonal wave without being won or lost in the auction, so it masks the non-brand story.
 
-1. Pull account-level data segmented by day for the seasonal period plus 2 weeks before and after
-2. Filter out brand campaigns (use "Campaign name does not contain Brand" filter)
-3. Segment data into three periods: pre-peak, peak, post-peak (color-code for visual analysis)
-4. Compare key metrics: CTR, Avg. CPC, Cost, Conversions, Cost/conv., Conv. rate, Conv. value, Conv. value/cost, Search lost IS (budget), Search lost IS (rank)
-5. Get granular at campaign level if you have sufficient data
-6. Note PMax limitation: no auction data at the campaign level because of Performance Max. Dig deeper on the campaign level for PMax
+> ↪️ **For the YoY pull, the filters, and the metric set:** See [SOP – Plan and Execute Seasonal Adjustments](../sops/SOP – Plan and Execute Seasonal Adjustments.md), Phase 1.
 
 **Key metrics to benchmark:**
 
@@ -106,27 +102,9 @@ This phase builds all assets and configures the account for the seasonal event. 
 
 **Ad asset preparation principles:**
 
-Text ads:
-- Start early: have holiday ads in place 2 weeks before the holiday starts
-- Make the sale the focal point of your ads
-- Mention the UVP: percentage off, savings amount, free shipping, exclusive products
-- Use holiday references: "Black Friday Sale", "Black Friday: Save Big Now"
-- Include high-volume, relevant keywords in ad copy
+Seasonal creative wins on one thing: the offer is unmistakable in the first moment of attention, in every format. Make the sale the focal point rather than a modifier on evergreen copy, front-load the discount or saving, and match the ad to the landing page in both message and design so the click does not feel like a different promotion. Everything else follows from placing the assets early enough to clear review and gather data before the peak.
 
-Image ads:
-- Mobile first: high-resolution, sharp, bold contrasting colors, big font sizes
-- Avoid blank spaces: make the product or message the focus
-- Create images with and without overlay texts: overlays can backfire in Responsive Display Ads but outperform in static ads
-- Match images with landing page elements (message and design match)
-- Prepare multiple formats: landscape (1.91:1), vertical (4:5), square (1:1)
-
-Video ads:
-- Keep videos short: typically 15 seconds
-- Grab attention in the first few seconds
-- Front-load the holiday offer
-- Introduce brand early
-- Use emotion (excitement, humor, emotional connection)
-- Clear CTA coupled with urgency
+> ↪️ **For the asset build, formats, and upload targets:** See [SOP – Plan and Execute Seasonal Adjustments](../sops/SOP – Plan and Execute Seasonal Adjustments.md), Phase 2.
 
 ---
 
@@ -152,14 +130,14 @@ This phase maximizes revenue capture while monitoring account health in real tim
 | Application | Available for Search, Standard Shopping, Display (tCPA/tROAS), PMax. Max 2,000 campaigns per event. |
 | Updates | Do not update SBA dates after creation: it breaks the adjustment. Create a new one instead. |
 | Speed | Effect visible in SERPs within approximately 5 minutes. |
-| Post-event | Campaigns auto-revert when SBA expires. For aggressive reversion (e.g., post-Black Friday), consider explicit negative SBAs. |
+| Post-event | Campaigns auto-revert when SBA expires. For aggressive reversion (e.g., post-Black Friday), set explicit negative SBAs. |
 
 **Budget pacing during peak:**
 
 - Monitor daily spend against seasonal budget plan
 - Track Search IS lost (budget) as the primary opportunity metric
 - Reallocate budget from underperforming to outperforming campaigns intraday
-- Use CPC as the live health metric (ROAS has conversion delay during peak events)
+- Use CPC as the live health metric (ROAS has conversion lag during peak events)
 
 **Competitive monitoring:**
 
@@ -186,15 +164,17 @@ This phase prevents the seasonal spike from corrupting ongoing account performan
 
 **Post-peak negative keywords:**
 
-Pull the search terms report for the 7-14 days after the event. Identify seasonal queries that generated clicks but zero conversions post-peak. These are now waste: add them as negative keywords. Common patterns: "[event] deals" queries after the event has ended, "when is [event]" informational queries.
+Seasonal queries do not stop the day the event does. They keep arriving and they stop converting, which makes them the cleanest waste in the account. Negate them on a seasonal list you deactivate before next year's event rather than permanently, so the same terms are available again when demand returns.
 
 **Shopping title and feed reversion:**
 
-Remove seasonal terms added to product titles via supplemental feed. Verify titles reverted in Merchant Center (allow 24-48 hours for processing).
+Seasonal terms in product titles outlive the season and pull the wrong queries once the offer is gone. Titles revert with the supplemental feed that added them.
+
+> ↪️ **For both procedures:** See [SOP – Run Post-Peak Season Normalization](../sops/SOP – Run Post-Peak Season Normalization.md).
 
 **Data Exclusion consideration:**
 
-After a big short sale (1-3 days), apply a Data Exclusion to prevent the spike from distorting Smart Bidding's model. Typical duration: 3 days (7 absolute maximum). Account for conversion delay when setting the exclusion date range.
+After a big short sale (1-3 days), apply a Data Exclusion to prevent the spike from distorting Smart Bidding's model. Typical duration: 3 days, with 7 as the recommended maximum. Account for conversion lag when setting the exclusion date range.
 
 ---
 
@@ -230,7 +210,7 @@ This phase preserves institutional knowledge. Compounding seasonal learnings yea
 | November | 11 | Singles Day | Late September |
 | November | 4th Thursday | Thanksgiving (US) | Early October |
 | November | Day after Thanksgiving | Black Friday | Early October |
-| December | Monday after BF | Cyber Monday | Included in BF prep |
+| November | Monday after BF | Cyber Monday | Included in BF prep |
 | December | 5/6 | St. Nicholas (NL/EU) | Early November |
 | December | 2nd Monday | Green Monday | Late November |
 | December | Last Saturday before Christmas | Super Saturday | Early December |
@@ -340,8 +320,8 @@ Performance changed vs. same period last year?
 
 ## Version details
 
-- **Version:** 1.0
-- **Last Updated:** April 2026
+- **Version:** 2.0
+- **Last Updated:** August 2026
 - **Creator:** Bob Meijer
 
 ---

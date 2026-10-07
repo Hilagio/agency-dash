@@ -165,7 +165,7 @@ Conversion tracking is the difference between data-driven decisions and guesswor
 2. **Enhancement:** Enhanced conversions, Consent Mode, conversions with cart data, profit tracking, new customer data, transaction IDs, custom variables
 3. **Correction:** Conversion adjustments, data exclusions
 
-(See: *Measurement Maturity Mental Model* [TBD in Phase 2])
+(See: [Measurement Maturity Mental Model](../mental-models/Measurement Maturity Mental Model.md))
 
 **Failure mode:** Google Ads reports 600 conversions but GA4 shows 400. Smart Bidding optimizes against inaccurate data. Every decision is built on a lie.
 
@@ -185,19 +185,19 @@ Campaign structure determines how data flows to Smart Bidding and how you alloca
 - Isolating experiments from core campaigns
 - Sufficient resources and expertise to manage complexity
 
-**Volume threshold:** Aim for 50+ conversions per campaign per month for consistent Smart Bidding performance. 20-30 can work but expect inconsistency.
+**Volume threshold:** Aim for 50+ conversions per campaign per month for consistent Smart Bidding performance. Floors differ per bid strategy (See: [Conversion Volume Thresholds Reference](../references/Conversion Volume Thresholds Reference.md))
 
 **Failure mode:** 19 campaigns with 89 ad groups. Data fragmented. Smart Bidding can't learn. Management is overwhelming.
 
 ### Pillar 7: Targeting
 
-Targeting determines whether your ads reach the right people. The approach has shifted dramatically toward AI-driven, signal-based targeting.
+Targeting determines whether your ads reach the right people. It runs on AI-driven, signal-based mechanics.
 
 **Three pillars of modern targeting:**
 
 1. **Keyword targeting** (Search): Broad match + Smart Bidding as default, exact/phrase for control where needed
 2. **Audience signals** (PMax, Demand Gen): First-party data as gold standard, combined with interest/intent signals
-3. **Optimized targeting** (Display, Video): Let Google expand beyond manual targeting using conversion signals
+3. **Optimized targeting** (Demand Gen): Let Google find converters beyond your selected segments using conversion signals. Every targeting control you set still holds, except demographics, which optimized targeting can serve past
 
 **Failure mode:** Money goes to irrelevant queries and audiences. Good CVR where you show, but you barely show on the right inventory.
 

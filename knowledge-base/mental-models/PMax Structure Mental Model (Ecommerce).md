@@ -100,7 +100,7 @@ Within each PMax campaign, use listing groups to control which products appear:
 
 | **Level** | **Common subdivisions** | **Purpose** |
 |-----------|------------------------|-------------|
-| All products | — | Starting point |
+| All products | None | Starting point |
 | Brand | By brand | Separate brand performance |
 | Product type | By category hierarchy | Match your catalog structure |
 | Custom label | By performance tier, margin, etc. | Enable segmentation strategies |
@@ -175,14 +175,9 @@ Asset groups are the creative containers within Full Assets PMax:
 
 Brand separation is mandatory for Ecommerce PMax. Brand traffic inflates metrics and prevents you from seeing true acquisition costs.
 
-**Implementation:**
+Brand exclusions are the first layer and negative keyword lists are the precision layer underneath. Run both in every non-brand PMax campaign.
 
-1. Go to PMax campaign settings
-2. Navigate to Brand exclusions
-3. Add your brand name(s) as exclusions
-4. Verify with search terms report that brand queries are blocked
-
-> ↪️ **For brand separation implementation:** See [Brand Separation Reference](../references/Brand Separation Reference.md).
+> ↪️ **For brand exclusion mechanics and the setup procedure:** See [Brand Separation Reference](../references/Brand Separation Reference.md).
 
 ### Remarketing control
 
@@ -196,11 +191,7 @@ PMax may over-index on remarketing traffic, inflating ROAS. Control this with da
 | Want to measure true acquisition | Exclude website visitors and/or customer lists |
 | Testing incrementality | Exclude to see new customer performance |
 
-**How to exclude:**
-
-1. Go to PMax campaign > Settings > Other settings
-2. Navigate to "Your data" exclusions
-3. Add website visitor audiences or customer lists to exclude
+> ↪️ **For the "Your data" exclusion configuration:** See [PMax Configuration Guidelines](../guidelines/PMax Configuration Guidelines.md).
 
 ### Conversion value tracking
 

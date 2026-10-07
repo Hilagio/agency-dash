@@ -14,6 +14,8 @@ Pillar: 9
 
 This guideline defines recommended configurations for portfolio bid strategies, CPC caps, shared budgets, bid adjustments, and conversion value rules. It supports bid strategy setup by establishing default settings and exception conditions.
 
+> ⚠️ **Targets are reservation prices, not aspirations.** Target-based strategies deliver to the stated target, including when the campaign is limited by budget and through budget changes. An actual CPA or ROAS that beats the target is not a buffer the system preserves: bidding converges to what you stated. Set targets you mean, and throttle spend with targets, not with budget caps. A budget cap does not protect efficiency, the target does.
+
 ---
 
 ## What this is / What this is NOT
@@ -22,7 +24,7 @@ This guideline defines recommended configurations for portfolio bid strategies, 
 
 - Defines when and how to use portfolio bid strategies
 - Establishes default recommendations for CPC caps
-- Explains when shared budgets should be combined with portfolio strategies
+- Explains when to combine shared budgets with portfolio strategies
 - Clarifies which bid adjustments still function under smart bidding
 - Establishes conversion value rules usage guidelines
 
@@ -31,7 +33,6 @@ This guideline defines recommended configurations for portfolio bid strategies, 
 - Tell you which bid strategy to select (See: [Bid Strategy Selection Reference](../references/Bid Strategy Selection Reference.md))
 - Explain how smart bidding works internally (See: [Smart Bidding Mechanics Reference](../references/Smart Bidding Mechanics Reference.md))
 - Provide step-by-step setup instructions (See: [SOP – Set Up Portfolio Bid Strategies](../sops/SOP – Set Up Portfolio Bid Strategies.md))
-- Provide step-by-step execution instructions
 
 ---
 
@@ -43,15 +44,15 @@ Portfolio bid strategies are automated bidding strategies that work across multi
 
 **Availability:** Search, Standard Shopping, Display only. Not available for Performance Max, Video, Demand Gen, or App campaigns.
 
-**Location:** Tools > Budgets and Bidding > Bid Strategies
+**Location:** Tools > Budgets and bidding > Bid strategies
 
 ### Recommended configuration
 
 | Setting | Recommendation | Rationale |
 |---------|---------------|-----------|
 | **Use portfolio strategies** | **ON** when 2+ campaigns share the same efficiency target | Pools conversion data, speeds up learning, enables CPC caps |
-| **Group by efficiency target** | One portfolio per unique CPA/ROAS target | Campaigns with different targets should not share a portfolio |
-| **Campaign types** | Group same types together | Search + Search is fine, Search + Shopping in one portfolio is not recommended |
+| **Group by efficiency target** | One portfolio per unique CPA/ROAS target | Campaigns with different targets never share a portfolio |
+| **Campaign types** | Group same types together | Search + Search is fine, Search + Shopping in one portfolio is not |
 
 ### Key benefits
 
@@ -62,13 +63,9 @@ Portfolio bid strategies are automated bidding strategies that work across multi
 
 ### Conversion volume thresholds with portfolios
 
-| Level | Absolute Minimum | Functional Minimum | Recommended |
-|-------|-----------------|-------------------|-------------|
-| Single campaign: Target CPA | 15 conversions/month | 30 conversions/month | 50+ conversions/month |
-| Single campaign: Target ROAS | 30 conversions/month | 50 conversions/month | 50+ conversions/month |
-| Portfolio (sum of all linked campaigns) | 15 conversions/month | 30 conversions/month | 50+ conversions/month |
+A portfolio meets the same conversion volume thresholds as a single campaign on the same bid strategy, counted across the sum of all linked campaigns. The numbers live in [Conversion Volume Thresholds Reference](../references/Conversion Volume Thresholds Reference.md).
 
-Thresholds apply to the portfolio total. Individual campaigns within the portfolio can have fewer conversions if the combined total meets the threshold.
+Individual campaigns within the portfolio can have fewer conversions if the combined total meets the threshold.
 
 ---
 
@@ -83,7 +80,7 @@ Thresholds apply to the portfolio total. Individual campaigns within the portfol
 
 > ⚠️ **CPC caps are the most common misconfiguration in portfolio strategies:** A forgotten maximum CPC cap can silently restrict performance for months. Default to no caps unless you have a validated reason.
 
-### When to consider maximum CPC caps
+### When to set a maximum CPC cap
 
 | Condition | Action |
 |-----------|--------|
@@ -93,14 +90,9 @@ Thresholds apply to the portfolio total. Individual campaigns within the portfol
 
 ### Rule of thumb for max CPC
 
-If you decide to set a maximum CPC cap:
+A maximum CPC cap sits at 3x the average CPC of your top 10-20 converting search terms.
 
-1. Open your search term report
-2. Sort by conversions (descending)
-3. Note the average CPC of your top 10-20 converting search terms
-4. Set the maximum CPC cap at 3x that average CPC
-
-**Example:** top converting search terms average 2.50 EUR CPC. Set max CPC cap at 7.50 EUR.
+**Example:** top converting search terms average 2.50 EUR CPC. The max CPC cap is 7.50 EUR.
 
 ### Monitoring CPC caps
 
@@ -109,14 +101,14 @@ If you use CPC caps, set up these monitoring checks:
 | Check | Frequency | Action if triggered |
 |-------|-----------|-------------------|
 | Top keyword CPCs plateauing at the cap | Weekly | Increase cap or remove |
-| IS lost to rank increasing | Weekly | Cap may be restricting competitiveness |
-| Conversion volume declining | Weekly | Cap may be preventing algorithm from winning auctions |
+| IS lost to rank increasing | Weekly | The cap is restricting competitiveness. Raise or remove it |
+| Conversion volume declining | Weekly | The cap is preventing the algorithm from winning auctions. Raise or remove it |
 
-> 💡 **Small CPC cap errors have outsized consequences:** A cap set too low can cause months of lost volume without obvious signals. When in doubt, remove the cap and let smart bidding optimize.
+> 💡 **Small CPC cap errors have outsized consequences:** A cap set too low causes months of lost volume without obvious signals. Absent a validated reason to keep it, remove the cap and let smart bidding optimize.
 
 ### The case against CPC caps
 
-Recent evidence suggests the cost of CPC caps outweighs the benefit in most scenarios:
+The cost of CPC caps outweighs the benefit:
 
 - Smart bidding already accounts for diminishing returns at high CPCs
 - CPC outliers are infrequent and contribute to conversion volume
@@ -162,7 +154,7 @@ Recent evidence suggests the cost of CPC caps outweighs the benefit in most scen
 
 ### Exception: Target CPA device adjustments
 
-Target CPA technically supports device bid adjustments. In practice, setting manual device adjustments on top of smart bidding typically degrades performance. The algorithm already optimizes device bids using 18+ signals.
+Target CPA technically supports device bid adjustments. In practice, manual device adjustments on top of smart bidding degrade performance. The algorithm already optimizes device bids using 18+ signals.
 
 **Recommendation:** do not set device bid adjustments on Target CPA campaigns unless you have a specific, validated use case with clear A/B test evidence that the adjustment improves results.
 
@@ -225,7 +217,7 @@ After configuring bidding settings, verify:
 
 - **Default:** use shared budgets when campaigns share the same efficiency target
 - **Exception:** use individual budgets when running campaign experiments, using performance-based bucketing, or needing guaranteed per-campaign spend levels
-- **Risk:** low, Google handles allocation well in most cases
+- **Risk:** low. Google handles allocation well
 
 ### Value rules: OFF by default
 
@@ -235,10 +227,22 @@ After configuring bidding settings, verify:
 
 ---
 
+## Related documents
+
+| Document | Relationship |
+|----------|-------------|
+| [Bid Strategy Selection Reference](../references/Bid Strategy Selection Reference.md) | Which bid strategy to select |
+| [Smart Bidding Mechanics Reference](../references/Smart Bidding Mechanics Reference.md) | How smart bidding works internally |
+| [Conversion Volume Thresholds Reference](../references/Conversion Volume Thresholds Reference.md) | Owns the conversion volume numbers |
+| [Bid Modifier Reference](../references/Bid Modifier Reference.md) | Bid adjustment mechanics |
+| [SOP – Set Up Portfolio Bid Strategies](../sops/SOP – Set Up Portfolio Bid Strategies.md) | Executes this configuration |
+
+---
+
 ## Version details
 
-- **Version:** 1.0
-- **Last Updated:** February 2026
+- **Version:** 2.0
+- **Last Updated:** October 2026
 - **Creator:** Bob Meijer
 
 ---

@@ -1,6 +1,6 @@
 # Upper Funnel Campaign Structure Mental Model
 Created: 2026-02-04
-Updated: 2026-02-05
+Updated: 2026-08-27
 
 Support_ID: MENTALMODEL_5
 Status: Done
@@ -13,7 +13,7 @@ Pillar: 6
 
 ## Purpose
 
-This mental model helps you structure **Display**, **Video**, and **Demand Gen** campaigns for maximum efficiency and scalability.
+This mental model helps you structure **Demand Gen** and **Video** campaigns for maximum efficiency and scalability.
 
 > ❓ **The core question:** How do I build campaigns that balance audience reach with conversion efficiency across interruption-based channels?
 
@@ -26,7 +26,7 @@ Unlike Search (where users express intent), Upper Funnel campaigns **interrupt**
 This mental model does **not:**
 
 - Explain audience signals vs. targeting conceptually (See: [Audience Strategy Mental Model](../mental-models/Audience Strategy Mental Model.md))
-- Provide step-by-step Display, Video, or Demand Gen campaign setup (See: campaign-specific SOPs)
+- Provide step-by-step Demand Gen or Video campaign setup (See: campaign-specific SOPs)
 - Cover Search campaign structure (See: [Search Campaign Structure Mental Model](../mental-models/Search Campaign Structure Mental Model.md))
 - Explain Performance Max structure or audience signals for PMax (See: [PMax Structure Mental Model (Ecommerce)](<../mental-models/PMax Structure Mental Model (Ecommerce).md>) or [PMax Structure Mental Model (Lead Gen/SaaS)](<../mental-models/PMax Structure Mental Model (Lead Gen-SaaS).md>))
 - Provide detailed creative asset specifications or ad copy patterns (See: relevant catalogs and references)
@@ -35,7 +35,7 @@ This mental model does **not:**
 
 ## The interruption principle
 
-|  | **Search** | **Upper Funnel (Display/Video/Demand Gen)** |
+|  | **Search** | **Upper Funnel (Demand Gen/Video)** |
 | --- | --- | --- |
 | **User behavior** | User searches for you | You find the user |
 | **Intent** | Intent expressed | Intent inferred |
@@ -45,21 +45,18 @@ This mental model does **not:**
 
 > ⚠️ **The strategic implication:** Upper funnel campaigns require a fundamentally different approach. You're not matching intent, you're **creating** it. This means starting with audiences most likely to convert (warm) and expanding outward (cold).
 
-> 💡 **Google Ads is not always the best channel for upper funnel:** Platforms like Meta Ads (Facebook/Instagram) and Pinterest Ads often deliver lower CPMs and more sophisticated targeting for awareness and consideration goals. Evaluate whether Google's Display, Video, and Demand Gen inventory is the right fit for your audience before defaulting to it. Google Ads excels at capturing existing demand (Search, Shopping). For creating demand, compare cross-platform costs and audience quality. See [Upper Funnel Channel Selection Mental Model](../mental-models/Upper Funnel Channel Selection Mental Model.md) for a cross-platform decision framework.
+> 💡 **Google Ads is not always the best channel for upper funnel:** Platforms like Meta Ads (Facebook/Instagram) and Pinterest Ads often deliver lower CPMs and more sophisticated targeting for awareness and consideration goals. Evaluate whether Google's Demand Gen and Video inventory is the right fit for your audience before defaulting to it. Google Ads excels at capturing existing demand (Search, Shopping). For creating demand, compare cross-platform costs and audience quality. See [Upper Funnel Channel Selection Mental Model](../mental-models/Upper Funnel Channel Selection Mental Model.md) for a cross-platform decision framework.
 
 ---
 
-## The three campaign types
+## The two campaign types
 
 | **Campaign type** | **Inventory** | **Primary goal** | **Best for** |
 | --- | --- | --- | --- |
-| **Display** | Google Display Network (3M+ sites) | Remarketing, awareness | Dynamic remarketing, broad reach |
-| **Video** | YouTube, video partners | Awareness, consideration | Brand building, product demos, reach |
-| **Demand Gen** | YouTube, Discover, Gmail | Conversions, high-quality prospecting | Conversion-focused upper funnel, social-like creative |
+| **Demand Gen** | YouTube, Discover, Gmail, GDN (3M+ sites), Maps | Conversions, high-quality prospecting | Conversion-focused upper funnel, dynamic remarketing, broad reach across Google surfaces |
+| **Video** | YouTube, video partners | YouTube reach, views, and engagements | Brand building, product demos, reach |
 
-> ⚠️ **2025 Update: Video Action Campaigns no longer exist:** They were fully migrated to Demand Gen in Q2 2025. If you want conversion-optimized video campaigns, use **Demand Gen**, not Video campaigns. Video campaigns are now primarily for awareness and consideration goals.
-
-> 💡 **Key insight:** These campaign types share ~70% structural DNA. The same audience hierarchy, exclusion logic, and expansion strategy applies to all three. Channel-specific decisions are the remaining 30%.
+> 💡 **Key insight:** Demand Gen and Video share most of their structural DNA. The same audience hierarchy, exclusion logic, and expansion strategy applies to both. Channel-specific decisions are the remainder.
 
 ---
 
@@ -141,38 +138,25 @@ USER VISITS SITE → Moves to Remarketing tier
 
 ## Campaign structure by type
 
-### Display campaigns
-
-| **Segment** | **Campaign focus** |
-| --- | --- |
-| **Remarketing** | Dynamic remarketing (e-commerce) or standard remarketing |
-| **Prospecting** | Custom segments, in-market audiences |
-| **Brand/Awareness** | Affinity + demographics (if running) |
-
-**Key structural decisions:** Audience targeting is primary, content targeting is secondary (layer on top, never standalone). Optimized targeting OFF for remarketing, tested for prospecting. Combined segments (AND logic) sharpen broad prospecting audiences.
-
-> ↪️ **Display setup.** See [SOP – Launch a Display Campaign](../sops/SOP – Launch a Display Campaign.md) for configuration details and [Content Exclusion Guidelines](../guidelines/Content Exclusion Guidelines.md) for exclusion settings.
-
 ### Video campaigns
 
 > 💡 **Video campaigns are for awareness and consideration only:** For conversion goals, use Demand Gen instead.
 
 | **Goal** | **Campaign subtype** | **Best for** |
 | --- | --- | --- |
-| **Maximum reach** | Video Reach - Efficient Reach | Broad awareness at lowest CPM |
-| **Guaranteed delivery** | Video Reach - Non-skippable | Full message completion |
-| **Repeated exposure** | Video Reach - Target Frequency | Reinforcement and recall |
-| **Storytelling** | Ad Sequence | Multi-step awareness → consideration |
-| **Engagement** | Video Views | Product demos, explainers |
-| **Channel growth** | YouTube Subscriptions & Engagements | Subscriber acquisition |
+| **Maximum reach** | Efficient reach | Broad awareness at lowest CPM |
+| **Guaranteed delivery** | Non-skippable reach | Full message completion |
+| **Repeated exposure** | Target frequency | Reinforcement and recall |
+| **Storytelling** | Ad sequence | Multi-step awareness → consideration |
+| **Engagement** | Video views | Product demos, explainers |
 
-**Key structural decisions:** Skippable formats for consideration, non-skippable/bumper for awareness. Short videos (<15s) for awareness, longer for consideration. The expansion setting for Video consideration/awareness is called "audience expansion" (different from "optimized targeting").
+**Key structural decisions:** Skippable formats for consideration, non-skippable/bumper for awareness. Short videos (<15s) for awareness, longer for consideration. The expansion setting for Video consideration/awareness is called "audience expansion" (different from "optimized targeting"). Supply a headline and a description on every campaign: without both, serving is restricted to in-stream and the in-feed and Shorts inventory stays closed.
 
 > ↪️ **Video setup.** See [SOP – Launch a Video Campaign](../sops/SOP – Launch a Video Campaign.md) for configuration. See [Audience Targeting Guidelines](../guidelines/Audience Targeting Guidelines.md) for expansion settings.
 
 ### Demand Gen campaigns
 
-Demand Gen is now the **conversion-focused upper funnel campaign type:** it absorbed Video Action Campaigns in 2025. Use Demand Gen to optimize for conversions across YouTube, Discover, and Gmail.
+Demand Gen is Google's **default conversion-focused upper funnel campaign type.** Use Demand Gen to optimize for conversions across YouTube, Discover, Gmail, GDN, and Maps. It serves the full GDN inventory (3M+ sites), including dynamic remarketing and broad-reach prospecting. Audience targeting is primary, content targeting is secondary (layer on top, never standalone). To restrict serving to GDN inventory only, use the GDN-exclusive serving option inside Demand Gen.
 
 | **Segment** | **Audience strategy** |
 | --- | --- |
@@ -181,6 +165,8 @@ Demand Gen is now the **conversion-focused upper funnel campaign type:** it abso
 | **Expansion** | In-market with Optimized Targeting for AI-driven expansion |
 
 **Key structural decisions:** Start with narrow Lookalike reach from highest-value seed list, widen if volume constrained. Optimized targeting OFF for remarketing. Combine lookalike and custom segments in the same ad group (Google-recommended Demand Gen approach). Use both video and image creative formats.
+
+> 💡 **YouTube subscriptions and engagements is a Demand Gen type and reports only.** It surfaces subscriber and engagement outcomes rather than optimizing toward them, so do not pick it expecting channel growth to be bid on.
 
 > ↪️ **Demand Gen setup.** See [SOP – Launch a Demand Gen Campaign](../sops/SOP – Launch a Demand Gen Campaign.md) for configuration. See [Audience Targeting Guidelines](../guidelines/Audience Targeting Guidelines.md) for lookalike and expansion settings.
 
@@ -228,9 +214,9 @@ Unlike Search ad groups (which need tight keyword-to-ad alignment), Upper Funnel
 | **Optimized Targeting ON everywhere** | Loses audience control | Use selectively for prospecting only |
 | **Never checking audience insights** | Missing high-performing untargeted segments | Review Insights page monthly to discover new audiences |
 | **Ignoring demographics** | Missing easy optimization from excluding zero-conversion groups | Review demographic performance monthly |
-| **Confusing optimized targeting with audience expansion** | Different features applied to wrong campaign types | Optimized targeting for Display/DG/Video performance. Audience expansion for Video consideration/awareness only |
+| **Confusing optimized targeting with audience expansion** | Different features applied to wrong campaign types | Optimized targeting is the Demand Gen control. Audience expansion is the Video control |
 | **No placement exclusions** | Spend wasted on apps, kids content | Exclusion list from day one |
-| **Running Display/Video alongside PMax without coordination** | Auction overlap, unclear attribution | Define clear roles for each |
+| **Running Demand Gen/Video alongside PMax without coordination** | Auction overlap, unclear attribution | Define clear roles for each |
 
 ---
 
@@ -240,7 +226,7 @@ Unlike Search ad groups (which need tight keyword-to-ad alignment), Upper Funnel
 2. **Temperature guides structure:** Campaign tiers should follow the audience temperature hierarchy: hot → warm → cool → cold.
 3. **Exclusions are mandatory:** Every Upper Funnel campaign needs recent converters excluded. Prospecting campaigns need remarketing audiences excluded.
 4. **Creative matches temperature:** Cold audiences need problem/pain messaging. Warm audiences need offer details and urgency (See [Awareness Stage Mental Model](../mental-models/Awareness Stage Mental Model.md)).
-5. **Demand Gen for conversions, Video for awareness:** If you want conversion-optimized Upper Funnel campaigns, use Demand Gen. Video campaigns are now exclusively for awareness and consideration goals.
+5. **Demand Gen for conversions, Video for awareness:** If you want conversion-optimized Upper Funnel campaigns, use Demand Gen. Video campaigns serve awareness and consideration goals.
 6. **Consolidate until constrained:** Fewer, larger campaigns/ad groups learn faster. Only segment when you have volume AND a strategic reason.
 7. **Coordinate with PMax:** If running Performance Max, define clear roles to avoid overlap and attribution confusion.
 
@@ -260,7 +246,6 @@ Unlike Search ad groups (which need tight keyword-to-ad alignment), Upper Funnel
 | [PMax Structure Mental Model (Lead Gen/SaaS)](<../mental-models/PMax Structure Mental Model (Lead Gen-SaaS).md>) | Coordination (PMax vs. dedicated campaign decisions, Lead Gen/SaaS) |
 | [Conversion Volume Thresholds Reference](../references/Conversion Volume Thresholds Reference.md) | Reference (volume thresholds per bid strategy) |
 | [Upper Funnel Channel Selection Mental Model](../mental-models/Upper Funnel Channel Selection Mental Model.md) | Related (cross-platform channel selection) |
-| [SOP – Launch a Display Campaign](../sops/SOP – Launch a Display Campaign.md) | Execution (Display campaign setup) |
 | [SOP – Launch a Video Campaign](../sops/SOP – Launch a Video Campaign.md) | Execution (Video campaign setup) |
 | [SOP – Launch a Demand Gen Campaign](../sops/SOP – Launch a Demand Gen Campaign.md) | Execution (Demand Gen campaign setup) |
 
@@ -268,8 +253,8 @@ Unlike Search ad groups (which need tight keyword-to-ad alignment), Upper Funnel
 
 ## Version details
 
-- **Version:** 7.0
-- **Last Updated:** April 2026
+- **Version:** 9.0
+- **Last Updated:** August 2026
 - **Creator:** Bob Meijer
 
 ---

@@ -236,7 +236,7 @@ Fix Layer 1️⃣ first. Do not adjust bids, budgets, or targets in response to 
 | **Vertical** | **Layer 1️⃣ additions** | **Layer 2️⃣ considerations** | **Layer 3️⃣ focus** |
 |--------------|----------------------|---------------------------|-------------------|
 | **Lead Gen** | Backend pipeline health (CRM connectivity, lead delivery) | Lead quality signals lag heavily, use longer windows | CPA per qualified lead, pipeline value |
-| **SaaS** | Trial/signup tracking across funnel stages | Free trial conversions may have high variance | CAC vs. LTV ratio, trial-to-paid conversion |
+| **SaaS** | Trial/signup tracking across funnel stages | Free trial conversions carry high variance | CAC vs. LTV ratio, trial-to-paid conversion |
 | **Ecommerce** | Product feed health, Merchant Center status, inventory sync | Revenue-based metrics (ROAS) alongside volume | ROAS, revenue pacing, product-level profitability |
 
 ---

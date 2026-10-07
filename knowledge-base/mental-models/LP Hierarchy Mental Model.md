@@ -151,7 +151,7 @@ Social proof taps into the human tendency to look to others for guidance. It ans
 
 - **Real and verifiable:** Full names, photos, company names, links to profiles. Anonymous testimonials create suspicion.
 - **Specific:** "Best course ever" is weak. "Generated 253% more conversions in 90 days" is strong.
-- **Unpolished when appropriate:** "Ugly proof" (screenshots, real chat messages, raw data) acts as scroll-stoppers and feels authentic.
+- **Unpolished when appropriate:** "Ugly proof" (screenshots, real chat messages, raw data) acts as a scroll-stopper and feels authentic.
 - **Matched to visitor segment:** Show testimonials from peers. Agency testimonials for agency visitors, freelancer testimonials for freelancers.
 
 ---

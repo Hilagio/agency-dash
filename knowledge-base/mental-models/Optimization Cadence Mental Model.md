@@ -147,7 +147,7 @@ Monthly reviews span all three layers: a deep **Layer 1️⃣** audit, a **Layer
 | **Competitive landscape** | Layer 2️⃣/3️⃣ | Auction insights trends, new competitors | Update competitive positioning |
 | **Campaign settings drift** | Layer 1️⃣ (deep) | Location, network, rotation settings | Correct any unintended changes |
 | **Account structure** | Layer 3️⃣ | Consolidation opportunities, volume distribution | Plan structural changes for next quarter |
-| **Recommendation review** | Layer 1️⃣ | Google's recommendations and optimization score | Dismiss irrelevant, consider valuable |
+| **Recommendation review** | Layer 1️⃣ | Google's recommendations and optimization score | Dismiss irrelevant, apply valuable ones manually |
 
 **Frequency flexibility:**
 

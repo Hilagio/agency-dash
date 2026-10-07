@@ -16,7 +16,14 @@ This guideline defines how to communicate the constraint-based Scaling System to
 
 ---
 
-## What this is NOT
+## What this is / What this is NOT
+
+**This guideline:**
+
+- Defines the four client-facing artifacts and their update cadence
+- Provides scripts for the recurring tension points between constraint focus and client requests
+- Sets the QBR and weekly call structure
+- Establishes when a client request breaks Sprint focus and when it does not
 
 **This guideline does NOT:**
 
@@ -84,7 +91,7 @@ This makes the stakeholder feel heard and forces them to connect their idea to a
 
 ### Step 2️⃣: Place it in the backlog visibly
 
-Add the idea to your Constraint backlog on-screen during the call. Tag it with the relevant bucket and whether it is likely a More, Better, or New lever. The client can see their idea is captured, not dismissed.
+Add the idea to your Constraint backlog on-screen during the call. Tag it with the relevant bucket and with the lever it pulls: More, Better, or New. The client can see their idea is captured, not dismissed.
 
 ### Step 3️⃣: Contrast with the current Constraint
 
@@ -234,7 +241,7 @@ Keep weekly calls to 30 minutes. Three blocks, timed.
 |--------|---------|
 | Walk through the Status Board | Highlight any bucket that changed status since last week |
 | Flag urgent issues | Any Measurement problems or major metric crashes |
-| Note "watch" items | Metrics in amber that may need attention if they persist |
+| Note "watch" items | Metrics in amber that need attention if they persist |
 
 Do not diagnose problems in this block. Surface them.
 

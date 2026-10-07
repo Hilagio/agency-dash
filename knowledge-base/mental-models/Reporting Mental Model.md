@@ -165,14 +165,11 @@ Profit
 | Campaign review | Campaign managers | Weekly | Significant performance shift |
 | Diagnostic deep-dive | Specialists | As needed | Performance threshold breach |
 
-**Weekly review structure:**
-
-1. Check primary KPIs vs. targets (2 min)
-2. Identify any outliers or trends (3 min)
-3. Prioritize one issue for diagnostic analysis (10 min)
-4. Document findings and actions (5 min)
+The weekly review moves from primary KPIs to outliers to one prioritized diagnostic, then to documented actions. Each report type earns its place by the decision it drives, not by the data it holds.
 
 > 💡 **Time-box your reviews:** Unlimited data access creates unlimited analysis. Set a fixed time for weekly reviews and stick to it.
+
+> ↪️ **For the weekly review procedure and its time budget:** See [SOP – Run a Weekly Performance Review](../sops/SOP – Run a Weekly Performance Review.md) and [Optimization Cadence Mental Model](../mental-models/Optimization Cadence Mental Model.md).
 
 ---
 
@@ -211,7 +208,7 @@ Google Ads reports attribution-based data. Understand the implications.
 **Critical attribution rules:**
 
 1. **Same model across reports:** Comparing campaigns with different attribution is meaningless
-2. **Conversion lag exists:** New campaigns need 7-14 days before conversion data is reliable
+2. **Conversion lag exists:** Wait 1-2 conversion cycles before treating a new campaign's conversion data as reliable. The conversion cycle is account-specific, so read it from the bid strategy report rather than assuming a fixed number of days
 3. **Google Ads ≠ Reality:** Cross-platform attribution will never match backend data exactly
 4. **Trend over time matters more than absolute numbers:** If attribution is consistent, trends are valid even if totals aren't
 

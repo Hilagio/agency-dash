@@ -1,5 +1,6 @@
 # Keyword and Match Type Selection Guidelines
 Created: 2026-02-04
+Updated: 2026-07-08
 
 Support_ID: GUIDELINE_5
 Category: Targeting
@@ -32,7 +33,6 @@ This guideline defines recommended match type configurations based on your biddi
 - Explain how smart bidding works internally (See: [Smart Bidding Mechanics Reference](../references/Smart Bidding Mechanics Reference.md))
 - Tell you which bid strategy to select (See: [Bid Strategy Selection Reference](../references/Bid Strategy Selection Reference.md))
 - Provide step-by-step keyword research or campaign build instructions
-- Provide step-by-step execution instructions
 
 ---
 
@@ -79,7 +79,7 @@ This is the core recommendation. Match type selection depends on your bidding st
 | Setting | Recommendation | Rationale |
 |---------|---------------|-----------|
 | **Match type** | **Phrase + Exact match** | Click-based strategies have no conversion signal to optimize against |
-| **Bidding strategy** | Max Clicks (with CPC cap) or Manual CPC | Budget should be spent on relevant clicks only |
+| **Bidding strategy** | Max Clicks (with CPC cap) or Manual CPC | Budget buys relevant clicks only |
 
 **Why broad match fails here:** click-based bidding strategies do not optimize for conversion quality. Broad match would expand to loosely related queries, and the algorithm would bid on anything that generates a click. Phrase and exact keep traffic focused on queries you have validated as relevant.
 
@@ -88,7 +88,7 @@ This is the core recommendation. Match type selection depends on your bidding st
 | Setting | Recommendation | Rationale |
 |---------|---------------|-----------|
 | **Match type** | **Phrase + Exact match** | Impression Share strategies bid for visibility, not conversion efficiency |
-| **Bidding strategy** | Target Impression Share (with CPC cap) | Budget should buy impressions on specific, intended queries only |
+| **Bidding strategy** | Target Impression Share (with CPC cap) | Budget buys impressions on specific, intended queries only |
 
 **Why broad match fails here:** Target Impression Share bids to appear at the top of results for matched queries. Broad match would expand query coverage to loosely related terms, and the strategy would bid aggressively to show at the top for all of them. This overspends budget on queries that do not matter for your visibility goals.
 
@@ -107,20 +107,20 @@ Broad match with Target CPA or Target ROAS is the default, but use phrase or exa
 | Constrained budget | Exact and/or Phrase | Small budgets get consumed by broad match exploration before core queries are served. Control traffic relevance and temperature |
 | Extremely niche B2B verticals with predictable keywords | Exact and/or Phrase | Query space is narrow. Broad match produces mostly irrelevant queries with low incremental uplift |
 | Specific budget allocation for specific terms | Exact or Phrase | You need guaranteed spend on particular queries, not algorithmic allocation |
-| Industry regulations require matching only specific searches | Exact or Phrase | Legal, medical, or financial industries may require precise query control |
+| Industry regulations require matching only specific searches | Exact or Phrase | Legal, medical, and financial industries require precise query control |
 
 ### When to upgrade from phrase/exact to broad match
 
-If you are currently running phrase or exact match with Target CPA or Target ROAS:
+If you are currently running phrase or exact match with Target CPA or Target ROAS, the volume numbers below are owned by [Conversion Volume Thresholds Reference](../references/Conversion Volume Thresholds Reference.md):
 
 | Condition | Action |
 |-----------|--------|
 | Account has 30+ conversions/month (tCPA) or 50+ (tROAS) | Test broad match via 50/50 campaign experiment |
-| Conversion data is stable (consistent CPA/ROAS over 2+ weeks) | Run the experiment for 2-4 weeks with equal budget split |
+| Conversion data is stable (consistent CPA/ROAS over 2+ weeks) | Run the experiment for 6-8 weeks at a 50/50 traffic split with budgets and bids frozen (end earlier only when it reaches statistical significance) |
 | Experiment shows incremental conversions at acceptable CPA/ROAS | Roll out broad match |
 | Budget is sufficient to handle query expansion | Proceed with rollout |
 
-> 💡 **Use 50/50 campaign experiments to test broad match:** Do not switch all keywords to broad match at once. Run a controlled experiment: one arm with phrase/exact, one arm with broad match, equal budgets. If broad match delivers incremental conversions at acceptable efficiency, roll it out. If not, keep phrase/exact.
+> 💡 **Use 50/50 campaign experiments to test broad match:** Do not switch all keywords to broad match at once. Run a controlled experiment: one arm with phrase/exact, one arm with broad match, a 50/50 traffic split, budgets and bids frozen for the duration. Unequal spend between the arms is the expected output of the change under test, not a broken test. If broad match delivers incremental conversions at acceptable efficiency, roll it out. If not, keep phrase/exact.
 
 ---
 
@@ -132,12 +132,14 @@ Google's matching hierarchy handles query routing automatically:
 
 | Priority | Routing rule |
 |----------|-------------|
-| 1 | Exact match keyword identical to the search query |
-| 2 | Phrase or broad match keyword identical to the search query |
-| 3 | Spell-corrected match to any keyword |
-| 4 | Highest Ad Rank among remaining eligible keywords |
+| 1 | Exact match keyword that matches the search query, close variants included (plurals, misspellings, stemmings, same-intent rewordings) |
+| 2 | Phrase or broad match keyword (including AI Max) or Performance Max search theme identical to the search query |
+| 3 | AI-based ad group prioritisation: when nothing matches at the tiers above, the most relevant ad group wins, judged on its keywords and landing pages |
+| 4 | Highest Ad Rank among remaining eligible options |
 
-**What this means:** if you have "crm software" as a broad match keyword, there is no benefit to also adding [crm software] as exact match and "crm software" as phrase match. The system already prioritizes the most restrictive match when the query matches identically.
+**What this means:** if you have "crm software" as a broad match keyword, there is no benefit to also adding [crm software] as exact match and "crm software" as phrase match. The system already prioritizes the most restrictive match when the query matches, close variants included.
+
+> ↪️ **For the full account-wide hierarchy, AI Max and Performance Max behavior, and exceptions:** See [Match Type Reference](../references/Match Type Reference.md).
 
 ### Recommended approach
 
@@ -174,7 +176,7 @@ Google's matching hierarchy handles query routing automatically:
 ### Phrase/Exact keyword sizing principles
 
 - **Cover known variations explicitly:** Without algorithmic expansion, your keywords are the ceiling of your coverage
-- **Group tightly by theme:** Each ad group should contain keywords that map to the same intent and landing page
+- **Group tightly by theme:** Each ad group contains keywords that map to the same intent and landing page
 - **Expand based on search term reports:** New keyword ideas come from actual user queries, not speculation
 
 ---
@@ -214,13 +216,14 @@ After configuring keywords and match types, verify:
 - [Bid Strategy Selection Reference](../references/Bid Strategy Selection Reference.md): which bidding strategy to choose
 - [Smart Bidding Mechanics Reference](../references/Smart Bidding Mechanics Reference.md): how smart bidding uses signals, including broad match signals
 - [Bidding Configuration Guidelines](../guidelines/Bidding Configuration Guidelines.md): portfolio strategies, CPC caps, and related bidding settings
+- [Conversion Volume Thresholds Reference](../references/Conversion Volume Thresholds Reference.md): owns the conversion volume minimums cited above
 
 ---
 
 ## Version details
 
-- **Version:** 1.0
-- **Last Updated:** February 2026
+- **Version:** 3.0
+- **Last Updated:** July 2026
 - **Creator:** Bob Meijer
 
 ---
@@ -233,4 +236,4 @@ Violations may be detected through embedded document fingerprints and will be pu
 
 Full terms: https://www.ppcmastery.com/terms-and-conditions
 
-(c) 2026 PPC Mastery B.V. All rights reserved.
+© 2026 PPC Mastery B.V. All rights reserved.
