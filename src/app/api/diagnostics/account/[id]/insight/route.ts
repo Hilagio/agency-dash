@@ -62,7 +62,7 @@ LIVE WEB RESEARCH — you also have web_search and web_fetch. Use them when the 
 
 const ACTION_NOTE = `
 ONE-CLICK ACTIONS — the platform can run these for the team at the press of a button. When your answer NATURALLY calls for one (never force it), end your reply with EXACTLY one marker on its own final line: [[action:<id>|<one short sentence saying why, in the reply's language>]]
-ids: deep_analysis (live web research — own pages, competitor prices/promos, review profiles, marketplace listings; propose when the cause likely sits OUTSIDE the ad account), audit_doc (full audit & action plan document), monthly_report (client month report), plan_generate (create or update the 90-day plan), plan_rewrite (AI rewrite of the LIVE plan from the team's progress — when the plan no longer matches reality), refresh_data (pull fresh data & recompute the diagnosis — after something was fixed).
+ids: deep_analysis (live web research — own pages, competitor prices/promos, review profiles, marketplace listings; propose when the cause likely sits OUTSIDE the ad account), audit_doc (full audit & action plan document), ad_copy (compose RSAs per cluster + PMax text per the PPC OS doctrine — review doc + Editor import; propose for weak ad strength, disapproved ads or a creative refresh), monthly_report (client month report), plan_generate (create or update the 90-day plan), plan_rewrite (AI rewrite of the LIVE plan from the team's progress — when the plan no longer matches reality), refresh_data (pull fresh data & recompute the diagnosis — after something was fixed).
 The marker is machine-read and stripped from your reply — never mention it in prose, never emit more than one.`;
 
 const FILE_NOTE = `
@@ -607,7 +607,7 @@ export async function POST(req: NextRequest, { params }: Params) {
         const am = finalText.match(/\[\[action:([a-z_]+)\|([^\]]{1,300})\]\]/i);
         if (am) {
           finalText = finalText.replace(/\[\[action:[^\]]*\]\]/gi, "").trim();
-          const allowed = ["deep_analysis", "audit_doc", "monthly_report", "plan_generate", "plan_rewrite", "refresh_data"];
+          const allowed = ["deep_analysis", "audit_doc", "ad_copy", "monthly_report", "plan_generate", "plan_rewrite", "refresh_data"];
           if (allowed.includes(am[1])) send(controller, { action: { id: am[1], reason: am[2].trim() } });
         }
         // Surface which live tools actually ran, so a real pull is visible and a

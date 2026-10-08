@@ -1130,6 +1130,7 @@ export default function DiagnosePage() {
     deep_analysis: "Run the deep analysis (live web research)",
     audit_doc: "Generate the audit & action plan",
     monthly_report: "Open the monthly report",
+    ad_copy: "Compose ad copy (RSA & PMax)",
     plan_generate: "Open the plan generator",
     plan_rewrite: "Rewrite the live plan from progress",
     refresh_data: "Refresh data & recompute",
@@ -1168,11 +1169,53 @@ export default function DiagnosePage() {
     setState("running");
     try {
       if (act === "deep_analysis") await generateDeepAnalysis();
+      else if (act === "ad_copy") await generateAdCopy();
       else if (act === "audit_doc") await generateDocument(AUDIT_REQUEST);
       else if (act === "refresh_data") await refreshData();
       else if (act === "plan_rewrite") await runPlanRewriteInline();
       setState("done");
     } catch (e) { setState("idle"); setInsightErr(e instanceof Error ? e.message : "The action failed."); }
+  }
+
+  // PPC OS ad-copy-maker, in-platform: composes RSAs per cluster + PMax text
+  // following the house doctrine; delivers a review doc + Editor import file.
+  async function generateAdCopy() {
+    if (docBusy || deepStatus) return;
+    setDeepStatus("Composing ad copy…"); setDocErr(null);
+    try {
+      const r = await fetch(`/api/accounts/${id}/ad-copy`, {
+        method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ language: docLang, request: docFocus.trim() || undefined }),
+      });
+      if (!r.ok || !r.body) { const j = await r.json().catch(() => ({})); setDocErr(j.error ?? `HTTP ${r.status}`); return; }
+      const reader = r.body.getReader(); const dec = new TextDecoder(); let buf = ""; let finished = false;
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buf += dec.decode(value, { stream: true });
+        const parts = buf.split("\n\n"); buf = parts.pop() ?? "";
+        for (const p of parts) {
+          const line = p.trim(); if (!line.startsWith("data:")) continue;
+          let ev: { status?: string; chars?: number; done?: boolean; html?: string; filename?: string; csv?: string | null; csvFilename?: string; saved?: DocMeta | null; error?: string; counts?: { rsas: number; pmax: number; dropped: number } };
+          try { ev = JSON.parse(line.slice(5).trim()); } catch { continue; }
+          if (ev.error) { setDocErr(ev.error); finished = true; }
+          else if (ev.status === "writing") setDeepStatus(`Writing ads… (${Math.round((ev.chars ?? 0) / 1000)}k chars)`);
+          else if (ev.status) setDeepStatus("Reading structure, terms & doctrine…");
+          if (ev.done && ev.html) {
+            deliverHtml(ev.html, ev.filename ?? "ad-copy.html");
+            if (ev.csv) {
+              const url = URL.createObjectURL(new Blob([ev.csv], { type: "text/tab-separated-values" }));
+              const aEl = document.createElement("a"); aEl.href = url; aEl.download = ev.csvFilename ?? "rsas-editor.csv"; aEl.click();
+              setTimeout(() => URL.revokeObjectURL(url), 60000);
+            }
+            if (ev.saved) setLibrary(prev => [ev.saved as DocMeta, ...prev]);
+            setDocFocus(""); finished = true;
+          }
+        }
+      }
+      if (!finished) setDocErr("The connection dropped before the ad copy finished — try again.");
+    } catch (e) { setDocErr(e instanceof Error ? e.message : "Failed"); }
+    finally { setDeepStatus(null); }
   }
 
   // Reopen (or re-download) a saved deliverable from the library.
@@ -1829,6 +1872,10 @@ export default function DiagnosePage() {
                     <button onClick={generateDeepAnalysis} disabled={docBusy || deepStatus !== null} title="The model researches the LIVE WEB — your product pages, competitor prices & promo codes, Trustpilot, marketplace listings under your brand name — and connects it to the campaign numbers. Takes a few minutes."
                       style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11.5, fontWeight: 700, padding: "6px 12px", borderRadius: 7, border: "1px dashed color-mix(in srgb, var(--accent) 45%, var(--border-2))", cursor: deepStatus ? "default" : "pointer", background: "var(--surface-2)", color: "var(--accent)" }}>
                       {deepStatus ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />} Deep analysis (live web research)
+                    </button>
+                    <button onClick={generateAdCopy} disabled={docBusy || deepStatus !== null} title="PPC OS ad-copy-maker: composes RSAs per testing cluster + PMax text from the live structure, search terms and your context pack — review doc + Google Ads Editor import file. Nothing is applied automatically. Tip: name campaigns or a mode in the focus field above."
+                      style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11.5, fontWeight: 700, padding: "6px 12px", borderRadius: 7, border: "1px dashed var(--border-3, var(--border-2))", cursor: deepStatus ? "default" : "pointer", background: "var(--surface-2)", color: "var(--text-2)" }}>
+                      <FileText size={12} /> Ad copy (RSA &amp; PMax)
                     </button>
                     {deepStatus && <span style={{ fontSize: 11.5, color: "var(--accent)", fontWeight: 600 }}>{deepStatus}</span>}
                   </div>
