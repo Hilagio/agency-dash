@@ -378,31 +378,36 @@ export async function fetchMerchantCenterProductList(
   let pageToken: string | undefined;
 
   try {
+    // Merchant API reports:search over product_view — the Content API v2.1
+    // products endpoint was sunset (410 Gone). Same endpoint + auth that the
+    // price-competitiveness pull already uses, so this path is proven.
     do {
-      const url = new URL(`https://shoppingcontent.googleapis.com/content/v2.1/${merchantId}/products`);
-      url.searchParams.set("maxResults", "250");
-      if (pageToken) url.searchParams.set("pageToken", pageToken);
+      const body: Record<string, unknown> = { query: "SELECT id, title, brand FROM product_view", pageSize: 250 };
+      if (pageToken) body.pageToken = pageToken;
 
-      const res = await fetch(url.toString(), {
-        headers: { Authorization: `Bearer ${accessToken}` },
+      const res = await fetch(`https://merchantapi.googleapis.com/reports/v1/accounts/${merchantId}/reports:search`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify(body),
       });
 
       if (!res.ok) {
-        const body = await res.text().catch(() => "");
-        console.warn(`[merchant-center] products.list ${res.status}:`, body.slice(0, 200));
+        const errBody = await res.text().catch(() => "");
+        console.warn(`[merchant-center] product_view ${res.status}:`, errBody.slice(0, 200));
         break;
       }
 
       const json = await res.json() as {
-        resources?: Array<{ id?: string; title?: string; brand?: string }>;
+        results?: Array<{ productView?: { id?: string; title?: string; brand?: string } }>;
         nextPageToken?: string;
       };
 
-      for (const p of json.resources ?? []) {
-        // Content API product ID: "online:en:GB:ITEM123" — extract last segment
-        const parts  = (p.id ?? "").split(":");
+      for (const r of json.results ?? []) {
+        // product_view id: "online~en~NL~ITEM123" (legacy ":"-separated handled too)
+        const raw = r.productView?.id ?? "";
+        const parts = raw.split(/[~:]/);
         const itemId = parts[parts.length - 1] ?? "";
-        if (itemId) products.push({ itemId, title: p.title ?? "", brand: p.brand ?? "" });
+        if (itemId) products.push({ itemId, title: r.productView?.title ?? "", brand: r.productView?.brand ?? "" });
       }
 
       pageToken = json.nextPageToken;
@@ -429,64 +434,79 @@ export interface MerchantHealth {
 }
 
 /**
- * Live Merchant Center feed health via the Content API v2.1 `accountstatuses`
- * endpoint — one call returns account-level issues (suspension, misrepresentation,
- * policy) AND per-country serving stats + aggregated item-level disapproval reasons
- * with product counts. This is what lets the agent answer "is the feed suspended /
- * are products disapproved / is BE approved?" itself instead of sending the team
- * into Merchant Center. Uses the `content` scope — no GCP registration needed.
- *
- * NOTE: Content API v2.1 sunsets 2026-08-18. Its Merchant API replacement
- * additionally requires the Cloud project to be *registered* with each Merchant
- * Center account (a 401 "GCP project … not registered" otherwise). Until that
- * registration is in place we stay on the Content API, which works today with
- * zero extra setup. Cut over before the sunset once registration is done.
+ * Live Merchant Center feed health via the MERCHANT API (the Content API v2.1
+ * `accountstatuses` endpoint was sunset 2026-08-18 and now returns 410 Gone).
+ * Two calls replace it:
+ *   - accounts/v1 `accounts/{id}/issues`  → account-level issues (suspension,
+ *     misrepresentation, policy)
+ *   - issueresolution/v1 `accounts/{id}/aggregateProductStatuses` → per-country
+ *     serving stats + aggregated item-level disapproval reasons with counts
+ * Same `content` OAuth scope; the same GCP project registration that already
+ * powers reports:search (price competitiveness) covers these too.
  */
 export async function fetchMerchantCenterHealth(merchantId: string, orgId?: string): Promise<MerchantHealth> {
   const empty: MerchantHealth = { linked: true, accountIssues: [], destinations: [], itemIssues: [], totals: { active: 0, pending: 0, disapproved: 0 } };
   let accessToken: string;
   try { accessToken = await getAccessToken(await getRefreshToken(orgId)); }
   catch (e) { return { ...empty, scopeOrAuthError: e instanceof Error ? e.message : String(e) }; }
+  const auth = { Authorization: `Bearer ${accessToken}` };
 
-  const res = await fetch(
-    `https://shoppingcontent.googleapis.com/content/v2.1/${merchantId}/accountstatuses/${merchantId}`,
-    { headers: { Authorization: `Bearer ${accessToken}` } },
-  ).catch((e: unknown) => { throw e; });
+  // Account-level issues — a failure here shouldn't hide the product stats.
+  let accountIssues: MerchantHealth["accountIssues"] = [];
+  try {
+    const res = await fetch(`https://merchantapi.googleapis.com/accounts/v1/accounts/${merchantId}/issues?pageSize=50`, { headers: auth });
+    if (res.ok) {
+      const json = await res.json() as { accountIssues?: Array<{ title?: string; severity?: string; impactedDestinations?: Array<{ regions?: Array<{ code?: string }> }> }> };
+      accountIssues = (json.accountIssues ?? []).map(i => ({
+        title: i.title ?? "issue", severity: i.severity ?? "",
+        country: i.impactedDestinations?.[0]?.regions?.[0]?.code,
+      }));
+    }
+  } catch { /* account issues unavailable — continue with product stats */ }
 
-  if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    return { ...empty, scopeOrAuthError: `accountstatuses ${res.status}: ${body.slice(0, 200)}` };
+  // Aggregated product statuses, paginated (250/page, capped at 4 pages).
+  interface AggRow { reportingContext?: string; country?: string; stats?: { activeCount?: string | number; pendingCount?: string | number; disapprovedCount?: string | number }; itemLevelIssues?: Array<{ description?: string; severity?: string; productCount?: string | number }> }
+  const rows: AggRow[] = [];
+  let pageToken: string | undefined;
+  for (let page = 0; page < 4; page++) {
+    const url = new URL(`https://merchantapi.googleapis.com/issueresolution/v1/accounts/${merchantId}/aggregateProductStatuses`);
+    url.searchParams.set("pageSize", "250");
+    if (pageToken) url.searchParams.set("pageToken", pageToken);
+    // eslint-disable-next-line no-await-in-loop
+    const res = await fetch(url.toString(), { headers: auth });
+    if (!res.ok) {
+      // eslint-disable-next-line no-await-in-loop
+      const body = await res.text().catch(() => "");
+      if (rows.length === 0 && accountIssues.length === 0) return { ...empty, scopeOrAuthError: `aggregateProductStatuses ${res.status}: ${body.slice(0, 200)}` };
+      break;
+    }
+    // eslint-disable-next-line no-await-in-loop
+    const json = await res.json() as { aggregateProductStatuses?: AggRow[]; nextPageToken?: string };
+    rows.push(...(json.aggregateProductStatuses ?? []));
+    pageToken = json.nextPageToken;
+    if (!pageToken) break;
   }
 
-  const json = await res.json() as {
-    accountLevelIssues?: Array<{ title?: string; severity?: string; country?: string }>;
-    products?: Array<{
-      country?: string; destination?: string;
-      statistics?: { active?: string | number; pending?: string | number; disapproved?: string | number };
-      itemLevelIssues?: Array<{ description?: string; servability?: string; numItems?: string | number; country?: string }>;
-    }>;
-  };
-
   const n = (v: string | number | undefined) => Number(v ?? 0) || 0;
-  const accountIssues = (json.accountLevelIssues ?? []).map(i => ({ title: i.title ?? "issue", severity: i.severity ?? "", country: i.country }));
-  // accountstatuses.products is keyed per (channel, destination, country), so the
-  // same product is listed under several destinations. Collapse to ONE entry per
-  // country (the primary destination = the one with the most active products) so
-  // totals and the per-country view aren't multiplied across destinations.
+  // Rows are keyed per (reportingContext, country) — the same products appear
+  // under several contexts. Collapse to ONE entry per country, preferring
+  // SHOPPING_ADS (that's what serving means for us), else the most active.
   const perCountry = new Map<string, { country: string; destination: string; active: number; pending: number; disapproved: number }>();
-  for (const p of json.products ?? []) {
-    const country = p.country ?? "";
-    const row = { country, destination: p.destination ?? "", active: n(p.statistics?.active), pending: n(p.statistics?.pending), disapproved: n(p.statistics?.disapproved) };
+  for (const r of rows) {
+    const country = r.country ?? "";
+    const row = { country, destination: r.reportingContext ?? "", active: n(r.stats?.activeCount), pending: n(r.stats?.pendingCount), disapproved: n(r.stats?.disapprovedCount) };
     const cur = perCountry.get(country);
-    if (!cur || row.active > cur.active) perCountry.set(country, row);
+    const prefer = !cur || (row.destination === "SHOPPING_ADS" && cur.destination !== "SHOPPING_ADS") || (cur.destination !== "SHOPPING_ADS" && row.active > cur.active);
+    if (prefer) perCountry.set(country, row);
   }
   const destinations = [...perCountry.values()];
   const issueAgg = new Map<string, { description: string; servability: string; numItems: number; country?: string }>();
-  for (const p of json.products ?? []) {
-    for (const it of p.itemLevelIssues ?? []) {
-      const key = `${it.description ?? ""}|${it.country ?? p.country ?? ""}`;
-      const e = issueAgg.get(key) ?? { description: it.description ?? "issue", servability: it.servability ?? "", numItems: 0, country: it.country ?? p.country };
-      e.numItems += n(it.numItems);
+  for (const r of rows) {
+    if (r.reportingContext && r.reportingContext !== "SHOPPING_ADS") continue; // avoid double-counting across contexts
+    for (const it of r.itemLevelIssues ?? []) {
+      const key = `${it.description ?? ""}|${r.country ?? ""}`;
+      const e = issueAgg.get(key) ?? { description: it.description ?? "issue", servability: (it.severity ?? "").toLowerCase(), numItems: 0, country: r.country };
+      e.numItems += n(it.productCount);
       issueAgg.set(key, e);
     }
   }

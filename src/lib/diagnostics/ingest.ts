@@ -77,21 +77,22 @@ export async function ingestAccountSpine(
     const heavyWindow = { accountId: account.id, date: { gte: heavyStart, lte: end } };
 
     // Rewrite each daily window (idempotent + back-fills changed history).
-    await prisma.$transaction([
-      prisma.metricDaily.deleteMany({ where: inWindow }),
-      prisma.metricProductDaily.deleteMany({ where: heavyWindow }),
-      prisma.productAdsDaily.deleteMany({ where: heavyWindow }),
-      prisma.searchTermDaily.deleteMany({ where: heavyWindow }),
-    ]);
+    // NOT in one transaction: on big accounts these deletes together exceed
+    // Prisma's 5s interactive-transaction cap ("rollback cannot be executed on
+    // an expired transaction") and the whole pull fails. Each deleteMany is
+    // atomic on its own, and the rewrite is idempotent — if a run dies halfway,
+    // the next pull repairs the window.
+    await prisma.metricDaily.deleteMany({ where: inWindow });
+    await prisma.metricProductDaily.deleteMany({ where: heavyWindow });
+    await prisma.productAdsDaily.deleteMany({ where: heavyWindow });
+    await prisma.searchTermDaily.deleteMany({ where: heavyWindow });
 
     // Retention: purge stale high-cardinality rows so the volume stays bounded
     // and can never fill the disk again (this is what took Postgres down).
     const stale = { accountId: account.id, date: { lt: daysAgo(45) } };
-    await prisma.$transaction([
-      prisma.metricProductDaily.deleteMany({ where: stale }),
-      prisma.productAdsDaily.deleteMany({ where: stale }),
-      prisma.searchTermDaily.deleteMany({ where: stale }),
-    ]);
+    await prisma.metricProductDaily.deleteMany({ where: stale });
+    await prisma.productAdsDaily.deleteMany({ where: stale });
+    await prisma.searchTermDaily.deleteMany({ where: stale });
 
     // Insert in chunks — a single multi-thousand-row INSERT blows the WAL and
     // can fill the disk mid-write; small batches keep memory + WAL bounded.
