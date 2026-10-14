@@ -131,6 +131,11 @@ export const AGENT_TOOLS = [
     },
   },
   {
+    name: "remember_ruling",
+    description: "Store a TEAM RULING: a correction or decision the team just made that settles a point — e.g. 'the V campaign is our Villains pool, deliberately low budget', 'the AU disapprovals are known and accepted', 'tracking is verified, stop questioning it'. Call this THE MOMENT the team overrules or corrects one of your claims, so the point is never re-raised in any future conversation, plan or analysis. Phrase the ruling as a standalone fact (it will be read without this conversation's context). Do NOT store temporary states (those change) — only settled decisions and corrections.",
+    input_schema: { type: "object", properties: { ruling: { type: "string", description: "The settled fact/decision, one or two sentences, standalone." } }, required: ["ruling"] },
+  },
+  {
     name: "consult_playbook",
     description: "OUR agency's Way of Work + playbook AND our full knowledge base — searchable together. The doctrine: the six principles (steer on POAS not ROAS; nine times out of ten it's NOT the ads; scale into demand not past it; concentration vs breadth; one change at a time; read leading signals), the signals we watch, how we build & scale, how we test DEMAND GEN, the exact DIAGNOSIS ORDER when something breaks (metric tree → decompose → overlay changes → buyability → canaries), the pattern library (what a specific IS/CTR/CVR/ROAS/budget/feed combination means), and product segmentation (Heroes/Sidekicks/Zombies/Villains). PLUS the knowledge base: ~90 step-by-step SOPs, ~34 mental models, ~20 checklists, guidelines and theory — so you can pull the exact PROCEDURE or CHECKLIST for a task, or the mental model behind a decision. Consult it when you hit a trigger and want our house stance or our documented method rather than generic advice. Pass the topic in plain words — a decision ('when to raise budget', 'brand conversion rate canary'), a pattern ('zero-conversion spend rot', 'tROAS spend flatlines'), or a task/procedure ('analyze search term reports', 'PMax ecommerce optimization cycle', 'budget allocation mental model', 'set up conversion tracking checklist'). Returns the best-matching section(s), each labelled by type ([SOP]/[Mental model]/[Checklist]/[Playbook]) — apply ONLY where it fits this account and what the data actually shows; method to reason with, not a script to force.",
     input_schema: { type: "object", properties: { topic: { type: "string", description: "What you're deciding, in plain words — the situation or pattern you want our stance on." } }, required: ["topic"] },
@@ -155,6 +160,7 @@ const LABELS: Record<string, string> = {
   get_slack_context: "Reading the client's Slack channel…",
   consult_playbook: "Checking our agency playbook…",
   deliver_document: "Building the document…",
+  remember_ruling: "Noting the team's ruling…",
 };
 export const toolStatusLabel = (name: string) => LABELS[name] ?? `Checking ${name.replace(/_/g, " ")}…`;
 
