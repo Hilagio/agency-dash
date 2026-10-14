@@ -431,6 +431,8 @@ export default function DiagnosePage() {
   const [docOpen, setDocOpen] = useState(false);
   const [docBusy, setDocBusy] = useState(false);
   const [deepStatus, setDeepStatus] = useState<string | null>(null);
+  const [weekly, setWeekly] = useState<{ internal: string; client: string } | null>(null);
+  const [weeklyCopied, setWeeklyCopied] = useState<string | null>(null);
   const [docErr, setDocErr] = useState<string | null>(null);
   const [docFocus, setDocFocus] = useState("");
   const [docFormat, setDocFormat] = useState<"doc" | "deck">("doc");
@@ -1218,6 +1220,38 @@ export default function DiagnosePage() {
     finally { setDeepStatus(null); }
   }
 
+  // Weekly update: SOP review for the team + a client text that's sendable
+  // as-is into Slack/WhatsApp. Also generated automatically every Monday.
+  async function generateWeekly() {
+    if (docBusy || deepStatus) return;
+    setDeepStatus("Writing the weekly update…"); setDocErr(null); setWeekly(null);
+    try {
+      const r = await fetch(`/api/accounts/${id}/weekly-update`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: "{}" });
+      if (!r.ok || !r.body) { const j = await r.json().catch(() => ({})); setDocErr(j.error ?? `HTTP ${r.status}`); return; }
+      const reader = r.body.getReader(); const dec = new TextDecoder(); let buf = ""; let finished = false;
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buf += dec.decode(value, { stream: true });
+        const parts = buf.split("\n\n"); buf = parts.pop() ?? "";
+        for (const p of parts) {
+          const line = p.trim(); if (!line.startsWith("data:")) continue;
+          let ev: { status?: string; done?: boolean; internal?: string; client?: string; error?: string };
+          try { ev = JSON.parse(line.slice(5).trim()); } catch { continue; }
+          if (ev.error) { setDocErr(ev.error); finished = true; }
+          else if (ev.done && ev.internal && ev.client) { setWeekly({ internal: ev.internal, client: ev.client }); loadLibrary(); finished = true; }
+        }
+      }
+      if (!finished) setDocErr("The connection dropped — try again.");
+    } catch (e) { setDocErr(e instanceof Error ? e.message : "Failed"); }
+    finally { setDeepStatus(null); }
+  }
+
+  async function copyWeekly(which: "internal" | "client") {
+    if (!weekly) return;
+    try { await navigator.clipboard.writeText(weekly[which]); setWeeklyCopied(which); setTimeout(() => setWeeklyCopied(null), 1800); } catch { /* clipboard denied */ }
+  }
+
   // Reopen (or re-download) a saved deliverable from the library.
   async function openSavedDoc(docId: string, filename: string) {
     try {
@@ -1877,8 +1911,27 @@ export default function DiagnosePage() {
                       style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11.5, fontWeight: 700, padding: "6px 12px", borderRadius: 7, border: "1px dashed var(--border-3, var(--border-2))", cursor: deepStatus ? "default" : "pointer", background: "var(--surface-2)", color: "var(--text-2)" }}>
                       <FileText size={12} /> Ad copy (RSA &amp; PMax)
                     </button>
+                    <button onClick={generateWeekly} disabled={docBusy || deepStatus !== null} title="Weekly update: the SOP team review + a client text that's sendable as-is into Slack/WhatsApp — every claim backed by this week's numbers. Also runs automatically every Monday morning."
+                      style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11.5, fontWeight: 700, padding: "6px 12px", borderRadius: 7, border: "1px dashed var(--border-3, var(--border-2))", cursor: deepStatus ? "default" : "pointer", background: "var(--surface-2)", color: "var(--text-2)" }}>
+                      <FileText size={12} /> Weekly update
+                    </button>
                     {deepStatus && <span style={{ fontSize: 11.5, color: "var(--accent)", fontWeight: 600 }}>{deepStatus}</span>}
                   </div>
+                  {weekly && (
+                    <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
+                      {([["internal", "Internal (team)"], ["client", "Client version — sendable as-is"]] as const).map(([k, label]) => (
+                        <div key={k} style={{ border: "1px solid var(--border-2)", borderRadius: 10, background: "var(--surface-2)", padding: "10px 12px" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                            <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.4, color: k === "client" ? "var(--accent)" : "var(--text-muted)" }}>{label}</span>
+                            <button onClick={() => copyWeekly(k)} style={{ marginLeft: "auto", fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 6, border: "1px solid var(--border-2)", cursor: "pointer", background: weeklyCopied === k ? "var(--accent)" : "var(--surface)", color: weeklyCopied === k ? "#fff" : "var(--text-2)" }}>
+                              {weeklyCopied === k ? "Copied ✓" : "Copy for Slack/WhatsApp"}
+                            </button>
+                          </div>
+                          <pre style={{ whiteSpace: "pre-wrap", fontFamily: "inherit", fontSize: 12.5, color: "var(--text-2)", margin: 0, lineHeight: 1.55 }}>{weekly[k]}</pre>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   {docErr && <div style={{ fontSize: 12, color: "var(--danger)", marginTop: 8 }}>{docErr}</div>}
                   <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 8 }}>Downloads an on-brand HTML file (opens in the browser; ⌘P → Save as PDF to share). Every generation is saved to the library below.</div>
 

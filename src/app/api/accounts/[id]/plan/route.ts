@@ -153,6 +153,8 @@ Rules for the rewrite:
     }
     const msgs = await prisma.agentMessage.findMany({ where: { accountId: id }, orderBy: { createdAt: "desc" }, take: 12, select: { role: true, content: true } }).then(r => r.reverse()).catch(() => []);
     if (msgs.length) inputs.contextBlock += `\n\nTEAM CONVERSATION ABOUT THIS ACCOUNT (recent — real account knowledge; weigh it heavily):\n${msgs.map(m => `${m.role === "assistant" ? "Analyst" : "Team"}: ${m.content.slice(0, 1200)}`).join("\n")}`;
+    const rulings = await prisma.accountRuling.findMany({ where: { accountId: id, active: true }, orderBy: { createdAt: "desc" }, take: 25 }).catch(() => []);
+    if (rulings.length) inputs.contextBlock += `\n\nTEAM RULINGS (settled decisions — BINDING; never contradict, re-raise or plan against these):\n${rulings.map(r => `- ${r.text}`).join("\n")}`;
   }
 
   // Rewrite-from-progress is a REAL rewrite, not a light edit — it must not

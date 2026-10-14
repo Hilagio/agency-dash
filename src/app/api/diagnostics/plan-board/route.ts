@@ -32,6 +32,7 @@ export interface BoardRow {
   lastUpdate: { at: string; by: string | null; detail: string } | null; // newest history entry
   stalled: boolean;              // live > 7d and no state change in 7d
   assignees: string[];           // everyone currently assigned to open work
+  weeklyAt: string | null;       // newest Weekly Update doc — null/old = overdue
 }
 
 export async function GET() {
@@ -59,6 +60,14 @@ export async function GET() {
   ]);
 
   const now = Date.now();
+  // Weekly cadence check: newest "Weekly Update" per account → the board shows
+  // who is overdue, so the weekly rhythm can't silently be forgotten.
+  const weekly = await prisma.generatedDoc.groupBy({
+    by: ["accountId"],
+    where: { accountId: { in: instances.map(i => i.account.id) }, docType: "Weekly Update" },
+    _max: { createdAt: true },
+  }).catch(() => [] as { accountId: string; _max: { createdAt: Date | null } }[]);
+  const weeklyBy = new Map(weekly.map(w => [w.accountId, w._max.createdAt]));
   const rows: BoardRow[] = [];
   for (const inst of instances) {
     let content: PlanContent | null = null;
@@ -109,6 +118,7 @@ export async function GET() {
       lastUpdate: inst.events[0] ? { at: inst.events[0].at.toISOString(), by: inst.events[0].by, detail: inst.events[0].detail } : null,
       stalled: !finished && liveDays > 7 && idleDays > 7,
       assignees: [...new Set(inst.states.filter(s => s.status !== "done" && s.assignee).map(s => s.assignee!))],
+      weeklyAt: weeklyBy.get(inst.account.id)?.toISOString() ?? null,
     });
   }
 

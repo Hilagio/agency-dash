@@ -1,0 +1,46 @@
+# Weekly updates — the Monday cadence that can't be forgotten.
+#
+# Every Monday morning (before the team starts) this generates the weekly
+# update for every active account with a live plan: internal SOP review +
+# a client-ready Slack/WhatsApp text, saved to the account's library and
+# flagged on the team board. One account per request (container-safe).
+#
+# Uses the same CRON_SECRET repository secret as the nightly refresh.
+name: Weekly account updates
+
+on:
+  schedule:
+    - cron: "0 5 * * 1"   # Monday 05:00 UTC (~07:00 NL) — ready when the team starts
+  workflow_dispatch: {}
+
+jobs:
+  weekly:
+    runs-on: ubuntu-latest
+    env:
+      APP_URL: ${{ secrets.APP_URL || 'https://agency-dash-production.up.railway.app' }}
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
+    steps:
+      - name: Preflight — CRON_SECRET must be set
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::error::CRON_SECRET repository secret is empty — weekly updates cannot run."
+            exit 1
+          fi
+
+      - name: Generate weekly updates (one account per call)
+        run: |
+          for i in $(seq 1 40); do
+            resp=$(curl -sS --max-time 170 -X POST "$APP_URL/api/cron/weekly-update" \
+              -H "Authorization: Bearer $CRON_SECRET" || echo '{"error":"curl failed"}')
+            echo "call $i: $resp"
+            remaining=$(echo "$resp" | grep -o '"remaining":[0-9]*' | grep -o '[0-9]*' || echo "")
+            if echo "$resp" | grep -q '"error":"unauthorized"'; then
+              echo "::error::CRON_SECRET rejected by the app — check it matches Railway."
+              exit 1
+            fi
+            if [ "$remaining" = "0" ] || [ -z "$remaining" ]; then
+              echo "done after $i calls"
+              break
+            fi
+            sleep 3
+          done

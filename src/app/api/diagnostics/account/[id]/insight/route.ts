@@ -68,6 +68,12 @@ The marker is machine-read and stripped from your reply — never mention it in 
 const FILE_NOTE = `
 FILE DELIVERY — HARD RULES. You CANNOT hand the team a file any other way than the deliver_document tool. Files written in your code sandbox (via the code execution attached to your web tools) NEVER reach the team — that sandbox is invisible to them. Markdown in chat is not a file either. When the team asks for a document, report, audit, PDF or anything "to send the client": call deliver_document with the FULL structured content (it renders in the house style, saves to the account's library and puts a download button right here in the chat; the HTML prints to a perfect PDF). NEVER say a file "is ready", "staat klaar" or "can be downloaded" unless deliver_document just returned success in THIS turn. If it failed, say it failed.`;
 
+const ANSWER_NOTE = `
+ANSWER CONTRACT — non-negotiable:
+1. Address EVERY question in the team's message, in order. Multiple questions = multiple answers. Never silently skip one, never answer around it.
+2. If a question CANNOT be answered from the data and tools you have, say so explicitly — and name the EXACT follow-up that would unlock it: which file ("the day-grouped Sales-by-variant export"), which connection ("link Merchant Center"), which number ("the client's gross margin %"). A named gap with a concrete ask beats a vague answer every time.
+3. OVERRULES ARE FINAL. When the team corrects or overrules one of your claims ("that's not an issue because…", "we do that deliberately", "that number is wrong, it's X"), accept it immediately, call remember_ruling to store it, and NEVER push the overruled point again — not in this reply, not later, not reframed. If new data later genuinely contradicts a ruling, you may note it ONCE in a single clause, never as a recommendation.`;
+
 const LEADGEN_NOTE = `
 LEAD-GEN / CPA ACCOUNTS — if the account's goal is LEADS (a cost-per-lead / CPA target, not ecommerce ROAS), diagnose a too-high CPA with this exact tree. It runs on your live tools (get_impression_share, get_search_terms, get_campaign_overview) — CALL them, don't guess:
 1. IMPRESSION SHARE. Under ~80% → visibility problem, you're not showing on enough of the searches you bid on → go to 2. 80%+ → go to 4.
@@ -295,6 +301,16 @@ export async function POST(req: NextRequest, { params }: Params) {
     }
   } catch { /* plan context is best-effort */ }
 
+  // Settled team rulings — points the team has overruled before. Binding: the
+  // agent must never re-raise them (ANSWER_NOTE rule 3 enforces behavior).
+  let rulingsDirective = "";
+  try {
+    const rulings = await prisma.accountRuling.findMany({ where: { accountId: id, active: true }, orderBy: { createdAt: "desc" }, take: 25 });
+    if (rulings.length) {
+      rulingsDirective = `\n\nTEAM RULINGS — settled by the team; they OUTRANK your analysis. Never re-raise, warn about, or recommend against any of these:\n${rulings.map(r => `- ${r.text}${r.by ? ` (${r.by.split("@")[0]})` : ""}`).join("\n")}`;
+    }
+  } catch { /* rulings are best-effort */ }
+
   const encoder = new TextEncoder();
   const send = (c: ReadableStreamDefaultController, o: unknown) => c.enqueue(encoder.encode(`data: ${JSON.stringify(o)}\n\n`));
 
@@ -488,7 +504,7 @@ export async function POST(req: NextRequest, { params }: Params) {
         // campaign structure, search terms, Shopify) — we execute them and feed
         // the results back until it produces its final answer. Pre-tool narration
         // ("let me check…") is reset away; only the final text is shown/persisted.
-        const sysPrompt = (useChatSystem ? SYSTEM_CHAT : SYSTEM) + PPC_OS_SYSTEM_NOTE + AGENT_TOOLS_NOTE + WEB_RESEARCH_NOTE + ACTION_NOTE + FILE_NOTE + LEADGEN_NOTE + trackingDirective + planDirective;
+        const sysPrompt = (useChatSystem ? SYSTEM_CHAT : SYSTEM) + PPC_OS_SYSTEM_NOTE + AGENT_TOOLS_NOTE + WEB_RESEARCH_NOTE + ACTION_NOTE + FILE_NOTE + ANSWER_NOTE + LEADGEN_NOTE + trackingDirective + planDirective + rulingsDirective;
         // Live web research (server-side): the outside view — the client's own
         // pages, competitor prices/promos, review profiles, marketplace listings.
         const webTools = [
@@ -565,7 +581,17 @@ export async function POST(req: NextRequest, { params }: Params) {
             let out: string;
             // deliver_document is the one tool with a side-channel: it renders
             // + saves the file and tells the UI to show a download button.
-            if (tu.name === "deliver_document") {
+            // remember_ruling persists the team's overrule so it's never re-raised.
+            if (tu.name === "remember_ruling") {
+              try {
+                const ruling = String((tu.input as { ruling?: unknown })?.ruling ?? "").trim().slice(0, 600);
+                if (!ruling) throw new Error("empty ruling");
+                await prisma.accountRuling.create({ data: { accountId: id, text: ruling, by: ctx.email } });
+                out = `Ruling stored. It will be injected as binding context into every future conversation, plan and analysis for this account — the point will not be re-raised.`;
+              } catch (e) {
+                out = `Could not store the ruling: ${e instanceof Error ? e.message : String(e)}. Respect it for this conversation regardless.`;
+              }
+            } else if (tu.name === "deliver_document") {
               try {
                 const inp = (tu.input ?? {}) as Partial<DocContent> & { language?: string };
                 const sections = Array.isArray(inp.sections) ? inp.sections.filter(s => s && typeof s.heading === "string") : [];

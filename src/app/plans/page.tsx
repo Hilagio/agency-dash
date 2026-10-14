@@ -16,7 +16,7 @@ import { ArrowLeft, Loader2, ChevronDown, ChevronRight, AlertTriangle, CircleChe
 interface Phase { title: string; window: string; done: number; total: number }
 interface NextAction { path: string; phase: string; action: string; who: string; when: string; assignee: string | null; status: string }
 interface Row {
-  accountId: string; name: string; clientName: string | null; startedAt: string; createdBy: string | null; dayInPlan: number; horizonDays?: number;
+  accountId: string; name: string; clientName: string | null; startedAt: string; createdBy: string | null; dayInPlan: number; horizonDays?: number; weeklyAt?: string | null;
   totalActions: number; doneActions: number; blockedActions: number; phases: Phase[];
   nextAction: NextAction | null; lastActivityAt: string | null; lastDoneBy: string | null;
   stalled: boolean; assignees: string[];
@@ -249,6 +249,16 @@ export default function PlansBoardPage() {
                       ) : null}
                     </div>
                     {r.stalled && <span title="Live for over a week with no activity in 7 days" style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11.5, fontWeight: 700, color: "var(--danger)", flexShrink: 0 }}><AlertTriangle size={13} /> stalled</span>}
+                    {/* Weekly cadence badge — overdue is visible, so it can't be forgotten. */}
+                    {(() => {
+                      const fresh = r.weeklyAt && (Date.now() - new Date(r.weeklyAt).getTime()) < 7 * 86_400_000;
+                      return (
+                        <span title={fresh ? `Weekly update generated ${ago(r.weeklyAt!)} — open it from the account's library` : "No weekly update in the last 7 days — generate it on the account page (or wait for Monday's automatic run)"}
+                          style={{ fontSize: 10.5, fontWeight: 700, flexShrink: 0, borderRadius: 6, padding: "2px 7px", border: `1px solid ${fresh ? "color-mix(in srgb, var(--accent) 40%, var(--border-2))" : "color-mix(in srgb, var(--danger) 40%, var(--border-2))"}`, color: fresh ? "var(--accent)" : "var(--danger)" }}>
+                          {fresh ? "weekly ✓" : "weekly due"}
+                        </span>
+                      );
+                    })()}
                     <Link href={`/diagnose/${r.accountId}`} onClick={e => e.stopPropagation()} title="Open the account" style={{ fontSize: 12, fontWeight: 700, color: "var(--accent)", textDecoration: "none", flexShrink: 0, padding: "4px 8px" }}>account →</Link>
                   </div>
 
