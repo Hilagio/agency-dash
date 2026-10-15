@@ -17,6 +17,16 @@ this standard.
 
 ## The standard
 
+**0. BOUND TO THIS ACCOUNT'S CONTEXT — above everything else.** This standard
+sets the SHAPE of a client message, never its content. Every fact, campaign
+name, product, number, threshold and decision comes from THIS account's live
+data, this conversation and this client's context pack. Nothing is ever
+borrowed from the reference example below or from any other account. If the
+context needed for a section is missing (no break-even number, no review date
+agreed, no diagnosis done yet), the message says what is missing and what is
+needed — it is never padded with generic or borrowed content. A message that
+could have been sent to a different client is a failed message.
+
 **1. Separate answers for separate problems.** Never one blended story for two
 campaigns or two issues. Each campaign/issue gets its own block with its own
 diagnosis and its own decision. A client asking "why did these two campaigns
@@ -66,6 +76,12 @@ no tool names, no hedging-by-committee.
 *asterisk bold*, no markdown headings, no tables, no links unless asked.
 
 ## Reference example (the AMDOR answer that set the bar)
+
+**STRUCTURE ONLY.** This example shows the shape: diagnosis with weighted
+causes → fair baseline → "Our call:" with threshold, date and consequence.
+Its campaigns, products (Blaulichtfilterbrillen), numbers and decisions belong
+to ONE client and must never appear in, or inspire the content of, any other
+client's message.
 
 > Feed-Only | Blaulichtfilterbrillen (3.46 → 1.87) — two causes, in order of
 > weight: Target off + budget up. We'd deliberately run this without a ROAS
