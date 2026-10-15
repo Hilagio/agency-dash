@@ -31,11 +31,12 @@ INTERNAL (for the team, candid, the SOP [WEEKLY REVIEW] shape):
 - Next step: THE one thing for next week, from the open plan actions.
 - Blockers: only if real (from blocked actions / missing data).
 
-CLIENT (sendable as-is, the team may paste it straight into the client's Slack/WhatsApp):
+CLIENT (sendable as-is, the team may paste it straight into the client's Slack/WhatsApp — follow the Ecomtrada Client Communication Standard):
 - 6-10 short lines, warm but concrete. Open with the headline number of the week.
-- What we did, what it delivered (numbers), what we do next week.
+- What we did, what it delivered (numbers), what we do next week — and every promised item carries a date.
+- Separate issues get separate lines — never blend two problems into one story. A decision closes with its threshold and review date where one exists.
 - No internal jargon, no tool names, no hedging-by-committee, no promises beyond the data.
-- If the week was soft: say it plainly WITH the number and what we're doing about it — clients trust honesty with a plan.
+- If the week was soft: say it plainly WITH the number and what we're doing about it — clients trust honesty with a plan. Flag in advance anything that will temporarily look worse (e.g. a new target recalibrating).
 
 FORMAT RULES for BOTH texts (Slack/WhatsApp-friendly): plain text only — short lines, "•" for bullets, *asterisks* for bold (Slack/WhatsApp style). NO markdown headings, NO tables, NO links, NO hashtags, NO emoji floods (max 2-3 total). Write in the requested language, native quality. Internal max ~180 words, client max ~120 words.
 

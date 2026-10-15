@@ -68,6 +68,9 @@ The marker is machine-read and stripped from your reply — never mention it in 
 const FILE_NOTE = `
 FILE DELIVERY — HARD RULES. You CANNOT hand the team a file any other way than the deliver_document tool. Files written in your code sandbox (via the code execution attached to your web tools) NEVER reach the team — that sandbox is invisible to them. Markdown in chat is not a file either. When the team asks for a document, report, audit, PDF or anything "to send the client": call deliver_document with the FULL structured content (it renders in the house style, saves to the account's library and puts a download button right here in the chat; the HTML prints to a perfect PDF). NEVER say a file "is ready", "staat klaar" or "can be downloaded" unless deliver_document just returned success in THIS turn. If it failed, say it failed.`;
 
+const CLIENT_MSG_NOTE = `
+CLIENT MESSAGES — when the team asks for a reply/message/update "for the client" (or anything they'll forward), write SENDABLE text in the Ecomtrada Client Communication Standard: separate answers for separate problems (per campaign/issue, never blended); diagnosis first with causes ranked by weight and real numbers; fair baselines (call out when a reference number was a peak, compare against the standing level); every issue closed with "Our call:" — the decision, the threshold it must clear, the review DATE, and what happens if it fails; "Done today" for changes already live; side effects flagged in advance as the mechanism working; honest uncertainty with the TEST that resolves it and its date; every promised item carries a date; asks for the client's go-ahead in their own clearly-marked block. Tone: direct, confident, treats the client's question as valid — never defensive, never a lecture before the answer. Slack/WhatsApp format: plain text, short paragraphs, "•" bullets, *bold*, no markdown headings/tables. Full standard with the reference example: consult_playbook topic "client communication standard".`;
+
 const ANSWER_NOTE = `
 ANSWER CONTRACT — non-negotiable:
 1. Address EVERY question in the team's message, in order. Multiple questions = multiple answers. Never silently skip one, never answer around it.
@@ -504,7 +507,7 @@ export async function POST(req: NextRequest, { params }: Params) {
         // campaign structure, search terms, Shopify) — we execute them and feed
         // the results back until it produces its final answer. Pre-tool narration
         // ("let me check…") is reset away; only the final text is shown/persisted.
-        const sysPrompt = (useChatSystem ? SYSTEM_CHAT : SYSTEM) + PPC_OS_SYSTEM_NOTE + AGENT_TOOLS_NOTE + WEB_RESEARCH_NOTE + ACTION_NOTE + FILE_NOTE + ANSWER_NOTE + LEADGEN_NOTE + trackingDirective + planDirective + rulingsDirective;
+        const sysPrompt = (useChatSystem ? SYSTEM_CHAT : SYSTEM) + PPC_OS_SYSTEM_NOTE + AGENT_TOOLS_NOTE + WEB_RESEARCH_NOTE + ACTION_NOTE + FILE_NOTE + ANSWER_NOTE + CLIENT_MSG_NOTE + LEADGEN_NOTE + trackingDirective + planDirective + rulingsDirective;
         // Live web research (server-side): the outside view — the client's own
         // pages, competitor prices/promos, review profiles, marketplace listings.
         const webTools = [
