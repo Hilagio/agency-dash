@@ -136,6 +136,16 @@ export const AGENT_TOOLS = [
     input_schema: { type: "object", properties: { ruling: { type: "string", description: "The settled fact/decision, one or two sentences, standalone." } }, required: ["ruling"] },
   },
   {
+    name: "get_break_even",
+    description: "DETERMINISTIC (the 92-agents method, agents 45+47): compute the account's break-even ROAS from the stored margin inputs and put EVERY campaign above or below it — with the spend and the estimated loss below break-even in money. Call this whenever the team asks about break-even, profitability, 'is this ROAS actually profitable', margin targets, 'which campaigns lose money', or whether to scale. Break-even ROAS is a THRESHOLD derived from margin; ROAS is what was measured — never call a measured ROAS 'break-even'. If margin inputs are missing it says exactly which field to fill (Context Pack).",
+    input_schema: { type: "object", properties: { days: { type: "number", description: "Window in days (default 30)." } } },
+  },
+  {
+    name: "get_search_term_waste",
+    description: "DETERMINISTIC (the 92-agents method, agent 9): the search-term waste calculation — total search-term spend in the window, the amount spent on terms with ZERO conversions, and the top wasted terms as a ready negative-keyword cut list, all in money and sorted by amount. Call this whenever the team asks about wasted spend, search terms, negatives, 'where is budget leaking', or cleanup. The fastest money back in most accounts.",
+    input_schema: { type: "object", properties: { days: { type: "number", description: "Window in days (default 30)." } } },
+  },
+  {
     name: "consult_playbook",
     description: "OUR agency's Way of Work + playbook AND our full knowledge base — searchable together. The doctrine: the six principles (steer on POAS not ROAS; nine times out of ten it's NOT the ads; scale into demand not past it; concentration vs breadth; one change at a time; read leading signals), the signals we watch, how we build & scale, how we test DEMAND GEN, the exact DIAGNOSIS ORDER when something breaks (metric tree → decompose → overlay changes → buyability → canaries), the pattern library (what a specific IS/CTR/CVR/ROAS/budget/feed combination means), and product segmentation (Heroes/Sidekicks/Zombies/Villains). PLUS the knowledge base: ~90 step-by-step SOPs, ~34 mental models, ~20 checklists, guidelines, theory, references, catalogs AND the 92 Google Ads agent methods (deterministic per-job calculations: contribution margin & break-even math, CAC ceilings, search-term reading, feed/title checks, structure, bidding, measurement, audiences, post-click, seasonal, reporting — follow the method by hand on the account's data) — so you can pull the exact PROCEDURE or CHECKLIST for a task, or the mental model behind a decision. Consult it when you hit a trigger and want our house stance or our documented method rather than generic advice. Pass the topic in plain words — a decision ('when to raise budget', 'brand conversion rate canary'), a pattern ('zero-conversion spend rot', 'tROAS spend flatlines'), or a task/procedure ('analyze search term reports', 'PMax ecommerce optimization cycle', 'budget allocation mental model', 'set up conversion tracking checklist'). Returns the best-matching section(s), each labelled by type ([SOP]/[Mental model]/[Checklist]/[Playbook]) — apply ONLY where it fits this account and what the data actually shows; method to reason with, not a script to force.",
     input_schema: { type: "object", properties: { topic: { type: "string", description: "What you're deciding, in plain words — the situation or pattern you want our stance on." } }, required: ["topic"] },
@@ -161,6 +171,8 @@ const LABELS: Record<string, string> = {
   consult_playbook: "Checking our agency playbook…",
   deliver_document: "Building the document…",
   remember_ruling: "Noting the team's ruling…",
+  get_break_even: "Running the break-even calculation…",
+  get_search_term_waste: "Calculating search-term waste…",
 };
 export const toolStatusLabel = (name: string) => LABELS[name] ?? `Checking ${name.replace(/_/g, " ")}…`;
 
@@ -441,6 +453,81 @@ export async function runAgentTool(name: string, input: Record<string, unknown>,
       return `- ${day} · ${r.scope}${where}: ${what} (by ${r.who})`;
     });
     return `Account change history, last ${window}d (line the dates up against when the metric moved):\n${lines.join("\n")}`;
+  }
+
+  if (name === "get_break_even") {
+    // Agents 45+47 by the book: break-even is a threshold FROM margin; every
+    // campaign is read against it; loss below break-even is quantified as
+    // contribution after ad spend (value × 1/BE − spend) — numbers from code.
+    const start = new Date(); start.setUTCDate(start.getUTCDate() - days);
+    const [ctx2, acct2, rows, orders] = await Promise.all([
+      prisma.clientContext.findUnique({ where: { accountId: acc.id }, select: { netMarginPct: true, breakEvenRoas: true } }),
+      prisma.account.findUnique({ where: { id: acc.id }, select: { roasFloor: true, grossMarginPercent: true, targetRoas: true } }),
+      prisma.metricDaily.findMany({ where: { accountId: acc.id, date: { gte: start.toISOString().slice(0, 10) } }, select: { campaignName: true, spend: true, conversionValue: true, conversions: true } }),
+      prisma.orderDaily.findMany({ where: { accountId: acc.id, date: { gte: start.toISOString().slice(0, 10) } }, select: { orders: true, revenue: true } }),
+    ]);
+    const marginPct = ctx2?.netMarginPct ?? acct2?.grossMarginPercent ?? null;
+    const be = ctx2?.breakEvenRoas ?? acct2?.roasFloor ?? (marginPct && marginPct > 0 ? 1 / marginPct : null);
+    if (!be) return `BLOCKED — break-even cannot be computed: no margin input stored. Needed (one of): break-even ROAS or net margin % in the Client Context Pack (plan page → Context Pack), or gross margin on the account. Ask the team for the client's gross margin and store it — then rerun. Do NOT guess a break-even.`;
+    const byC = new Map<string, { spend: number; value: number; conv: number }>();
+    let tSpend = 0, tValue = 0;
+    for (const r of rows) {
+      const e = byC.get(r.campaignName) ?? { spend: 0, value: 0, conv: 0 };
+      e.spend += r.spend; e.value += r.conversionValue; e.conv += r.conversions;
+      byC.set(r.campaignName, e); tSpend += r.spend; tValue += r.conversionValue;
+    }
+    const share = 1 / be; // contribution share implied by the break-even threshold
+    const lines: string[] = []; let lossSpend = 0, lossAmt = 0;
+    for (const [cName, c] of [...byC.entries()].filter(([, c]) => c.spend > 20).sort((a, b) => b[1].spend - a[1].spend).slice(0, 20)) {
+      const roas = c.spend > 0 ? c.value / c.spend : 0;
+      const contrib = c.value * share - c.spend;
+      if (roas < be) { lossSpend += c.spend; lossAmt += -contrib; }
+      lines.push(`- ${cName}: spend ${money(c.spend)}, ROAS ${roas.toFixed(2)} → ${roas >= be ? "ABOVE" : "BELOW"} break-even (contribution after ad spend ${contrib >= 0 ? "+" : "−"}${money(Math.abs(contrib))})`);
+    }
+    const nOrders = orders.reduce((s, o) => s + o.orders, 0);
+    const rev = orders.reduce((s, o) => s + o.revenue, 0);
+    const aov = nOrders > 0 ? rev / nOrders : null;
+    const accountRoas = tSpend > 0 ? tValue / tSpend : 0;
+    return `BREAK-EVEN READ (${days}d) — threshold from margin, not a measured number:
+Break-even ROAS: ${be.toFixed(2)}${ctx2?.breakEvenRoas ? " (set by the team)" : marginPct ? ` (derived from ${Math.round(marginPct * 100)}% margin)` : ""}${acct2?.targetRoas ? ` · target ROAS ${acct2.targetRoas.toFixed(2)}` : ""}${aov ? ` · AOV ${money(aov)} over ${nOrders} orders` : ""}
+Account: spend ${money(tSpend)}, ROAS ${accountRoas.toFixed(2)} → ${accountRoas >= be ? "ABOVE" : "BELOW"} break-even.
+${lossSpend > 0 ? `Money point: ${money(lossSpend)} of spend sits in campaigns below break-even — estimated contribution loss ${money(lossAmt)} in ${days}d.` : `No campaign with real spend sits below break-even in this window.`}
+Per campaign:
+${lines.join("\n")}
+Doctrine: this uses the simplified threshold model (contribution share = 1/break-even). For the full per-order math (VAT, returns, shipping, fees) the client's complete margin block is needed — name that as a follow-up if precision matters.`;
+  }
+
+  if (name === "get_search_term_waste") {
+    // Agent 9's money question: how much search-term spend produced zero
+    // conversions, and which terms — a ready negative cut list.
+    const start = new Date(); start.setUTCDate(start.getUTCDate() - days);
+    const rows = await prisma.searchTermDaily.findMany({
+      where: { accountId: acc.id, date: { gte: start.toISOString().slice(0, 10) } },
+      select: { searchTerm: true, clicks: true, cost: true, conversions: true, conversionValue: true },
+      orderBy: { cost: "desc" }, take: 20_000,
+    });
+    if (!rows.length) return `No stored search-term data for the last ${days} days (PMax-only accounts expose no terms; otherwise the spine may not have ingested them). Waste cannot be computed — say so rather than estimating.`;
+    const agg = new Map<string, { clicks: number; cost: number; conv: number; value: number }>();
+    for (const r of rows) {
+      const e = agg.get(r.searchTerm) ?? { clicks: 0, cost: 0, conv: 0, value: 0 };
+      e.clicks += r.clicks; e.cost += r.cost; e.conv += r.conversions; e.value += r.conversionValue;
+      agg.set(r.searchTerm, e);
+    }
+    const all = [...agg.entries()];
+    const total = all.reduce((s, [, t]) => s + t.cost, 0);
+    const wasted = all.filter(([, t]) => t.conv === 0 && t.cost > 0);
+    const wasteSum = wasted.reduce((s, [, t]) => s + t.cost, 0);
+    const cutList = wasted.filter(([, t]) => t.cost >= 5).sort((a, b) => b[1].cost - a[1].cost).slice(0, 20)
+      .map(([term, t]) => `- "${term}": ${money(t.cost)}, ${t.clicks} clicks, 0 conv`);
+    const nearMiss = all.filter(([, t]) => t.conv > 0 && t.cost > 0 && t.value / t.cost < 1).sort((a, b) => b[1].cost - a[1].cost).slice(0, 5)
+      .map(([term, t]) => `- "${term}": ${money(t.cost)}, ROAS ${(t.value / t.cost).toFixed(2)}`);
+    return `SEARCH-TERM WASTE (${days}d) — agent-9 method, numbers from code:
+Total search-term spend: ${money(total)} across ${all.length} terms.
+Money point: ${money(wasteSum)} (${total > 0 ? Math.round((wasteSum / total) * 100) : 0}%) went to terms with ZERO conversions.
+Negative cut list (≥${money(5)}, by cost):
+${cutList.join("\n") || "- none above the threshold"}
+${nearMiss.length ? `Converting but under ROAS 1.0 (judge against break-even, don't auto-cut):\n${nearMiss.join("\n")}` : ""}
+Doctrine: cut the zero-converters as exact or phrase negatives; terms WITH conversions are judged against break-even (run get_break_even), never cut on ROAS alone. One change at a time, re-read after 14 days. PMax terms are not in this data — name that as a limitation when PMax carries most spend.`;
   }
 
   if (name === "consult_playbook") {
