@@ -27,6 +27,11 @@ const DIRS: Record<string, string> = {
   theory: "Theory",
   references: "Reference",
   catalogs: "Catalog",
+  // The 92 Google Ads agents — deterministic per-agent calculation methods
+  // (audits, search terms, feed, structure, bidding, margin/CAC, measurement,
+  // audiences, post-click, seasonal, reporting). The AI follows these methods
+  // by hand on the spine data when the question matches one.
+  agents: "Agent method",
 };
 
 let CACHE: KbDoc[] | null = null;
