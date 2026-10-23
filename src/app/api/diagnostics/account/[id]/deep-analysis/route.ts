@@ -137,12 +137,14 @@ export async function POST(req: NextRequest, { params }: Params) {
     L.push(`(Impression-share and auction data are NOT available for this account — do not invent them; name them as a follow-up check where relevant.)`);
   }
   const cc = clientCtx;
+  if (cc?.accountType === "leadgen") L.push(`\nACCOUNT TYPE: LEAD GENERATION (team toggle — binding). Conversions are LEADS; frame the whole analysis in CPA/CPL, lead volume and lead QUALITY — never ROAS/AOV/feed/Merchant Center/product framing. Ecommerce recommendations are a failed analysis on this account.`);
   if (cc?.goal) L.push(`\nClient goal: ${cc.goal}`);
   if (cc?.mainKpi) L.push(`Main KPI: ${cc.mainKpi}`);
   if (cc?.makeOrBreak) L.push(`Make-or-break: ${cc.makeOrBreak}`);
   if (cc?.usps) L.push(`USPs: ${cc.usps}`);
   if (cc?.otherChannels) L.push(`Other paid channels: ${cc.otherChannels}`);
   if (cc?.anythingElse) L.push(`Constraints/context: ${cc.anythingElse}`);
+  if (cc?.makeOrBreak || cc?.anythingElse) L.push(`(Audit notes / optimization lists in the context above are PLANNED work — not implemented unless explicitly stated as done.)`);
   if (msgs.length) { L.push(`\n--- Team conversation (recent) ---`); for (const m of msgs) L.push(`${m.role === "assistant" ? "Analyst" : "Team"}: ${m.content.slice(0, 1500)}`); }
 
   const userMsg = `LANGUAGE: ${language === "nl" ? "Dutch (nl)" : "English (en)"}

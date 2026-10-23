@@ -117,8 +117,14 @@ export async function buildPlanInputs(accountId: string, orgId: string, langOver
   const spend30 = win(30)?.spend ?? 0;
   const blendedMer = spend30 > 0 && rev30 > 0 ? rev30 / spend30 : null;
 
+  // Explicit team toggle wins; businessModel is the fallback inference. This
+  // drives the DIRECTION of the whole plan (team feedback: lead-gen accounts
+  // kept getting ecommerce-flavored audits).
+  const leadGen = ctx?.accountType === "leadgen" || (!ctx?.accountType && (account.businessModel === "lead_gen" || account.businessModel === "service"));
+
   // ── Data block for the model (grounded numbers only) ───────────────────────
-  const D: string[] = [`ACCOUNT: ${account.name} — ${account.businessModel ?? "ecommerce"}, market ${account.country ?? "—"}, currency ${account.currency}`];
+  const D: string[] = [`ACCOUNT: ${account.name} — ${leadGen ? "LEAD GENERATION" : "ecommerce"}${account.businessModel ? ` (${account.businessModel})` : ""}, market ${account.country ?? "—"}, currency ${account.currency}`];
+  if (leadGen) D.push(`ACCOUNT TYPE: LEAD GENERATION (set by the team — binding). "Conversions" are LEADS and "conversion value" may be empty or proxy values: steer on CPA/CPL, lead volume and lead QUALITY, not ROAS/POAS/AOV. Ecommerce workstreams (feed optimization, Merchant Center, Shopping/PMax product segmentation, product-level analysis) do NOT apply — never propose them.`);
   D.push(`\nROAS by window (ads): ${roasWindows.map(w => `${w.label} ${w.roas != null ? w.roas.toFixed(2) : "—"}`).join(" · ")}`);
   if (targetRoas) D.push(`Target ROAS: ${targetRoas.toFixed(2)}`);
   if (breakEven) D.push(`Break-even ROAS: ${breakEven.toFixed(2)} (margin ${marginPct ? Math.round(marginPct * 100) + "%" : "unknown"})`);
@@ -144,6 +150,7 @@ export async function buildPlanInputs(accountId: string, orgId: string, langOver
   // ── Context pack block ─────────────────────────────────────────────────────
   const C: string[] = [];
   const add = (label: string, v?: string | null) => { if (v && v.trim()) C.push(`${label}: ${v.trim()}`); };
+  if (ctx?.accountType) C.push(`ACCOUNT TYPE (team toggle — binding): ${ctx.accountType === "leadgen" ? "LEAD GENERATION — plan around CPL/lead quality; no ecommerce framing" : "E-COMMERCE"}`);
   add("Account manager", ctx?.amName);
   add("Goal / ambition", ctx?.goal);
   add("Main KPI", ctx?.mainKpi);
@@ -183,6 +190,12 @@ THE PLAN IS A CHECKLIST WITH PRIORITIES, NOT A TRAIN SCHEDULE (SOP: plan cycles)
 OPERATIONAL HYGIENE IS NOT STRATEGY (SOP: what belongs where). Tracking checks, stock checks, consent-mode plumbing, basic account housekeeping belong in the ops log the platform keeps — NOT as plan actions or fake milestones. If something there is genuinely broken and material, mention it ONCE under whatWeNeed or caveats as a precondition. The plan itself is: goal and guardrails, strategic action checklist, active tests with review dates, progress toward the goal.
 
 EVERY ACTION MEETS THE ACTIONABLE STANDARD (SOP: owner, reason, timing, review, next move). Weak: "improve feed", "scale campaigns", "check performance" — banned, along with "look at", "monitor", "consider", "explore". Strong: the action text names the concrete change AND why ("Remove low-value products from the feed based on agreed criteria — cuts wasted spend"). NO FLOATING TESTS: every test/structural change carries its review moment and outcome logic in the action text ("consolidate Heroes+Sidekicks+Zombies into one campaign; review after 14 days: ROAS ≥3.0 while spend grows → scale, below → rollback"). A checklist item is not done until it produced a result, a learning, or a next decision.
+
+ACCOUNT TYPE DECIDES THE DIRECTION. The data block names the account type — obey it completely:
+- E-COMMERCE: the default framing below (ROAS/POAS, feed, products, Shopping/PMax).
+- LEAD GENERATION: every metric, finding, lever and action is framed in CPA/CPL, lead volume and lead QUALITY (qualified leads, down-funnel conversion, lead-to-sale). ROAS/POAS/AOV, feed optimization, Merchant Center, Shopping and product-level work are BANNED from the plan — a single ecommerce-flavored action is a failed plan. The standard pillar set becomes: Campaign & keyword structure · Ad copy & assets · Budget & bidding (tCPA) · Landing pages / CRO · Lead quality & measurement · Client-side actions. The archetype economics read on CPL vs target CPL (or lead volume vs target), not on break-even ROAS.
+
+CONTEXT NOTES ARE NOT COMPLETED WORK. Audit notes, optimization lists and intentions in the context pack ("we will roll out", "planned", "to implement", "my audit recommends X") describe work that is NOT yet done unless the note explicitly says it is live/done. Treat such items as INPUT for plan actions — schedule them, never narrate them as already implemented, and never base a finding or stat on the assumption that they happened.
 
 Pick the ARCHETYPE from the data:
 - "fix_first": ROAS below break-even, or data too young/thin to steer on → the plan LEADS with restoring profitable economics before scaling.

@@ -35,6 +35,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
   const data: Record<string, unknown> = { updatedBy: ctx.email || ctx.userId };
   for (const f of FIELDS) if (f in body) data[f] = typeof body[f] === "string" ? (body[f] as string).slice(0, 4000) : null;
   if ("defaultLanguage" in body) data.defaultLanguage = body.defaultLanguage === "nl" ? "nl" : "en";
+  if ("accountType" in body) data.accountType = body.accountType === "leadgen" || body.accountType === "ecom" ? body.accountType : null;
   if ("netMarginPct" in body) { const n = Number(body.netMarginPct); data.netMarginPct = Number.isFinite(n) && n > 0 && n <= 1 ? n : null; }
   if ("breakEvenRoas" in body) { const n = Number(body.breakEvenRoas); data.breakEvenRoas = Number.isFinite(n) && n > 0 ? n : null; }
 
