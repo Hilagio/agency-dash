@@ -28,6 +28,9 @@ const PUBLIC_PREFIXES = [
   // proxy must not redirect them to /login.
   "/api/shopify/webhooks",
   "/api/shopify/flow",
+  // MCP connector endpoint (claude.ai custom connector) — no session cookie;
+  // the route itself refuses everything without a valid MCP_SECRET key.
+  "/api/mcp",
   "/_next",
   "/favicon",
 ];
