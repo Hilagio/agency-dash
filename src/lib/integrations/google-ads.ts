@@ -2318,6 +2318,36 @@ export interface ImpressionShareRow {
 /** Per-campaign impression share + share lost to budget / rank + absolute-top IS
  * — answers "are we limited by budget?", "is there headroom?", and "are we
  * sitting at the bottom of the page?" (low abs-top = raise bids on converters). */
+export interface ConversionActionRow { name: string; category: string; inConversions: number; allConversions: number; value: number }
+/** Which conversion actions make up the account's "conversions" number.
+ * metrics.conversions only counts actions included in bidding ("Conversions"
+ * column) — a nonzero inConversions means Smart Bidding LEARNS on that action.
+ * allConversions covers everything, including secondary/observed actions. This
+ * is the pull that stops the AI blending form-starts, page views and contact
+ * clicks into the business outcome. */
+export async function fetchConversionActions(customerId: string, orgId: string | undefined, days: number): Promise<ConversionActionRow[]> {
+  const client = getClient();
+  const customer = await getCustomer(client, customerId, orgId);
+  const { start, end } = nDayRange(days);
+  const rows = await safeQuery(() => customer.query(`
+    SELECT segments.conversion_action_name, segments.conversion_action_category,
+           metrics.conversions, metrics.all_conversions, metrics.conversions_value
+    FROM customer
+    WHERE segments.date BETWEEN '${start}' AND '${end}'
+  `), "conversion actions", 30_000);
+  const agg = new Map<string, ConversionActionRow>();
+  for (const r of rows) {
+    const seg = r.segments as { conversion_action_name?: string; conversion_action_category?: unknown } | undefined;
+    const name = seg?.conversion_action_name ?? "(unnamed)";
+    const e = agg.get(name) ?? { name, category: String(seg?.conversion_action_category ?? ""), inConversions: 0, allConversions: 0, value: 0 };
+    e.inConversions += Number(r.metrics?.conversions ?? 0);
+    e.allConversions += Number(r.metrics?.all_conversions ?? 0);
+    e.value += Number(r.metrics?.conversions_value ?? 0);
+    agg.set(name, e);
+  }
+  return [...agg.values()].sort((a, b) => b.inConversions - a.inConversions || b.allConversions - a.allConversions);
+}
+
 export async function fetchImpressionShare(customerId: string, orgId: string | undefined, days: number): Promise<ImpressionShareRow[]> {
   const client = getClient();
   const customer = await getCustomer(client, customerId, orgId);

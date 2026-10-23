@@ -145,8 +145,9 @@ Rules for the rewrite:
         boxed(runAgentTool("get_campaign_overview", {}, toolAcc)),
         boxed(runAgentTool("get_impression_share", {}, toolAcc)),
         boxed(runAgentTool("get_search_terms", {}, toolAcc)),
+        boxed(runAgentTool("get_conversion_goals", {}, toolAcc)),
       ]);
-      const labels = ["LIVE CAMPAIGN STRUCTURE (name campaigns by their REAL names in actions)", "IMPRESSION SHARE (lost to rank vs lost to budget)", "SEARCH TERMS (live — cite real terms in cleanup actions)"];
+      const labels = ["LIVE CAMPAIGN STRUCTURE (name campaigns by their REAL names in actions)", "IMPRESSION SHARE (lost to rank vs lost to budget)", "SEARCH TERMS (live — cite real terms in cleanup actions)", "CONVERSION ACTIONS (what the counted 'conversions' number is made of — steer ONLY on the real business-outcome action(s); auxiliary actions are a measurement fix, never part of the story)"];
       pulls.forEach((p, i) => {
         if (p.status === "fulfilled" && p.value && !/^error/i.test(p.value)) inputs.dataBlock += `\n\n${labels[i]}:\n${p.value.slice(0, 4500)}`;
       });

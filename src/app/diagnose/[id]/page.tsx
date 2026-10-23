@@ -265,6 +265,7 @@ const TOOL_LABELS: Record<string, string> = {
   get_ad_strength: "ad strength",
   get_price_competitiveness: "price vs market",
   get_search_terms: "search terms",
+  get_conversion_goals: "conversion actions",
   get_break_even: "break-even calculation",
   get_search_term_waste: "search-term waste",
   get_shopify_data: "Shopify orders",

@@ -5,7 +5,7 @@
  * asks a human when the data genuinely isn't reachable through these tools.
  */
 import { prisma } from "@/lib/db";
-import { fetchImpressionShare, fetchCampaignOverview, fetchChangeHistory, fetchDemographics, fetchQualityScore, fetchAdStrength, fetchGeoPerformance } from "@/lib/integrations/google-ads";
+import { fetchImpressionShare, fetchCampaignOverview, fetchChangeHistory, fetchDemographics, fetchQualityScore, fetchAdStrength, fetchGeoPerformance, fetchConversionActions } from "@/lib/integrations/google-ads";
 import { fetchSlackMessages, formatSlackForContext } from "@/lib/integrations/slack";
 import { getMerchantCenterIds, fetchMerchantCenterHealth, fetchPriceCompetitiveness } from "@/lib/integrations/merchant-center";
 import { fetchGoogleShopping } from "@/lib/integrations/scraperapi-shopping";
@@ -91,6 +91,11 @@ export const AGENT_TOOLS = [
     input_schema: { type: "object", properties: {} },
   },
   {
+    name: "get_conversion_goals",
+    description: "Live from Google Ads: WHICH conversion actions make up the account's counted 'conversions' — per action: name, category, how many fed Smart Bidding ('included in Conversions') vs observed-only (all conversions), and value. THE tool for 'what is a conversion on this account?', 'why is the conversion count inflated?', CPA/CPL sanity checks, and any account counting multiple goals (form starts, page views, contact clicks mixed with real leads/purchases). Call it BEFORE judging CPA/CPL/ROAS on an account you haven't checked — the steering metric is only the action(s) matching the client's real business outcome; the rest is measurement noise to flag, not blend in.",
+    input_schema: { type: "object", properties: { days: { type: "number", description: "Look-back window in days (default 30)." } } },
+  },
+  {
     name: "get_change_history",
     description: "Live from Google Ads: who changed WHAT and WHEN in the account (budget edits, bid-strategy / target CPA-ROAS changes, campaign or ad-group pauses, new campaigns). This is the first thing to check when a metric swings on a specific date — line the change dates up against the metric change to find the cause instead of guessing. Google only retains ~30 days of history.",
     input_schema: { type: "object", properties: { days: { type: "number", description: "Look-back window in days (max 30, default 30)." } } },
@@ -166,6 +171,7 @@ const LABELS: Record<string, string> = {
   get_search_terms: "Reading the search terms…",
   get_shopify_data: "Checking the Shopify orders…",
   get_change_history: "Pulling the account change history from Google Ads…",
+  get_conversion_goals: "Reading which conversion actions are counted…",
   get_merchant_center_status: "Checking Merchant Center feed health…",
   get_slack_context: "Reading the client's Slack channel…",
   consult_playbook: "Checking our agency playbook…",
@@ -353,6 +359,22 @@ export async function runAgentTool(name: string, input: Record<string, unknown>,
     if (!rows.length) return `No campaigns with spend in the last ${days} days.`;
     const lines = rows.map(r => `- ${r.campaign} [${r.channel}]: spend ${money(r.cost)}, search IS ${pct(r.searchIS)}, lost to BUDGET ${pct(r.budgetLostIS)}, lost to rank ${pct(r.rankLostIS)}, abs-top ${pct(r.absTopIS)}`);
     return `Impression share, last ${days}d (higher "lost to budget" = more headroom if you raise budget; low abs-top = sitting at the bottom of the page, raise bids on converters; blanks are usually Performance Max):\n${lines.join("\n")}`;
+  }
+
+  if (name === "get_conversion_goals") {
+    const rows = await fetchConversionActions(acc.googleAdsId, acc.organizationId, days);
+    if (!rows.length) return `No conversion data recorded in the last ${days} days.`;
+    const inBidding = rows.filter(r => r.inConversions > 0.5);
+    const observed = rows.filter(r => r.inConversions <= 0.5 && r.allConversions > 0.5);
+    const fmt = (r: typeof rows[number]) => `- ${r.name} [${r.category || "?"}]: ${Math.round(r.inConversions)} in "Conversions"${r.allConversions > r.inConversions + 0.5 ? ` (${Math.round(r.allConversions)} all)` : ""}${r.value > 0.5 ? `, value ${money(r.value)}` : ""}`;
+    const mixWarning = inBidding.length > 1
+      ? `\n⚠ ${inBidding.length} actions feed Smart Bidding — the counted "conversions" number is a MIX. Steer only on the action(s) matching the client's real business outcome; the others belong in a measurement fix (demote to secondary), not in the performance story.`
+      : "";
+    return `CONVERSION ACTIONS, last ${days}d — what the counted "conversions" number is made of:
+FEEDING SMART BIDDING (included in "Conversions" — bidding learns on these):
+${inBidding.map(fmt).join("\n") || "- none"}
+${observed.length ? `OBSERVED ONLY (secondary — counted in "all conversions", not in bidding):\n${observed.map(fmt).join("\n")}` : ""}${mixWarning}
+Doctrine: CPA/CPL/ROAS are only meaningful against the real business-outcome action(s). Never blend auxiliary actions (page views, form starts, contact clicks, store visits) into the steering numbers — name them once as a measurement finding if they pollute the count.`;
   }
 
   if (name === "get_products") {
