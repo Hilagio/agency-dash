@@ -127,8 +127,9 @@ export async function POST(req: NextRequest, { params }: Params) {
       runAgentTool("get_impression_share", {}, toolAcc),
       runAgentTool("get_campaign_overview", {}, toolAcc),
       runAgentTool("get_search_terms", {}, toolAcc),
+      runAgentTool("get_conversion_goals", {}, toolAcc),
     ]);
-    const labels = ["IMPRESSION SHARE (lost to rank vs lost to budget — the auction diagnostic)", "CAMPAIGN STRUCTURE (live)", "SEARCH TERMS (live)"];
+    const labels = ["IMPRESSION SHARE (lost to rank vs lost to budget — the auction diagnostic)", "CAMPAIGN STRUCTURE (live)", "SEARCH TERMS (live)", "CONVERSION ACTIONS (what the counted 'conversions' number is made of — steer ONLY on the real business-outcome action(s); auxiliary actions are a measurement fix, never part of the story)"];
     pulls.forEach((p, i) => {
       if (p.status === "fulfilled" && p.value && !/^error/i.test(p.value)) L.push(`\n${labels[i]}:\n${p.value.slice(0, 5000)}`);
       else L.push(`\n${labels[i]}: could not be pulled — treat as unknown, name it as a follow-up check where relevant.`);
