@@ -27,7 +27,7 @@ export async function buildPlanInputs(accountId: string, orgId: string, langOver
   const account = await prisma.account.findFirst({
     where: { id: accountId, organizationId: orgId },
     select: {
-      id: true, name: true, clientName: true, currency: true, targetRoas: true,
+      id: true, name: true, clientName: true, currency: true, targetRoas: true, targetCpa: true,
       grossMarginPercent: true, businessModel: true, country: true,
       clientContextPack: true,
     },
@@ -70,6 +70,11 @@ export async function buildPlanInputs(accountId: string, orgId: string, langOver
   const targetRoas = account.targetRoas ?? null;
   const breakEven = ctx?.breakEvenRoas ?? (marginPct && marginPct > 0 ? 1 / marginPct : null);
 
+  // Explicit team toggle wins; businessModel is the fallback inference. This
+  // drives the DIRECTION of the whole plan — prompt AND charts (team feedback:
+  // lead-gen accounts kept getting ecommerce-flavored audits with ROAS charts).
+  const leadGen = ctx?.accountType === "leadgen" || (!ctx?.accountType && (account.businessModel === "lead_gen" || account.businessModel === "service"));
+
   // The chart must show the SAME view the plan steers on: when brand campaigns
   // exist, the excl-brand trend (account-wide is brand-inflated context).
   const nbWindows = brandNames.size ? computeWindows([...perDayNb.values()], [], today, marginPct) : null;
@@ -99,6 +104,23 @@ export async function buildPlanInputs(accountId: string, orgId: string, langOver
     roasLabel: nbWindows ? (language === "nl" ? "ROAS excl. brand over de windows" : "ROAS excl. brand across the windows") : undefined,
   };
 
+  // Lead-gen accounts get lead-gen charts: a ROAS line is meaningless (and
+  // confusing in a client document) when conversions are leads without value.
+  if (leadGen) {
+    const cpl = (d: number) => { const w = win(d); return w && w.conversions > 0 && w.spend > 0 ? w.spend / w.conversions : null; };
+    charts.roasWindows = [90, 30, 14].map(d => ({ label: `${d}d`, roas: cpl(d), target: d === 90 ? account.targetCpa ?? null : null, breakEven: null }));
+    charts.roasLabel = language === "nl" ? "Kosten per lead over de windows" : "Cost per lead across the windows";
+    charts.roasMoney = true;
+    const weeklyLeads = (days: number) => { const from = ymd(days + 1); let s = 0; for (const [d, v] of perDay) if (d >= from) s += v.conversions; return (s / days) * 7; };
+    charts.dailyRevenue = [
+      { label: language === "nl" ? "hele periode" : "full period", value: weeklyLeads(90) },
+      { label: language === "nl" ? "laatste 30d" : "last 30d", value: weeklyLeads(30) },
+      { label: language === "nl" ? "laatste 7d" : "last 7d", value: weeklyLeads(7) },
+    ];
+    charts.revLabel = language === "nl" ? "Leads per week (gem., Ads-geteld)" : "Leads per week (avg, Ads-counted)";
+    charts.revCount = true;
+  }
+
   // Winners: top products by ad conversion value (30d).
   const prodAgg = new Map<string, { title: string; spend: number; conv: number; value: number }>();
   for (const r of adRows) {
@@ -117,25 +139,28 @@ export async function buildPlanInputs(accountId: string, orgId: string, langOver
   const spend30 = win(30)?.spend ?? 0;
   const blendedMer = spend30 > 0 && rev30 > 0 ? rev30 / spend30 : null;
 
-  // Explicit team toggle wins; businessModel is the fallback inference. This
-  // drives the DIRECTION of the whole plan (team feedback: lead-gen accounts
-  // kept getting ecommerce-flavored audits).
-  const leadGen = ctx?.accountType === "leadgen" || (!ctx?.accountType && (account.businessModel === "lead_gen" || account.businessModel === "service"));
-
   // ── Data block for the model (grounded numbers only) ───────────────────────
   const D: string[] = [`ACCOUNT: ${account.name} — ${leadGen ? "LEAD GENERATION" : "ecommerce"}${account.businessModel ? ` (${account.businessModel})` : ""}, market ${account.country ?? "—"}, currency ${account.currency}`];
   if (leadGen) D.push(`ACCOUNT TYPE: LEAD GENERATION (set by the team — binding). "Conversions" are LEADS and "conversion value" may be empty or proxy values: steer on CPA/CPL, lead volume and lead QUALITY, not ROAS/POAS/AOV. Ecommerce workstreams (feed optimization, Merchant Center, Shopping/PMax product segmentation, product-level analysis) do NOT apply — never propose them.`);
-  D.push(`\nROAS by window (ads): ${roasWindows.map(w => `${w.label} ${w.roas != null ? w.roas.toFixed(2) : "—"}`).join(" · ")}`);
-  if (targetRoas) D.push(`Target ROAS: ${targetRoas.toFixed(2)}`);
-  if (breakEven) D.push(`Break-even ROAS: ${breakEven.toFixed(2)} (margin ${marginPct ? Math.round(marginPct * 100) + "%" : "unknown"})`);
-  for (const d of [90, 30, 14]) { const w = win(d); if (w) D.push(`${d}d: spend ${money(w.spend, sym)}, ROAS ${w.roas != null ? w.roas.toFixed(2) : "—"}, POAS ${w.poas != null ? w.poas.toFixed(2) : "—"}`); }
+  if (leadGen) {
+    // Lead-gen framing: leads + CPL, never ROAS/POAS as steering numbers.
+    D.push(`\nLeads & CPL by window (Ads-counted conversions): ${[90, 30, 14].map(d => { const w = win(d); const c = w && w.conversions > 0 && w.spend > 0 ? w.spend / w.conversions : null; return `${d}d ${w ? Math.round(w.conversions) : "—"} leads @ ${c != null ? money(c, sym) : "—"} CPL`; }).join(" · ")}`);
+    if (account.targetCpa) D.push(`Target CPA/CPL: ${money(account.targetCpa, sym)}`);
+    for (const d of [90, 30, 14]) { const w = win(d); if (w) D.push(`${d}d: spend ${money(w.spend, sym)}, ${Math.round(w.conversions)} leads`); }
+  } else {
+    D.push(`\nROAS by window (ads): ${roasWindows.map(w => `${w.label} ${w.roas != null ? w.roas.toFixed(2) : "—"}`).join(" · ")}`);
+    if (targetRoas) D.push(`Target ROAS: ${targetRoas.toFixed(2)}`);
+    if (breakEven) D.push(`Break-even ROAS: ${breakEven.toFixed(2)} (margin ${marginPct ? Math.round(marginPct * 100) + "%" : "unknown"})`);
+    for (const d of [90, 30, 14]) { const w = win(d); if (w) D.push(`${d}d: spend ${money(w.spend, sym)}, ROAS ${w.roas != null ? w.roas.toFixed(2) : "—"}, POAS ${w.poas != null ? w.poas.toFixed(2) : "—"}`); }
+  }
   if (nbWindows) {
     const nbWin = (d: number) => nbWindows.find(w => w.days === d);
     D.push(`\nBrand campaigns detected (${[...brandNames].slice(0, 6).join(", ")}) — account-wide ROAS is inflated by brand search. EXCLUDING brand campaigns:`);
     for (const d of [90, 30, 14]) { const w = nbWin(d); if (w) D.push(`${d}d excl. brand: spend ${money(w.spend, sym)}, ROAS ${w.roas != null ? w.roas.toFixed(2) : "—"}`); }
   }
   if (oRows.length) D.push(`Shopify (30d): ${orders30} orders, ${money(rev30, sym)} revenue${blendedMer ? `, blended MER ${blendedMer.toFixed(2)}` : ""}`);
-  D.push(`Avg daily revenue: ${dailyRevenue.map(x => `${x.label} ${money(x.value, sym)}`).join(" · ")}`);
+  if (leadGen) D.push(`Leads per week (avg, Ads-counted): ${charts.dailyRevenue.map(x => `${x.label} ${x.value < 10 ? x.value.toFixed(1) : Math.round(x.value)}`).join(" · ")} — conversion VALUE figures on this account are proxy values, never revenue.`);
+  else D.push(`Avg daily revenue: ${dailyRevenue.map(x => `${x.label} ${money(x.value, sym)}`).join(" · ")}`);
   // Ads conversions are a SUBSET of total orders (organic, email, social and
   // brand demand fill the rest). A low paid share is channel mix, never a
   // tracking fault — only OVER-counting (Ads claiming more than reality) flags.
