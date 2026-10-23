@@ -50,12 +50,14 @@ export async function POST(req: NextRequest, { params }: Params) {
   const body = await req.json().catch(() => ({})) as { url?: string; pageType?: string; intentSource?: string };
   const url = (body.url || account.landingPageUrl || "").trim();
   if (!/^https?:\/\//i.test(url)) return NextResponse.json({ error: "A valid page URL is required (set the account's landing-page URL or pass one)." }, { status: 400 });
-  const pageType: PageType = body.pageType === "leadgen" || body.pageType === "ecom"
-    ? body.pageType
-    : (account.businessModel === "lead_gen" || account.businessModel === "service" ? "leadgen" : "ecom");
-
   // Offer from the client context; intent from the stored search terms (or pasted).
   const cc = await prisma.clientContext.findUnique({ where: { accountId: id } }).catch(() => null);
+  // Explicit request > Context Pack toggle > businessModel inference.
+  const pageType: PageType = body.pageType === "leadgen" || body.pageType === "ecom"
+    ? body.pageType
+    : cc?.accountType === "leadgen" || cc?.accountType === "ecom"
+    ? cc.accountType
+    : (account.businessModel === "lead_gen" || account.businessModel === "service" ? "leadgen" : "ecom");
   const offer = [
     `Client: ${account.clientName || account.name}`,
     cc?.goal && `Goal: ${cc.goal}`,

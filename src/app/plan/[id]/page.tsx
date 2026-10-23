@@ -17,6 +17,7 @@ interface Ctx {
   strategyPreference?: string; usps?: string; audienceNuances?: string; makeOrBreak?: string;
   otherChannels?: string; anythingElse?: string;
   defaultLanguage?: string; netMarginPct?: number | null; breakEvenRoas?: number | null;
+  accountType?: string | null; // "ecom" | "leadgen"
 }
 
 const FIELDS: { key: keyof Ctx; label: string; hint: string; star?: boolean; rows?: number }[] = [
@@ -286,6 +287,21 @@ export default function PlanPage() {
           </button>
           {formOpen && (
             <div style={{ padding: "0 16px 16px" }}>
+              {/* Account type: the one switch that steers the whole direction of
+                  the plan & audits (ecommerce ROAS/feed vs lead-gen CPL/quality). */}
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, padding: "10px 12px", borderRadius: 10, background: "var(--surface-2)", border: "1px solid var(--border-2)" }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-2)" }}>Account type</span>
+                {([["ecom", "E-commerce"], ["leadgen", "Lead generation"]] as const).map(([val, lab]) => {
+                  const on = (ctx.accountType ?? "ecom") === val;
+                  return (
+                    <button key={val} onClick={() => setCtx(c => ({ ...c, accountType: val }))}
+                      style={{ fontSize: 12.5, fontWeight: 600, padding: "6px 14px", borderRadius: 999, cursor: "pointer", border: on ? "1px solid var(--accent)" : "1px solid var(--border-2)", background: on ? "var(--accent-dim)" : "var(--surface)", color: on ? "var(--accent)" : "var(--text-2)" }}>
+                      {lab}
+                    </button>
+                  );
+                })}
+                <span style={{ fontSize: 11.5, color: "var(--text-muted)" }}>steers the plan &amp; audit direction: ROAS/feed/products vs CPL/lead quality</span>
+              </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 12 }}>
                 {FIELDS.map(f => (
                   <div key={f.key} style={f.star ? { gridColumn: "1 / -1", padding: 12, borderRadius: 10, background: "var(--accent-dim)", border: "1px solid color-mix(in srgb, var(--accent) 30%, var(--border))" } : undefined}>

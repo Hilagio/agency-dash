@@ -85,6 +85,7 @@ export async function generateWeeklyUpdate(
     .sort((a, b) => (b[1].t + b[1].l) - (a[1].t + a[1].l)).slice(0, 6);
 
   const D: string[] = [`ACCOUNT: ${account.clientName || account.name}`];
+  if (clientCtx?.accountType === "leadgen") D.push(`ACCOUNT TYPE: LEAD GENERATION (team toggle — binding). Conversions are LEADS: write the update in CPA/CPL and lead-volume terms, never ROAS/revenue/ecommerce framing; ignore the ROAS figures below as steering numbers.`);
   D.push(`THIS WEEK (${splitDate} → ${ymd(1)}): spend ${money(thisW.spend)}, ${thisW.conv.toFixed(0)} conversions, value ${money(thisW.value)}, ROAS ${thisW.roas.toFixed(2)}`);
   D.push(`LAST WEEK (${ymd(15)} → ${ymd(9)}): spend ${money(lastW.spend)}, ${lastW.conv.toFixed(0)} conversions, value ${money(lastW.value)}, ROAS ${lastW.roas.toFixed(2)}`);
   if (thisW.spend === 0 && lastW.spend === 0) D.push(`NOTE: no spend data in either window — the update must say data is missing, not that performance is zero.`);

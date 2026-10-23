@@ -333,6 +333,10 @@ model ClientContext {
   netMarginPct  Float? // e.g. 0.28 → 28% net margin
   breakEvenRoas Float? // e.g. 2.0
 
+  // "ecom" | "leadgen" — the explicit toggle that steers every generator's
+  // direction (plan, audit, chat). Null = not set; falls back to businessModel.
+  accountType String?
+
   defaultLanguage String   @default("en") // "en" | "nl"
   updatedBy       String? // email of last editor
   updatedAt       DateTime @updatedAt

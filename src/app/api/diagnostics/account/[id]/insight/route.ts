@@ -210,6 +210,7 @@ interface ClientCtx {
   strategyPreference?: string | null; usps?: string | null; audienceNuances?: string | null;
   makeOrBreak?: string | null; otherChannels?: string | null; anythingElse?: string | null;
   adsStartedNote?: string | null; netMarginPct?: number | null; breakEvenRoas?: number | null;
+  accountType?: string | null; // "ecom" | "leadgen" — team toggle, binding
 }
 
 /** The client's own expectations & context — so the read judges "does this match
@@ -217,6 +218,8 @@ interface ClientCtx {
 function buildClientBlock(c: ClientCtx | null): string {
   if (!c) return "";
   const L: string[] = [];
+  if (c.accountType === "leadgen") L.push(`  ACCOUNT TYPE: LEAD GENERATION (team toggle — binding). Conversions are LEADS; steer on CPA/CPL, lead volume and lead quality — never ROAS/AOV/feed/Merchant Center/product framing.`);
+  else if (c.accountType === "ecom") L.push(`  Account type: e-commerce (team toggle).`);
   if (c.goal) L.push(`  Goal: ${c.goal}`);
   if (c.mainKpi) L.push(`  Main KPI: ${c.mainKpi}`);
   if (c.targetRoasNote) L.push(`  Target ROAS: ${c.targetRoasNote}`);
@@ -229,7 +232,7 @@ function buildClientBlock(c: ClientCtx | null): string {
   if (c.adsStartedNote) L.push(`  Ads history: ${c.adsStartedNote}`);
   if (c.otherChannels) L.push(`  Other paid channels: ${c.otherChannels} — total orders/revenue are driven by ALL channels, so Google's paid share and blended MER must be read in that light.`);
   if (c.anythingElse) L.push(`  Constraints/notes: ${c.anythingElse}`);
-  return L.length ? `CLIENT EXPECTATIONS & CONTEXT (judge performance against THIS, not a generic target):\n${L.join("\n")}\n\n` : "";
+  return L.length ? `CLIENT EXPECTATIONS & CONTEXT (judge performance against THIS, not a generic target):\n${L.join("\n")}\n  NOTE: audit notes and optimization lists in this context describe PLANNED work — not implemented unless explicitly stated as done. Never treat an intention as a completed change.\n\n` : "";
 }
 
 const CUR: Record<string, string> = { EUR: "€", USD: "$", GBP: "£", CZK: "Kč", PLN: "zł" };
