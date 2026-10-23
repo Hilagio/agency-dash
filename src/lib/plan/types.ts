@@ -75,7 +75,13 @@ export interface PlanCharts {
   roasWindows: { label: string; roas: number | null; target?: number | null; breakEven?: number | null }[];
   /** Chart title override, e.g. "ROAS excl. brand across the windows" when brand campaigns exist. */
   roasLabel?: string;
+  /** Format the line-chart values as money (lead-gen: the line is CPL, not ROAS). */
+  roasMoney?: boolean;
   /** Average daily revenue, oldest→newest, to show acceleration/decline. */
   dailyRevenue: { label: string; value: number }[];
+  /** Bar-chart title override (lead-gen: "Leads per week (avg)"). */
+  revLabel?: string;
+  /** Format the bar values as plain counts instead of money (lead-gen: leads). */
+  revCount?: boolean;
   currencySymbol: string;
 }

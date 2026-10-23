@@ -104,9 +104,11 @@ function roasChart(charts: PlanCharts, label: string): string {
   const x = (i: number) => 70 + i * (300 / Math.max(1, pts.length - 1));
   const y = (v: number) => 180 - (v / max) * 150;
   const poly = pts.map((p, i) => `${x(i)},${y(p.roas as number)}`).join(" ");
-  const tgtLine = target ? `<line x1="60" y1="${y(target)}" x2="380" y2="${y(target)}" stroke="#33CC80" stroke-width="1.3" stroke-dasharray="2 3" opacity="0.8"/><text x="380" y="${y(target) - 4}" fill="#33CC80" font-size="10" text-anchor="end" font-family="Arial">${label === "nl" ? "doel" : "target"} ${target.toFixed(1)}</text>` : "";
+  // Lead-gen plans put CPL on this line chart — money formatting, not a ratio.
+  const fmt = (v: number) => charts.roasMoney ? money(v, charts.currencySymbol) : v.toFixed(2);
+  const tgtLine = target ? `<line x1="60" y1="${y(target)}" x2="380" y2="${y(target)}" stroke="#33CC80" stroke-width="1.3" stroke-dasharray="2 3" opacity="0.8"/><text x="380" y="${y(target) - 4}" fill="#33CC80" font-size="10" text-anchor="end" font-family="Arial">${label === "nl" ? "doel" : "target"} ${charts.roasMoney ? esc(money(target, charts.currencySymbol)) : target.toFixed(1)}</text>` : "";
   const beLine = be ? `<line x1="60" y1="${y(be)}" x2="380" y2="${y(be)}" stroke="#F2A60D" stroke-width="1.3" stroke-dasharray="5 4"/><text x="62" y="${y(be) + 13}" fill="#F2A60D" font-size="10" font-family="Arial">break-even ${be.toFixed(1)}</text>` : "";
-  const dots = pts.map((p, i) => `<circle cx="${x(i)}" cy="${y(p.roas as number)}" r="5" fill="#F9C31F"/><text x="${x(i)}" y="${y(p.roas as number) - 10}" fill="#F5F4F0" font-size="12" text-anchor="middle" font-family="Arial" font-weight="700">${(p.roas as number).toFixed(2)}</text><text x="${x(i)}" y="202" fill="#9fb3a8" font-size="11" text-anchor="middle" font-family="Arial">${esc(p.label)}</text>`).join("");
+  const dots = pts.map((p, i) => `<circle cx="${x(i)}" cy="${y(p.roas as number)}" r="5" fill="#F9C31F"/><text x="${x(i)}" y="${y(p.roas as number) - 10}" fill="#F5F4F0" font-size="12" text-anchor="middle" font-family="Arial" font-weight="700">${esc(fmt(p.roas as number))}</text><text x="${x(i)}" y="202" fill="#9fb3a8" font-size="11" text-anchor="middle" font-family="Arial">${esc(p.label)}</text>`).join("");
   return `<line x1="60" y1="180" x2="380" y2="180" stroke="#26342b" stroke-width="1.5"/>${tgtLine}${beLine}<polyline points="${poly}" fill="none" stroke="#F9C31F" stroke-width="3"/>${dots}`;
 }
 
@@ -120,7 +122,9 @@ function revChart(charts: PlanCharts): string {
     const bx = 460 + i * (bw + Math.max(20, gap));
     const by = 180 - h;
     const op = 0.5 + 0.5 * (i / Math.max(1, bars.length - 1));
-    return `<rect x="${bx}" y="${by}" width="${bw}" height="${h}" rx="4" fill="#33CC80" opacity="${op.toFixed(2)}"/><text x="${bx + bw / 2}" y="${by - 8}" fill="#F5F4F0" font-size="12" text-anchor="middle" font-family="Arial" font-weight="700">${esc(money(b.value, charts.currencySymbol))}</text><text x="${bx + bw / 2}" y="202" fill="#9fb3a8" font-size="11" text-anchor="middle" font-family="Arial">${esc(b.label)}</text>`;
+    // Lead-gen bars are lead COUNTS, not money.
+    const barVal = charts.revCount ? (b.value < 10 ? b.value.toFixed(1) : String(Math.round(b.value))) : money(b.value, charts.currencySymbol);
+    return `<rect x="${bx}" y="${by}" width="${bw}" height="${h}" rx="4" fill="#33CC80" opacity="${op.toFixed(2)}"/><text x="${bx + bw / 2}" y="${by - 8}" fill="#F5F4F0" font-size="12" text-anchor="middle" font-family="Arial" font-weight="700">${esc(barVal)}</text><text x="${bx + bw / 2}" y="202" fill="#9fb3a8" font-size="11" text-anchor="middle" font-family="Arial">${esc(b.label)}</text>`;
   }).join("") + `<line x1="450" y1="180" x2="800" y2="180" stroke="#26342b" stroke-width="1.5"/>`;
 }
 
@@ -132,7 +136,7 @@ function trendSection(charts: PlanCharts, t: typeof T["en"]): string {
     <svg viewBox="0 0 820 220" style="width:100%;" xmlns="http://www.w3.org/2000/svg">
       <text x="60" y="22" fill="#9fb3a8" font-size="13" font-weight="700" font-family="Arial">${esc(charts.roasLabel ?? t.roasStable)}</text>
       ${roas}
-      ${rev ? `<text x="450" y="22" fill="#9fb3a8" font-size="13" font-weight="700" font-family="Arial">${esc(t.dayRev)}</text>${rev}` : ""}
+      ${rev ? `<text x="450" y="22" fill="#9fb3a8" font-size="13" font-weight="700" font-family="Arial">${esc(charts.revLabel ?? t.dayRev)}</text>${rev}` : ""}
     </svg>
   </div></div>`;
 }
